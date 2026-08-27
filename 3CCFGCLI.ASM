@@ -52,6 +52,11 @@
 ; live register synchronization and verification.  /INT behavior remains based
 ; on the hardware tested release 0.3.3 implementation.  All other hardware
 ; property handlers remain explicit stubs.
+;
+; Release 0.3.5 adds strict single occurrence validation for every supported
+; CONFIGURE verb.  /ADAPTERNUM, /INT, /IOBASE and /VERBOSE may each appear
+; at most once.  Duplicate detection is completed before discovery, property
+; dispatch or the centralized hardware transaction can begin.
 ; ============================================================================
 
 IDEAL
@@ -142,6 +147,12 @@ CFG_PARSE_INT           EQU 02h
 CFG_PARSE_VERBOSE       EQU 04h
 CFG_PARSE_IOBASE        EQU 08h
 
+; Strict CONFIGURE single occurrence tracking, independent of staged state.
+CFG_SEEN_ADAPTER        EQU 01h
+CFG_SEEN_INT            EQU 02h
+CFG_SEEN_IOBASE         EQU 04h
+CFG_SEEN_VERBOSE        EQU 08h
+
 ; Central CONFIGURE transaction change flags.
 CFG_TXN_CHG_WORD08       EQU 01h
 CFG_TXN_CHG_WORD09       EQU 02h
@@ -171,7 +182,7 @@ CFG_ERR_BAD_OPTION          EQU 8
 CFG_ERR_MISSING_VALUE       EQU 9
 CFG_ERR_NOT_IMPLEMENTED     EQU 10
 CFG_ERR_ADAPTER_REQUIRED    EQU 11
-CFG_ERR_DUP_ADAPTER         EQU 12
+CFG_ERR_DUP_PROPERTY        EQU 12
 CFG_ERR_NO_PROPERTY         EQU 13
 CFG_ERR_BAD_INT             EQU 14
 CFG_ERR_EEPROM_READ         EQU 15
@@ -193,7 +204,7 @@ CFG_ERR_IOBASE_ACTIVATE     EQU 30
 
 DATASEG
 
-VERSION_STRING	DB '0.3.4', '$'
+VERSION_STRING	DB '0.3.5', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -214,7 +225,7 @@ msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh
 ; CONFIGURE framework diagnostics.
 msg_cfg_bad_adapter DB "Invalid ADAPTERNUM value.", 0Dh, 0Ah, '$'
 msg_cfg_need_adapter DB "ADAPTERNUM is required when more than one adapter is installed.", 0Dh, 0Ah, '$'
-msg_cfg_dup_adapter DB "ADAPTERNUM was specified more than once.", 0Dh, 0Ah, '$'
+msg_cfg_dup_property DB "Duplicate CONFIGURE property.", 0Dh, 0Ah, '$'
 msg_cfg_revalidate DB "Selected adapter no longer matches the discovered NIC.", 0Dh, 0Ah, '$'
 msg_cfg_unsupported_product DB "Unsupported EtherLink III product.", 0Dh, 0Ah, '$'
 msg_cfg_unsupported_asic DB "Unsupported ASIC revision.", 0Dh, 0Ah, '$'
@@ -381,6 +392,7 @@ ext_revision_info DW 0FFFFh
 ; CONFIGURE state.  nic_table itself is deliberately not extended.
 cfg_adapter_ordinal   DB 0
 cfg_parse_flags       DB 0
+cfg_seen_flags        DB 0
 cfg_property_count    DB 0
 cfg_last_error        DB CFG_ERR_NONE
 cfg_timeout_latched   DB 0
@@ -662,6 +674,7 @@ PROC Cmd_Configure NEAR
 
     mov     [cfg_adapter_ordinal], 0
     mov     [cfg_parse_flags], 0
+    mov     [cfg_seen_flags], 0
     mov     [cfg_property_count], 0
     mov     [cfg_last_error], CFG_ERR_NONE
     mov     [cfg_timeout_latched], 0
@@ -772,6 +785,9 @@ PROC Cfg_Parse_Options NEAR
     cmp     al, 09h
     jne     @@RegularOption
 @@SetVerbose:
+    mov     al, CFG_SEEN_VERBOSE
+    call    Cfg_Mark_Seen
+    jc      @@DuplicateProperty
     or      [cfg_parse_flags], CFG_PARSE_VERBOSE
     add     si, 7
     jmp     @@NextToken
@@ -842,12 +858,27 @@ PROC Cfg_Parse_Options NEAR
     pop     si
     jc      @@BadOption
 
+    ; Strict duplicate tracking applies to supported hardware properties.
+    cmp     al, CFG_OPT_INT
+    jne     @@CheckSeenIOBase
+    mov     al, CFG_SEEN_INT
+    call    Cfg_Mark_Seen
+    jc      @@DuplicateProperty
+    jmp     @@CountProperty
+@@CheckSeenIOBase:
+    cmp     al, CFG_OPT_IOBASE
+    jne     @@CountProperty
+    mov     al, CFG_SEEN_IOBASE
+    call    Cfg_Mark_Seen
+    jc      @@DuplicateProperty
+@@CountProperty:
     inc     [cfg_property_count]
     jmp     @@NextToken
 
 @@AdapterNumber:
-    test    [cfg_parse_flags], CFG_PARSE_ADAPTER
-    jnz     @@DuplicateAdapter
+    mov     al, CFG_SEEN_ADAPTER
+    call    Cfg_Mark_Seen
+    jc      @@DuplicateProperty
     or      [cfg_parse_flags], CFG_PARSE_ADAPTER
 
     push    si
@@ -865,8 +896,8 @@ PROC Cfg_Parse_Options NEAR
 @@MissingValue:
     mov     [cfg_last_error], CFG_ERR_MISSING_VALUE
     jmp     @@Fail
-@@DuplicateAdapter:
-    mov     [cfg_last_error], CFG_ERR_DUP_ADAPTER
+@@DuplicateProperty:
+    mov     [cfg_last_error], CFG_ERR_DUP_PROPERTY
     jmp     @@Fail
 @@BadAdapter:
     mov     [cfg_last_error], CFG_ERR_BAD_ADAPTER
@@ -887,6 +918,28 @@ PROC Cfg_Parse_Options NEAR
     clc
     ret
 ENDP Cfg_Parse_Options
+
+; Mark one supported CONFIGURE verb as seen during the first parse pass.
+; Input AL = one CFG_SEEN bit.  Carry set means that verb was already seen.
+; This state is intentionally separate from cfg_parse_flags so staged state
+; continues to mean successfully parsed and accepted property values.
+PROC Cfg_Mark_Seen NEAR
+    push    bx
+
+    mov     bl, [cfg_seen_flags]
+    test    bl, al
+    jnz     @@Duplicate
+    or      bl, al
+    mov     [cfg_seen_flags], bl
+    pop     bx
+    clc
+    ret
+
+@@Duplicate:
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Mark_Seen
 
 ; Input SI = typed name, CX = typed length, DI = full keyword.
 ; Carry clear means the typed name is a prefix of the keyword.
@@ -1565,9 +1618,9 @@ PROC Cfg_Report_Error NEAR
     mov     dx, OFFSET msg_cfg_need_adapter
     jmp     @@Print
 @@E12:
-    cmp     al, CFG_ERR_DUP_ADAPTER
+    cmp     al, CFG_ERR_DUP_PROPERTY
     jne     @@E13
-    mov     dx, OFFSET msg_cfg_dup_adapter
+    mov     dx, OFFSET msg_cfg_dup_property
     jmp     @@Print
 @@E13:
     cmp     al, CFG_ERR_NO_PROPERTY
