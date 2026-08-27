@@ -252,6 +252,12 @@ PROC Save_State NEAR
     mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_CFG_PNP], ax
     mov     ax, [word mock_state + 40h + (EEPROM_SOFTWARE_INFO * 2)]
     mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_CFG_MODEM], ax
+    ; Extract FULLDUPLEX from bit 15 of EEPROM word 0Dh.
+    mov     ax, [word mock_state + 40h + (EEPROM_SOFTWARE_INFO * 2)]
+    mov     cl, 15
+    shr     ax, cl
+    and     ax, 0001h
+    mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_CFG_FULLDUPLEX], ax
 
     mov     si, OFFSET mock_state + 40h
     mov     di, OFFSET mock_file_state + MCK_HEADER_SIZE + MCKR_EEPROM

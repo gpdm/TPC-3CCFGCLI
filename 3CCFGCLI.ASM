@@ -1,7 +1,19 @@
 ; ============================================================================
-; 3CCFGCLI.ASM - 0.5.1
+; 3CCFGCLI.ASM - 0.5.2
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
+;
+; Changelog 0.5.2:
+;   - Added /FULLDUPLEX CONFIGURE support with boolean 0 or 1 input.  The
+;     transaction stages, writes and verifies EEPROM word 0Dh bit 15, shared with
+;     the MODEM field.  Both gates from the original are implemented: product-ID
+;     recognition and EEPROM_CAPABILITY word 10h bit 0.
+;   - Fixed /MODEM Cfg_Prepare_MODEM to use read-modify-write on EEPROM word 0Dh,
+;     preserving bit 15 (FULLDUPLEX) while writing modem speed into bits 14:0.
+;   - Added PNP capability guard: /PNP now reads EEPROM_REVISION_INFO (word 14h)
+;     and refuses to configure PNP on adapters that report no PNP support in the
+;     low byte of that word.  Added CFG_ERR_PNP_NOT_CAPABLE error code and message.
+;
 ;
 ; Changelog 0.5.1:
 ; Added /MODEM CONFIGURE support with NONE plus numeric validation
@@ -30,11 +42,11 @@
 ;     now tracks active-base and persistent state consistently so configuration
 ;     changes persist coherently across runs.
 ;
-; Supported CONFIGURE verbs in this 0.5.0 build: /ADAPTERNUM, /INT, /IOBASE,
-; /MODEM, /PNP, /VERBOSE.
+; Supported CONFIGURE verbs in this 0.5.2 build: /ADAPTERNUM, /FULLDUPLEX,
+; /INT, /IOBASE, /MODEM, /PNP, /VERBOSE.
 ; Not yet implemented in the transaction layer: /BADDRESS, /BSIZE,
-; /TR, /OPTIMIZE, /LINKBEAT, /CONFIGPORT, /SYNCREADY,
-; /FULLDUPLEX.  These option handlers remain explicit stubs that return
+; /TR, /OPTIMIZE, /LINKBEAT, /CONFIGPORT, /SYNCREADY.
+; These option handlers remain explicit stubs that return
 ; CFG_ERR_NOT_IMPLEMENTED.
 ;
 ;
@@ -160,6 +172,7 @@ CFG_PARSE_VERBOSE       EQU 04h
 CFG_PARSE_IOBASE        EQU 08h
 CFG_PARSE_PNP           EQU 10h
 CFG_PARSE_MODEM         EQU 20h
+CFG_PARSE_FULLDUPLEX    EQU 40h
 
 ; Strict CONFIGURE single occurrence tracking, independent of staged state.
 CFG_SEEN_ADAPTER        EQU 01h
@@ -168,6 +181,7 @@ CFG_SEEN_IOBASE         EQU 04h
 CFG_SEEN_VERBOSE        EQU 08h
 CFG_SEEN_PNP            EQU 10h
 CFG_SEEN_MODEM          EQU 20h
+CFG_SEEN_FULLDUPLEX     EQU 40h
 
 ; Central CONFIGURE transaction change flags.
 CFG_TXN_CHG_WORD08       EQU 01h
@@ -179,7 +193,7 @@ CFG_TXN_IOBASE_CHANGED   EQU 20h
 CFG_TXN_INT_CHANGED      EQU 40h
 CFG_TXN_CHG_WORD13       EQU 80h
 CFG_TXN_CHG_WORD0D       EQU 0100h
-CFG_PARSE_HW_MASK        EQU 3Ah
+CFG_PARSE_HW_MASK        EQU 7Ah
 CFG_TXN_IO_DETECT_MASK   EQU 15h
 CFG_TXN_WORD09_INT_MASK  EQU 42h
 CFG_TXN_EEPROM_MASK      EQU 0183h
@@ -229,10 +243,17 @@ CFG_ERR_MODEM_INACTIVE      EQU 37
 CFG_ERR_MODEM_EEPROM_READ   EQU 38
 CFG_ERR_MODEM_EEPROM_WRITE  EQU 39
 CFG_ERR_MODEM_VERIFY        EQU 40
+CFG_ERR_PNP_NOT_CAPABLE     EQU 41
+CFG_ERR_BAD_FULLDUPLEX      EQU 42
+CFG_ERR_FD_INACTIVE         EQU 43
+CFG_ERR_FD_EEPROM_READ      EQU 44
+CFG_ERR_FD_EEPROM_WRITE     EQU 45
+CFG_ERR_FD_VERIFY           EQU 46
+CFG_ERR_FD_NOT_CAPABLE      EQU 47
 
 DATASEG
 
-VERSION_STRING	DB '0.5.1', '$'
+VERSION_STRING	DB '0.5.2', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -242,8 +263,9 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "Commands:", 0Dh, 0Ah
                 DB  "  /? or /H          Display this help screen.", 0Dh, 0Ah
                 DB  "  LIST              Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah
-                DB  "  CONFIGURE         Configure supported ISA properties, /INT, /IOBASE, /MODEM and /PNP.", 0Dh, 0Ah
+                DB  "  CONFIGURE         Configure supported ISA properties, /FULLDUPLEX, /INT, /IOBASE, /MODEM and /PNP.", 0Dh, 0Ah
                 DB  "                    /ADAPTERNUM:N selects the NIC number shown by LIST.", 0Dh, 0Ah
+                DB  "                    /FULLDUPLEX:0|1 enables or disables full duplex mode.", 0Dh, 0Ah
                 DB  "                    /INT:N sets the IRQ.", 0Dh, 0Ah
                 DB  "                    /IOBASE:NNN sets the ISA I/O base address.", 0Dh, 0Ah
                 DB  "                    /MODEM:N|NONE sets modem speed/interrupt-disable tuning.", 0Dh, 0Ah
@@ -303,6 +325,7 @@ msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_int_inactive DB "Selected adapter has no active I/O base for /INT configuration.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_inactive DB "Selected adapter has no active I/O base for /PNP configuration.", 0Dh, 0Ah, '$'
 msg_cfg_modem_inactive DB "Selected adapter has no active I/O base for /MODEM configuration.", 0Dh, 0Ah, '$'
+msg_cfg_fd_inactive DB "Selected adapter has no active I/O base for /FULLDUPLEX configuration.", 0Dh, 0Ah, '$'
 
 ; /IOBASE diagnostics.
 msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.", 0Dh, 0Ah, '$'
@@ -357,6 +380,18 @@ msg_cfg_modem_eeprom_write_fail DB "EEPROM write timed out while writing modem s
 msg_cfg_modem_verified DB "EEPROM modem speed setting verified.", 0Dh, 0Ah, '$'
 msg_cfg_modem_verify_fail DB "Modem speed configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_modem_completed DB 0Dh, 0Ah, "Modem speed configuration completed successfully.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_not_capable DB "This adapter does not support Plug and Play configuration.", 0Dh, 0Ah, '$'
+msg_cfg_bad_fullduplex DB "Invalid /FULLDUPLEX parameter. Use 0 (half duplex) or 1 (full duplex).", 0Dh, 0Ah, '$'
+msg_cfg_fullduplex_ok DB "FULLDUPLEX parameter accepted. Requested mode: ", '$'
+msg_cfg_fd_unchanged DB 0Dh, 0Ah, "Full duplex mode is already configured to the requested value.", 0Dh, 0Ah
+                     DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_fd_word_written DB "Full duplex configuration word written.", 0Dh, 0Ah, '$'
+msg_cfg_fd_eeprom_read_fail DB "EEPROM read timed out while reading full duplex configuration.", 0Dh, 0Ah, '$'
+msg_cfg_fd_eeprom_write_fail DB "EEPROM write timed out while writing full duplex configuration.", 0Dh, 0Ah, '$'
+msg_cfg_fd_verified DB "EEPROM full duplex mode verified.", 0Dh, 0Ah, '$'
+msg_cfg_fd_verify_fail DB "Full duplex configuration verification failed.", 0Dh, 0Ah, '$'
+msg_cfg_fd_completed DB 0Dh, 0Ah, "Full duplex configuration completed successfully.", 0Dh, 0Ah, '$'
+msg_cfg_fd_not_capable DB "This adapter does not support full duplex configuration.", 0Dh, 0Ah, '$'
 msg_cfg_txn_completed DB 0Dh, 0Ah, "Configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_txn_read DB 0Dh, 0Ah, "Reading current configuration...", 0Dh, 0Ah, '$'
 msg_cfg_txn_prepare DB 0Dh, 0Ah, "Preparing requested configuration...", 0Dh, 0Ah, '$'
@@ -461,6 +496,7 @@ cfg_int_value         DB 0
 cfg_iobase_value      DW 0
 cfg_pnp_value         DB 0
 cfg_modem_value       DW 0
+cfg_fullduplex_value  DB 0
 
 ; Central CONFIGURE transaction state.  Current state is snapshotted before any
 ; hardware modification.  Prospective state starts as an exact copy and is then
@@ -962,8 +998,15 @@ PROC Cfg_Parse_Options NEAR
     jmp     @@CountProperty
 @@CheckSeenModem:
     cmp     al, CFG_OPT_MODEM
-    jne     @@CountProperty
+    jne     @@CheckSeenFullDuplex
     mov     al, CFG_SEEN_MODEM
+    call    Cfg_Mark_Seen
+    jc      @@DuplicateProperty
+    jmp     @@CountProperty
+@@CheckSeenFullDuplex:
+    cmp     al, CFG_OPT_FULLDUPLEX
+    jne     @@CountProperty
+    mov     al, CFG_SEEN_FULLDUPLEX
     call    Cfg_Mark_Seen
     jc      @@DuplicateProperty
 @@CountProperty:
@@ -1750,7 +1793,24 @@ PROC Cfg_Handle_SYNCREADY NEAR
 ENDP Cfg_Handle_SYNCREADY
 
 PROC Cfg_Handle_FULLDUPLEX NEAR
-    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    cmp     cx, 1
+    jne     @@Invalid
+    mov     al, [si]
+    cmp     al, '0'
+    je      @@Zero
+    cmp     al, '1'
+    jne     @@Invalid
+    mov     [cfg_fullduplex_value], 1
+    or      [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    mov     [cfg_last_error], CFG_ERR_NONE
+    ret
+@@Zero:
+    mov     [cfg_fullduplex_value], 0
+    or      [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    mov     [cfg_last_error], CFG_ERR_NONE
+    ret
+@@Invalid:
+    mov     [cfg_last_error], CFG_ERR_BAD_FULLDUPLEX
     ret
 ENDP Cfg_Handle_FULLDUPLEX
 
@@ -1956,8 +2016,43 @@ PROC Cfg_Report_Error NEAR
     jmp     @@Print
 @@E40:
     cmp     al, CFG_ERR_MODEM_VERIFY
-    jne     @@Done
+    jne     @@E41
     mov     dx, OFFSET msg_cfg_modem_verify_fail
+    jmp     @@Print
+@@E41:
+    cmp     al, CFG_ERR_PNP_NOT_CAPABLE
+    jne     @@E42
+    mov     dx, OFFSET msg_cfg_pnp_not_capable
+    jmp     @@Print
+@@E42:
+    cmp     al, CFG_ERR_BAD_FULLDUPLEX
+    jne     @@E43
+    mov     dx, OFFSET msg_cfg_bad_fullduplex
+    jmp     @@Print
+@@E43:
+    cmp     al, CFG_ERR_FD_INACTIVE
+    jne     @@E44
+    mov     dx, OFFSET msg_cfg_fd_inactive
+    jmp     @@Print
+@@E44:
+    cmp     al, CFG_ERR_FD_EEPROM_READ
+    jne     @@E45
+    mov     dx, OFFSET msg_cfg_fd_eeprom_read_fail
+    jmp     @@Print
+@@E45:
+    cmp     al, CFG_ERR_FD_EEPROM_WRITE
+    jne     @@E46
+    mov     dx, OFFSET msg_cfg_fd_eeprom_write_fail
+    jmp     @@Print
+@@E46:
+    cmp     al, CFG_ERR_FD_VERIFY
+    jne     @@E47
+    mov     dx, OFFSET msg_cfg_fd_verify_fail
+    jmp     @@Print
+@@E47:
+    cmp     al, CFG_ERR_FD_NOT_CAPABLE
+    jne     @@Done
+    mov     dx, OFFSET msg_cfg_fd_not_capable
 @@Print:
     mov     ah, 09h
     int     21h
@@ -3443,8 +3538,13 @@ PROC Cfg_Txn_Read_Current NEAR
     jmp     @@Fail
 @@InactiveModem:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@InactiveIRQ
+    jz      @@InactiveFD
     mov     [cfg_last_error], CFG_ERR_MODEM_INACTIVE
+    jmp     @@Fail
+@@InactiveFD:
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jz      @@InactiveIRQ
+    mov     [cfg_last_error], CFG_ERR_FD_INACTIVE
     jmp     @@Fail
 @@InactiveIRQ:
     mov     [cfg_last_error], CFG_ERR_INT_INACTIVE
@@ -3492,7 +3592,10 @@ PROC Cfg_Txn_Read_Current NEAR
 @@Word13Done:
 
     test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jnz     @@ReadWord0D
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@NoWord0D
+@@ReadWord0D:
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_SOFTWARE_INFO
@@ -3677,15 +3780,36 @@ PROC Cfg_Prepare_PNP NEAR
 ENDP Cfg_Prepare_PNP
 
 ; Merge only the staged MODEM field into the prospective persistent image.
+; EEPROM word 0Dh bit 15 is FULLDUPLEX and must be preserved.  Only bits 14:0
+; are owned by the modem speed field.  Always use read-modify-write.
 PROC Cfg_Prepare_MODEM NEAR
     push    ax
 
-    mov     ax, [cfg_modem_value]
+    mov     ax, [cfg_txn_new_word0d]
+    and     ax, 8000h               ; preserve bit 15 (FULLDUPLEX)
+    or      ax, [cfg_modem_value]   ; modem value is already masked to 14:0
     mov     [cfg_txn_new_word0d], ax
 
     pop     ax
     ret
 ENDP Cfg_Prepare_MODEM
+
+; Merge only the FULLDUPLEX bit into the prospective persistent image.
+; Only bit 15 of EEPROM word 0Dh is owned by FULLDUPLEX.  Always RMW.
+PROC Cfg_Prepare_FULLDUPLEX NEAR
+    push    ax
+
+    mov     ax, [cfg_txn_new_word0d]
+    and     ax, 7FFFh               ; clear bit 15
+    cmp     [cfg_fullduplex_value], 0
+    je      @@Store
+    or      ax, 8000h               ; set bit 15 if requested
+@@Store:
+    mov     [cfg_txn_new_word0d], ax
+
+    pop     ax
+    ret
+ENDP Cfg_Prepare_FULLDUPLEX
 
 ; Compare current and prospective states once after all properties are prepared.
 ; INT keeps release 0.3.3 unchanged semantics: its persistent EEPROM field is
@@ -3752,6 +3876,14 @@ PROC Cfg_Txn_Detect_Changes NEAR
 
 @@MODEM:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@FULLDUPLEX
+    mov     ax, [cfg_txn_old_word0d]
+    cmp     ax, [cfg_txn_new_word0d]
+    je      @@FULLDUPLEX
+    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
+
+@@FULLDUPLEX:
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@Done
     mov     ax, [cfg_txn_old_word0d]
     cmp     ax, [cfg_txn_new_word0d]
@@ -4037,7 +4169,13 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     jc      @@Write0DFail
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
     jz      @@Word13
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@Word0DWrittenFD
     mov     dx, OFFSET msg_cfg_modem_word_written
+    jmp     @@Word0DPrint
+@@Word0DWrittenFD:
+    mov     dx, OFFSET msg_cfg_fd_word_written
+@@Word0DPrint:
     mov     ah, 09h
     int     21h
 
@@ -4394,9 +4532,9 @@ PROC Cfg_Txn_Verify NEAR
 
 @@MODEMPersistent:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@Success
+    jz      @@FDPersistent
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-    jz      @@Success
+    jz      @@FDPersistent
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_SOFTWARE_INFO
@@ -4405,8 +4543,30 @@ PROC Cfg_Txn_Verify NEAR
     cmp     ax, [cfg_txn_new_word0d]
     jne     @@MODEMVerifyFail
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@Success
+    jz      @@FDPersistent
     mov     dx, OFFSET msg_cfg_modem_verified
+    mov     ah, 09h
+    int     21h
+
+@@FDPersistent:
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jz      @@Success
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
+    jz      @@Success
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_SOFTWARE_INFO
+    call    Cfg_Eeprom_Read
+    jc      @@FDVerifyFail
+    ; Verify only bit 15 since MODEM may have set the same flag already.
+    and     ax, 8000h
+    mov     bx, [cfg_txn_new_word0d]
+    and     bx, 8000h
+    cmp     ax, bx
+    jne     @@FDVerifyFail
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@Success
+    mov     dx, OFFSET msg_cfg_fd_verified
     mov     ah, 09h
     int     21h
 
@@ -4443,6 +4603,11 @@ PROC Cfg_Txn_Verify NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_MODEM_VERIFY
+    jmp     @@Fail
+@@FDVerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    mov     [cfg_last_error], CFG_ERR_FD_VERIFY
 @@Fail:
     pop     si
     pop     dx
@@ -4656,6 +4821,8 @@ PROC Cfg_Txn_Report_Success NEAR
     jnz     @@Generic
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jnz     @@Generic
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@Generic
     mov     dx, OFFSET msg_cfg_pnp_completed
     jmp     @@Print
 @@Generic:
@@ -4668,9 +4835,20 @@ PROC Cfg_Txn_Report_Success NEAR
     jnz     @@Generic
     test    [cfg_parse_flags], CFG_PARSE_INT
     jnz     @@Generic
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@Generic
     mov     dx, OFFSET msg_cfg_modem_completed
     jmp     @@Print
 @@NoMODEM:
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jz      @@NoFD
+    test    [cfg_parse_flags], CFG_PARSE_IOBASE
+    jnz     @@Generic
+    test    [cfg_parse_flags], CFG_PARSE_INT
+    jnz     @@Generic
+    mov     dx, OFFSET msg_cfg_fd_completed
+    jmp     @@Print
+@@NoFD:
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@INTOnly
     test    [cfg_parse_flags], CFG_PARSE_INT
@@ -4755,7 +4933,7 @@ PROC Cfg_Txn_Execute NEAR
 
 @@RequestedMODEM:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@Read
+    jz      @@RequestedFULLDUPLEX
     mov     dx, OFFSET msg_cfg_modem_ok
     mov     ah, 09h
     int     21h
@@ -4769,6 +4947,25 @@ PROC Cfg_Txn_Execute NEAR
 @@PrintModemValue:
     call    Print_DecWord
 @@AfterRequestedModem:
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+
+@@RequestedFULLDUPLEX:
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jz      @@Read
+    mov     dx, OFFSET msg_cfg_fullduplex_ok
+    mov     ah, 09h
+    int     21h
+    cmp     [cfg_fullduplex_value], 0
+    je      @@FDDisabled
+    mov     dx, OFFSET msg_enabled
+    jmp     @@FDPrint
+@@FDDisabled:
+    mov     dx, OFFSET msg_disabled
+@@FDPrint:
+    mov     ah, 09h
+    int     21h
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
@@ -4795,11 +4992,63 @@ PROC Cfg_Txn_Execute NEAR
 @@PreparePNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@PrepareMODEM
+    ; Guard: EEPROM word 14h (EEPROM_REVISION_INFO) low byte must be >= 1.
+    ; This is how the original utility determines whether the adapter supports
+    ; Plug and Play configuration at all.
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_REVISION_INFO
+    call    Cfg_Eeprom_Read
+    jc      @@PNPCapReadFail
+    and     ax, 00FFh
+    cmp     ax, 1
+    jb      @@PNPNotCapable
     call    Cfg_Prepare_PNP
+    jmp     @@PrepareMODEM
+@@PNPCapReadFail:
+    mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_READ
+    jmp     @@Done
+@@PNPNotCapable:
+    mov     [cfg_last_error], CFG_ERR_PNP_NOT_CAPABLE
+    jmp     @@Done
 @@PrepareMODEM:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@Detect
+    jz      @@PrepareFULLDUPLEX
     call    Cfg_Prepare_MODEM
+@@PrepareFULLDUPLEX:
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jz      @@Detect
+    ; Guard 1: product ID must be one of the five known ISA SKUs.
+    mov     si, [cfg_selected_ptr]
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    cmp     ax, PRODUCT_3C509_TP
+    je      @@FDProductOk
+    cmp     ax, PRODUCT_3C509
+    je      @@FDProductOk
+    cmp     ax, PRODUCT_3C509_COMBO
+    je      @@FDProductOk
+    cmp     ax, PRODUCT_3C509_TPO
+    je      @@FDProductOk
+    cmp     ax, PRODUCT_3C509_TPC
+    je      @@FDProductOk
+    mov     [cfg_last_error], CFG_ERR_FD_NOT_CAPABLE
+    jmp     @@Done
+@@FDProductOk:
+    ; Guard 2: EEPROM_CAPABILITY (word 10h) bit 0 must be set.
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CAPABILITY
+    call    Cfg_Eeprom_Read
+    jc      @@FDCapReadFail
+    test    ax, 0001h
+    jz      @@FDNotCapable
+    call    Cfg_Prepare_FULLDUPLEX
+    jmp     @@Detect
+@@FDCapReadFail:
+    mov     [cfg_last_error], CFG_ERR_FD_EEPROM_READ
+    jmp     @@Done
+@@FDNotCapable:
+    mov     [cfg_last_error], CFG_ERR_FD_NOT_CAPABLE
+    jmp     @@Done
 @@Detect:
     call    Cfg_Txn_Detect_Changes
     call    Cfg_Txn_Report_Prospective
@@ -4831,10 +5080,18 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
 @@CheckMODEMUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@CheckFDUnchanged
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
+    jnz     @@CheckFDUnchanged
+    mov     dx, OFFSET msg_cfg_modem_unchanged
+    mov     ah, 09h
+    int     21h
+@@CheckFDUnchanged:
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@CheckAnyChange
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jnz     @@CheckAnyChange
-    mov     dx, OFFSET msg_cfg_modem_unchanged
+    mov     dx, OFFSET msg_cfg_fd_unchanged
     mov     ah, 09h
     int     21h
 

@@ -2,6 +2,51 @@
 ; 3C509DEF.INC
 ; Shared constants for 3CCFGCLI and 3CSEED.
 ; ---------------------------------------------------------------------------
+;
+; Supported ISA product IDs and per-feature capability matrix.
+;
+; The original 3CCFG utility gates certain configuration verbs on two
+; independent mechanisms:
+;
+;   (A) EEPROM-driven: a capability field read at run time decides support.
+;   (B) Product-ID-driven: the utility dispatches on the product ID word and
+;       takes a "not capable" path for any unrecognised ID.
+;
+; For the five known ISA SKUs both mechanisms agree; no known ISA 3C509 SKU
+; has product-ID support without the matching EEPROM capability bit, or vice
+; versa.  The two columns are separated below to make the dual gate explicit.
+;
+;  Product             | EEPROM              | Product ID |
+;  Constant            | word 03h bits 15:8  | (hex)      | PNP | FULLDUPLEX | MODEM
+; ---------------------+---------------------+------------+-----+------------+------
+;  PRODUCT_3C509_TP    | 90h  (3C509B-TP)    |  9050h     |  1  |     1      |  1
+;  PRODUCT_3C509       | 91h  (3C509B-Combo) |  9150h     |  1  |     1      |  1
+;  PRODUCT_3C509_COMBO | 94h  (3C509B-C)     |  9450h     |  1  |     1      |  1
+;  PRODUCT_3C509_TPO   | 95h  (3C509B-TPO)   |  9550h     |  1  |     1      |  1
+;  PRODUCT_3C509_TPC   | 98h  (3C509B-TPC)   |  9850h     |  1  |     1      |  1
+;  (unknown/other)     | any other value     |  ????h     |  *  |     0      |  1
+; ---------------------+---------------------+------------+-----+------------+------
+;
+; Notes:
+;   PNP:        Gated on EEPROM_REVISION_INFO (word 14h) low byte >= 1.
+;               This is a pure EEPROM flag; the value is set by the
+;               manufacturer or configuration tool, not derived from the
+;               product ID.  A card whose word 14h low byte is zero will
+;               refuse /PNP configuration regardless of its product ID.
+;               Marked (*) above because it is EEPROM-content-dependent,
+;               not product-ID-dependent.
+;
+;   FULLDUPLEX: Gated on BOTH product ID recognition (the five IDs above
+;               dispatch to the capable path; any other ID falls to the
+;               not-capable path) AND on EEPROM_CAPABILITY (word 10h) bit 0
+;               being set.  Both conditions must hold.  In practice all five
+;               known SKUs ship with word 10h bit 0 = 1.
+;
+;   MODEM:      No capability gate in the original utility.  The modem speed
+;               field (EEPROM_SOFTWARE_INFO word 0Dh bits 14:0) is written
+;               unconditionally for any recognised adapter.  Word 0Dh bit 15
+;               is FULLDUPLEX and is always preserved during modem writes.
+;
 
 ID_PORT                 EQU 0110h
 

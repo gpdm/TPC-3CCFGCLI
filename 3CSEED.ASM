@@ -18,19 +18,41 @@ DATASEG
 MOCK_STATE_FILE DB '3C509B.MCK', 0
 
 msg_banner   DB '3CSEED - 3C509B mock state seeder', 0Dh, 0Ah, '$'
-msg_help     DB 'Usage: 3CSEED [INIT|RANDOM|CLEAR|/H|/?]', 0Dh, 0Ah
-             DB '  INIT   Create deterministic one-card seed state.', 0Dh, 0Ah
-             DB '  RANDOM Create randomized one-card seed state.', 0Dh, 0Ah
-             DB '  CLEAR  Delete 3C509B.MCK.', 0Dh, 0Ah, '$'
+msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
+             DB '  INIT         Create deterministic one-card seed (3C509B-TP profile).', 0Dh, 0Ah
+             DB '  RANDOM       Create randomized one-card seed state.', 0Dh, 0Ah
+             DB '  CLEAR        Delete 3C509B.MCK.', 0Dh, 0Ah
+             DB '  3C509B-TP    Seed as 3C509B-TP  (product 9050h, twisted-pair).', 0Dh, 0Ah
+             DB '  3C509B-COMBO Seed as 3C509B      (product 9150h, combo/AUI).', 0Dh, 0Ah
+             DB '  3C509B-C     Seed as 3C509B-C    (product 9450h, twisted-pair).', 0Dh, 0Ah
+             DB '  3C509B-TPO   Seed as 3C509B-TPO  (product 9550h, twisted-pair).', 0Dh, 0Ah
+             DB '  3C509B-TPC   Seed as 3C509B-TPC  (product 9850h, coax).', 0Dh, 0Ah
+             DB '  NOPNP        Seed as non-PNP-capable card (gate test).', 0Dh, 0Ah
+             DB '  NOFD         Seed as non-FULLDUPLEX-capable card (gate test).', 0Dh, 0Ah
+             DB '$'
 msg_ok_init  DB 'Seed file created (INIT).', 0Dh, 0Ah, '$'
 msg_ok_rand  DB 'Seed file created (RANDOM).', 0Dh, 0Ah, '$'
 msg_ok_clear DB 'Seed file deleted (or already absent).', 0Dh, 0Ah, '$'
+msg_ok_tp    DB 'Seed file created (3C509B-TP).', 0Dh, 0Ah, '$'
+msg_ok_combo DB 'Seed file created (3C509B-COMBO).', 0Dh, 0Ah, '$'
+msg_ok_c     DB 'Seed file created (3C509B-C).', 0Dh, 0Ah, '$'
+msg_ok_tpo   DB 'Seed file created (3C509B-TPO).', 0Dh, 0Ah, '$'
+msg_ok_tpc   DB 'Seed file created (3C509B-TPC).', 0Dh, 0Ah, '$'
+msg_ok_nopnp DB 'Seed file created (NOPNP).', 0Dh, 0Ah, '$'
+msg_ok_nofd  DB 'Seed file created (NOFD).', 0Dh, 0Ah, '$'
 msg_fail_io  DB 'File I/O error.', 0Dh, 0Ah, '$'
 msg_bad_arg  DB 'Invalid command argument.', 0Dh, 0Ah, '$'
 
 kw_init      DB 'INIT', 0
 kw_random    DB 'RANDOM', 0
 kw_clear     DB 'CLEAR', 0
+kw_tp        DB '3C509B-TP', 0
+kw_combo     DB '3C509B-COMBO', 0
+kw_c         DB '3C509B-C', 0
+kw_tpo       DB '3C509B-TPO', 0
+kw_tpc       DB '3C509B-TPC', 0
+kw_nopnp     DB 'NOPNP', 0
+kw_nofd      DB 'NOFD', 0
 
 cmd_buffer   DB 128 DUP (0)
 state_blob   DB MCK_FILE_SIZE DUP (0)
@@ -136,6 +158,27 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_clear
     call    Match_Token
     jnc     @@DoClear
+    mov     dx, OFFSET kw_tp
+    call    Match_Token
+    jnc     @@DoTP
+    mov     dx, OFFSET kw_combo
+    call    Match_Token
+    jnc     @@DoCombo
+    mov     dx, OFFSET kw_c
+    call    Match_Token
+    jnc     @@DoC
+    mov     dx, OFFSET kw_tpo
+    call    Match_Token
+    jnc     @@DoTPO
+    mov     dx, OFFSET kw_tpc
+    call    Match_Token
+    jnc     @@DoTPC
+    mov     dx, OFFSET kw_nopnp
+    call    Match_Token
+    jnc     @@DoNoPNP
+    mov     dx, OFFSET kw_nofd
+    call    Match_Token
+    jnc     @@DoNoFD
 
     mov     dx, OFFSET msg_bad_arg
     mov     ah, 09h
@@ -174,6 +217,62 @@ PROC Parse_And_Run NEAR
     call    Seed_Clear
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_clear
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoTP:
+    call    Seed_Model_TP
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_tp
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoCombo:
+    call    Seed_Model_Combo
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_combo
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoC:
+    call    Seed_Model_C
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_c
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoTPO:
+    call    Seed_Model_TPO
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_tpo
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoTPC:
+    call    Seed_Model_TPC
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_tpc
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoNoPNP:
+    call    Seed_NoPNP
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_nopnp
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoNoFD:
+    call    Seed_NoFD
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_nofd
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -366,6 +465,87 @@ PROC Seed_Clear NEAR
     stc
     ret
 ENDP Seed_Clear
+
+; ---------------------------------------------------------------------------
+; Model-specific seed helpers.
+; Each sets seed_product and seed_media to the correct defaults for that SKU,
+; then delegates to Seed_Init which sets the shared fixed MAC/IRQ/base and
+; calls Build_State + Write_State_File.
+; ---------------------------------------------------------------------------
+
+PROC Seed_Model_TP NEAR
+    ; 3C509B-TP: product 9050h, twisted-pair (media 0).
+    mov     [seed_product], PRODUCT_3C509_TP
+    mov     [seed_media], 0
+    call    Seed_Init
+    ret
+ENDP Seed_Model_TP
+
+PROC Seed_Model_Combo NEAR
+    ; 3C509B (Combo): product 9150h, AUI/external (media 1).
+    mov     [seed_product], PRODUCT_3C509
+    mov     [seed_media], 1
+    call    Seed_Init
+    ret
+ENDP Seed_Model_Combo
+
+PROC Seed_Model_C NEAR
+    ; 3C509B-C: product 9450h, twisted-pair (media 0).
+    mov     [seed_product], PRODUCT_3C509_COMBO
+    mov     [seed_media], 0
+    call    Seed_Init
+    ret
+ENDP Seed_Model_C
+
+PROC Seed_Model_TPO NEAR
+    ; 3C509B-TPO: product 9550h, twisted-pair (media 0).
+    mov     [seed_product], PRODUCT_3C509_TPO
+    mov     [seed_media], 0
+    call    Seed_Init
+    ret
+ENDP Seed_Model_TPO
+
+PROC Seed_Model_TPC NEAR
+    ; 3C509B-TPC: product 9850h, coax/BNC (media 3).
+    mov     [seed_product], PRODUCT_3C509_TPC
+    mov     [seed_media], 3
+    call    Seed_Init
+    ret
+ENDP Seed_Model_TPC
+
+PROC Seed_NoPNP NEAR
+    ; INIT profile, then patch EEPROM_REVISION_INFO to 0000h so the PNP
+    ; capability gate (low byte >= 1) fails.
+    call    Seed_Init
+    jc      @@Fail
+    mov     si, EEPROM_REVISION_INFO
+    mov     ax, 0000h
+    call    EEPROM_Write_SI
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_PNP], 0
+    call    Build_Checksum
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_NoPNP
+
+PROC Seed_NoFD NEAR
+    ; INIT profile, then clear EEPROM_CAPABILITY bit 0.
+    ; The EEPROM capability gate is sufficient to block FULLDUPLEX.
+    ; Product ID is left as a valid SKU so the card is enumerated normally.
+    call    Seed_Init
+    jc      @@Fail
+    mov     si, EEPROM_CAPABILITY
+    mov     ax, 0000h
+    call    EEPROM_Write_SI
+    call    Build_Checksum
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_NoFD
 
 PROC Build_State NEAR
     push    ax
