@@ -1,0 +1,122 @@
+Changelog 0.5.9:
+  - Centralized the release version metadata into 3CVERS.INC so 3CCFGCLI and
+    3CSEED share the same source of truth for their banner/version output.
+  - Moved the project changelog out of 3CCFGCLI.ASM into a standalone CHANGES
+    file so the assembly source header stays focused on executable metadata.
+  - Added explicit /IOBASE boundary coverage for the first and last valid ISA
+    addresses (0200h and 03E0h), and renumbered the smoke suite to keep the
+    test ordering coherent after the IOBASE block.
+  - Fixed the /BADDRESS boundary-state bug caused by conflating the NONE sentinel
+    with the minimum valid Boot ROM address.  The valid range remains C0000h-
+    DE000h in 2000h steps, while NONE remains a distinct disabled state.
+  - Clarified the smoke suite semantics and test-fail behavior in the project
+    docs: the authoritative verdict is the assertion log and exit status, not an
+    incidental "TEST PASS" marker.
+
+
+Changelog 0.5.8:
+  - Rewrote the help screen (/? /H) for readability.  Each top-level command
+    (/? or /H, LIST, CONFIGURE, /VERBOSE) is now separated by a blank line.
+    CONFIGURE sub-options are presented as a uniform two-column table with the
+    description column aligned at position 39, using the full 80-column width
+    with no line overflows.
+  - /OPTIMIZE description corrected from "EEPROM optimization target" to
+    "Network workload optimization" to accurately reflect its purpose.
+
+
+Changelog 0.5.7:
+  - Implemented /TR (/XCVR alias) CONFIGURE subverb.  Accepts TP, AUI, COAX,
+    or AUTO.  Writes EEPROM_ADDR_CFG (word 08h) bits 15:14 (media selection);
+    AUTO instead sets bit 7 (auto-select) and clears bits 15:14.  Shares the
+    existing word 08h transaction slot with /IOBASE, /BADDRESS, and /BSIZE.
+  - Product-ID capability gate: 3C509B-TP accepts TP only; 3C509B-TPC accepts
+    TP and COAX; 3C509B-TPO accepts TP and AUI (no AUTO); 3C509B-Combo and
+    3C509B-C accept all four values; unrecognised products are rejected.
+  - Added CFG_PARSE_TR / CFG_SEEN_TR flags and CFG_ERR_TR_* error codes.
+  - Updated CFG_PARSE_HW_MASK to include CFG_PARSE_TR (0400h).
+
+
+Changelog 0.5.6:
+  - Reordered capability gate checks ahead of the "parameter accepted" echo for
+    every gated CONFIGURE verb (/PNP, /FULLDUPLEX, /BADDRESS, /BSIZE).
+    Previously a request could be echoed as "accepted" and only then rejected
+    once the Prepare phase ran its capability check, which read as self-
+    contradictory output.  All gate checks now run in a single gate phase
+    immediately after adapter selection, before any per-property echo is printed.
+  - The Prepare phase for these verbs is now pure staging, since every gate has
+    already passed by the time it runs.
+
+
+Changelog 0.5.5:
+  - Added /BADDRESS and /BSIZE CONFIGURE support, sharing EEPROM word 08h with
+    /IOBASE. /BADDRESS owns bits 11:8 (Boot ROM base index), /BSIZE owns bits
+    13:12 (8/16/32K).
+  - Added the same TPO capability gate already used by LIST's Boot ROM decoder.
+  - Widened cfg_parse_flags/cfg_seen_flags from byte to word and widened the
+    commit mask so a BADDRESS/BSIZE-only change still triggers the shared
+    transaction pipeline.
+  - Fixed a bug in Cfg_Txn_Read_Current where the inactive-adapter /OPTIMIZE
+    path was unreachable dead code.
+
+
+Changelog 0.5.4:
+  - Removed the unsupported LINKBEAT CONFIGURE surface after confirming that the
+    original 3Com documentation describes it as a live ASIC register bit instead
+    of a confirmed EEPROM field.
+  - Added a read-only Link Status line to LIST, sourced from the live media
+    status register.
+
+
+Changelog 0.5.3:
+  - Added /OPTIMIZE CONFIGURE support for DOS, WINDOWS, OS/2, and SERVER.
+    The CLI stages EEPROM word 0Fh high byte, updates the shared checksum,
+    and shows the stored optimization mode in LIST.
+
+
+Changelog 0.5.2:
+  - Added /FULLDUPLEX CONFIGURE support with boolean 0 or 1 input.
+  - Fixed /MODEM preparation to preserve bit 15 while updating modem speed.
+  - Added PNP capability guard: /PNP now refuses configuration on adapters that
+    report no PNP support.
+
+
+Changelog 0.5.1:
+  - Added /MODEM CONFIGURE support with NONE plus numeric validation.
+
+
+Changelog 0.5.0:
+  - Added /PNP CONFIGURE support with boolean 0 or 1 input.
+  - Mock state persistence now records the PNP flag consistently with EEPROM.
+
+
+Changelog 0.4.1:
+  - Backend split fully implemented.
+  - Real hardware operations are isolated behind backend primitives in
+    3CHWIF.ASM; the mock backend in 3CMOCKIF.ASM implements the same contract.
+  - Mock backend behavior was aligned to real hardware semantics.
+
+
+Changelong 0.4.0:
+  - Preliminary backend split: real and mock interfaces are separated at compile
+    time through the TASM conditional assembly symbols /dREALHW and /dMOCKHW.
+
+
+Changelog 0.3.5:
+  - Adds strict single occurrence validation for every supported CONFIGURE verb.
+
+
+Changelog 0.3.0 - 0.3.4:
+  - CONFIGURE uses one centralized staged transaction facility. /INT and /IOBASE
+    handlers only parse and stage requested values, while the shared Cfg_Txn
+    facility owns activation, I/O migration, EEPROM writes, checksum update,
+    live register synchronization, and verification.
+
+
+Compatibility note:
+  - The original 3CCFG also accepted /PORT as an alias for /IOBASE. This reduced
+    3CCFGCLI deliberately omits that alias. Use /IOBASE instead.
+
+
+Initial Release:
+  - The ISA discovery path intentionally follows the behavior recovered from the
+    original 3CCFG 3.2 utility.

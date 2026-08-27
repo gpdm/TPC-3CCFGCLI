@@ -15,9 +15,12 @@ include '3C509DEF.INC'
 
 DATASEG
 
+include '3CVERS.INC'
+
 MOCK_STATE_FILE DB '3C509B.MCK', 0
 
-msg_banner   DB '3CSEED - 3C509B mock state seeder', 0Dh, 0Ah, '$'
+msg_banner_prefix DB '3CSEED - 3C509B mock state seeder v', '$'
+msg_banner_suffix DB 0Dh, 0Ah, '$'
 msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  INIT         Create deterministic one-card seed (3C509B-TP profile).', 0Dh, 0Ah
              DB '  RANDOM       Create randomized one-card seed state.', 0Dh, 0Ah
@@ -120,7 +123,13 @@ Start:
     mov     ax, @data
     mov     ds, ax
 
-    mov     dx, OFFSET msg_banner
+    mov     dx, OFFSET msg_banner_prefix
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET VERSION_STRING
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_banner_suffix
     mov     ah, 09h
     int     21h
 

@@ -1,215 +1,15 @@
 ; ============================================================================
-; 3CCFGCLI.ASM - 0.5.8
+; 3CCFGCLI.ASM
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
-;
 ; ============================================================================
-; - Supported CONFIGURE verbs in this 0.5.8 build:
+; - Supported CONFIGURE verbs in this build:
 ;    /ADAPTERNUM, /BADDRESS, /BSIZE, /FULLDUPLEX, /INT, /IOBASE, /MODEM,
 ;    /OPTIMIZE, /PNP, /TR (/XCVR alias), /VERBOSE.
 ; - /LINKBEAT is deliberately not a CONFIGURE verb in this build (although it could);
-;    -> see the 0.5.4 changelog entry below.
-; ============================================================================
+;    -> see the 0.5.4 entry in CHANGES.
 ;
-; Changelog 0.5.8:
-;   - Rewrote the help screen (/? /H) for readability.  Each top-level
-;     command (/? or /H, LIST, CONFIGURE, /VERBOSE) is now separated by a
-;     blank line.  CONFIGURE sub-options are presented as a uniform
-;     two-column table with the description column aligned at position 39,
-;     using the full 80-column width with no line overflows.  /OPTIMIZE
-;     description corrected from "EEPROM optimization target" to "Network
-;     workload optimization" to accurately reflect its purpose.
-;
-; Changelog 0.5.7:
-;   - Implemented /TR (/XCVR alias) CONFIGURE subverb.  Accepts TP, AUI,
-;     COAX, or AUTO.  Writes EEPROM_ADDR_CFG (word 08h) bits 15:14 (media
-;     selection); AUTO instead sets bit 7 (auto-select) and clears bits
-;     15:14.  Shares the existing word 08h transaction slot with /IOBASE,
-;     /BADDRESS, and /BSIZE.
-;   - Product-ID capability gate: 3C509B-TP accepts TP only; 3C509B-TPC
-;     accepts TP and COAX; 3C509B-TPO accepts TP and AUI (no AUTO);
-;     3C509B-Combo and 3C509B-C accept all four values; unrecognised
-;     products are rejected.
-;   - Added CFG_PARSE_TR / CFG_SEEN_TR flags and CFG_ERR_TR_* error codes.
-;   - Updated CFG_PARSE_HW_MASK to include CFG_PARSE_TR (0400h).
-;
-
-; Changelog 0.5.6:
-;   - Reordered capability gate checks ahead of the "parameter accepted" echo
-;     for every gated CONFIGURE verb (/PNP, /FULLDUPLEX, /BADDRESS, /BSIZE).
-;     Previously a request could be echoed as "accepted" and only then
-;     rejected once the Prepare phase ran its capability check, which read
-;     as self-contradictory output (e.g. "BADDRESS parameter accepted...
-;     This adapter does not support Boot ROM configuration.").  All gate
-;     checks (PNP's EEPROM word 14h test, FULLDUPLEX's product-ID plus
-;     EEPROM word 10h test, BADDRESS/BSIZE's pairing rule and TPO capability
-;     test) now run in a single gate phase immediately after adapter
-;     selection, before any per-property echo is printed.  A rejected
-;     verb now produces only its "not supported"/error message, with no
-;     "accepted" text at all.  The Prepare phase for these verbs is now
-;     pure staging (Cfg_Prepare_PNP/FULLDUPLEX/BADDRESS/BSIZE), since every
-;     gate has already passed by the time it runs.
-;
-;
-; Changelog 0.5.5:
-;   - Added /BADDRESS and /BSIZE CONFIGURE support, sharing EEPROM word 08h
-;     (EEPROM_ADDR_CFG) with /IOBASE: /BADDRESS owns bits 11:8 (Boot ROM
-;     base index, address = 0C0000h + index*2000h), /BSIZE owns bits 13:12
-;     (8/16/32K).  Accepts a hex address C0000-DE000 in 2000h steps, or
-;     NONE to disable; /BSIZE accepts 8, 16, or 32.  The raw requested
-;     index/size is written as-is; alignment "rounding" for a given size
-;     remains a read-side display concern already handled by the existing
-;     Print_Boot_Rom_Value decoder, which required no changes.
-;   - /BADDRESS and /BSIZE must be specified together, except /BADDRESS:NONE
-;     may be given alone to disable the Boot ROM.  New CFG_ERR_BOOTROM_INCOMPLETE
-;     covers all three invalid combinations (BSIZE alone, non-NONE BADDRESS
-;     alone, or NONE combined with BSIZE).
-;   - Added the same TPO capability gate already used by LIST's Boot ROM
-;     decoder: 3C509B-TPO adapters that are also PnP-capable (EEPROM word
-;     14h low byte >= 1) reject both verbs as not supported.
-;   - Widened cfg_parse_flags/cfg_seen_flags from byte to word (all 8 byte
-;     bits were exhausted); Cfg_Mark_Seen now takes AX instead of AL.
-;   - Widened CFG_TXN_COMMIT_MASK to include CFG_TXN_CHG_WORD08 directly, so
-;     a BADDRESS/BSIZE-only change (no /IOBASE) still triggers the write,
-;     verify and success reporting pipeline.
-;   - Fixed a pre-existing bug in Cfg_Txn_Read_Current where the inactive-
-;     adapter check for /OPTIMIZE (@@InactiveOptimize) was unreachable dead
-;     code; an inactive adapter with only /OPTIMIZE requested incorrectly
-;     reported the generic /INT inactive message instead of its own.
-;
-;
-; Changelog 0.5.4:
-;   - The original property-name table includes a 'LINKBEAT' string, but no
-;     disassembly evidence identifies which EEPROM word or bit it targeted,
-;     and 3Com's documentation (3c5x9b.pdf, Figure 6-12) describes "Link beat
-;     enabled" as a live ASIC register bit (Window 4/Port 0Ah, bit 7),
-;     not a confirmed EEPROM field.  Rather than guess and risk writing
-;     to a real adapter's EEPROM incorrectly, the verb surface (parser
-;     option, dispatch, handler stub) has been removed entirely.
-;     MCKR_CFG_LINKBEAT/MCK_CFGF_LINKBEAT remain defined in 3C509DEF.INC
-;     as inert, documented placeholders.
-;   - Added a read-only "Link Status" line to LIST, sourced from the live
-;     Media Type and Status register (Window 4/Port 0Ah) bit 11, "Valid
-;     link beat detected".  Reports "connected", "not connected", or
-;     "unavailable" when the adapter is not active.
-;
-;
-; Changelog 0.5.3:
-;   - Added /OPTIMIZE CONFIGURE support for DOS, WINDOWS, OS/2, and SERVER.
-;     The CLI stages EEPROM word 0Fh high byte, updates the shared checksum, and
-;     shows the stored optimization mode in LIST.
-;
-;
-; Changelog 0.5.2:
-;   - Added /FULLDUPLEX CONFIGURE support with boolean 0 or 1 input.  The
-;     transaction stages, writes and verifies EEPROM word 0Dh bit 15, shared with
-;     the MODEM field.  Both gates from the original are implemented: product-ID
-;     recognition and EEPROM_CAPABILITY word 10h bit 0.
-;   - Fixed /MODEM Cfg_Prepare_MODEM to use read-modify-write on EEPROM word 0Dh,
-;     preserving bit 15 (FULLDUPLEX) while writing modem speed into bits 14:0.
-;   - Added PNP capability guard: /PNP now reads EEPROM_REVISION_INFO (word 14h)
-;     and refuses to configure PNP on adapters that report no PNP support in the
-;     low byte of that word.  Added CFG_ERR_PNP_NOT_CAPABLE error code and message.
-;
-;
-; Changelog 0.5.1:
-; Added /MODEM CONFIGURE support with NONE plus numeric validation
-; (1200/2400/9600/19200/38400 or 25..1600 in steps of 25), with transaction
-; staging, EEPROM write and verify via software information word 0Dh.
-;
-;
-; Changelog 0.5.0:
-; Added /PNP CONFIGURE support with boolean 0 or 1 input.  The centralized
-; transaction now stages, writes and verifies EEPROM word 13h for PnP mode.
-; Mock state persistence now records the PNP flag consistently with EEPROM.
-;
-;
-; Changelog 0.4.1:
-; Backend split fully implemented.
-;
-;   - Real hardware operations are isolated behind backend primitives in
-;     3CHWIF.ASM; the CLI remains backend-agnostic at the hardware-operation
-;     level.
-;   - The mock backend in 3CMOCKIF.ASM implements the same contract as the real
-;     backend without raw in/out instructions, including the register and EEPROM
-;     primitives such as Cfg_Reg_Read_Word and Cfg_Reg_Write_Word.
-;   - Transitional shim layers introduced during the refactor were removed again
-;     to keep the CLI free of redundant indirection.
-;   - Mock backend behavior was aligned to the real hardware semantics; the mock
-;     now tracks active-base and persistent state consistently so configuration
-;     changes persist coherently across runs.
-;
-;
-; Changelong 0.4.0:
-; Preliminay backend split: implement factory for real hardware and mocked
-; interfaces, selected at compile time through the TASM conditional assembly
-; symbols /dREALHW and /dMOCKHW.
-; The application logic (including hardware logic) remains in this file
-; for this release still.
-; The ba kend split is prepapred, foreseeing hardware-specific access 
-; isolated in 3CHWIF.ASM and mock simulation in 3CMOCKIF.ASM.
-;
-;
-; Changelog 0.3.5:
-; Adds strict single occurrence validation for every supported
-; CONFIGURE verb.  /ADAPTERNUM, /INT, /IOBASE and /VERBOSE may each appear
-; at most once.  Duplicate detection is completed before discovery, property
-; dispatch or the centralized hardware transaction can begin.
-;
-;
-; Changelog 0.3.0 - 0.3.4:
-; CONFIGURE uses one centralized staged transaction facility.  /INT and /IOBASE
-; handlers only parse and stage requested values.  Property preparation routines
-; merge those requests into one prospective configuration image, then the shared
-; Cfg_Txn facility owns activation, I O migration, EEPROM writes, checksum update,
-; live register synchronization and verification.  /INT behavior remains based
-; on the hardware tested release 0.3.3 implementation.  All other hardware
-; property handlers remain explicit stubs.
-;
-; Compatibility note: the original 3CCFG also accepted /PORT as an alias for
-; /IOBASE.  This reduced 3CCFGCLI deliberately omits that alias.  Use /IOBASE
-; instead.  /PORT is intentionally unsupported, not an unfinished feature.
-;
-;
-; Initial Release:
-;
-; The ISA discovery path intentionally follows the behavior recovered from
-; the original 3CCFG 3.2 utility:
-;
-;   1. Use ID port 0110h.
-;   2. Initialize both the full 255 byte ID sequence and the short 8 byte
-;      sequence, clearing tags with command D0h after each sequence.
-;   3. Probe with the short sequence first, retry with the full sequence when
-;      manufacturer or product validation fails.
-;   4. Validate EEPROM word 7 = 6D50h and product word 3 with mask F0FFh.
-;   5. Read the identity and configuration words while the contender is live.
-;   6. Assign tag D0h plus tag before moving to the next contender.
-;   7. Reactivate each tagged adapter using D8h plus tag, followed by
-;      E0h plus the encoded I O base index.
-;   8. Verify the active register image in window 0 and read ASIC revision
-;      from window 4 offset 6.
-;   9. Scan all 31 valid ISA base addresses from 0200h through 03E0h in
-;      10h increments to catch adapters that were already active.
-;
-; Scope note: this reduced utility supports ISA EtherLink III adapters only.
-; EISA bus support and Micro Channel bus support from the original utility were
-; explicitly removed and are not part of this build.  The EISA and MCA generic
-; description strings are retained only as reference resources.
-;
-; The executable detector remains limited to the 3C509 and 3C509B 9050h family.
-; The 3C508 ISA description resource is retained for completeness, but 8050h
-; family detection is not present in this reduced source.
-;
-; The original 3CCFG also contains resource manager and ISA PnP discovery before
-; the classic 3Com ID sequence.  This reduced utility catches PnP cards that are
-; already activated at an ISA base, and cards for which the classic 3Com ID
-; mechanism is enabled.  It does not implement standalone ISA PnP serial
-; isolation for an inactive adapter configured for PnP only mode.
-;
-; Extended LIST information is read only after enumeration from the activated
-; adapter.  The proven ID port contention, tagging, activation, record layout,
-; MAC address, I O base and IRQ discovery path is intentionally left unchanged.
-;
+; - See CHANGES for the complete release history.
 ; ============================================================================
 
 IDEAL
@@ -380,7 +180,7 @@ CFG_ERR_TR_NOT_CAPABLE      EQU 71
 
 DATASEG
 
-VERSION_STRING	DB '0.5.8', '$'
+include '3CVERS.INC'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -709,9 +509,12 @@ cfg_pnp_value         DB 0
 cfg_modem_value       DW 0
 cfg_fullduplex_value  DB 0
 cfg_optimize_value    DB 0
-; cfg_baddress_value: 0 = disabled (NONE), 1-15 = Boot ROM base index
-; (address = 0C0000h + index*2000h).  cfg_bsize_value: 0/1/2 = 8/16/32K.
+; cfg_baddress_value: raw 0-15 Boot ROM base index
+; (address = 0C0000h + index*2000h).  cfg_baddress_none is the separate
+; /BADDRESS:NONE sentinel because value zero is a valid minimum address.
+; cfg_bsize_value: 0/1/2 = 8/16/32K.
 cfg_baddress_value    DB 0
+cfg_baddress_none     DB 0
 cfg_bsize_value       DB 0
 ; cfg_tr_value: 0=TP, 1=AUI, 3=COAX, 0FFh=AUTO sentinel.
 cfg_tr_value          DB 0
@@ -1975,7 +1778,9 @@ PROC Cfg_Handle_BADDRESS NEAR
     push    dx
     push    si
 
-    ; NONE disables the Boot ROM (index 0); no /BSIZE is required with it.
+    mov     [cfg_baddress_none], 0
+
+    ; NONE disables the Boot ROM; no /BSIZE is required with it.
     cmp     cx, 4
     jne     @@ParseHex
     cmp     [BYTE si], 'N'
@@ -1987,6 +1792,7 @@ PROC Cfg_Handle_BADDRESS NEAR
     cmp     [BYTE si+3], 'E'
     jne     @@ParseHex
     mov     [cfg_baddress_value], 0
+    mov     [cfg_baddress_none], 1
     or      [cfg_parse_flags], CFG_PARSE_BADDRESS
     mov     [cfg_last_error], CFG_ERR_NONE
     jmp     @@Done
@@ -4532,6 +4338,9 @@ PROC Cfg_Prepare_BADDRESS NEAR
     push    cx
 
     mov     ax, [cfg_txn_new_word08]
+    cmp     [cfg_baddress_none], 1
+    je      @@Disable
+
     and     ax, 0F0FFh
     xor     bx, bx
     mov     bl, [cfg_baddress_value]
@@ -4539,7 +4348,15 @@ PROC Cfg_Prepare_BADDRESS NEAR
     shl     bx, cl
     or      ax, bx
     mov     [cfg_txn_new_word08], ax
+    jmp     @@Done
 
+@@Disable:
+    ; /BADDRESS:NONE clears both Boot ROM base and size bits while preserving
+    ; media and I/O settings in the same EEPROM word.
+    and     ax, 0C0FFh
+    mov     [cfg_txn_new_word08], ax
+
+@@Done:
     pop     cx
     pop     bx
     pop     ax
@@ -5903,12 +5720,13 @@ PROC Cfg_Txn_Execute NEAR
     jz      @@BootRomIncomplete
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jnz     @@BootRomBothGiven
-    cmp     [cfg_baddress_value], 0
-    jne     @@BootRomIncomplete
-    jmp     @@BootRomCapabilityGate
+    cmp     [cfg_baddress_none], 1
+    je      @@BootRomCapabilityGate
+    jmp     @@BootRomIncomplete
 @@BootRomBothGiven:
-    cmp     [cfg_baddress_value], 0
-    jne     @@BootRomCapabilityGate
+    cmp     [cfg_baddress_none], 1
+    je      @@BootRomIncomplete
+    jmp     @@BootRomCapabilityGate
 @@BootRomIncomplete:
     mov     [cfg_last_error], CFG_ERR_BOOTROM_INCOMPLETE
     jmp     @@Done
@@ -6086,8 +5904,10 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_cfg_baddress_ok
     mov     ah, 09h
     int     21h
-    cmp     [cfg_baddress_value], 0
-    jne     @@PrintBAddressValue
+    cmp     [cfg_baddress_none], 1
+    je      @@PrintBAddressNone
+    jmp     @@PrintBAddressValue
+@@PrintBAddressNone:
     mov     dx, OFFSET msg_none
     mov     ah, 09h
     int     21h
@@ -6973,15 +6793,23 @@ PROC Print_Boot_Rom_Value NEAR
     and     bx, 0F00h
     mov     cl, 8
     shr     bx, cl
-    or      bx, bx
-    jz      @@Disabled
-
     mov     ax, [ext_addr_cfg]
     and     ax, 3000h
     mov     cl, 12
     shr     ax, cl
+    or      bx, bx
+    jz      @@CheckDisabled
     cmp     ax, 3
     je      @@Invalid
+    jmp     @@HaveSize
+
+@@CheckDisabled:
+    or      ax, ax
+    jz      @@Disabled
+    cmp     ax, 3
+    je      @@Invalid
+
+@@HaveSize:
 
     mov     di, 8
     or      ax, ax
