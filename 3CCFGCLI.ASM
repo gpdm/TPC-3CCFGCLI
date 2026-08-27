@@ -1,8 +1,14 @@
 ; ============================================================================
 ; 3CCFGCLI.ASM
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
-;
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
+;
+; Build: 0.4.0
+; Backend split: real hardware interface and mock interface are selected at
+; compile time through the TASM conditional assembly symbols /dREALHW and
+; /dMOCKHW.  The application logic remains in this file; hardware-specific
+; access is isolated in 3CHWIF.ASM and mock simulation in 3CMOCKIF.ASM.
+;
 ;
 ; The ISA discovery path intentionally follows the behavior recovered from
 ; the original 3CCFG 3.2 utility:
@@ -204,7 +210,7 @@ CFG_ERR_IOBASE_ACTIVATE     EQU 30
 
 DATASEG
 
-VERSION_STRING	DB '0.3.5', '$'
+VERSION_STRING	DB '0.4.0', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -491,6 +497,25 @@ io_scan_table   DW  0300h, 0310h, 0320h, 0330h, 0340h, 0350h, 0360h, 0370h
 cmd_buffer      DB  128 DUP(0)
 
 CODESEG
+
+; ---------------------------------------------------------------------------
+; Backend selection.  The real hardware interface is the default build, but a
+; mock backend can be selected at compile time by defining /dMOCKHW.
+; ---------------------------------------------------------------------------
+IFDEF REALHW
+    include '3CHWIF.ASM'
+ENDIF
+
+IFDEF MOCKHW
+    include '3CMOCKIF.ASM'
+ENDIF
+
+IFNDEF REALHW
+IFNDEF MOCKHW
+    REALHW EQU 1
+    include '3CHWIF.ASM'
+ENDIF
+ENDIF
 
 ; ----------------------------------------------------------------------------
 ; Program entry
