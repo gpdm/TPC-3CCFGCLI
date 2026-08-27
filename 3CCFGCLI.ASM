@@ -1,7 +1,22 @@
 ; ============================================================================
-; 3CCFGCLI.ASM - 0.5.2
+; 3CCFGCLI.ASM - 0.5.3
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
+;
+; ============================================================================
+; Supported CONFIGURE verbs in this 0.5.3 build: /ADAPTERNUM, /FULLDUPLEX,
+; /INT, /IOBASE, /MODEM, /OPTIMIZE, /PNP, /VERBOSE.
+; Not yet implemented in the transaction layer: /BADDRESS, /BSIZE,
+; /TR, /LINKBEAT, /CONFIGPORT, /SYNCREADY.
+; These option handlers remain explicit stubs that return
+; CFG_ERR_NOT_IMPLEMENTED.
+; ============================================================================
+;
+; Changelog 0.5.3:
+;   - Added /OPTIMIZE CONFIGURE support for DOS, WINDOWS, OS/2, and SERVER.
+;     The CLI stages EEPROM word 0Fh high byte, updates the shared checksum, and
+;     shows the stored optimization mode in LIST.
+;
 ;
 ; Changelog 0.5.2:
 ;   - Added /FULLDUPLEX CONFIGURE support with boolean 0 or 1 input.  The
@@ -41,13 +56,6 @@
 ;   - Mock backend behavior was aligned to the real hardware semantics; the mock
 ;     now tracks active-base and persistent state consistently so configuration
 ;     changes persist coherently across runs.
-;
-; Supported CONFIGURE verbs in this 0.5.2 build: /ADAPTERNUM, /FULLDUPLEX,
-; /INT, /IOBASE, /MODEM, /PNP, /VERBOSE.
-; Not yet implemented in the transaction layer: /BADDRESS, /BSIZE,
-; /TR, /OPTIMIZE, /LINKBEAT, /CONFIGPORT, /SYNCREADY.
-; These option handlers remain explicit stubs that return
-; CFG_ERR_NOT_IMPLEMENTED.
 ;
 ;
 ; Changelong 0.4.0:
@@ -173,6 +181,7 @@ CFG_PARSE_IOBASE        EQU 08h
 CFG_PARSE_PNP           EQU 10h
 CFG_PARSE_MODEM         EQU 20h
 CFG_PARSE_FULLDUPLEX    EQU 40h
+CFG_PARSE_OPTIMIZE      EQU 80h
 
 ; Strict CONFIGURE single occurrence tracking, independent of staged state.
 CFG_SEEN_ADAPTER        EQU 01h
@@ -182,6 +191,7 @@ CFG_SEEN_VERBOSE        EQU 08h
 CFG_SEEN_PNP            EQU 10h
 CFG_SEEN_MODEM          EQU 20h
 CFG_SEEN_FULLDUPLEX     EQU 40h
+CFG_SEEN_OPTIMIZE       EQU 80h
 
 ; Central CONFIGURE transaction change flags.
 CFG_TXN_CHG_WORD08       EQU 01h
@@ -193,12 +203,13 @@ CFG_TXN_IOBASE_CHANGED   EQU 20h
 CFG_TXN_INT_CHANGED      EQU 40h
 CFG_TXN_CHG_WORD13       EQU 80h
 CFG_TXN_CHG_WORD0D       EQU 0100h
-CFG_PARSE_HW_MASK        EQU 7Ah
+CFG_TXN_CHG_WORD0F       EQU 0200h
+CFG_PARSE_HW_MASK        EQU 0FAh
 CFG_TXN_IO_DETECT_MASK   EQU 15h
 CFG_TXN_WORD09_INT_MASK  EQU 42h
-CFG_TXN_EEPROM_MASK      EQU 0183h
+CFG_TXN_EEPROM_MASK      EQU 0383h
 CFG_TXN_LIVE06_MASK      EQU 14h
-CFG_TXN_COMMIT_MASK      EQU 01F0h
+CFG_TXN_COMMIT_MASK      EQU 03F0h
 CFG_TXN_INT_MIGRATE_MASK EQU 50h
 
 ; Common CONFIGURE result codes.
@@ -250,10 +261,15 @@ CFG_ERR_FD_EEPROM_READ      EQU 44
 CFG_ERR_FD_EEPROM_WRITE     EQU 45
 CFG_ERR_FD_VERIFY           EQU 46
 CFG_ERR_FD_NOT_CAPABLE      EQU 47
+CFG_ERR_BAD_OPTIMIZE        EQU 48
+CFG_ERR_OPTIMIZE_INACTIVE   EQU 49
+CFG_ERR_OPTIMIZE_EEPROM_READ EQU 50
+CFG_ERR_OPTIMIZE_EEPROM_WRITE EQU 51
+CFG_ERR_OPTIMIZE_VERIFY     EQU 52
 
 DATASEG
 
-VERSION_STRING	DB '0.5.2', '$'
+VERSION_STRING	DB '0.5.3', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -263,12 +279,13 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "Commands:", 0Dh, 0Ah
                 DB  "  /? or /H          Display this help screen.", 0Dh, 0Ah
                 DB  "  LIST              Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah
-                DB  "  CONFIGURE         Configure supported ISA properties, /FULLDUPLEX, /INT, /IOBASE, /MODEM and /PNP.", 0Dh, 0Ah
+                DB  "  CONFIGURE         Configure supported ISA properties, /FULLDUPLEX, /INT, /IOBASE, /MODEM, /OPTIMIZE and /PNP.", 0Dh, 0Ah
                 DB  "                    /ADAPTERNUM:N selects the NIC number shown by LIST.", 0Dh, 0Ah
                 DB  "                    /FULLDUPLEX:0|1 enables or disables full duplex mode.", 0Dh, 0Ah
                 DB  "                    /INT:N sets the IRQ.", 0Dh, 0Ah
                 DB  "                    /IOBASE:NNN sets the ISA I/O base address.", 0Dh, 0Ah
                 DB  "                    /MODEM:N|NONE sets modem speed/interrupt-disable tuning.", 0Dh, 0Ah
+                DB  "                    /OPTIMIZE:DOS|WINDOWS|OS/2|SERVER sets EEPROM optimize mode.", 0Dh, 0Ah
                 DB  "                    /PNP:0|1 sets Plug and Play mode.", 0Dh, 0Ah
                 DB  "  /VERBOSE          Show detailed CONFIGURE transaction diagnostics.", 0Dh, 0Ah, '$'
 
@@ -290,9 +307,11 @@ msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 
 msg_cfg_bad_int DB "Invalid /INT parameter. Value must be 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use 0 (disabled) or 1 (enabled).", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
+msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER.", 0Dh, 0Ah, '$'
 msg_cfg_int_ok DB "INT parameter accepted. Requested IRQ: ", '$'
 msg_cfg_pnp_ok DB "PNP parameter accepted. Requested Plug and Play mode: ", '$'
 msg_cfg_modem_ok DB "MODEM parameter accepted. Requested setting: ", '$'
+msg_cfg_optimize_ok DB "OPTIMIZE parameter accepted. Requested setting: ", '$'
 msg_cfg_crlf DB 0Dh, 0Ah, '$'
 msg_cfg_adapter_prefix DB "Adapter ", '$'
 msg_cfg_adapter_suffix DB " selected.", 0Dh, 0Ah, '$'
@@ -300,9 +319,11 @@ msg_cfg_read_irq DB 0Dh, 0Ah, "Reading current IRQ configuration...", 0Dh, 0Ah, 
 msg_cfg_current_irq DB "Current IRQ: ", '$'
 msg_cfg_current_word09 DB "Current EEPROM word 09h: ", '$'
 msg_cfg_current_word0d DB "Current EEPROM word 0Dh: ", '$'
+msg_cfg_current_word0f DB "Current EEPROM word 0Fh: ", '$'
 msg_cfg_prepare_irq DB 0Dh, 0Ah, "Preparing IRQ change...", 0Dh, 0Ah, '$'
 msg_cfg_new_word09 DB "New EEPROM word 09h: ", '$'
 msg_cfg_new_word0d DB "New EEPROM word 0Dh: ", '$'
+msg_cfg_new_word0f DB "New EEPROM word 0Fh: ", '$'
 msg_cfg_prepare_active DB 0Dh, 0Ah, "Preparing adapter using original ISA activation sequence...", 0Dh, 0Ah, '$'
 msg_cfg_active_prepared DB "Adapter reactivated and live IRQ staged.", 0Dh, 0Ah, '$'
 msg_cfg_irq_unchanged DB 0Dh, 0Ah, "IRQ is already configured to the requested value.", 0Dh, 0Ah
@@ -325,6 +346,7 @@ msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_int_inactive DB "Selected adapter has no active I/O base for /INT configuration.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_inactive DB "Selected adapter has no active I/O base for /PNP configuration.", 0Dh, 0Ah, '$'
 msg_cfg_modem_inactive DB "Selected adapter has no active I/O base for /MODEM configuration.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_inactive DB "Selected adapter has no active I/O base for /OPTIMIZE configuration.", 0Dh, 0Ah, '$'
 msg_cfg_fd_inactive DB "Selected adapter has no active I/O base for /FULLDUPLEX configuration.", 0Dh, 0Ah, '$'
 
 ; /IOBASE diagnostics.
@@ -380,6 +402,14 @@ msg_cfg_modem_eeprom_write_fail DB "EEPROM write timed out while writing modem s
 msg_cfg_modem_verified DB "EEPROM modem speed setting verified.", 0Dh, 0Ah, '$'
 msg_cfg_modem_verify_fail DB "Modem speed configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_modem_completed DB 0Dh, 0Ah, "Modem speed configuration completed successfully.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_unchanged DB 0Dh, 0Ah, "Optimize mode is already configured to the requested value.", 0Dh, 0Ah
+                      DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_word_written DB "Optimize mode configuration word written.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_eeprom_read_fail DB "EEPROM read timed out while reading optimize configuration.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_eeprom_write_fail DB "EEPROM write timed out while writing optimize configuration.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_verified DB "EEPROM optimize mode verified.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_verify_fail DB "Optimize mode configuration verification failed.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_completed DB 0Dh, 0Ah, "Optimize mode configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_not_capable DB "This adapter does not support Plug and Play configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bad_fullduplex DB "Invalid /FULLDUPLEX parameter. Use 0 (half duplex) or 1 (full duplex).", 0Dh, 0Ah, '$'
 msg_cfg_fullduplex_ok DB "FULLDUPLEX parameter accepted. Requested mode: ", '$'
@@ -435,6 +465,11 @@ msg_xcvr_label  DB  "Transceiver = ", '$'
 msg_pnp_label   DB  "Plug and Play Capability = ", '$'
 msg_boot_label  DB  "Boot ROM = ", '$'
 msg_compat_label DB "Software Compatibility = failure level ", '$'
+msg_optimize_label DB "Optimization = ", '$'
+msg_optimize_dos DB "DOS", '$'
+msg_optimize_windows DB "Windows", '$'
+msg_optimize_os2 DB "OS/2", '$'
+msg_optimize_server DB "Server", '$'
 msg_warn_label  DB  ", warning level ", '$'
 
 msg_enabled     DB  "enabled", '$'
@@ -479,6 +514,7 @@ ext_compatibility DW 0FFFFh
 ext_capability    DW 0FFFFh
 ext_config_ctrl   DW 0FFFFh
 ext_revision_info DW 0FFFFh
+ext_optimize      DW 0FFFFh
 
 ; CONFIGURE state.  nic_table itself is deliberately not extended.
 cfg_adapter_ordinal   DB 0
@@ -497,6 +533,7 @@ cfg_iobase_value      DW 0
 cfg_pnp_value         DB 0
 cfg_modem_value       DW 0
 cfg_fullduplex_value  DB 0
+cfg_optimize_value    DB 0
 
 ; Central CONFIGURE transaction state.  Current state is snapshotted before any
 ; hardware modification.  Prospective state starts as an exact copy and is then
@@ -515,6 +552,7 @@ cfg_txn_old_live06        DW 0
 cfg_txn_new_live06        DW 0
 cfg_txn_old_live08        DW 0
 cfg_txn_new_live08        DW 0
+cfg_txn_old_word0f        DW 0
 cfg_txn_new_word0f        DW 0
 cfg_txn_io_selector       DB 0
 cfg_txn_old_io_selector   DB 0
@@ -1005,8 +1043,15 @@ PROC Cfg_Parse_Options NEAR
     jmp     @@CountProperty
 @@CheckSeenFullDuplex:
     cmp     al, CFG_OPT_FULLDUPLEX
-    jne     @@CountProperty
+    jne     @@CheckSeenOptimize
     mov     al, CFG_SEEN_FULLDUPLEX
+    call    Cfg_Mark_Seen
+    jc      @@DuplicateProperty
+    jmp     @@CountProperty
+@@CheckSeenOptimize:
+    cmp     al, CFG_OPT_OPTIMIZE
+    jne     @@CountProperty
+    mov     al, CFG_SEEN_OPTIMIZE
     call    Cfg_Mark_Seen
     jc      @@DuplicateProperty
 @@CountProperty:
@@ -1751,7 +1796,82 @@ PROC Cfg_Handle_MODEM NEAR
 ENDP Cfg_Handle_MODEM
 
 PROC Cfg_Handle_OPTIMIZE NEAR
-    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    push    ax
+    push    bx
+    push    cx
+
+    cmp     cx, 3
+    je      @@Dos
+    cmp     cx, 4
+    je      @@Os2
+    cmp     cx, 6
+    je      @@Server
+    cmp     cx, 7
+    je      @@Windows
+    jmp     @@Invalid
+
+@@Dos:
+    cmp     [BYTE si], 'D'
+    jne     @@Invalid
+    cmp     [BYTE si+1], 'O'
+    jne     @@Invalid
+    cmp     [BYTE si+2], 'S'
+    jne     @@Invalid
+    mov     al, 0
+    jmp     @@Accept
+@@Windows:
+    cmp     [BYTE si], 'W'
+    jne     @@Invalid
+    cmp     [BYTE si+1], 'I'
+    jne     @@Invalid
+    cmp     [BYTE si+2], 'N'
+    jne     @@Invalid
+    cmp     [BYTE si+3], 'D'
+    jne     @@Invalid
+    cmp     [BYTE si+4], 'O'
+    jne     @@Invalid
+    cmp     [BYTE si+5], 'W'
+    jne     @@Invalid
+    cmp     [BYTE si+6], 'S'
+    jne     @@Invalid
+    mov     al, 1
+    jmp     @@Accept
+@@Os2:
+    cmp     [BYTE si], 'O'
+    jne     @@Invalid
+    cmp     [BYTE si+1], 'S'
+    jne     @@Invalid
+    cmp     [BYTE si+2], '/'
+    jne     @@Invalid
+    cmp     [BYTE si+3], '2'
+    jne     @@Invalid
+    mov     al, 2
+    jmp     @@Accept
+@@Server:
+    cmp     [BYTE si], 'S'
+    jne     @@Invalid
+    cmp     [BYTE si+1], 'E'
+    jne     @@Invalid
+    cmp     [BYTE si+2], 'R'
+    jne     @@Invalid
+    cmp     [BYTE si+3], 'V'
+    jne     @@Invalid
+    cmp     [BYTE si+4], 'E'
+    jne     @@Invalid
+    cmp     [BYTE si+5], 'R'
+    jne     @@Invalid
+    mov     al, 4
+@@Accept:
+    mov     [cfg_optimize_value], al
+    or      [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    mov     [cfg_last_error], CFG_ERR_NONE
+    jmp     @@Done
+@@Invalid:
+    mov     [cfg_last_error], CFG_ERR_BAD_OPTIMIZE
+@@Done:
+    pop     cx
+    pop     bx
+    pop     ax
     ret
 ENDP Cfg_Handle_OPTIMIZE
 
@@ -2020,36 +2140,61 @@ PROC Cfg_Report_Error NEAR
     mov     dx, OFFSET msg_cfg_modem_verify_fail
     jmp     @@Print
 @@E41:
-    cmp     al, CFG_ERR_PNP_NOT_CAPABLE
+    cmp     al, CFG_ERR_BAD_OPTIMIZE
     jne     @@E42
-    mov     dx, OFFSET msg_cfg_pnp_not_capable
+    mov     dx, OFFSET msg_cfg_bad_optimize
     jmp     @@Print
 @@E42:
-    cmp     al, CFG_ERR_BAD_FULLDUPLEX
+    cmp     al, CFG_ERR_OPTIMIZE_INACTIVE
     jne     @@E43
-    mov     dx, OFFSET msg_cfg_bad_fullduplex
+    mov     dx, OFFSET msg_cfg_optimize_inactive
     jmp     @@Print
 @@E43:
-    cmp     al, CFG_ERR_FD_INACTIVE
+    cmp     al, CFG_ERR_OPTIMIZE_EEPROM_READ
     jne     @@E44
-    mov     dx, OFFSET msg_cfg_fd_inactive
+    mov     dx, OFFSET msg_cfg_optimize_eeprom_read_fail
     jmp     @@Print
 @@E44:
-    cmp     al, CFG_ERR_FD_EEPROM_READ
+    cmp     al, CFG_ERR_OPTIMIZE_EEPROM_WRITE
     jne     @@E45
-    mov     dx, OFFSET msg_cfg_fd_eeprom_read_fail
+    mov     dx, OFFSET msg_cfg_optimize_eeprom_write_fail
     jmp     @@Print
 @@E45:
-    cmp     al, CFG_ERR_FD_EEPROM_WRITE
+    cmp     al, CFG_ERR_OPTIMIZE_VERIFY
     jne     @@E46
-    mov     dx, OFFSET msg_cfg_fd_eeprom_write_fail
+    mov     dx, OFFSET msg_cfg_optimize_verify_fail
     jmp     @@Print
 @@E46:
-    cmp     al, CFG_ERR_FD_VERIFY
+    cmp     al, CFG_ERR_PNP_NOT_CAPABLE
     jne     @@E47
-    mov     dx, OFFSET msg_cfg_fd_verify_fail
+    mov     dx, OFFSET msg_cfg_pnp_not_capable
     jmp     @@Print
 @@E47:
+    cmp     al, CFG_ERR_BAD_FULLDUPLEX
+    jne     @@E48
+    mov     dx, OFFSET msg_cfg_bad_fullduplex
+    jmp     @@Print
+@@E48:
+    cmp     al, CFG_ERR_FD_INACTIVE
+    jne     @@E49
+    mov     dx, OFFSET msg_cfg_fd_inactive
+    jmp     @@Print
+@@E49:
+    cmp     al, CFG_ERR_FD_EEPROM_READ
+    jne     @@E50
+    mov     dx, OFFSET msg_cfg_fd_eeprom_read_fail
+    jmp     @@Print
+@@E50:
+    cmp     al, CFG_ERR_FD_EEPROM_WRITE
+    jne     @@E51
+    mov     dx, OFFSET msg_cfg_fd_eeprom_write_fail
+    jmp     @@Print
+@@E51:
+    cmp     al, CFG_ERR_FD_VERIFY
+    jne     @@E52
+    mov     dx, OFFSET msg_cfg_fd_verify_fail
+    jmp     @@Print
+@@E52:
     cmp     al, CFG_ERR_FD_NOT_CAPABLE
     jne     @@Done
     mov     dx, OFFSET msg_cfg_fd_not_capable
@@ -3546,6 +3691,11 @@ PROC Cfg_Txn_Read_Current NEAR
     jz      @@InactiveIRQ
     mov     [cfg_last_error], CFG_ERR_FD_INACTIVE
     jmp     @@Fail
+@@InactiveOptimize:
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jz      @@InactiveIRQ
+    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_INACTIVE
+    jmp     @@Fail
 @@InactiveIRQ:
     mov     [cfg_last_error], CFG_ERR_INT_INACTIVE
     jmp     @@Fail
@@ -3607,6 +3757,19 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_word0d], 0
 @@Word0DDone:
 
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jz      @@NoWord0F
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CHECKSUM
+    call    Cfg_Eeprom_Read
+    jc      @@ReadOptimizeFail
+    mov     [cfg_txn_old_word0f], ax
+    jmp     @@Word0FDone
+@@NoWord0F:
+    mov     [cfg_txn_old_word0f], 0
+@@Word0FDone:
+
     ; Both live words are required because original ISA reactivation restores
     ; Address Configuration and Resource Configuration together.
     mov     si, [cfg_selected_ptr]
@@ -3667,6 +3830,11 @@ PROC Cfg_Txn_Read_Current NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_MODEM_EEPROM_READ
+    jmp     @@Fail
+@@ReadOptimizeFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_EEPROM_READ
 @@Fail:
     pop     si
     pop     dx
@@ -3688,6 +3856,8 @@ PROC Cfg_Txn_Init_Prospective NEAR
     mov     [cfg_txn_new_word0d], ax
     mov     ax, [cfg_txn_old_word13]
     mov     [cfg_txn_new_word13], ax
+    mov     ax, [cfg_txn_old_word0f]
+    mov     [cfg_txn_new_word0f], ax
     mov     ax, [cfg_txn_old_live06]
     mov     [cfg_txn_new_live06], ax
     mov     ax, [cfg_txn_old_live08]
@@ -3811,6 +3981,21 @@ PROC Cfg_Prepare_FULLDUPLEX NEAR
     ret
 ENDP Cfg_Prepare_FULLDUPLEX
 
+; Merge only the staged OPTIMIZE field into the prospective persistent image.
+; EEPROM word 0Fh high byte stores the optimization mode.  The low byte is
+; checksum-owned and is filled in later by Cfg_Txn_Write_EEPROM.
+PROC Cfg_Prepare_OPTIMIZE NEAR
+    push    ax
+
+    mov     ax, [cfg_txn_new_word0f]
+    and     ax, 00FFh
+    mov     ah, [cfg_optimize_value]
+    mov     [cfg_txn_new_word0f], ax
+
+    pop     ax
+    ret
+ENDP Cfg_Prepare_OPTIMIZE
+
 ; Compare current and prospective states once after all properties are prepared.
 ; INT keeps release 0.3.3 unchanged semantics: its persistent EEPROM field is
 ; authoritative.  A matching persistent IRQ alone remains a no write success
@@ -3884,11 +4069,19 @@ PROC Cfg_Txn_Detect_Changes NEAR
 
 @@FULLDUPLEX:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    jz      @@Done
+    jz      @@Optimize
     mov     ax, [cfg_txn_old_word0d]
     cmp     ax, [cfg_txn_new_word0d]
-    je      @@Done
+    je      @@Optimize
     or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
+
+@@Optimize:
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jz      @@Done
+    mov     ax, [cfg_txn_old_word0f]
+    cmp     ax, [cfg_txn_new_word0f]
+    je      @@Done
+    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0F
 
 @@Done:
     pop     ax
@@ -4207,11 +4400,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     jc      @@ChecksumFail
     mov     [cfg_txn_checksum], al
 
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, 0Fh
-    call    Cfg_Eeprom_Read
-    jc      @@ChecksumFail
+    mov     ax, [cfg_txn_new_word0f]
     and     ax, 0FF00h
     xor     bx, bx
     mov     bl, [cfg_txn_checksum]
@@ -4220,7 +4409,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     bx, ax
     mov     al, 0Fh
     call    Cfg_Eeprom_Write
-    jc      @@ChecksumFail
+    jc      @@ChecksumWriteFail
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
@@ -4263,6 +4452,13 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_WRITE
+    jmp     @@Fail
+@@ChecksumWriteFail:
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jz      @@ChecksumFail
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0F
+    jz      @@ChecksumFail
+    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_EEPROM_WRITE
     jmp     @@Fail
 @@ChecksumFail:
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
@@ -4550,9 +4746,9 @@ PROC Cfg_Txn_Verify NEAR
 
 @@FDPersistent:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    jz      @@Success
+    jz      @@OptimizePersistent
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-    jz      @@Success
+    jz      @@OptimizePersistent
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_SOFTWARE_INFO
@@ -4567,6 +4763,24 @@ PROC Cfg_Txn_Verify NEAR
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_fd_verified
+    mov     ah, 09h
+    int     21h
+
+@@OptimizePersistent:
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jz      @@Success
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0F
+    jz      @@Success
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CHECKSUM
+    call    Cfg_Eeprom_Read
+    jc      @@OptimizeVerifyFail
+    cmp     ax, [cfg_txn_new_word0f]
+    jne     @@OptimizeVerifyFail
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@Success
+    mov     dx, OFFSET msg_cfg_optimize_verified
     mov     ah, 09h
     int     21h
 
@@ -4608,6 +4822,11 @@ PROC Cfg_Txn_Verify NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_FD_VERIFY
+    jmp     @@Fail
+@@OptimizeVerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_VERIFY
 @@Fail:
     pop     si
     pop     dx
@@ -4716,12 +4935,24 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     ah, 09h
     int     21h
     test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@Done
+    jz      @@Optimize
     mov     dx, OFFSET msg_cfg_current_word0d
     mov     ah, 09h
     int     21h
     mov     ax, [cfg_txn_old_word0d]
     call    Print_HexWord
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+@@Optimize:
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jz      @@Done
+    mov     dx, OFFSET msg_cfg_current_word0f
+    mov     ah, 09h
+    int     21h
+    mov     ax, [cfg_txn_old_word0f]
+    mov     al, ah
+    call    Print_Optimize_Code
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
@@ -4794,12 +5025,24 @@ PROC Cfg_Txn_Report_Prospective NEAR
     mov     ah, 09h
     int     21h
     test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@Done
+    jz      @@Optimize
     mov     dx, OFFSET msg_cfg_new_word0d
     mov     ah, 09h
     int     21h
     mov     ax, [cfg_txn_new_word0d]
     call    Print_HexWord
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+@@Optimize:
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jz      @@Done
+    mov     dx, OFFSET msg_cfg_new_word0f
+    mov     ah, 09h
+    int     21h
+    mov     ax, [cfg_txn_new_word0f]
+    mov     al, ah
+    call    Print_Optimize_Code
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
@@ -4813,6 +5056,8 @@ ENDP Cfg_Txn_Report_Prospective
 PROC Cfg_Txn_Report_Success NEAR
     push    dx
 
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jnz     @@Generic
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@NoPNP
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
@@ -5017,7 +5262,7 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Prepare_MODEM
 @@PrepareFULLDUPLEX:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    jz      @@Detect
+    jz      @@PrepareOPTIMIZE
     ; Guard 1: product ID must be one of the five known ISA SKUs.
     mov     si, [cfg_selected_ptr]
     mov     ax, [WORD si + NIC_PRODUCT_ID]
@@ -5042,13 +5287,18 @@ PROC Cfg_Txn_Execute NEAR
     test    ax, 0001h
     jz      @@FDNotCapable
     call    Cfg_Prepare_FULLDUPLEX
-    jmp     @@Detect
+    jmp     @@PrepareOPTIMIZE
 @@FDCapReadFail:
     mov     [cfg_last_error], CFG_ERR_FD_EEPROM_READ
     jmp     @@Done
 @@FDNotCapable:
     mov     [cfg_last_error], CFG_ERR_FD_NOT_CAPABLE
     jmp     @@Done
+@@PrepareOPTIMIZE:
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jz      @@Detect
+    call    Cfg_Prepare_OPTIMIZE
+    jmp     @@Detect
 @@Detect:
     call    Cfg_Txn_Detect_Changes
     call    Cfg_Txn_Report_Prospective
@@ -5084,6 +5334,14 @@ PROC Cfg_Txn_Execute NEAR
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jnz     @@CheckFDUnchanged
     mov     dx, OFFSET msg_cfg_modem_unchanged
+    mov     ah, 09h
+    int     21h
+@@CheckOPTIMIZEUnchanged:
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jz      @@CheckFDUnchanged
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0F
+    jnz     @@CheckFDUnchanged
+    mov     dx, OFFSET msg_cfg_optimize_unchanged
     mov     ah, 09h
     int     21h
 @@CheckFDUnchanged:
@@ -5479,6 +5737,7 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_capability], 0FFFFh
     mov     [ext_config_ctrl], 0FFFFh
     mov     [ext_revision_info], 0FFFFh
+    mov     [ext_optimize], 0FFFFh
 
     mov     dx, [WORD si + NIC_IO_BASE]
     or      dx, dx
@@ -5516,6 +5775,11 @@ PROC Read_Extended_Nic_Info NEAR
     mov     al, EEPROM_CONFIG_CONTROL
     call    EEPROM_Read
     mov     [ext_config_ctrl], ax
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CHECKSUM
+    call    EEPROM_Read
+    mov     [ext_optimize], ax
 
 @@Done:
     pop     dx
@@ -5636,6 +5900,57 @@ PROC Print_Pnp_Capability_Value NEAR
     pop     ax
     ret
 ENDP Print_Pnp_Capability_Value
+
+PROC Print_Optimize_Code NEAR
+    push    ax
+    push    dx
+
+    cmp     al, 0
+    je      @@Dos
+    cmp     al, 1
+    je      @@Windows
+    cmp     al, 2
+    je      @@Os2
+    cmp     al, 4
+    je      @@Server
+    mov     dx, OFFSET msg_unknown_value
+    jmp     @@Print
+@@Dos:
+    mov     dx, OFFSET msg_optimize_dos
+    jmp     @@Print
+@@Windows:
+    mov     dx, OFFSET msg_optimize_windows
+    jmp     @@Print
+@@Os2:
+    mov     dx, OFFSET msg_optimize_os2
+    jmp     @@Print
+@@Server:
+    mov     dx, OFFSET msg_optimize_server
+@@Print:
+    mov     ah, 09h
+    int     21h
+    pop     dx
+    pop     ax
+    ret
+ENDP Print_Optimize_Code
+
+PROC Print_Optimize_Value NEAR
+    push    ax
+
+    mov     ax, [ext_optimize]
+    cmp     ax, 0FFFFh
+    je      @@Unavailable
+    mov     al, ah
+    call    Print_Optimize_Code
+    jmp     @@Done
+@@Unavailable:
+    mov     dx, OFFSET msg_unavailable
+    mov     ah, 09h
+    int     21h
+@@Done:
+    pop     ax
+    ret
+ENDP Print_Optimize_Value
 
 PROC Print_Boot_Rom_Value NEAR
     push    ax
@@ -5831,9 +6146,20 @@ PROC Print_Extended_Nic_Info NEAR
     mov     ah, 09h
     int     21h
 
-    pop     dx
-    pop     ax
-    ret
+mov     dx, OFFSET msg_indent
+mov     ah, 09h
+int     21h
+mov     dx, OFFSET msg_optimize_label
+mov     ah, 09h
+int     21h
+call    Print_Optimize_Value
+mov     dx, OFFSET msg_crlf
+mov     ah, 09h
+int     21h
+
+pop     dx
+pop     ax
+ret
 ENDP Print_Extended_Nic_Info
 
 ; ============================================================================

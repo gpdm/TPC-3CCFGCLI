@@ -47,6 +47,25 @@
 ;               unconditionally for any recognised adapter.  Word 0Dh bit 15
 ;               is FULLDUPLEX and is always preserved during modem writes.
 ;
+;   OPTIMIZE:   No separate product-ID gate was found.  The original utility
+;               accepts the property for recognised adapters and stores the
+;               high byte of EEPROM_CHECKSUM (word 0Fh bits 15:8).
+;               The documented CLI keywords are DOS, WINDOWS, OS/2, and SERVER.
+;               The additional raw values below appear to be undocumented and
+;               are not implemented as symbolic names in the CLI.
+;
+;  EEPROM word 0Fh bits 15:8 | Raw value | Symbolic name | Comments
+;  --------------------------+-----------+---------------+-------------------------
+;  15:8                      | 00h       | DOS           | implemented
+;  15:8                      | 01h       | WINDOWS       | implemented
+;  15:8                      | 02h       | OS/2          | implemented; literal slash
+;  15:8                      | 04h       | SERVER        | implemented
+;  15:8                      | 06h       | UNKNOWN       | not implemented
+;  15:8                      | 08h       | UNKNOWN       | not implemented
+;  15:8                      | 0Dh       | UNKNOWN       | not implemented
+;  15:8                      | 0Eh       | UNKNOWN       | not implemented
+;  15:8                      | 0Fh       | UNKNOWN       | not implemented
+;
 
 ID_PORT                 EQU 0110h
 

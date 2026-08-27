@@ -682,6 +682,13 @@ PROC Build_State NEAR
     mov     ax, 0001h
     call    EEPROM_Write_SI
 
+    ; Preserve the documented default optimization mode (DOS) in the high byte
+    ; of EEPROM word 0Fh before the checksum pass fills in the low byte.
+    mov     ah, [BYTE state_blob + MCK_HEADER_SIZE + MCKR_CFG_OPTIMIZE]
+    xor     al, al
+    mov     si, EEPROM_CHECKSUM
+    call    EEPROM_Write_SI
+
     call    Build_Checksum
 
     mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W0_MFG], 06D50h
@@ -759,9 +766,9 @@ PROC Build_Checksum NEAR
     cmp     si, 0Dh
     jbe     @@LowLoop
 
-    mov     ah, [chk_high]
-    mov     al, bl
     mov     si, EEPROM_CHECKSUM
+    call    EEPROM_Read_SI
+    mov     al, bl
     call    EEPROM_Write_SI
 
     pop     si
