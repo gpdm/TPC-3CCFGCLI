@@ -1,14 +1,64 @@
 ; ============================================================================
-; 3CCFGCLI.ASM
+; 3CCFGCLI.ASM - 0.4.1
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
 ;
-; Build: 0.4.0
-; Backend split: real hardware interface and mock interface are selected at
-; compile time through the TASM conditional assembly symbols /dREALHW and
-; /dMOCKHW.  The application logic remains in this file; hardware-specific
-; access is isolated in 3CHWIF.ASM and mock simulation in 3CMOCKIF.ASM.
 ;
+; Changelog 0.4.1:
+; Backend split fully implemented.
+;
+;   - Real hardware operations are isolated behind backend primitives in
+;     3CHWIF.ASM; the CLI remains backend-agnostic at the hardware-operation
+;     level.
+;   - The mock backend in 3CMOCKIF.ASM implements the same contract as the real
+;     backend without raw in/out instructions, including the register and EEPROM
+;     primitives such as Cfg_Reg_Read_Word and Cfg_Reg_Write_Word.
+;   - Transitional shim layers introduced during the refactor were removed again
+;     to keep the CLI free of redundant indirection.
+;   - Mock backend behavior was aligned to the real hardware semantics; the mock
+;     now tracks active-base and persistent state consistently so configuration
+;     changes persist coherently across runs.
+;
+; Supported CONFIGURE verbs in this 0.4.1 build: /ADAPTERNUM, /INT, /IOBASE,
+; /VERBOSE.
+; Not yet implemented in the transaction layer: /BADDRESS, /BSIZE,
+; /TR, /MODEM, /OPTIMIZE, /LINKBEAT, /CONFIGPORT, /PNP, /SYNCREADY,
+; /FULLDUPLEX.  These option handlers remain explicit stubs that return
+; CFG_ERR_NOT_IMPLEMENTED.
+;
+;
+; Changelong 0.4.0:
+; Preliminay backend split: implement factory for real hardware and mocked
+; interfaces, selected at compile time through the TASM conditional assembly
+; symbols /dREALHW and /dMOCKHW.
+; The application logic (including hardware logic) remains in this file
+; for this release still.
+; The ba kend split is prepapred, foreseeing hardware-specific access 
+; isolated in 3CHWIF.ASM and mock simulation in 3CMOCKIF.ASM.
+;
+;
+; Changelog 0.3.5:
+; Adds strict single occurrence validation for every supported
+; CONFIGURE verb.  /ADAPTERNUM, /INT, /IOBASE and /VERBOSE may each appear
+; at most once.  Duplicate detection is completed before discovery, property
+; dispatch or the centralized hardware transaction can begin.
+;
+;
+; Changelog 0.3.0 - 0.3.4:
+; CONFIGURE uses one centralized staged transaction facility.  /INT and /IOBASE
+; handlers only parse and stage requested values.  Property preparation routines
+; merge those requests into one prospective configuration image, then the shared
+; Cfg_Txn facility owns activation, I O migration, EEPROM writes, checksum update,
+; live register synchronization and verification.  /INT behavior remains based
+; on the hardware tested release 0.3.3 implementation.  All other hardware
+; property handlers remain explicit stubs.
+;
+; Compatibility note: the original 3CCFG also accepted /PORT as an alias for
+; /IOBASE.  This reduced 3CCFGCLI deliberately omits that alias.  Use /IOBASE
+; instead.  /PORT is intentionally unsupported, not an unfinished feature.
+;
+;
+; Initial Release:
 ;
 ; The ISA discovery path intentionally follows the behavior recovered from
 ; the original 3CCFG 3.2 utility:
@@ -33,10 +83,6 @@
 ; explicitly removed and are not part of this build.  The EISA and MCA generic
 ; description strings are retained only as reference resources.
 ;
-; Compatibility note: the original 3CCFG also accepted /PORT as an alias for
-; /IOBASE.  This reduced 3CCFGCLI deliberately omits that alias.  Use /IOBASE
-; instead.  /PORT is intentionally unsupported, not an unfinished feature.
-;
 ; The executable detector remains limited to the 3C509 and 3C509B 9050h family.
 ; The 3C508 ISA description resource is retained for completeness, but 8050h
 ; family detection is not present in this reduced source.
@@ -51,18 +97,6 @@
 ; adapter.  The proven ID port contention, tagging, activation, record layout,
 ; MAC address, I O base and IRQ discovery path is intentionally left unchanged.
 ;
-; CONFIGURE uses one centralized staged transaction facility.  /INT and /IOBASE
-; handlers only parse and stage requested values.  Property preparation routines
-; merge those requests into one prospective configuration image, then the shared
-; Cfg_Txn facility owns activation, I O migration, EEPROM writes, checksum update,
-; live register synchronization and verification.  /INT behavior remains based
-; on the hardware tested release 0.3.3 implementation.  All other hardware
-; property handlers remain explicit stubs.
-;
-; Release 0.3.5 adds strict single occurrence validation for every supported
-; CONFIGURE verb.  /ADAPTERNUM, /INT, /IOBASE and /VERBOSE may each appear
-; at most once.  Duplicate detection is completed before discovery, property
-; dispatch or the centralized hardware transaction can begin.
 ; ============================================================================
 
 IDEAL
@@ -75,48 +109,9 @@ STACK 400h
 ; ----------------------------------------------------------------------------
 ; Constants
 ; ----------------------------------------------------------------------------
-ID_PORT                 EQU 0110h
 MAX_CARDS               EQU 6
 
-EEPROM_NODE_0           EQU 00h
-EEPROM_NODE_1           EQU 01h
-EEPROM_NODE_2           EQU 02h
-EEPROM_PRODUCT_ID       EQU 03h
-EEPROM_MFG_ID           EQU 07h
-EEPROM_ADDR_CFG         EQU 08h
-EEPROM_RESOURCE_CFG     EQU 09h
-EEPROM_OEM_NODE_0       EQU 0Ah
-EEPROM_OEM_NODE_1       EQU 0Bh
-EEPROM_OEM_NODE_2       EQU 0Ch
-EEPROM_SOFTWARE_INFO    EQU 0Dh
-EEPROM_COMPATIBILITY      EQU 0Eh
-EEPROM_CAPABILITY         EQU 10h
-EEPROM_CONFIG_CONTROL     EQU 13h
-EEPROM_REVISION_INFO      EQU 14h
-
-ID_CMD_SET_TAG          EQU 0D0h
-ID_CMD_SELECT_TAG       EQU 0D8h
-ID_CMD_ACTIVATE         EQU 0E0h
-
-EL3_COMMAND             EQU 0Eh
-EL3_STATUS              EQU 0Eh
-EL3_W0_MFG_ID           EQU 00h
-EL3_W0_PRODUCT_ID       EQU 02h
-EL3_W0_ADDRESS_CFG      EQU 06h
-EL3_W0_RESOURCE_CFG     EQU 08h
-EL3_W0_EEPROM_COMMAND   EQU 0Ah
-EL3_W0_EEPROM_DATA      EQU 0Ch
-EL3_W4_NET_DIAG         EQU 06h
-
-CMD_SELECT_WINDOW       EQU 0800h
-STATUS_CMD_BUSY         EQU 1000h
-EEPROM_BUSY             EQU 8000h
-
-PRODUCT_3C509           EQU 09150h
-PRODUCT_3C509_TP        EQU 09050h
-PRODUCT_3C509_COMBO     EQU 09450h
-PRODUCT_3C509_TPO       EQU 09550h
-PRODUCT_3C509_TPC       EQU 09850h
+include '3C509DEF.INC'
 
 ; Record layout used only by this reduced utility.
 NIC_IO_BASE             EQU 0       ; DW
@@ -210,7 +205,7 @@ CFG_ERR_IOBASE_ACTIVATE     EQU 30
 
 DATASEG
 
-VERSION_STRING	DB '0.4.0', '$'
+VERSION_STRING	DB '0.4.1', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -1955,64 +1950,14 @@ ENDP Scan_All_3Com_Cards
 ; Send the complete 255 byte LFSR sequence.
 ; This matches original sub_328.
 PROC IdPort_Send_Full_Sequence NEAR
-    push    ax
-    push    cx
-    push    dx
-
-    mov     dx, ID_PORT
-    xor     al, al
-    out     dx, al
-    out     dx, al
-
-    mov     al, 0FFh
-    mov     cx, 255
-@@Loop:
-    out     dx, al
-    test    al, 80h
-    jz      @@ShiftOnly
-    shl     al, 1
-    xor     al, 0CFh
-    jmp     @@Next
-@@ShiftOnly:
-    shl     al, 1
-@@Next:
-    loop    @@Loop
-
-    pop     dx
-    pop     cx
-    pop     ax
+    call    Nic_IdPort_Send_Full_Sequence
     ret
 ENDP IdPort_Send_Full_Sequence
 
 ; Send the first 8 bytes of the same LFSR stream.
 ; This matches original sub_329.
 PROC IdPort_Send_Short_Sequence NEAR
-    push    ax
-    push    cx
-    push    dx
-
-    mov     dx, ID_PORT
-    xor     al, al
-    out     dx, al
-    out     dx, al
-
-    mov     al, 0FFh
-    mov     cx, 8
-@@Loop:
-    out     dx, al
-    test    al, 80h
-    jz      @@ShiftOnly
-    shl     al, 1
-    xor     al, 0CFh
-    jmp     @@Next
-@@ShiftOnly:
-    shl     al, 1
-@@Next:
-    loop    @@Loop
-
-    pop     dx
-    pop     cx
-    pop     ax
+    call    Nic_IdPort_Send_Short_Sequence
     ret
 ENDP IdPort_Send_Short_Sequence
 
@@ -2021,14 +1966,7 @@ ENDP IdPort_Send_Short_Sequence
 ; a calibrated delay routine.  This reduced build uses repeated ISA I O reads
 ; so it remains valid on an 8086 and is intentionally longer than the minimum.
 PROC IdPort_Eeprom_Delay NEAR
-    push    ax
-    push    cx
-    mov     cx, 2000
-@@Delay:
-    in      al, 0EDh
-    loop    @@Delay
-    pop     cx
-    pop     ax
+    call    Nic_IdPort_Eeprom_Delay
     ret
 ENDP IdPort_Eeprom_Delay
 
@@ -2040,33 +1978,7 @@ ENDP IdPort_Eeprom_Delay
 ; AL both as the port input byte and as the low byte of AX, destroying the
 ; partially assembled word at every bit.
 PROC IdPort_Read_Word NEAR
-    push    bx
-    push    cx
-    push    dx
-    push    si
-
-    mov     dx, ID_PORT
-    and     al, 3Fh
-    or      al, 80h
-    out     dx, al
-    call    IdPort_Eeprom_Delay
-
-    xor     si, si
-    mov     cx, 16
-@@BitLoop:
-    shl     si, 1
-    in      al, dx
-    and     al, 01h
-    xor     ah, ah
-    or      si, ax
-    loop    @@BitLoop
-
-    mov     ax, si
-
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
+    call    Nic_IdPort_Read_Word
     ret
 ENDP IdPort_Read_Word
 
@@ -2088,23 +2000,7 @@ ENDP Is_3C509_Family
 
 ; Initialize both ID sequence modes exactly in the order used by sub_332.
 PROC IdPort_Initialize NEAR
-    push    ax
-    push    dx
-
-    cli
-    call    IdPort_Send_Full_Sequence
-    mov     dx, ID_PORT
-    mov     al, ID_CMD_SET_TAG
-    out     dx, al
-
-    call    IdPort_Send_Short_Sequence
-    mov     dx, ID_PORT
-    mov     al, ID_CMD_SET_TAG
-    out     dx, al
-    sti
-
-    pop     dx
-    pop     ax
+    call    Nic_Init_Id_Port
     ret
 ENDP IdPort_Initialize
 
@@ -2377,8 +2273,7 @@ PROC Discover_Id_Port_Cards NEAR
     jc      @@NewRecord
     and     al, 07h
     or      al, ID_CMD_SET_TAG
-    mov     dx, ID_PORT
-    out     dx, al
+    call    Nic_IdPort_Write_Command
     sti
     jmp     @@ProbeAgain
 
@@ -2399,8 +2294,7 @@ PROC Discover_Id_Port_Cards NEAR
     mov     al, [id_next_tag]
     and     al, 07h
     or      al, ID_CMD_SET_TAG
-    mov     dx, ID_PORT
-    out     dx, al
+    call    Nic_IdPort_Write_Command
 
     inc     [card_count]
     inc     [id_next_tag]
@@ -2421,69 +2315,7 @@ ENDP Discover_Id_Port_Cards
 ; Activation of tagged ISA adapters
 ; ============================================================================
 PROC Activate_Tagged_Cards NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    dx
-    push    si
-
-    mov     cx, [card_count]
-    or      cx, cx
-    jz      @@Done
-    mov     si, OFFSET nic_table
-
-@@Loop:
-    mov     dx, [WORD si + NIC_IO_BASE]
-    or      dx, dx
-    jz      @@Next
-
-    cli
-    cmp     [BYTE si + NIC_ID_MODE], 0
-    je      @@Full
-    call    IdPort_Send_Short_Sequence
-    jmp     @@SelectTag
-@@Full:
-    call    IdPort_Send_Full_Sequence
-
-@@SelectTag:
-    mov     dx, ID_PORT
-    mov     al, [BYTE si + NIC_TAG]
-    and     al, 07h
-    or      al, ID_CMD_SELECT_TAG
-    out     dx, al
-
-    ; Activation is E0h plus the encoded base index, not C0h.
-    mov     ax, [WORD si + NIC_IO_BASE]
-    sub     ax, 0200h
-    shr     ax, 1
-    shr     ax, 1
-    shr     ax, 1
-    shr     ax, 1
-    and     al, 1Fh
-    or      al, ID_CMD_ACTIVATE
-    mov     dx, ID_PORT
-    out     dx, al
-    sti
-
-    ; Verify register window signature and obtain ASIC revision.
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Check_3Com_Signature
-    jc      @@NextAfterVerify
-    mov     [WORD si + NIC_PRODUCT_ID], ax
-    mov     [BYTE si + NIC_ASIC_REV], bl
-    or      [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
-
-@@NextAfterVerify:
-@@Next:
-    add     si, NIC_RECORD_SIZE
-    loop    @@Loop
-
-@@Done:
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    pop     ax
+    call    Nic_Activate_Tagged_Cards
     ret
 ENDP Activate_Tagged_Cards
 
@@ -2493,55 +2325,19 @@ ENDP Activate_Tagged_Cards
 
 ; Input DX = base, AL = window 0 through 7.
 PROC Select_Window NEAR
-    push    ax
-    push    dx
-    xor     ah, ah
-    and     ax, 0007h
-    or      ax, CMD_SELECT_WINDOW
-    add     dx, EL3_COMMAND
-    out     dx, ax
-    pop     dx
-    pop     ax
+    call    Nic_Select_Window
     ret
 ENDP Select_Window
 
 ; Input DX = base.  Output AX = current window number.
 PROC Get_Current_Window NEAR
-    push    cx
-    push    dx
-    add     dx, EL3_STATUS
-    in      ax, dx
-    mov     cl, 13
-    shr     ax, cl
-    and     ax, 0007h
-    pop     dx
-    pop     cx
+    call    Nic_Get_Current_Window
     ret
 ENDP Get_Current_Window
 
 ; Input DX = base.  Carry clear when command busy has cleared.
 PROC Wait_Command_Ready NEAR
-    push    ax
-    push    cx
-    push    dx
-    add     dx, EL3_STATUS
-    mov     cx, 2000h
-@@Wait:
-    in      ax, dx
-    test    ax, STATUS_CMD_BUSY
-    jz      @@Ready
-    in      al, 0EDh
-    loop    @@Wait
-    pop     dx
-    pop     cx
-    pop     ax
-    stc
-    ret
-@@Ready:
-    pop     dx
-    pop     cx
-    pop     ax
-    clc
+    call    Nic_Wait_Command_Ready
     ret
 ENDP Wait_Command_Ready
 
@@ -2551,92 +2347,7 @@ ENDP Wait_Command_Ready
 ; The normal x86 word order is 6D50h.  A byte swapped 506Dh read is accepted
 ; defensively and the product ID is normalized in the same way.
 PROC Check_3Com_Signature NEAR
-    push    cx
-    push    dx
-    push    si
-    push    di
-
-    mov     si, dx
-    mov     ch, 0FFh               ; Saved window, FFh means not saved yet.
-    xor     bh, bh                 ; BH = 1 when register words are swapped.
-
-    add     dx, EL3_STATUS
-    in      ax, dx
-    cmp     ax, 0FFFFh
-    je      @@Fail
-
-    mov     dx, si
-    call    Wait_Command_Ready
-    jc      @@Fail
-
-    mov     dx, si
-    call    Get_Current_Window
-    mov     ch, al
-
-    mov     dx, si
-    xor     al, al
-    call    Select_Window
-
-    mov     dx, si
-    in      ax, dx
-    cmp     ax, 06D50h
-    je      @@MfgGood
-    cmp     ax, 0506Dh
-    jne     @@RestoreFail
-    mov     bh, 1
-
-@@MfgGood:
-    mov     dx, si
-    add     dx, EL3_W0_PRODUCT_ID
-    in      ax, dx
-    cmp     bh, 0
-    je      @@ProductOrderGood
-    xchg    al, ah
-@@ProductOrderGood:
-    mov     di, ax
-    and     ax, 0F0FFh
-    cmp     ax, 09050h
-    jne     @@RestoreFail
-
-    mov     dx, si
-    mov     al, 4
-    call    Select_Window
-
-    mov     dx, si
-    add     dx, EL3_W4_NET_DIAG
-    in      ax, dx
-    cmp     bh, 0
-    je      @@NetDiagOrderGood
-    xchg    al, ah
-@@NetDiagOrderGood:
-    and     ax, 003Eh
-    shr     ax, 1
-    mov     bl, al
-
-    mov     dx, si
-    mov     al, ch
-    call    Select_Window
-
-    mov     ax, di
-    pop     di
-    pop     si
-    pop     dx
-    pop     cx
-    clc
-    ret
-
-@@RestoreFail:
-    cmp     ch, 0FFh
-    je      @@Fail
-    mov     dx, si
-    mov     al, ch
-    call    Select_Window
-@@Fail:
-    pop     di
-    pop     si
-    pop     dx
-    pop     cx
-    stc
+    call    Nic_Check_3Com_Signature
     ret
 ENDP Check_3Com_Signature
 
@@ -2646,42 +2357,7 @@ ENDP Check_3Com_Signature
 ; Input DX = base, AL = EEPROM word index.
 ; Output AX = EEPROM word, FFFFh on timeout.
 PROC EEPROM_Read NEAR
-    push    bx
-    push    cx
-    push    dx
-    push    si
-
-    xor     ah, ah
-    mov     si, ax
-
-    xor     al, al
-    call    Select_Window
-
-    mov     ax, si
-    and     ax, 003Fh
-    or      ax, 0080h
-    add     dx, EL3_W0_EEPROM_COMMAND
-    out     dx, ax
-
-    mov     cx, 4000h
-@@Busy:
-    in      ax, dx
-    test    ax, EEPROM_BUSY
-    jz      @@ReadData
-    in      al, 0EDh
-    loop    @@Busy
-    mov     ax, 0FFFFh
-    jmp     @@Done
-
-@@ReadData:
-    add     dx, 2
-    in      ax, dx
-
-@@Done:
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
+    call    Nic_EEPROM_Read
     ret
 ENDP EEPROM_Read
 
@@ -2880,36 +2556,6 @@ ENDP Scan_Active_Base_Ports
 ; Common CONFIGURE hardware infrastructure.  Release 0.4 exposes only the
 ; original resources required by the deferred /INT transaction.
 ; ============================================================================
-
-; Word register read, original sub_306.
-; Input DX = adapter base, BX = register offset.  Output AX = word.
-PROC Cfg_Reg_Read_Word NEAR
-    push    dx
-    add     dx, bx
-    in      ax, dx
-    pop     dx
-    ret
-ENDP Cfg_Reg_Read_Word
-
-; Word register write, original sub_308.
-; Input DX = adapter base, BX = register offset, AX = value.
-PROC Cfg_Reg_Write_Word NEAR
-    push    dx
-    add     dx, bx
-    out     dx, ax
-    pop     dx
-    ret
-ENDP Cfg_Reg_Write_Word
-
-; Byte register write, original sub_309.
-; Input DX = adapter base, BX = register offset, AL = value.
-PROC Cfg_Reg_Write_Byte NEAR
-    push    dx
-    add     dx, bx
-    out     dx, al
-    pop     dx
-    ret
-ENDP Cfg_Reg_Write_Byte
 
 ; Reduced replacement for the original sub_139 timing dependency.  The original
 ; result is an absolute count in seconds.  Busy waits only compare a delta of
@@ -3538,7 +3184,7 @@ PROC Cfg_Txn_Retag_Selected NEAR
     mov     dx, ID_PORT
     mov     al, ID_CMD_SET_TAG
     or      al, [BYTE si + NIC_TAG]
-    out     dx, al
+    call    Nic_IdPort_Write_Command
     sti
 
     pop     si
@@ -3864,8 +3510,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     jz      @@Retag
     mov     dx, [cfg_txn_old_base]
     mov     bx, dx
-    add     dx, EL3_STATUS
-    in      ax, dx
+    call    Nic_Read_Status
     cmp     ax, 0FFFFh
     je      @@Retag
     mov     dx, bx
@@ -4896,7 +4541,7 @@ PROC Cfg_Revalidate_Selected NEAR
     mov     dx, ID_PORT
     mov     al, ID_CMD_SELECT_TAG
     or      al, [BYTE si + NIC_TAG]
-    out     dx, al
+    call    Nic_IdPort_Write_Command
 
     mov     al, EEPROM_MFG_ID
     call    IdPort_Read_Word
@@ -4976,9 +4621,9 @@ PROC Cfg_Id_Deactivate_Selected NEAR
     mov     dx, ID_PORT
     mov     al, ID_CMD_SELECT_TAG
     or      al, [BYTE si + NIC_TAG]
-    out     dx, al
+    call    Nic_IdPort_Write_Command
     mov     al, 0C0h
-    out     dx, al
+    call    Nic_IdPort_Write_Command
     sti
 
     pop     dx
@@ -5005,7 +4650,7 @@ PROC Cfg_Id_Activate_Selected NEAR
     mov     dx, ID_PORT
     mov     al, ID_CMD_SELECT_TAG
     or      al, [BYTE si + NIC_TAG]
-    out     dx, al
+    call    Nic_IdPort_Write_Command
 
     mov     ax, [WORD si + NIC_IO_BASE]
     sub     ax, 0200h
@@ -5014,7 +4659,7 @@ PROC Cfg_Id_Activate_Selected NEAR
     div     bx
     or      al, ID_CMD_ACTIVATE
     mov     dx, ID_PORT
-    out     dx, al
+    call    Nic_IdPort_Write_Command
     sti
 
     pop     dx

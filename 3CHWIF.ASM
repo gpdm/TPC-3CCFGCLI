@@ -1,51 +1,128 @@
 ; ---------------------------------------------------------------------------
 ; 3CHWIF.ASM
-; Real hardware backend for the 3C509/3C509B ISA interface.
-; ---------------------------------------------------------------------------
-; This module contains the real device-side primitive contract used by the main
-; LIST/CONFIGURE logic in 3CCFGCLI.ASM.
-;
-; The core design is intentionally simple: a backend API exposes low-level
-; hardware access primitives, while the CLI logic remains algorithmic and
-; backend-agnostic.
+; Real hardware backend primitives for 3CCFGCLI.
 ; ---------------------------------------------------------------------------
 
 REALHW_BACKEND EQU 1
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Init_Id_Port
-; Purpose: initialize the proprietary 3Com ID-port discovery path.
-; Input: none.
-; Output: none.
-; Side effects: issues the short/full ID-port initialization sequences.
-; Real backend behavior: direct ISA I/O using the original 3CCFG routines.
-; ---------------------------------------------------------------------------
+PROC Nic_IdPort_Write_Command NEAR
+    push    dx
+    mov     dx, ID_PORT
+    out     dx, al
+    pop     dx
+    ret
+ENDP Nic_IdPort_Write_Command
+
+PROC Nic_IdPort_Send_Full_Sequence NEAR
+    push    ax
+    push    cx
+
+    xor     al, al
+    call    Nic_IdPort_Write_Command
+    call    Nic_IdPort_Write_Command
+
+    mov     al, 0FFh
+    mov     cx, 255
+@@Loop:
+    call    Nic_IdPort_Write_Command
+    test    al, 80h
+    jz      @@ShiftOnly
+    shl     al, 1
+    xor     al, 0CFh
+    jmp     @@Next
+@@ShiftOnly:
+    shl     al, 1
+@@Next:
+    loop    @@Loop
+
+    pop     cx
+    pop     ax
+    ret
+ENDP Nic_IdPort_Send_Full_Sequence
+
+PROC Nic_IdPort_Send_Short_Sequence NEAR
+    push    ax
+    push    cx
+
+    xor     al, al
+    call    Nic_IdPort_Write_Command
+    call    Nic_IdPort_Write_Command
+
+    mov     al, 0FFh
+    mov     cx, 8
+@@Loop:
+    call    Nic_IdPort_Write_Command
+    test    al, 80h
+    jz      @@ShiftOnly
+    shl     al, 1
+    xor     al, 0CFh
+    jmp     @@Next
+@@ShiftOnly:
+    shl     al, 1
+@@Next:
+    loop    @@Loop
+
+    pop     cx
+    pop     ax
+    ret
+ENDP Nic_IdPort_Send_Short_Sequence
+
+PROC Nic_IdPort_Eeprom_Delay NEAR
+    push    ax
+    push    cx
+    mov     cx, 2000
+@@Delay:
+    in      al, 0EDh
+    loop    @@Delay
+    pop     cx
+    pop     ax
+    ret
+ENDP Nic_IdPort_Eeprom_Delay
+
 PROC Nic_Init_Id_Port NEAR
-    call    IdPort_Initialize
+    push    ax
+    cli
+    call    Nic_IdPort_Send_Full_Sequence
+    mov     al, ID_CMD_SET_TAG
+    call    Nic_IdPort_Write_Command
+    call    Nic_IdPort_Send_Short_Sequence
+    mov     al, ID_CMD_SET_TAG
+    call    Nic_IdPort_Write_Command
+    sti
+    pop     ax
     ret
 ENDP Nic_Init_Id_Port
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_IdPort_Read_Word
-; Purpose: read one 16-bit EEPROM word through the ISA ID port.
-; Input: AL = EEPROM word index, without the 80h read opcode.
-; Output: AX = assembled 16-bit EEPROM word.
-; Side effects: writes sequence bytes to ID_PORT and reads back the serial bitstream.
-; Real backend behavior: direct ID_PORT access via IdPort_Read_Word.
-; ---------------------------------------------------------------------------
 PROC Nic_IdPort_Read_Word NEAR
-    call    IdPort_Read_Word
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    mov     dx, ID_PORT
+    and     al, 3Fh
+    or      al, 80h
+    call    Nic_IdPort_Write_Command
+    call    Nic_IdPort_Eeprom_Delay
+
+    xor     si, si
+    mov     cx, 16
+@@BitLoop:
+    shl     si, 1
+    in      al, dx
+    and     al, 01h
+    xor     ah, ah
+    or      si, ax
+    loop    @@BitLoop
+
+    mov     ax, si
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
     ret
 ENDP Nic_IdPort_Read_Word
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Read_Status
-; Purpose: read the live 3C509 status register.
-; Input: DX = candidate base port.
-; Output: AX = status word from base + EL3_STATUS.
-; Side effects: one ISA IN read.
-; Real backend behavior: direct hardware read.
-; ---------------------------------------------------------------------------
 PROC Nic_Read_Status NEAR
     push    dx
     add     dx, EL3_STATUS
@@ -54,14 +131,6 @@ PROC Nic_Read_Status NEAR
     ret
 ENDP Nic_Read_Status
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Select_Window
-; Purpose: switch the live register window.
-; Input: DX = base, AL = window number 0..7.
-; Output: none.
-; Side effects: writes a command word to base + EL3_COMMAND.
-; Real backend behavior: direct OUT instruction to the selected NIC register.
-; ---------------------------------------------------------------------------
 PROC Nic_Select_Window NEAR
     push    ax
     push    dx
@@ -75,158 +144,278 @@ PROC Nic_Select_Window NEAR
     ret
 ENDP Nic_Select_Window
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Get_Current_Window
-; Purpose: decode the currently selected register window.
-; Input: DX = base.
-; Output: AX = current window number 0..7.
-; Side effects: reads base + EL3_STATUS.
-; Real backend behavior: direct hardware read and bit extraction.
-; ---------------------------------------------------------------------------
 PROC Nic_Get_Current_Window NEAR
-    call    Get_Current_Window
+    push    cx
+    push    dx
+    add     dx, EL3_STATUS
+    in      ax, dx
+    mov     cl, 13
+    shr     ax, cl
+    and     ax, 0007h
+    pop     dx
+    pop     cx
     ret
 ENDP Nic_Get_Current_Window
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Wait_Command_Ready
-; Purpose: poll the command-busy flag until it clears.
-; Input: DX = base.
-; Output: CF clear on ready, set on timeout.
-; Side effects: repeated IN reads from the status register.
-; Real backend behavior: direct hardware polling with the original timeout logic.
-; ---------------------------------------------------------------------------
 PROC Nic_Wait_Command_Ready NEAR
-    call    Wait_Command_Ready
+    push    ax
+    push    cx
+    push    dx
+    add     dx, EL3_STATUS
+    mov     cx, 2000h
+@@Wait:
+    in      ax, dx
+    test    ax, STATUS_CMD_BUSY
+    jz      @@Ready
+    in      al, 0EDh
+    loop    @@Wait
+    pop     dx
+    pop     cx
+    pop     ax
+    stc
+    ret
+@@Ready:
+    pop     dx
+    pop     cx
+    pop     ax
+    clc
     ret
 ENDP Nic_Wait_Command_Ready
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Reg_Read_Word
-; Purpose: read one 16-bit register word from the selected NIC window.
-; Input: DX = base, BX = register offset within the selected window.
-; Output: AX = 16-bit register value.
-; Side effects: one IN read from base + BX.
-; Real backend behavior: direct NIC register access.
-; ---------------------------------------------------------------------------
-PROC Nic_Reg_Read_Word NEAR
+PROC Cfg_Reg_Read_Word NEAR
     push    dx
     add     dx, bx
     in      ax, dx
     pop     dx
     ret
+ENDP Cfg_Reg_Read_Word
+
+PROC Nic_Reg_Read_Word NEAR
+    call    Cfg_Reg_Read_Word
+    ret
 ENDP Nic_Reg_Read_Word
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Reg_Write_Word
-; Purpose: write one 16-bit register word to the selected NIC window.
-; Input: DX = base, BX = register offset, AX = value.
-; Output: none.
-; Side effects: one OUT write to the selected register word.
-; Real backend behavior: direct NIC register write.
-; ---------------------------------------------------------------------------
-PROC Nic_Reg_Write_Word NEAR
+PROC Cfg_Reg_Write_Word NEAR
     push    dx
     add     dx, bx
     out     dx, ax
     pop     dx
     ret
+ENDP Cfg_Reg_Write_Word
+
+PROC Nic_Reg_Write_Word NEAR
+    call    Cfg_Reg_Write_Word
+    ret
 ENDP Nic_Reg_Write_Word
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Reg_Write_Byte
-; Purpose: write one 8-bit register byte.
-; Input: DX = base, BX = register offset, AL = value.
-; Output: none.
-; Side effects: one OUT write to the selected byte register.
-; Real backend behavior: direct NIC register write.
-; ---------------------------------------------------------------------------
-PROC Nic_Reg_Write_Byte NEAR
+PROC Cfg_Reg_Write_Byte NEAR
     push    dx
     add     dx, bx
     out     dx, al
     pop     dx
     ret
+ENDP Cfg_Reg_Write_Byte
+
+PROC Nic_Reg_Write_Byte NEAR
+    call    Cfg_Reg_Write_Byte
+    ret
 ENDP Nic_Reg_Write_Byte
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_EEPROM_Read
-; Purpose: read one EEPROM word from the selected adapter.
-; Input: DX = base, AL = EEPROM word index.
-; Output: AX = EEPROM word, or FFFFh on timeout.
-; Side effects: writes EEPROM command, polls busy flag, reads data register.
-; Real backend behavior: direct EEPROM access via the original implementation.
-; ---------------------------------------------------------------------------
 PROC Nic_EEPROM_Read NEAR
-    call    EEPROM_Read
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    xor     ah, ah
+    mov     si, ax
+    xor     al, al
+    call    Nic_Select_Window
+
+    mov     ax, si
+    and     ax, 003Fh
+    or      ax, 0080h
+    add     dx, EL3_W0_EEPROM_COMMAND
+    out     dx, ax
+
+    mov     cx, 4000h
+@@Busy:
+    in      ax, dx
+    test    ax, EEPROM_BUSY
+    jz      @@ReadData
+    in      al, 0EDh
+    loop    @@Busy
+    mov     ax, 0FFFFh
+    jmp     @@Done
+@@ReadData:
+    add     dx, 2
+    in      ax, dx
+@@Done:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
     ret
 ENDP Nic_EEPROM_Read
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_EEPROM_Wait_Ready
-; Purpose: poll the EEPROM busy bit until the command finishes.
-; Input: DX = base.
-; Output: CF clear when ready, CF set on timeout.
-; Side effects: repeated status reads and a timer-based wait loop.
-; Real backend behavior: direct polling of the hardware EEPROM command register.
-; ---------------------------------------------------------------------------
 PROC Nic_EEPROM_Wait_Ready NEAR
     call    Cfg_Eeprom_Wait_Ready
     ret
 ENDP Nic_EEPROM_Wait_Ready
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Activate_Tagged_Cards
-; Purpose: tag-select and activate all discovered adapters.
-; Input: none; uses the in-memory NIC table and ID-port state.
-; Output: none.
-; Side effects: ID-port selection, activation commands, and a signature validation pass.
-; Real backend behavior: direct action against the physical device list.
-; ---------------------------------------------------------------------------
+PROC Nic_Check_3Com_Signature NEAR
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    mov     si, dx
+    mov     ch, 0FFh
+    xor     bh, bh
+
+    mov     dx, si
+    call    Nic_Read_Status
+    cmp     ax, 0FFFFh
+    je      @@Fail
+
+    mov     dx, si
+    call    Nic_Wait_Command_Ready
+    jc      @@Fail
+
+    mov     dx, si
+    call    Nic_Get_Current_Window
+    mov     ch, al
+
+    mov     dx, si
+    xor     al, al
+    call    Nic_Select_Window
+
+    mov     dx, si
+    mov     bx, EL3_W0_MFG_ID
+    call    Nic_Reg_Read_Word
+    cmp     ax, 06D50h
+    je      @@MfgGood
+    cmp     ax, 0506Dh
+    jne     @@RestoreFail
+    mov     bh, 1
+
+@@MfgGood:
+    mov     dx, si
+    mov     bx, EL3_W0_PRODUCT_ID
+    call    Nic_Reg_Read_Word
+    cmp     bh, 0
+    je      @@ProductOrderGood
+    xchg    al, ah
+@@ProductOrderGood:
+    mov     di, ax
+    and     ax, 0F0FFh
+    cmp     ax, 09050h
+    jne     @@RestoreFail
+
+    mov     dx, si
+    mov     al, 4
+    call    Nic_Select_Window
+
+    mov     dx, si
+    mov     bx, EL3_W4_NET_DIAG
+    call    Nic_Reg_Read_Word
+    cmp     bh, 0
+    je      @@NetDiagOrderGood
+    xchg    al, ah
+@@NetDiagOrderGood:
+    and     ax, 003Eh
+    shr     ax, 1
+    mov     bl, al
+
+    mov     dx, si
+    mov     al, ch
+    call    Nic_Select_Window
+
+    mov     ax, di
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    clc
+    ret
+
+@@RestoreFail:
+    cmp     ch, 0FFh
+    je      @@Fail
+    mov     dx, si
+    mov     al, ch
+    call    Nic_Select_Window
+@@Fail:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    stc
+    ret
+ENDP Nic_Check_3Com_Signature
+
 PROC Nic_Activate_Tagged_Cards NEAR
-    call    Activate_Tagged_Cards
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    mov     cx, [card_count]
+    or      cx, cx
+    jz      @@Done
+    mov     si, OFFSET nic_table
+@@Loop:
+    mov     dx, [WORD si + NIC_IO_BASE]
+    or      dx, dx
+    jz      @@Next
+
+    cli
+    cmp     [BYTE si + NIC_ID_MODE], 0
+    je      @@Full
+    call    Nic_IdPort_Send_Short_Sequence
+    jmp     @@SelectTag
+@@Full:
+    call    Nic_IdPort_Send_Full_Sequence
+@@SelectTag:
+    mov     al, [BYTE si + NIC_TAG]
+    and     al, 07h
+    or      al, ID_CMD_SELECT_TAG
+    call    Nic_IdPort_Write_Command
+
+    mov     ax, [WORD si + NIC_IO_BASE]
+    sub     ax, 0200h
+    shr     ax, 1
+    shr     ax, 1
+    shr     ax, 1
+    shr     ax, 1
+    and     al, 1Fh
+    or      al, ID_CMD_ACTIVATE
+    call    Nic_IdPort_Write_Command
+    sti
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Nic_Check_3Com_Signature
+    jc      @@Next
+    mov     [WORD si + NIC_PRODUCT_ID], ax
+    mov     [BYTE si + NIC_ASIC_REV], bl
+    or      [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
+@@Next:
+    add     si, NIC_RECORD_SIZE
+    loop    @@Loop
+@@Done:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
     ret
 ENDP Nic_Activate_Tagged_Cards
 
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Scan_Active_Base_Ports
-; Purpose: scan the valid active ISA bases for a live 3Com board.
-; Input: none.
-; Output: none.
-; Side effects: populates the card table using the active-base scan loop.
-; Real backend behavior: direct active-base probing over the hardware I/O map.
-; ---------------------------------------------------------------------------
 PROC Nic_Scan_Active_Base_Ports NEAR
     call    Scan_Active_Base_Ports
     ret
 ENDP Nic_Scan_Active_Base_Ports
-
-; ---------------------------------------------------------------------------
-; Primitive: Nic_Check_3Com_Signature
-; Purpose: verify that a candidate base is a live 3C509/3C509B register image.
-; Input: DX = candidate base.
-; Output: CF clear on success, AX = normalized product ID, BL = ASIC revision.
-; Side effects: selects windows, reads status and product words, restores window state.
-; Real backend behavior: direct hardware register verification as implemented in
-; the original CLI logic.
-; ---------------------------------------------------------------------------
-PROC Nic_Check_3Com_Signature NEAR
-    call    Check_3Com_Signature
-    ret
-ENDP Nic_Check_3Com_Signature
-
-; ---------------------------------------------------------------------------
-; Compatibility wrappers retained for older call sites and direct references.
-; ---------------------------------------------------------------------------
-PROC Nic_Read_EepromWord NEAR
-    call    EEPROM_Read
-    ret
-ENDP Nic_Read_EepromWord
-
-PROC Nic_Write_EepromWord NEAR
-    call    Cfg_Eeprom_Write
-    ret
-ENDP Nic_Write_EepromWord
 
 PROC Nic_Read_Id_Contender_Data NEAR
     call    Read_Id_Contender_Data
@@ -237,3 +426,13 @@ PROC Nic_Find_Duplicate_Id_Record NEAR
     call    Find_Duplicate_Id_Record
     ret
 ENDP Nic_Find_Duplicate_Id_Record
+
+PROC Nic_Read_EepromWord NEAR
+    call    Nic_EEPROM_Read
+    ret
+ENDP Nic_Read_EepromWord
+
+PROC Nic_Write_EepromWord NEAR
+    call    Cfg_Eeprom_Write
+    ret
+ENDP Nic_Write_EepromWord
