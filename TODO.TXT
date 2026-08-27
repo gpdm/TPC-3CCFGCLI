@@ -1,0 +1,14 @@
+3CCFG TODO
+==========
+
+- Reevaluate CONFIGURE /LINKBEAT and /SYNCREADY:
+  - Verify whether the original supported them.
+  - If yes, reassess whether they belong in scoped CLI parity and should be implemented.
+
+- Extend 3CSEED for multi-NIC setups:
+  - Seed two or three different NICs.
+  - Use different I/O ports and IRQs.
+  - Add test cases for multi-NIC setups.
+  - Reassess I/O conflict detection against original behavior.
+
+- Add multi-NIC conflict scenario coverage.

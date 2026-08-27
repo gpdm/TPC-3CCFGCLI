@@ -1,5 +1,20 @@
+Changelog 0.6.0:
+  - Fixed the CLI help screen so /VERBOSE is documented correctly as a
+    CONFIGURE sub-switch, and shortened its description to keep the option
+    table compact and aligned.
+  - Added a dedicated CLI_PARSER smoke group covering HELP output, '-' switch
+    introducers, '=' value separators, and CONFIGURE with no property.
+  - Added DEFAULT_NIC_SELECTION smoke coverage by cloning the core IRQ change
+    tests without /ADAPTERNUM and renumbered the downstream test cases to keep
+    the suite ordering coherent.
+  - Added a COMBINED_TRANSACTIONS smoke group covering the highest-value shared
+    CONFIGURE write paths: /IOBASE+/INT, /MODEM+/FULLDUPLEX, /IOBASE+/TR,
+    /IOBASE+/BADDRESS+/BSIZE, /OPTIMIZE+/MODEM, and
+    /TR:AUTO+/BADDRESS+/BSIZE on Combo adapters.
+
+
 Changelog 0.5.9:
-  - Centralized the release version metadata into 3CVERS.INC so 3CCFGCLI and
+  - Centralized the release version metadata into VERSION.INC so 3CCFGCLI and
     3CSEED share the same source of truth for their banner/version output.
   - Moved the project changelog out of 3CCFGCLI.ASM into a standalone CHANGES
     file so the assembly source header stays focused on executable metadata.

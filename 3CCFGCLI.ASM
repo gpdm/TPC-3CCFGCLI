@@ -180,7 +180,7 @@ CFG_ERR_TR_NOT_CAPABLE      EQU 71
 
 DATASEG
 
-include '3CVERS.INC'
+include 'VERSION.INC'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -207,9 +207,8 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    /BADDRESS:NNNNN|NONE           Boot ROM base (hex, C0000-DE000,", 0Dh, 0Ah
                 DB  "                                   2000h steps); requires /BSIZE.", 0Dh, 0Ah
                 DB  "    /BSIZE:8|16|32                 Boot ROM size in KB;", 0Dh, 0Ah
-                DB  "                                   requires /BADDRESS.", 0Dh, 0Ah, 0Dh, 0Ah
-                DB  "  /VERBOSE", 0Dh, 0Ah
-                DB  "    Show detailed CONFIGURE transaction diagnostics.", 0Dh, 0Ah, '$'
+                DB  "                                   requires /BADDRESS.", 0Dh, 0Ah
+                DB  "    /VERBOSE                       Show verbose transaction details.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
 

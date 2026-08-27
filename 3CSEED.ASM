@@ -15,7 +15,7 @@ include '3C509DEF.INC'
 
 DATASEG
 
-include '3CVERS.INC'
+include 'VERSION.INC'
 
 MOCK_STATE_FILE DB '3C509B.MCK', 0
 
