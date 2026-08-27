@@ -1,15 +1,24 @@
 ; ============================================================================
-; 3CCFGCLI.ASM - 0.5.7
+; 3CCFGCLI.ASM - 0.5.8
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
 ;
 ; ============================================================================
-; - Supported CONFIGURE verbs in this 0.5.7 build:
+; - Supported CONFIGURE verbs in this 0.5.8 build:
 ;    /ADAPTERNUM, /BADDRESS, /BSIZE, /FULLDUPLEX, /INT, /IOBASE, /MODEM,
 ;    /OPTIMIZE, /PNP, /TR (/XCVR alias), /VERBOSE.
 ; - /LINKBEAT is deliberately not a CONFIGURE verb in this build (although it could);
 ;    -> see the 0.5.4 changelog entry below.
 ; ============================================================================
+;
+; Changelog 0.5.8:
+;   - Rewrote the help screen (/? /H) for readability.  Each top-level
+;     command (/? or /H, LIST, CONFIGURE, /VERBOSE) is now separated by a
+;     blank line.  CONFIGURE sub-options are presented as a uniform
+;     two-column table with the description column aligned at position 39,
+;     using the full 80-column width with no line overflows.  /OPTIMIZE
+;     description corrected from "EEPROM optimization target" to "Network
+;     workload optimization" to accurately reflect its purpose.
 ;
 ; Changelog 0.5.7:
 ;   - Implemented /TR (/XCVR alias) CONFIGURE subverb.  Accepts TP, AUI,
@@ -371,7 +380,7 @@ CFG_ERR_TR_NOT_CAPABLE      EQU 71
 
 DATASEG
 
-VERSION_STRING	DB '0.5.7', '$'
+VERSION_STRING	DB '0.5.8', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -379,21 +388,28 @@ msg_banner_suffix DB  0Dh, 0Ah
 
 msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "Commands:", 0Dh, 0Ah
-                DB  "  /? or /H          Display this help screen.", 0Dh, 0Ah
-                DB  "  LIST              Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah
-                DB  "  CONFIGURE         Configure supported ISA properties, /BADDRESS, /BSIZE, /FULLDUPLEX, /INT, /IOBASE, /MODEM, /OPTIMIZE, /PNP and /TR.", 0Dh, 0Ah
-                DB  "                    /ADAPTERNUM:N selects the NIC number shown by LIST.", 0Dh, 0Ah
-                DB  "                    /BADDRESS:NNNNN|NONE sets the Boot ROM base address (hex, C0000-DE000 in 2000h steps); requires /BSIZE.", 0Dh, 0Ah
-                DB  "                    /BSIZE:8|16|32 sets the Boot ROM size in K; requires /BADDRESS.", 0Dh, 0Ah
-                DB  "                    /FULLDUPLEX:0|1 enables or disables full duplex mode.", 0Dh, 0Ah
-                DB  "                    /INT:N sets the IRQ.", 0Dh, 0Ah
-                DB  "                    /IOBASE:NNN sets the ISA I/O base address.", 0Dh, 0Ah
-                DB  "                    /MODEM:N|NONE sets modem speed/interrupt-disable tuning.", 0Dh, 0Ah
-                DB  "                    /OPTIMIZE:DOS|WINDOWS|OS/2|SERVER sets EEPROM optimize mode.", 0Dh, 0Ah
-                DB  "                    /PNP:0|1 sets Plug and Play mode.", 0Dh, 0Ah
-                DB  "                    /TR:TP|AUI|COAX|AUTO sets the transceiver type.", 0Dh, 0Ah
-                DB  "                    /XCVR is an alias for /TR.", 0Dh, 0Ah
-                DB  "  /VERBOSE          Show detailed CONFIGURE transaction diagnostics.", 0Dh, 0Ah, '$'
+                DB  "  /? or /H", 0Dh, 0Ah
+                DB  "    Display this help screen.", 0Dh, 0Ah, 0Dh, 0Ah
+                DB  "  LIST", 0Dh, 0Ah
+                DB  "    Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah, 0Dh, 0Ah
+                DB  "  CONFIGURE [options]", 0Dh, 0Ah
+                DB  "    Configure ISA adapter properties. Options:", 0Dh, 0Ah, 0Dh, 0Ah
+                DB  "    /ADAPTERNUM:N                  Select adapter N (from LIST).", 0Dh, 0Ah
+                DB  "    /INT:N                         Set IRQ (3,5,7,9,10,11,12,15).", 0Dh, 0Ah
+                DB  "    /IOBASE:NNN                    Set ISA I/O base address (hex).", 0Dh, 0Ah
+                DB  "    /PNP:0|1                       Plug and Play mode.", 0Dh, 0Ah
+                DB  "    /FULLDUPLEX:0|1                Full duplex mode.", 0Dh, 0Ah
+                DB  "    /TR:TP|AUI|COAX|AUTO           Transceiver type.", 0Dh, 0Ah
+                DB  "    /XCVR:...                      Alias for /TR.", 0Dh, 0Ah
+                DB  "    /MODEM:N|NONE                  Modem speed/interrupt-disable tuning.", 0Dh, 0Ah
+                DB  "    /OPTIMIZE:DOS|WINDOWS|OS/2|SERVER", 0Dh, 0Ah
+                DB  "                                   Network workload optimization.", 0Dh, 0Ah
+                DB  "    /BADDRESS:NNNNN|NONE           Boot ROM base (hex, C0000-DE000,", 0Dh, 0Ah
+                DB  "                                   2000h steps); requires /BSIZE.", 0Dh, 0Ah
+                DB  "    /BSIZE:8|16|32                 Boot ROM size in KB;", 0Dh, 0Ah
+                DB  "                                   requires /BADDRESS.", 0Dh, 0Ah, 0Dh, 0Ah
+                DB  "  /VERBOSE", 0Dh, 0Ah
+                DB  "    Show detailed CONFIGURE transaction diagnostics.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
 
