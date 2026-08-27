@@ -22,11 +22,24 @@
 ;   9. Scan all 31 valid ISA base addresses from 0200h through 03E0h in
 ;      10h increments to catch adapters that were already active.
 ;
-; Scope note: the original 3CCFG also contains resource manager and ISA PnP
-; discovery before the classic 3Com ID sequence.  This reduced utility catches
-; PnP cards that are already activated at an ISA base, and cards for which the
-; classic 3Com ID mechanism is enabled.  It does not implement standalone ISA
-; PnP serial isolation for an inactive adapter configured for PnP only mode.
+; Scope note: this reduced utility supports ISA EtherLink III adapters only.
+; EISA bus support and Micro Channel bus support from the original utility were
+; explicitly removed and are not part of this build.  The EISA and MCA generic
+; description strings are retained only as reference resources.
+;
+; The executable detector remains limited to the 3C509 and 3C509B 9050h family.
+; The 3C508 ISA description resource is retained for completeness, but 8050h
+; family detection is not present in this reduced source.
+;
+; The original 3CCFG also contains resource manager and ISA PnP discovery before
+; the classic 3Com ID sequence.  This reduced utility catches PnP cards that are
+; already activated at an ISA base, and cards for which the classic 3Com ID
+; mechanism is enabled.  It does not implement standalone ISA PnP serial
+; isolation for an inactive adapter configured for PnP only mode.
+;
+; Extended LIST information is read only after enumeration from the activated
+; adapter.  The proven ID port contention, tagging, activation, record layout,
+; MAC address, I O base and IRQ discovery path is intentionally left unchanged.
 ;
 ; This file deliberately does not write the EEPROM.  CONFIGURE is rejected.
 ; The prior reimplementation used incorrect EEPROM fields in its write path,
@@ -57,6 +70,10 @@ EEPROM_OEM_NODE_0       EQU 0Ah
 EEPROM_OEM_NODE_1       EQU 0Bh
 EEPROM_OEM_NODE_2       EQU 0Ch
 EEPROM_SOFTWARE_INFO    EQU 0Dh
+EEPROM_COMPATIBILITY      EQU 0Eh
+EEPROM_CAPABILITY         EQU 10h
+EEPROM_CONFIG_CONTROL     EQU 13h
+EEPROM_REVISION_INFO      EQU 14h
 
 ID_CMD_SET_TAG          EQU 0D0h
 ID_CMD_SELECT_TAG       EQU 0D8h
@@ -98,8 +115,11 @@ NIC_FLAG_OEM_MAC        EQU 04h
 
 DATASEG
 
-msg_banner      DB  "3Com Etherlink III CLI Configuration Program Version 1.0", 0Dh, 0Ah
-                DB  "derived from the original 3Com Etherlink III Configuration Utility v3.4", 0Dh, 0Ah, 0Dh, 0Ah, '$'
+VERSION_STRING	DB '0.2', '$'
+
+msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
+msg_banner_suffix DB  0Dh, 0Ah
+                  DB  "derived from the original 3Com EtherLink III Configuration Utility v3.2", 0Dh, 0Ah, 0Dh, 0Ah, '$'
 
 msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "Commands:", 0Dh, 0Ah
@@ -107,12 +127,19 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "  LIST              Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah
                 DB  "  CONFIGURE         Disabled in this hardware enumeration build.", 0Dh, 0Ah, '$'
 
-msg_no_cards    DB  "No EtherLink III 3C509 or 3C509B adapters were found.", 0Dh, 0Ah, '$'
+msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
 msg_cfg_blocked DB  "CONFIGURE is disabled in this hardware enumeration build.", 0Dh, 0Ah, '$'
 
-msg_list_hdr    DB  "NIC            NIC", 0Dh, 0Ah
-                DB  "Number         Description", 0Dh, 0Ah
-                DB  "------------------------------------------------------------------------", 0Dh, 0Ah, '$'
+msg_list_hdr    DB  "NIC                            NIC", 0Dh, 0Ah
+                DB  "Number                       Description", 0Dh, 0Ah
+                DB  "--------------------------------------------------------------------------", 0Dh, 0Ah, '$'
+
+; Original generic NIC description resources.
+; Only the ISA 3C509 family selector is reachable in this reduced build.
+msg_a02c        DB  "EtherLink III 16-bit ISA NIC", '$'
+msg_a02d        DB  "EtherLink III 32-bit EISA NIC", '$'
+msg_a02e        DB  "EtherLink III 32-bit MCA NIC", '$'
+msg_a0ac        DB  "3Com 3C508 16-bit ISA NIC", '$'
 
 msg_3com_prefix DB  "3Com ", '$'
 msg_3c509       DB  "3C509", '$'
@@ -124,9 +151,30 @@ msg_tpo         DB  "-TPO", '$'
 msg_tpcoax      DB  "-TPCoax", '$'
 msg_unknown     DB  "-EtherLinkIII", '$'
 msg_eth_addr    DB  ": Ethernet Address = ", '$'
-msg_io          DB  ", I/O = ", '$'
+msg_indent      DB  "       ", '$'
+msg_io          DB  "I/O = ", '$'
 msg_irq         DB  ", IRQ = ", '$'
 msg_no_io       DB  "unassigned", '$'
+
+msg_asic_label  DB  "ASIC Revision = ", '$'
+msg_xcvr_label  DB  "Transceiver = ", '$'
+msg_pnp_label   DB  "Plug and Play Capability = ", '$'
+msg_boot_label  DB  "Boot ROM = ", '$'
+msg_compat_label DB "Software Compatibility = failure level ", '$'
+msg_warn_label  DB  ", warning level ", '$'
+
+msg_enabled     DB  "enabled", '$'
+msg_disabled    DB  "disabled", '$'
+msg_not_supported DB "not supported", '$'
+msg_unavailable DB  "unavailable", '$'
+msg_invalid_cfg DB  "invalid configuration", '$'
+msg_onboard_tp  DB  "on-board TP", '$'
+msg_external    DB  "external", '$'
+msg_onboard_coax DB "on-board coax", '$'
+msg_auto_select DB  "auto select", '$'
+msg_unknown_value DB "unknown", '$'
+msg_at          DB  "K at ", '$'
+msg_hex_suffix  DB  "H", '$'
 msg_crlf        DB  0Dh, 0Ah, '$'
 
 card_count      DW  0
@@ -147,6 +195,15 @@ id_oem2         DW  0
 id_addr_cfg     DW  0
 id_resource_cfg DW  0
 id_sw_info      DW  0
+
+; Temporary live EEPROM values used only by the LIST output.
+; These are deliberately separate from nic_table so the known good 16 byte
+; enumeration record layout remains unchanged.
+ext_addr_cfg      DW 0FFFFh
+ext_compatibility DW 0FFFFh
+ext_capability    DW 0FFFFh
+ext_config_ctrl   DW 0FFFFh
+ext_revision_info DW 0FFFFh
 
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
@@ -195,7 +252,15 @@ Start:
     mov     ax, @data
     mov     ds, ax
 
-    mov     dx, OFFSET msg_banner
+    mov     dx, OFFSET msg_banner_prefix
+    mov     ah, 09h
+    int     21h
+
+    mov     dx, OFFSET VERSION_STRING
+    mov     ah, 09h
+    int     21h
+
+    mov     dx, OFFSET msg_banner_suffix
     mov     ah, 09h
     int     21h
 
@@ -319,6 +384,7 @@ PROC Cmd_List NEAR
     mov     si, OFFSET nic_table
 
 @@PrintLoop:
+    ; Keep the first line on the same proven path as the hardware tested build.
     mov     dl, ' '
     mov     ah, 02h
     int     21h
@@ -339,6 +405,11 @@ PROC Cmd_List NEAR
     mov     dx, OFFSET msg_3com_prefix
     mov     ah, 09h
     int     21h
+
+    ; The original 9850h description is always 3C509B TPCoax.
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    cmp     ax, PRODUCT_3C509_TPC
+    je      @@ModelB
 
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 0FFh
@@ -398,6 +469,26 @@ PROC Cmd_List NEAR
     loop    @@PrintMac
     pop     si
 
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
+
+    ; Original generic NIC description line.
+    mov     dx, OFFSET msg_indent
+    mov     ah, 09h
+    int     21h
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    call    Select_Nic_Description
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
+
+    ; I/O and IRQ line.
+    mov     dx, OFFSET msg_indent
+    mov     ah, 09h
+    int     21h
     mov     dx, OFFSET msg_io
     mov     ah, 09h
     int     21h
@@ -418,10 +509,14 @@ PROC Cmd_List NEAR
     xor     ax, ax
     mov     al, [BYTE si + NIC_IRQ_VAL]
     call    Print_DecByte
-
     mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
+
+    ; Read and print the additional metrics only after enumeration is complete.
+    ; This cannot alter the ID port contention or the 16 byte NIC record layout.
+    call    Read_Extended_Nic_Info
+    call    Print_Extended_Nic_Info
 
     add     si, NIC_RECORD_SIZE
     inc     [current_card]
@@ -1396,6 +1491,404 @@ PROC Scan_Active_Base_Ports NEAR
     pop     ax
     ret
 ENDP Scan_Active_Base_Ports
+
+; ============================================================================
+; Extended LIST information
+; ============================================================================
+
+; Select the original generic NIC description resource by product family.
+; Input AX = product ID.  Output DX = DOS string address.
+; The current executable accepts only the 9050h family.  The 8050h branch is
+; retained so the original ISA resource mapping is explicit, but it is not
+; reachable without adding a real 3C508 detector.  EISA and MCA strings have
+; no executable selection branch.
+PROC Select_Nic_Description NEAR
+    push    ax
+    and     ax, 0F0FFh
+    cmp     ax, 08050h
+    je      @@Isa508
+    cmp     ax, 09050h
+    je      @@Isa509
+    mov     dx, OFFSET msg_a02c
+    jmp     @@Done
+@@Isa508:
+    mov     dx, OFFSET msg_a0ac
+    jmp     @@Done
+@@Isa509:
+    mov     dx, OFFSET msg_a02c
+@@Done:
+    pop     ax
+    ret
+ENDP Select_Nic_Description
+
+; Read all additional LIST values from the activated adapter.
+; Input SI = NIC record.
+; The existing enumeration record is not modified.
+PROC Read_Extended_Nic_Info NEAR
+    push    ax
+    push    dx
+
+    mov     [ext_addr_cfg], 0FFFFh
+    mov     [ext_compatibility], 0FFFFh
+    mov     [ext_capability], 0FFFFh
+    mov     [ext_config_ctrl], 0FFFFh
+    mov     [ext_revision_info], 0FFFFh
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    or      dx, dx
+    jz      @@Done
+    test    [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
+    jz      @@Done
+
+    mov     al, EEPROM_ADDR_CFG
+    call    EEPROM_Read
+    mov     [ext_addr_cfg], ax
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_COMPATIBILITY
+    call    EEPROM_Read
+    mov     [ext_compatibility], ax
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_REVISION_INFO
+    call    EEPROM_Read
+    mov     [ext_revision_info], ax
+
+    mov     ax, [ext_revision_info]
+    cmp     ax, 0FFFFh
+    je      @@Done
+    and     ax, 00FFh
+    cmp     ax, 1
+    jb      @@Done
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CAPABILITY
+    call    EEPROM_Read
+    mov     [ext_capability], ax
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CONFIG_CONTROL
+    call    EEPROM_Read
+    mov     [ext_config_ctrl], ax
+
+@@Done:
+    pop     dx
+    pop     ax
+    ret
+ENDP Read_Extended_Nic_Info
+
+; Return AL = 1 if EEPROM word 14h identifies the later capability layout.
+PROC Extended_Is_Later_Card NEAR
+    mov     ax, [ext_revision_info]
+    cmp     ax, 0FFFFh
+    je      @@No
+    and     ax, 00FFh
+    cmp     ax, 1
+    jb      @@No
+    mov     al, 1
+    ret
+@@No:
+    xor     al, al
+    ret
+ENDP Extended_Is_Later_Card
+
+PROC Print_Transceiver_Value NEAR
+    push    ax
+    push    cx
+    push    dx
+
+    mov     ax, [ext_addr_cfg]
+    cmp     ax, 0FFFFh
+    je      @@Unavailable
+
+    call    Extended_Is_Later_Card
+    or      al, al
+    jz      @@ConfiguredMedia
+
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    cmp     ax, PRODUCT_3C509_TPO
+    je      @@ConfiguredMedia
+
+    mov     ax, [ext_addr_cfg]
+    test    ax, 0080h
+    jz      @@ConfiguredMedia
+    mov     dx, OFFSET msg_auto_select
+    jmp     @@Print
+
+@@ConfiguredMedia:
+    mov     ax, [ext_addr_cfg]
+    mov     cl, 14
+    shr     ax, cl
+    and     al, 03h
+    cmp     al, 2
+    jne     @@MediaNormalized
+    mov     al, 1
+@@MediaNormalized:
+    cmp     al, 0
+    je      @@Tp
+    cmp     al, 1
+    je      @@External
+    cmp     al, 3
+    je      @@Coax
+    mov     dx, OFFSET msg_unknown_value
+    jmp     @@Print
+@@Tp:
+    mov     dx, OFFSET msg_onboard_tp
+    jmp     @@Print
+@@External:
+    mov     dx, OFFSET msg_external
+    jmp     @@Print
+@@Coax:
+    mov     dx, OFFSET msg_onboard_coax
+    jmp     @@Print
+@@Unavailable:
+    mov     dx, OFFSET msg_unavailable
+@@Print:
+    mov     ah, 09h
+    int     21h
+    pop     dx
+    pop     cx
+    pop     ax
+    ret
+ENDP Print_Transceiver_Value
+
+PROC Print_Pnp_Capability_Value NEAR
+    push    ax
+    push    dx
+
+    call    Extended_Is_Later_Card
+    or      al, al
+    jz      @@NotSupported
+
+    mov     ax, [ext_capability]
+    cmp     ax, 0FFFFh
+    je      @@Unavailable
+    test    ax, 0001h
+    jz      @@Disabled
+
+    mov     ax, [ext_config_ctrl]
+    cmp     ax, 0FFFFh
+    je      @@Unavailable
+    and     ax, 000Ch
+    cmp     ax, 0004h
+    je      @@Disabled
+
+    mov     dx, OFFSET msg_enabled
+    jmp     @@Print
+@@Disabled:
+    mov     dx, OFFSET msg_disabled
+    jmp     @@Print
+@@NotSupported:
+    mov     dx, OFFSET msg_not_supported
+    jmp     @@Print
+@@Unavailable:
+    mov     dx, OFFSET msg_unavailable
+@@Print:
+    mov     ah, 09h
+    int     21h
+    pop     dx
+    pop     ax
+    ret
+ENDP Print_Pnp_Capability_Value
+
+PROC Print_Boot_Rom_Value NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    di
+
+    mov     ax, [ext_addr_cfg]
+    cmp     ax, 0FFFFh
+    je      @@Unavailable
+
+    call    Extended_Is_Later_Card
+    or      al, al
+    jz      @@CheckBase
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    cmp     ax, PRODUCT_3C509_TPO
+    je      @@NotSupported
+
+@@CheckBase:
+    mov     bx, [ext_addr_cfg]
+    and     bx, 0F00h
+    mov     cl, 8
+    shr     bx, cl
+    or      bx, bx
+    jz      @@Disabled
+
+    mov     ax, [ext_addr_cfg]
+    and     ax, 3000h
+    mov     cl, 12
+    shr     ax, cl
+    cmp     ax, 3
+    je      @@Invalid
+
+    mov     di, 8
+    or      ax, ax
+    jz      @@HaveSizeK
+    mov     di, 16
+    cmp     ax, 1
+    je      @@HaveSizeK
+    mov     di, 32
+@@HaveSizeK:
+
+    cmp     di, 8
+    je      @@CheckOld32K
+    and     bx, 000Eh
+@@CheckOld32K:
+    call    Extended_Is_Later_Card
+    or      al, al
+    jnz     @@BuildAddress
+    cmp     di, 32
+    jne     @@BuildAddress
+    and     bx, 000Ch
+
+@@BuildAddress:
+    mov     ax, bx
+    mov     cx, 2000h
+    mul     cx
+    add     dx, 000Ch
+
+    push    dx
+    push    ax
+    mov     ax, di
+    call    Print_DecByte
+    mov     dx, OFFSET msg_at
+    mov     ah, 09h
+    int     21h
+    pop     ax
+    pop     dx
+    call    Print_HexAddress20
+    mov     dx, OFFSET msg_hex_suffix
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@Disabled:
+    mov     dx, OFFSET msg_disabled
+    jmp     @@PrintString
+@@NotSupported:
+    mov     dx, OFFSET msg_not_supported
+    jmp     @@PrintString
+@@Invalid:
+    mov     dx, OFFSET msg_invalid_cfg
+    jmp     @@PrintString
+@@Unavailable:
+    mov     dx, OFFSET msg_unavailable
+@@PrintString:
+    mov     ah, 09h
+    int     21h
+@@Done:
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Print_Boot_Rom_Value
+
+PROC Print_HexAddress20 NEAR
+    push    ax
+    push    dx
+    mov     al, dl
+    call    Print_HexNibble
+    pop     dx
+    pop     ax
+    call    Print_HexWord
+    ret
+ENDP Print_HexAddress20
+
+PROC Print_Extended_Nic_Info NEAR
+    push    ax
+    push    dx
+
+    mov     dx, OFFSET msg_indent
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_asic_label
+    mov     ah, 09h
+    int     21h
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@AsicUnavailable
+    xor     ah, ah
+    call    Print_DecByte
+    jmp     @@AsicDone
+@@AsicUnavailable:
+    mov     dx, OFFSET msg_unavailable
+    mov     ah, 09h
+    int     21h
+@@AsicDone:
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
+
+    mov     dx, OFFSET msg_indent
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_xcvr_label
+    mov     ah, 09h
+    int     21h
+    call    Print_Transceiver_Value
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
+
+    mov     dx, OFFSET msg_indent
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_pnp_label
+    mov     ah, 09h
+    int     21h
+    call    Print_Pnp_Capability_Value
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
+
+    mov     dx, OFFSET msg_indent
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_boot_label
+    mov     ah, 09h
+    int     21h
+    call    Print_Boot_Rom_Value
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
+
+    mov     dx, OFFSET msg_indent
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_compat_label
+    mov     ah, 09h
+    int     21h
+    mov     ax, [ext_compatibility]
+    cmp     ax, 0FFFFh
+    je      @@CompatUnavailable
+    mov     al, ah
+    xor     ah, ah
+    call    Print_DecByte
+    mov     dx, OFFSET msg_warn_label
+    mov     ah, 09h
+    int     21h
+    mov     ax, [ext_compatibility]
+    and     ax, 00FFh
+    call    Print_DecByte
+    jmp     @@CompatDone
+@@CompatUnavailable:
+    mov     dx, OFFSET msg_unavailable
+    mov     ah, 09h
+    int     21h
+@@CompatDone:
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
+
+    pop     dx
+    pop     ax
+    ret
+ENDP Print_Extended_Nic_Info
 
 ; ============================================================================
 ; Printing helpers
