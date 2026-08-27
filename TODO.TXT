@@ -2,13 +2,11 @@
 ==========
 
 - Reevaluate CONFIGURE /LINKBEAT and /SYNCREADY:
-  - Verify whether the original supported them.
-  - If yes, reassess whether they belong in scoped CLI parity and should be implemented.
-
-- Extend 3CSEED for multi-NIC setups:
-  - Seed two or three different NICs.
-  - Use different I/O ports and IRQs.
-  - Add test cases for multi-NIC setups.
-  - Reassess I/O conflict detection against original behavior.
-
-- Add multi-NIC conflict scenario coverage.
+  - Analysis of the 3.2 codebase suggests they were only mentioned in CLI
+    help, not actually implemented in code; verify whether an older utility
+    version exposes clearer behavior.
+  - Consult the 3Com technical reference for the 3C509B "Synchronous Ready"
+    and "Link Beat" EEPROM bits (see page 7-20 and page 7-26) to confirm the
+    likely intended mapping.
+  - If yes, reassess whether they belong in scoped CLI parity and should be
+    implemented.

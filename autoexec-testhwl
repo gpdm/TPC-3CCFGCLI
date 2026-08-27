@@ -1,0 +1,16 @@
+[cpu]
+cputype = 8086
+core    = normal
+cycles  = fixed 315
+
+[dosbox]
+memsize = 0
+memsizekb = __MEMKB__
+
+[autoexec]
+@ECHO OFF
+CLS
+MOUNT C: . >NUL
+C:
+COMMAND /C TESTHWL.BAT __MEMKB__ > /ARTIFACT/HWL__MEMKB__.LOG
+EXIT
