@@ -1,16 +1,33 @@
 ; ============================================================================
-; 3CCFGCLI.ASM - 0.5.5
+; 3CCFGCLI.ASM - 0.5.6
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
 ;
 ; ============================================================================
-; - Supported CONFIGURE verbs in this 0.5.5 build:
+; - Supported CONFIGURE verbs in this 0.5.6 build:
 ;    /ADAPTERNUM, /BADDRESS, /BSIZE, /FULLDUPLEX, /INT, /IOBASE, /MODEM,
 ;    /OPTIMIZE, /PNP, /VERBOSE.
 ; - Not yet implemented in the transaction layer: /TR.
 ; - /LINKBEAT is deliberately not a CONFIGURE verb in this build (although it could);
 ;    -> see the 0.5.4 changelog entry below.
 ; ============================================================================
+;
+; Changelog 0.5.6:
+;   - Reordered capability gate checks ahead of the "parameter accepted" echo
+;     for every gated CONFIGURE verb (/PNP, /FULLDUPLEX, /BADDRESS, /BSIZE).
+;     Previously a request could be echoed as "accepted" and only then
+;     rejected once the Prepare phase ran its capability check, which read
+;     as self-contradictory output (e.g. "BADDRESS parameter accepted...
+;     This adapter does not support Boot ROM configuration.").  All gate
+;     checks (PNP's EEPROM word 14h test, FULLDUPLEX's product-ID plus
+;     EEPROM word 10h test, BADDRESS/BSIZE's pairing rule and TPO capability
+;     test) now run in a single gate phase immediately after adapter
+;     selection, before any per-property echo is printed.  A rejected
+;     verb now produces only its "not supported"/error message, with no
+;     "accepted" text at all.  The Prepare phase for these verbs is now
+;     pure staging (Cfg_Prepare_PNP/FULLDUPLEX/BADDRESS/BSIZE), since every
+;     gate has already passed by the time it runs.
+;
 ;
 ; Changelog 0.5.5:
 ;   - Added /BADDRESS and /BSIZE CONFIGURE support, sharing EEPROM word 08h
@@ -332,7 +349,7 @@ CFG_ERR_BOOTROM_INCOMPLETE  EQU 65
 
 DATASEG
 
-VERSION_STRING	DB '0.5.5', '$'
+VERSION_STRING	DB '0.5.6', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -5616,7 +5633,7 @@ PROC Cfg_Txn_Execute NEAR
 
     ; Adapter selection detail is global transaction output, not property output.
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@Requested
+    jz      @@GatePNP
     mov     dx, OFFSET msg_cfg_adapter_prefix
     mov     ah, 09h
     int     21h
@@ -5625,6 +5642,116 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_cfg_adapter_suffix
     mov     ah, 09h
     int     21h
+
+; ----------------------------------------------------------------------------
+; Capability gate phase.  All hardware/product capability checks for gated
+; CONFIGURE verbs (/PNP, /FULLDUPLEX, /BADDRESS, /BSIZE) run here, before any
+; "parameter accepted" echo.  An adapter that cannot support a requested verb
+; is rejected immediately, without ever being told its input was accepted.
+; Moved out of the Prepare phase in 0.5.6; the Prepare phase below now only
+; stages values, since every gate has already passed by the time it runs.
+; ----------------------------------------------------------------------------
+@@GatePNP:
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@GateFULLDUPLEX
+    ; Guard: EEPROM word 14h (EEPROM_REVISION_INFO) low byte must be >= 1.
+    ; This is how the original utility determines whether the adapter supports
+    ; Plug and Play configuration at all.
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_REVISION_INFO
+    call    Cfg_Eeprom_Read
+    jc      @@PNPCapReadFail
+    and     ax, 00FFh
+    cmp     ax, 1
+    jb      @@PNPNotCapable
+    jmp     @@GateFULLDUPLEX
+@@PNPCapReadFail:
+    mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_READ
+    jmp     @@Done
+@@PNPNotCapable:
+    mov     [cfg_last_error], CFG_ERR_PNP_NOT_CAPABLE
+    jmp     @@Done
+
+@@GateFULLDUPLEX:
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jz      @@GateBootRom
+    ; Guard 1: product ID must be one of the five known ISA SKUs.
+    mov     si, [cfg_selected_ptr]
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    cmp     ax, PRODUCT_3C509_TP
+    je      @@FDProductOk
+    cmp     ax, PRODUCT_3C509
+    je      @@FDProductOk
+    cmp     ax, PRODUCT_3C509_COMBO
+    je      @@FDProductOk
+    cmp     ax, PRODUCT_3C509_TPO
+    je      @@FDProductOk
+    cmp     ax, PRODUCT_3C509_TPC
+    je      @@FDProductOk
+    mov     [cfg_last_error], CFG_ERR_FD_NOT_CAPABLE
+    jmp     @@Done
+@@FDProductOk:
+    ; Guard 2: EEPROM_CAPABILITY (word 10h) bit 0 must be set.
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CAPABILITY
+    call    Cfg_Eeprom_Read
+    jc      @@FDCapReadFail
+    test    ax, 0001h
+    jz      @@FDNotCapable
+    jmp     @@GateBootRom
+@@FDCapReadFail:
+    mov     [cfg_last_error], CFG_ERR_FD_EEPROM_READ
+    jmp     @@Done
+@@FDNotCapable:
+    mov     [cfg_last_error], CFG_ERR_FD_NOT_CAPABLE
+    jmp     @@Done
+
+@@GateBootRom:
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
+    jnz     @@BootRomRequested
+    test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    jz      @@Requested
+
+@@BootRomRequested:
+    ; Pairing rule: /BADDRESS and /BSIZE must be specified together, except
+    ; /BADDRESS:NONE may be given alone to disable the Boot ROM.
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
+    jz      @@BootRomIncomplete
+    test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    jnz     @@BootRomBothGiven
+    cmp     [cfg_baddress_value], 0
+    jne     @@BootRomIncomplete
+    jmp     @@BootRomCapabilityGate
+@@BootRomBothGiven:
+    cmp     [cfg_baddress_value], 0
+    jne     @@BootRomCapabilityGate
+@@BootRomIncomplete:
+    mov     [cfg_last_error], CFG_ERR_BOOTROM_INCOMPLETE
+    jmp     @@Done
+
+@@BootRomCapabilityGate:
+    ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration when
+    ; the card is also "later" (PnP-capable per EEPROM word 14h).  Mirrors
+    ; the same gate already used by Print_Boot_Rom_Value/Extended_Is_Later_Card
+    ; for LIST display.
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_REVISION_INFO
+    call    Cfg_Eeprom_Read
+    jc      @@BootRomCapReadFail
+    and     ax, 00FFh
+    cmp     ax, 1
+    jb      @@Requested
+    mov     si, [cfg_selected_ptr]
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    cmp     ax, PRODUCT_3C509_TPO
+    jne     @@Requested
+    mov     [cfg_last_error], CFG_ERR_BADDRESS_NOT_CAPABLE
+    jmp     @@Done
+@@BootRomCapReadFail:
+    mov     [cfg_last_error], CFG_ERR_BADDRESS_EEPROM_READ
+    jmp     @@Done
 
 @@Requested:
     ; Preserve normal requested parameter output from the existing releases.
@@ -5783,116 +5910,26 @@ PROC Cfg_Txn_Execute NEAR
     jz      @@PreparePNP
     call    Cfg_Prepare_INT
 @@PreparePNP:
+    ; Capability gate already passed in the gate phase above; stage only.
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@PrepareMODEM
-    ; Guard: EEPROM word 14h (EEPROM_REVISION_INFO) low byte must be >= 1.
-    ; This is how the original utility determines whether the adapter supports
-    ; Plug and Play configuration at all.
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_REVISION_INFO
-    call    Cfg_Eeprom_Read
-    jc      @@PNPCapReadFail
-    and     ax, 00FFh
-    cmp     ax, 1
-    jb      @@PNPNotCapable
     call    Cfg_Prepare_PNP
-    jmp     @@PrepareMODEM
-@@PNPCapReadFail:
-    mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_READ
-    jmp     @@Done
-@@PNPNotCapable:
-    mov     [cfg_last_error], CFG_ERR_PNP_NOT_CAPABLE
-    jmp     @@Done
 @@PrepareMODEM:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jz      @@PrepareFULLDUPLEX
     call    Cfg_Prepare_MODEM
 @@PrepareFULLDUPLEX:
+    ; Capability gate already passed in the gate phase above; stage only.
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@PrepareOPTIMIZE
-    ; Guard 1: product ID must be one of the five known ISA SKUs.
-    mov     si, [cfg_selected_ptr]
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    cmp     ax, PRODUCT_3C509_TP
-    je      @@FDProductOk
-    cmp     ax, PRODUCT_3C509
-    je      @@FDProductOk
-    cmp     ax, PRODUCT_3C509_COMBO
-    je      @@FDProductOk
-    cmp     ax, PRODUCT_3C509_TPO
-    je      @@FDProductOk
-    cmp     ax, PRODUCT_3C509_TPC
-    je      @@FDProductOk
-    mov     [cfg_last_error], CFG_ERR_FD_NOT_CAPABLE
-    jmp     @@Done
-@@FDProductOk:
-    ; Guard 2: EEPROM_CAPABILITY (word 10h) bit 0 must be set.
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_CAPABILITY
-    call    Cfg_Eeprom_Read
-    jc      @@FDCapReadFail
-    test    ax, 0001h
-    jz      @@FDNotCapable
     call    Cfg_Prepare_FULLDUPLEX
-    jmp     @@PrepareOPTIMIZE
-@@FDCapReadFail:
-    mov     [cfg_last_error], CFG_ERR_FD_EEPROM_READ
-    jmp     @@Done
-@@FDNotCapable:
-    mov     [cfg_last_error], CFG_ERR_FD_NOT_CAPABLE
-    jmp     @@Done
 @@PrepareOPTIMIZE:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@PrepareBootRom
     call    Cfg_Prepare_OPTIMIZE
 @@PrepareBootRom:
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jnz     @@BootRomRequested
-    test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jz      @@Detect
-
-@@BootRomRequested:
-    ; Pairing rule: /BADDRESS and /BSIZE must be specified together, except
-    ; /BADDRESS:NONE may be given alone to disable the Boot ROM.
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jz      @@BootRomIncomplete
-    test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jnz     @@BootRomBothGiven
-    cmp     [cfg_baddress_value], 0
-    jne     @@BootRomIncomplete
-    jmp     @@BootRomCapabilityGate
-@@BootRomBothGiven:
-    cmp     [cfg_baddress_value], 0
-    jne     @@BootRomCapabilityGate
-@@BootRomIncomplete:
-    mov     [cfg_last_error], CFG_ERR_BOOTROM_INCOMPLETE
-    jmp     @@Done
-
-@@BootRomCapabilityGate:
-    ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration when
-    ; the card is also "later" (PnP-capable per EEPROM word 14h).  Mirrors
-    ; the same gate already used by Print_Boot_Rom_Value/Extended_Is_Later_Card
-    ; for LIST display.
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_REVISION_INFO
-    call    Cfg_Eeprom_Read
-    jc      @@BootRomCapReadFail
-    and     ax, 00FFh
-    cmp     ax, 1
-    jb      @@BootRomPrepare
-    mov     si, [cfg_selected_ptr]
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    cmp     ax, PRODUCT_3C509_TPO
-    jne     @@BootRomPrepare
-    mov     [cfg_last_error], CFG_ERR_BADDRESS_NOT_CAPABLE
-    jmp     @@Done
-@@BootRomCapReadFail:
-    mov     [cfg_last_error], CFG_ERR_BADDRESS_EEPROM_READ
-    jmp     @@Done
-
-@@BootRomPrepare:
+    ; Pairing rule and capability gate already passed in the gate phase
+    ; above; stage only.
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@PrepareBSizeOnly
     call    Cfg_Prepare_BADDRESS
