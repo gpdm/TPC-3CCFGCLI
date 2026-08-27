@@ -41,11 +41,12 @@
 ; adapter.  The proven ID port contention, tagging, activation, record layout,
 ; MAC address, I O base and IRQ discovery path is intentionally left unchanged.
 ;
-; CONFIGURE infrastructure is present in this release.  /INT performs only
-; strict input parsing and validation, then reports the accepted requested IRQ.
-; It does not read or modify IRQ configuration.  All other hardware property
-; handlers remain explicit stubs.  EEPROM write, checksum and ISA deactivate or
-; reactivate helpers remain unreachable from CONFIGURE property handlers.
+; CONFIGURE infrastructure is present in this release.  /INT keeps the strict
+; release 0.3.1 parser, stages the final requested IRQ, then applies one
+; controlled ISA configuration transaction after parsing has completed.
+; All other hardware property handlers remain explicit stubs.  The /INT
+; transaction is the only CONFIGURE path that can reach persistent or live
+; configuration writes in this release.
 ; ============================================================================
 
 IDEAL
@@ -85,6 +86,8 @@ EL3_COMMAND             EQU 0Eh
 EL3_STATUS              EQU 0Eh
 EL3_W0_MFG_ID           EQU 00h
 EL3_W0_PRODUCT_ID       EQU 02h
+EL3_W0_ADDRESS_CFG      EQU 06h
+EL3_W0_RESOURCE_CFG     EQU 08h
 EL3_W0_EEPROM_COMMAND   EQU 0Ah
 EL3_W0_EEPROM_DATA      EQU 0Ch
 EL3_W4_NET_DIAG         EQU 06h
@@ -130,6 +133,7 @@ CFG_OPT_SYNCREADY       EQU 11
 CFG_OPT_FULLDUPLEX      EQU 12
 
 CFG_PARSE_ADAPTER       EQU 01h
+CFG_PARSE_INT           EQU 02h
 
 ; Common CONFIGURE result codes.
 CFG_ERR_NONE                EQU 0
@@ -147,10 +151,16 @@ CFG_ERR_ADAPTER_REQUIRED    EQU 11
 CFG_ERR_DUP_ADAPTER         EQU 12
 CFG_ERR_NO_PROPERTY         EQU 13
 CFG_ERR_BAD_INT             EQU 14
+CFG_ERR_EEPROM_READ         EQU 15
+CFG_ERR_EEPROM_WRITE        EQU 16
+CFG_ERR_CHECKSUM_UPDATE     EQU 17
+CFG_ERR_LIVE_UPDATE         EQU 18
+CFG_ERR_VERIFY              EQU 19
+CFG_ERR_INT_INACTIVE        EQU 20
 
 DATASEG
 
-VERSION_STRING	DB '0.3.1', '$'
+VERSION_STRING	DB '0.3.2', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -160,7 +170,7 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "Commands:", 0Dh, 0Ah
                 DB  "  /? or /H          Display this help screen.", 0Dh, 0Ah
                 DB  "  LIST              Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah
-                DB  "  CONFIGURE         Parse and validate ISA CONFIGURE requests.", 0Dh, 0Ah
+                DB  "  CONFIGURE         Configure supported ISA properties, currently /INT.", 0Dh, 0Ah
                 DB  "                    Use /ADAPTERNUM:N when more than one NIC is present.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
@@ -180,7 +190,34 @@ msg_cfg_no_property DB "No CONFIGURE property was specified.", 0Dh, 0Ah, '$'
 msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 0Dh, 0Ah, '$'
 msg_cfg_bad_int DB "Invalid /INT parameter. Value must be 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
 msg_cfg_int_ok DB "INT parameter accepted. Requested IRQ: ", '$'
-msg_cfg_read_only DB 0Dh, 0Ah, "No hardware changes performed.", 0Dh, 0Ah, '$'
+msg_cfg_crlf DB 0Dh, 0Ah, '$'
+msg_cfg_adapter_prefix DB "Adapter ", '$'
+msg_cfg_adapter_suffix DB " selected.", 0Dh, 0Ah, '$'
+msg_cfg_read_irq DB 0Dh, 0Ah, "Reading current IRQ configuration...", 0Dh, 0Ah, '$'
+msg_cfg_current_irq DB "Current IRQ: ", '$'
+msg_cfg_current_word09 DB "Current EEPROM word 09h: ", '$'
+msg_cfg_prepare_irq DB 0Dh, 0Ah, "Preparing IRQ change...", 0Dh, 0Ah, '$'
+msg_cfg_new_word09 DB "New EEPROM word 09h: ", '$'
+msg_cfg_prepare_active DB 0Dh, 0Ah, "Preparing adapter using original ISA activation sequence...", 0Dh, 0Ah, '$'
+msg_cfg_active_prepared DB "Adapter reactivated and live IRQ staged.", 0Dh, 0Ah, '$'
+msg_cfg_irq_unchanged DB 0Dh, 0Ah, "IRQ is already configured to the requested value.", 0Dh, 0Ah
+                      DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_write_irq DB 0Dh, 0Ah, "Writing IRQ configuration to EEPROM...", 0Dh, 0Ah, '$'
+msg_cfg_irq_word_written DB "IRQ configuration word written.", 0Dh, 0Ah, '$'
+msg_cfg_update_checksum DB 0Dh, 0Ah, "Updating EEPROM checksum...", 0Dh, 0Ah, '$'
+msg_cfg_checksum_updated DB "EEPROM checksum updated.", 0Dh, 0Ah, '$'
+msg_cfg_update_live DB 0Dh, 0Ah, "Updating live IRQ configuration...", 0Dh, 0Ah, '$'
+msg_cfg_live_updated DB "Live IRQ configuration updated.", 0Dh, 0Ah, '$'
+msg_cfg_verifying DB 0Dh, 0Ah, "Verifying configuration...", 0Dh, 0Ah, '$'
+msg_cfg_eeprom_verified DB "EEPROM IRQ verified: ", '$'
+msg_cfg_live_verified DB "Live IRQ verified: ", '$'
+msg_cfg_completed DB 0Dh, 0Ah, "IRQ configuration completed successfully.", 0Dh, 0Ah, '$'
+msg_cfg_eeprom_read_fail DB "EEPROM read timed out while reading IRQ configuration.", 0Dh, 0Ah, '$'
+msg_cfg_eeprom_write_fail DB "EEPROM write timed out while writing IRQ configuration.", 0Dh, 0Ah, '$'
+msg_cfg_checksum_fail DB "EEPROM checksum update failed.", 0Dh, 0Ah, '$'
+msg_cfg_live_fail DB "Live IRQ configuration update failed.", 0Dh, 0Ah, '$'
+msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
+msg_cfg_int_inactive DB "Selected adapter has no active I/O base for /INT configuration.", 0Dh, 0Ah, '$'
 
 msg_list_hdr    DB  "NIC                            NIC", 0Dh, 0Ah
                 DB  "Number                       Description", 0Dh, 0Ah
@@ -267,6 +304,14 @@ cfg_selected_index    DW 0FFFFh
 cfg_selected_ptr      DW 0
 cfg_options_ptr       DW 0
 cfg_int_value         DB 0
+cfg_int_current_irq   DB 0
+cfg_int_checksum      DB 0
+cfg_int_old_eeprom    DW 0
+cfg_int_new_eeprom    DW 0
+cfg_int_old_addr_live DW 0
+cfg_int_old_live      DW 0
+cfg_int_new_live      DW 0
+cfg_int_new_word0f    DW 0
 cfg_wait_start_lo     DW 0
 cfg_wait_start_hi     DW 0
 
@@ -505,8 +550,8 @@ ENDP Parse_And_Execute
 ;
 ; This reduced parser keeps those semantics without importing the original
 ; argv framework.  Start already uppercases ASCII input, so matching remains
-; case insensitive.  Every property is recognized, but every property handler
-; deliberately terminates in CFG_ERR_NOT_IMPLEMENTED in this release.
+; case insensitive.  /INT is staged during property dispatch and applied once
+; after the complete dispatch succeeds.  Every other property remains a stub.
 PROC Cmd_Configure NEAR
     push    ax
     push    bx
@@ -550,6 +595,16 @@ PROC Cmd_Configure NEAR
 @@Dispatch:
     mov     si, [cfg_options_ptr]
     call    Cfg_Dispatch_Parsed_Properties
+    cmp     [cfg_last_error], CFG_ERR_NONE
+    jne     @@Report
+
+    ; Hardware application is deliberately deferred until all property
+    ; handlers have completed.  This makes duplicate /INT options one staged
+    ; final value and prevents a later invalid or unsupported option from
+    ; following an already committed EEPROM write.
+    test    [cfg_parse_flags], CFG_PARSE_INT
+    jz      @@Report
+    call    Cfg_Apply_INT
 
 @@Report:
     mov     al, [cfg_last_error]
@@ -991,7 +1046,7 @@ ENDP Cfg_Dispatch_Parsed_Properties
 
 ; Canonical property dispatcher.  Input AL = property ID, SI = value pointer,
 ; CX = value length.  PORT maps to IOBASE and XCVR maps to TR before this point.
-; /INT is parser only in release 0.3.1.  All other handlers remain stubs.
+; /INT stages its validated value only.  All other handlers remain stubs.
 PROC Cfg_Dispatch_Property NEAR
     cmp     al, CFG_OPT_INT
     jne     @@IOBase
@@ -1057,13 +1112,13 @@ PROC Cfg_Dispatch_Property NEAR
     ret
 ENDP Cfg_Dispatch_Property
 
-; Explicit future handler entry points.  They receive SI = value pointer and
-; CX = value length.  None reads or writes NIC configuration in this release.
-; Release 0.3.1 parser only.
+; Property handler entry points receive SI = value pointer and CX = value length.
+; /INT preserves the release 0.3.1 validation body and only stages its final
+; accepted value.  It performs no hardware access itself.  All other handlers
+; remain nonfunctional stubs.
 ; Input SI = /INT value pointer, CX = value length.
 ; Accepted canonical decimal forms are exactly:
 ;   3, 5, 7, 9, 10, 11, 12, 15
-; No EEPROM or live NIC configuration access is performed here.
 PROC Cfg_Handle_INT NEAR
     push    ax
     push    bx
@@ -1113,28 +1168,8 @@ PROC Cfg_Handle_INT NEAR
 
 @@Accepted:
     mov     [cfg_int_value], al
+    or      [cfg_parse_flags], CFG_PARSE_INT
     mov     [cfg_last_error], CFG_ERR_NONE
-
-    ; Preserve the validated text pointer and length across DOS output.
-    push    si
-    push    cx
-    mov     dx, OFFSET msg_cfg_int_ok
-    mov     ah, 09h
-    int     21h
-    pop     cx
-    pop     si
-
-    ; Print the exact validated value text through standard output.
-    ; DOS function 40h uses handle 1 and therefore remains visible in
-    ; normal use and is captured correctly by command redirection.
-    mov     bx, 1
-    mov     dx, si
-    mov     ah, 40h
-    int     21h
-
-    mov     dx, OFFSET msg_cfg_read_only
-    mov     ah, 09h
-    int     21h
     jmp     @@Done
 
 @@Invalid:
@@ -1274,8 +1309,38 @@ PROC Cfg_Report_Error NEAR
     jmp     @@Print
 @@E14:
     cmp     al, CFG_ERR_BAD_INT
-    jne     @@Done
+    jne     @@E15
     mov     dx, OFFSET msg_cfg_bad_int
+    jmp     @@Print
+@@E15:
+    cmp     al, CFG_ERR_EEPROM_READ
+    jne     @@E16
+    mov     dx, OFFSET msg_cfg_eeprom_read_fail
+    jmp     @@Print
+@@E16:
+    cmp     al, CFG_ERR_EEPROM_WRITE
+    jne     @@E17
+    mov     dx, OFFSET msg_cfg_eeprom_write_fail
+    jmp     @@Print
+@@E17:
+    cmp     al, CFG_ERR_CHECKSUM_UPDATE
+    jne     @@E18
+    mov     dx, OFFSET msg_cfg_checksum_fail
+    jmp     @@Print
+@@E18:
+    cmp     al, CFG_ERR_LIVE_UPDATE
+    jne     @@E19
+    mov     dx, OFFSET msg_cfg_live_fail
+    jmp     @@Print
+@@E19:
+    cmp     al, CFG_ERR_VERIFY
+    jne     @@E20
+    mov     dx, OFFSET msg_cfg_verify_fail
+    jmp     @@Print
+@@E20:
+    cmp     al, CFG_ERR_INT_INACTIVE
+    jne     @@Done
+    mov     dx, OFFSET msg_cfg_int_inactive
 @@Print:
     mov     ah, 09h
     int     21h
@@ -2417,8 +2482,8 @@ PROC Scan_Active_Base_Ports NEAR
 ENDP Scan_Active_Base_Ports
 
 ; ============================================================================
-; Common CONFIGURE hardware infrastructure, deliberately unreachable from
-; property stubs in release 0.3
+; Common CONFIGURE hardware infrastructure.  Release 0.4 exposes only the
+; original resources required by the deferred /INT transaction.
 ; ============================================================================
 
 ; Word register read, original sub_306.
@@ -2782,7 +2847,7 @@ ENDP Cfg_Eeprom_Read
 ;   0030h, wait, 0040h OR word, wait.
 ; The original continues through the sequence after a timeout, so this helper
 ; does the same and returns the shared timeout latch in carry at the end.
-; IMPORTANT: no release 0.3 CLI path calls this procedure.
+; Release 0.4 reaches this procedure only from the deferred /INT transaction.
 PROC Cfg_Eeprom_Write NEAR
     push    ax
     push    bx
@@ -2934,6 +2999,430 @@ PROC Cfg_Checksum_0F_Low NEAR
     stc
     ret
 ENDP Cfg_Checksum_0F_Low
+
+; ============================================================================
+; /INT hardware transaction, release 0.4
+; ============================================================================
+; Original transaction authority: sub_342.
+;
+; The original reads EEPROM word 09h and window 0 Resource Configuration
+; register 08h, replaces only bits 15 through 12 with the staged IRQ, writes
+; word 09h, recalculates sub_317, preserves EEPROM word 0Fh high byte while
+; writing the new low checksum byte, then writes live register 08h.
+;
+; This reduced transaction intentionally omits every unrelated sub_342 field.
+; It adds explicit no change handling and readback verification for safe
+; hardware testing.  The higher level original CONFIGURE path calls sub_335
+; followed by sub_334 before sub_342.  For a reduced record that carries a
+; valid proprietary ID tag, the existing deactivate and reactivate cores are
+; therefore reused before the persistent write, followed by the IRQ live write
+; corresponding to the relevant sub_334 operation.
+;
+; Input state:
+;   cfg_selected_ptr points at the already revalidated nic_table record.
+;   cfg_int_value contains one validated IRQ.
+; Output:
+;   cfg_last_error is CFG_ERR_NONE on success, otherwise a stage specific code.
+PROC Cfg_Apply_INT NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    or      dx, dx
+    jnz     @@Active
+    mov     [cfg_last_error], CFG_ERR_INT_INACTIVE
+    jmp     @@Done
+
+@@Active:
+    ; Report the logical LIST ordinal selected by the existing selector.
+    mov     dx, OFFSET msg_cfg_adapter_prefix
+    mov     ah, 09h
+    int     21h
+    mov     al, [cfg_adapter_ordinal]
+    call    Print_DecByte
+    mov     dx, OFFSET msg_cfg_adapter_suffix
+    mov     ah, 09h
+    int     21h
+
+    ; Preserve the established requested IRQ display, now emitted once after
+    ; all parsing has completed so duplicate /INT options cause one transaction.
+    mov     dx, OFFSET msg_cfg_int_ok
+    mov     ah, 09h
+    int     21h
+    mov     al, [cfg_int_value]
+    call    Print_DecByte
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+
+    mov     dx, OFFSET msg_cfg_read_irq
+    mov     ah, 09h
+    int     21h
+
+    ; Persistent current state is authoritative.  This is original sub_314
+    ; behavior through the already present Cfg_Eeprom_Read helper.
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_RESOURCE_CFG
+    call    Cfg_Eeprom_Read
+    jc      @@ReadFail
+    mov     [cfg_int_old_eeprom], ax
+
+    ; sub_342 also snapshots live window 0 register 08h before modifying it.
+    ; Cfg_Eeprom_Read already selected window 0, but select it explicitly here
+    ; before the direct register access.
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    xor     al, al
+    call    Select_Window
+    mov     bx, EL3_W0_ADDRESS_CFG
+    call    Cfg_Reg_Read_Word
+    mov     [cfg_int_old_addr_live], ax
+    mov     bx, EL3_W0_RESOURCE_CFG
+    call    Cfg_Reg_Read_Word
+    mov     [cfg_int_old_live], ax
+
+    ; Decode bits 15 through 12 directly, exactly as stored by the original
+    ; configuration path.
+    mov     bx, [cfg_int_old_eeprom]
+    mov     cl, 12
+    shr     bx, cl
+    and     bl, 0Fh
+    mov     [cfg_int_current_irq], bl
+
+    mov     dx, OFFSET msg_cfg_current_irq
+    mov     ah, 09h
+    int     21h
+    mov     al, [cfg_int_current_irq]
+    call    Print_DecByte
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+
+    mov     dx, OFFSET msg_cfg_current_word09
+    mov     ah, 09h
+    int     21h
+    mov     ax, [cfg_int_old_eeprom]
+    call    Print_HexWord
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+
+    mov     al, [cfg_int_current_irq]
+    cmp     al, [cfg_int_value]
+    jne     @@Prepare
+
+    mov     dx, OFFSET msg_cfg_irq_unchanged
+    mov     ah, 09h
+    int     21h
+    mov     [cfg_last_error], CFG_ERR_NONE
+    jmp     @@Done
+
+@@Prepare:
+    ; new word 09h = old word AND 0FFFh OR requested IRQ shifted left 12.
+    mov     ax, [cfg_int_old_eeprom]
+    and     ax, 0FFFh
+    xor     bx, bx
+    mov     bl, [cfg_int_value]
+    mov     cl, 12
+    shl     bx, cl
+    or      ax, bx
+    mov     [cfg_int_new_eeprom], ax
+
+    ; The live Resource Configuration register uses the same IRQ field.
+    mov     ax, [cfg_int_old_live]
+    and     ax, 0FFFh
+    xor     bx, bx
+    mov     bl, [cfg_int_value]
+    mov     cl, 12
+    shl     bx, cl
+    or      ax, bx
+    mov     [cfg_int_new_live], ax
+
+    mov     dx, OFFSET msg_cfg_prepare_irq
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_cfg_new_word09
+    mov     ah, 09h
+    int     21h
+    mov     ax, [cfg_int_new_eeprom]
+    call    Print_HexWord
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+
+    ; The original command line CONFIGURE path prepares an ID tagged ISA card
+    ; with sub_335 followed by sub_334 before entering sub_342.  Reuse the
+    ; existing reduced cores only when this record really has a valid ID tag.
+    ; Active only records have no safe tag to select, so no ID port action is
+    ; invented for them.
+    mov     si, [cfg_selected_ptr]
+    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
+    jz      @@PersistentWrite
+    mov     al, [BYTE si + NIC_TAG]
+    or      al, al
+    jz      @@PersistentWrite
+    cmp     al, 7
+    ja      @@PersistentWrite
+
+    mov     dx, OFFSET msg_cfg_prepare_active
+    mov     ah, 09h
+    int     21h
+
+    mov     si, [cfg_selected_ptr]
+    call    Cfg_Id_Deactivate_Selected
+
+    ; Original sub_335 waits after deactivation, reenters the ID state, and
+    ; assigns D0h plus the existing tag again before sub_334 reactivates it.
+    ; The original delay helper is calibrated at startup by code not retained
+    ; in this reduced utility.  Reuse the existing conservative ISA I O delay
+    ; eight times at the same point rather than inventing a new timer path.
+    call    IdPort_Eeprom_Delay
+    call    IdPort_Eeprom_Delay
+    call    IdPort_Eeprom_Delay
+    call    IdPort_Eeprom_Delay
+    call    IdPort_Eeprom_Delay
+    call    IdPort_Eeprom_Delay
+    call    IdPort_Eeprom_Delay
+    call    IdPort_Eeprom_Delay
+
+    mov     si, [cfg_selected_ptr]
+    cli
+    cmp     [BYTE si + NIC_ID_MODE], 0
+    je      @@RetagFull
+    call    IdPort_Send_Short_Sequence
+    jmp     @@RetagWrite
+@@RetagFull:
+    call    IdPort_Send_Full_Sequence
+@@RetagWrite:
+    mov     dx, ID_PORT
+    mov     al, ID_CMD_SET_TAG
+    or      al, [BYTE si + NIC_TAG]
+    out     dx, al
+    sti
+
+    mov     si, [cfg_selected_ptr]
+    call    Cfg_Id_Activate_Selected
+
+    ; Do not trust a floating FFFFh register read after activation, especially
+    ; for requested IRQ 15.  Confirm that the same selected NIC is present at
+    ; the restored base before staging its live Resource Configuration word.
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Check_3Com_Signature
+    jc      @@LiveFail
+    cmp     ax, [WORD si + NIC_PRODUCT_ID]
+    jne     @@LiveFail
+    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
+    je      @@ActivationGood
+    cmp     bl, [BYTE si + NIC_ASIC_REV]
+    jne     @@LiveFail
+@@ActivationGood:
+
+    ; sub_334 restores live window 0 configuration as part of reactivation.
+    ; For an INT only transaction, restore Address Configuration unchanged and
+    ; stage only the new IRQ field in Resource Configuration.
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    xor     al, al
+    call    Select_Window
+    mov     ax, [cfg_int_old_addr_live]
+    mov     bx, EL3_W0_ADDRESS_CFG
+    call    Cfg_Reg_Write_Word
+    mov     ax, [cfg_int_new_live]
+    mov     bx, EL3_W0_RESOURCE_CFG
+    call    Cfg_Reg_Write_Word
+
+    ; Confirm the pre write live IRQ before crossing the persistent boundary.
+    mov     bx, EL3_W0_RESOURCE_CFG
+    call    Cfg_Reg_Read_Word
+    mov     bx, ax
+    mov     cl, 12
+    shr     bx, cl
+    and     bl, 0Fh
+    cmp     bl, [cfg_int_value]
+    jne     @@LiveFail
+
+    mov     dx, OFFSET msg_cfg_active_prepared
+    mov     ah, 09h
+    int     21h
+
+@@PersistentWrite:
+    ; First persistent write boundary.  All selection, validation, current
+    ; state reporting and prospective value calculation are complete here.
+    mov     dx, OFFSET msg_cfg_write_irq
+    mov     ah, 09h
+    int     21h
+
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     bx, [cfg_int_new_eeprom]
+    mov     al, EEPROM_RESOURCE_CFG
+    call    Cfg_Eeprom_Write
+    jc      @@WriteFail
+
+    mov     dx, OFFSET msg_cfg_irq_word_written
+    mov     ah, 09h
+    int     21h
+
+    ; Original ordering is word 09h first, then sub_317, then word 0Fh low byte.
+    mov     dx, OFFSET msg_cfg_update_checksum
+    mov     ah, 09h
+    int     21h
+
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Cfg_Checksum_0F_Low
+    jc      @@ChecksumFail
+    mov     [cfg_int_checksum], al
+
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, 0Fh
+    call    Cfg_Eeprom_Read
+    jc      @@ChecksumFail
+    and     ax, 0FF00h
+    xor     bx, bx
+    mov     bl, [cfg_int_checksum]
+    or      ax, bx
+    mov     [cfg_int_new_word0f], ax
+    mov     bx, ax
+    mov     al, 0Fh
+    call    Cfg_Eeprom_Write
+    jc      @@ChecksumFail
+
+    ; Confirm that the low checksum byte accepted the intended value before
+    ; crossing into the live register update stage.
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, 0Fh
+    call    Cfg_Eeprom_Read
+    jc      @@ChecksumFail
+    cmp     ax, [cfg_int_new_word0f]
+    jne     @@ChecksumFail
+
+    mov     dx, OFFSET msg_cfg_checksum_updated
+    mov     ah, 09h
+    int     21h
+
+    ; sub_342 writes live window 0 register 08h directly while the adapter is
+    ; active.  No ID port deactivate or reactivate surrounds this operation.
+    mov     dx, OFFSET msg_cfg_update_live
+    mov     ah, 09h
+    int     21h
+
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    xor     al, al
+    call    Select_Window
+    mov     ax, [cfg_int_new_live]
+    mov     bx, EL3_W0_RESOURCE_CFG
+    call    Cfg_Reg_Write_Word
+
+    ; A direct register write has no timeout result, so an immediate IRQ field
+    ; readback is the only meaningful live update failure indication here.
+    mov     bx, EL3_W0_RESOURCE_CFG
+    call    Cfg_Reg_Read_Word
+    mov     bx, ax
+    mov     cl, 12
+    shr     bx, cl
+    and     bl, 0Fh
+    cmp     bl, [cfg_int_value]
+    jne     @@LiveFail
+
+    mov     dx, OFFSET msg_cfg_live_updated
+    mov     ah, 09h
+    int     21h
+
+    ; Explicit final verification is an added reduced utility safety check.
+    mov     dx, OFFSET msg_cfg_verifying
+    mov     ah, 09h
+    int     21h
+
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_RESOURCE_CFG
+    call    Cfg_Eeprom_Read
+    jc      @@VerifyFail
+    cmp     ax, [cfg_int_new_eeprom]
+    jne     @@VerifyFail
+    mov     bx, ax
+    mov     cl, 12
+    shr     bx, cl
+    and     bl, 0Fh
+    cmp     bl, [cfg_int_value]
+    jne     @@VerifyFail
+
+    mov     dx, OFFSET msg_cfg_eeprom_verified
+    mov     ah, 09h
+    int     21h
+    mov     al, bl
+    call    Print_DecByte
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    xor     al, al
+    call    Select_Window
+    mov     bx, EL3_W0_RESOURCE_CFG
+    call    Cfg_Reg_Read_Word
+    mov     bx, ax
+    mov     cl, 12
+    shr     bx, cl
+    and     bl, 0Fh
+    cmp     bl, [cfg_int_value]
+    jne     @@VerifyFail
+
+    mov     dx, OFFSET msg_cfg_live_verified
+    mov     ah, 09h
+    int     21h
+    mov     al, bl
+    call    Print_DecByte
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+
+    mov     dx, OFFSET msg_cfg_completed
+    mov     ah, 09h
+    int     21h
+    mov     [cfg_last_error], CFG_ERR_NONE
+    jmp     @@Done
+
+@@ReadFail:
+    mov     [cfg_last_error], CFG_ERR_EEPROM_READ
+    jmp     @@Done
+
+@@WriteFail:
+    mov     [cfg_last_error], CFG_ERR_EEPROM_WRITE
+    jmp     @@Done
+
+@@ChecksumFail:
+    mov     [cfg_last_error], CFG_ERR_CHECKSUM_UPDATE
+    jmp     @@Done
+
+@@LiveFail:
+    mov     [cfg_last_error], CFG_ERR_LIVE_UPDATE
+    jmp     @@Done
+
+@@VerifyFail:
+    mov     [cfg_last_error], CFG_ERR_VERIFY
+
+@@Done:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Apply_INT
 
 ; Original sub_318, destination EEPROM word 17h high byte.
 ; Domains: words 10h through 12h and words 18h through 3Fh.
@@ -3172,7 +3661,7 @@ ENDP Cfg_Revalidate_Selected
 
 ; ISA deactivation core recovered from original sub_335.
 ; Input SI = selected ID record.  D8h plus tag selects it, C0h deactivates it.
-; IMPORTANT: unreachable from release 0.3 CONFIGURE property stubs.
+; Release 0.4 /INT calls this only for a selected ID tagged record.
 PROC Cfg_Id_Deactivate_Selected NEAR
     push    ax
     push    dx
@@ -3200,7 +3689,7 @@ ENDP Cfg_Id_Deactivate_Selected
 
 ; ISA activation core recovered from original sub_334 and sub_335 reactivation.
 ; Input SI = selected record.  Uses its existing tag and active I O base.
-; IMPORTANT: unreachable from release 0.3 CONFIGURE property stubs.
+; Release 0.4 /INT calls this only for a selected ID tagged record.
 PROC Cfg_Id_Activate_Selected NEAR
     push    ax
     push    bx
