@@ -29,6 +29,8 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  3C509B-TPC   Seed as 3C509B-TPC  (product 9850h, coax).', 0Dh, 0Ah
              DB '  NOPNP        Seed as non-PNP-capable card (gate test).', 0Dh, 0Ah
              DB '  NOFD         Seed as non-FULLDUPLEX-capable card (gate test).', 0Dh, 0Ah
+             DB '  LINKUP       INIT profile with live Link Status forced connected.', 0Dh, 0Ah
+             DB '  LINKDOWN     INIT profile with live Link Status forced not connected.', 0Dh, 0Ah
              DB '$'
 msg_ok_init  DB 'Seed file created (INIT).', 0Dh, 0Ah, '$'
 msg_ok_rand  DB 'Seed file created (RANDOM).', 0Dh, 0Ah, '$'
@@ -40,6 +42,8 @@ msg_ok_tpo   DB 'Seed file created (3C509B-TPO).', 0Dh, 0Ah, '$'
 msg_ok_tpc   DB 'Seed file created (3C509B-TPC).', 0Dh, 0Ah, '$'
 msg_ok_nopnp DB 'Seed file created (NOPNP).', 0Dh, 0Ah, '$'
 msg_ok_nofd  DB 'Seed file created (NOFD).', 0Dh, 0Ah, '$'
+msg_ok_linkup   DB 'Seed file created (LINKUP).', 0Dh, 0Ah, '$'
+msg_ok_linkdown DB 'Seed file created (LINKDOWN).', 0Dh, 0Ah, '$'
 msg_fail_io  DB 'File I/O error.', 0Dh, 0Ah, '$'
 msg_bad_arg  DB 'Invalid command argument.', 0Dh, 0Ah, '$'
 
@@ -53,6 +57,8 @@ kw_tpo       DB '3C509B-TPO', 0
 kw_tpc       DB '3C509B-TPC', 0
 kw_nopnp     DB 'NOPNP', 0
 kw_nofd      DB 'NOFD', 0
+kw_linkup    DB 'LINKUP', 0
+kw_linkdown  DB 'LINKDOWN', 0
 
 cmd_buffer   DB 128 DUP (0)
 state_blob   DB MCK_FILE_SIZE DUP (0)
@@ -179,6 +185,12 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_nofd
     call    Match_Token
     jnc     @@DoNoFD
+    mov     dx, OFFSET kw_linkup
+    call    Match_Token
+    jnc     @@DoLinkUp
+    mov     dx, OFFSET kw_linkdown
+    call    Match_Token
+    jnc     @@DoLinkDown
 
     mov     dx, OFFSET msg_bad_arg
     mov     ah, 09h
@@ -273,6 +285,22 @@ PROC Parse_And_Run NEAR
     call    Seed_NoFD
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_nofd
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoLinkUp:
+    call    Seed_LinkUp
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_linkup
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoLinkDown:
+    call    Seed_LinkDown
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_linkdown
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -547,6 +575,34 @@ PROC Seed_NoFD NEAR
     ret
 ENDP Seed_NoFD
 
+PROC Seed_LinkUp NEAR
+    ; INIT profile with the live link status explicitly forced to
+    ; connected (Media Type and Status register, Window 4/Port 0Ah,
+    ; bit 11 set).  This is already the INIT/RANDOM default; the explicit
+    ; seed exists for test clarity and as the counterpart to LINKDOWN.
+    call    Seed_Init
+    jc      @@Fail
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W4_MEDIA_STATUS], 0800h
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_LinkUp
+
+PROC Seed_LinkDown NEAR
+    ; INIT profile with bit 11 of the live Media Type and Status register
+    ; mirror cleared, so LIST reports "not connected".
+    call    Seed_Init
+    jc      @@Fail
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W4_MEDIA_STATUS], 0000h
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_LinkDown
+
 PROC Build_State NEAR
     push    ax
     push    bx
@@ -599,11 +655,17 @@ PROC Build_State NEAR
     mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_XCVR], ax
     mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_MODEM], 0
     mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_OPTIMIZE], 0
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_LINKBEAT], 1
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_CONFIGPORT], 0
+    ; MCKR_CFG_LINKBEAT is an inert placeholder (see 3C509DEF.INC); it is
+    ; never derived from anything configurable, so it is left at zero.
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_LINKBEAT], 0
     mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_PNP], 1
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_SYNCREADY], 0
     mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_FULLDUPLEX], 0
+
+    ; Live link status default: a freshly seeded card is assumed to be
+    ; connected (Media Type and Status register bit 11 set), consistent
+    ; with the "nominal by default" convention used elsewhere (e.g. PNP,
+    ; FULLDUPLEX capability).  Use SEED LINKDOWN for the negative case.
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W4_MEDIA_STATUS], 0800h
 
     mov     si, EEPROM_MFG_ID
     mov     ax, 06D50h

@@ -36,6 +36,10 @@ mock_irq DB 10
 mock_tag DB 1
 mock_active DB 0
 mock_w4_netdiag DW 0000h
+; Live Media Type and Status register (Window 4/Port 0Ah).  Bit 11 is the
+; read-only link-beat-detected indicator surfaced via LIST; see
+; EL3_W4_MEDIA_STATUS / MCKR_LIVE_W4_MEDIA_STATUS in 3C509DEF.INC.
+mock_w4_media_status DW 0000h
 mock_selected_tag DB 0
 mock_selected_valid DB 0
 mock_contender_visible DB 0
@@ -145,6 +149,8 @@ PROC Load_State NEAR
     mov     [word mock_state + EL3_W0_RESOURCE_CFG], ax
     mov     ax, [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_LIVE_W4_NETDIAG]
     mov     [word mock_w4_netdiag], ax
+    mov     ax, [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_LIVE_W4_MEDIA_STATUS]
+    mov     [word mock_w4_media_status], ax
 
     mov     si, OFFSET mock_file_state + MCK_HEADER_SIZE + MCKR_EEPROM
     mov     di, OFFSET mock_state + 40h
@@ -231,6 +237,8 @@ PROC Save_State NEAR
     mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_LIVE_W0_RES_CFG], ax
     mov     ax, [word mock_w4_netdiag]
     mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_LIVE_W4_NETDIAG], ax
+    mov     ax, [word mock_w4_media_status]
+    mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_LIVE_W4_MEDIA_STATUS], ax
 
     mov     ax, MCK_CFGF_INT + MCK_CFGF_IOBASE + MCK_CFGF_PORT + MCK_CFGF_PNP + MCK_CFGF_MODEM
     mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_CFG_FLAGS], ax
@@ -379,7 +387,12 @@ PROC Cfg_Reg_Read_Word NEAR
     cmp     cl, 4
     jne     @@Window0
     cmp     bx, EL3_W4_NET_DIAG
+    je      @@NetDiag
+    cmp     bx, EL3_W4_MEDIA_STATUS
     jne     @@Default
+    mov     ax, [word mock_w4_media_status]
+    jmp     @@Done
+@@NetDiag:
     mov     ax, [word mock_w4_netdiag]
     jmp     @@Done
 @@Window0:

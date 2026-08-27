@@ -67,7 +67,7 @@
 ;  15:8                      | 0Fh       | UNKNOWN       | not implemented
 ;
 
-ID_PORT                 EQU 0110h
+ID_PORT                 EQU 0110h    ; sometimes referenced as CONFIG_PORT
 
 EEPROM_NODE_0           EQU 00h
 EEPROM_NODE_1           EQU 01h
@@ -99,6 +99,10 @@ EL3_W0_RESOURCE_CFG     EQU 08h
 EL3_W0_EEPROM_COMMAND   EQU 0Ah
 EL3_W0_EEPROM_DATA      EQU 0Ch
 EL3_W4_NET_DIAG         EQU 06h
+; Media Type and Status register.  Bit 11 = "Valid link beat detected"
+; (TP, read only).  Bit 7 = "Link beat enabled" (writable, not used by
+; this build).  See 3c5x9b.pdf Figure 6-12.
+EL3_W4_MEDIA_STATUS     EQU 0Ah
 
 CMD_SELECT_WINDOW       EQU 0800h
 STATUS_CMD_BUSY         EQU 1000h
@@ -153,10 +157,19 @@ MCKR_CFG_TR             EQU 24      ; DW
 MCKR_CFG_XCVR           EQU 26      ; DW
 MCKR_CFG_MODEM          EQU 28      ; DW
 MCKR_CFG_OPTIMIZE       EQU 30      ; DW
-MCKR_CFG_LINKBEAT       EQU 32      ; DW
-MCKR_CFG_CONFIGPORT     EQU 34      ; DW
+; MCKR_CFG_LINKBEAT is an inert placeholder.  The original 3CCFG utility's
+; property-name table includes a 'LINKBEAT' string, so the verb name was
+; likely recognised, but no disassembly evidence pins down which EEPROM
+; word or bit it wrote, if any.  Per 3Com's EtherLink III Technical
+; Reference (3c5x9b.pdf, Figure 6-12, Media Type and Status Register,
+; Window 4 / Port 0Ah), "Link beat enabled" is bit 7 of a live ASIC
+; register, not a documented EEPROM field, defaulting to 0 and meant to
+; be set by driver software at initialization.  This field remains
+; defined for layout completeness but is deliberately NOT wired to any
+; CONFIGURE verb.  See EL3_W4_MEDIA_STATUS below for the live, read-only
+; link status bit that IS surfaced (in LIST) instead.
+MCKR_CFG_LINKBEAT       EQU 32      ; DW - reserved/unwired placeholder
 MCKR_CFG_PNP            EQU 36      ; DW
-MCKR_CFG_SYNCREADY      EQU 38      ; DW
 MCKR_CFG_FULLDUPLEX     EQU 40      ; DW
 
 MCKR_LIVE_W0_MFG        EQU 42      ; DW
@@ -164,6 +177,10 @@ MCKR_LIVE_W0_PRODUCT    EQU 44      ; DW
 MCKR_LIVE_W0_ADDR_CFG   EQU 46      ; DW
 MCKR_LIVE_W0_RES_CFG    EQU 48      ; DW
 MCKR_LIVE_W4_NETDIAG    EQU 50      ; DW
+; Live Media Type and Status register (Window 4/Port 0Ah) bit 11, "Valid
+; link beat detected" (read only) per 3c5x9b.pdf Figure 6-12.  This is
+; the dynamic cable-link indicator surfaced by LIST as "Link Status".
+MCKR_LIVE_W4_MEDIA_STATUS EQU 52    ; DW
 
 MCKR_EEPROM             EQU 64      ; 64 words = 128 bytes
 MCKR_FACTORY_MAC        EQU 192     ; 6 bytes
@@ -181,9 +198,7 @@ MCK_CFGF_TR             EQU 0020h
 MCK_CFGF_XCVR           EQU 0040h
 MCK_CFGF_MODEM          EQU 0080h
 MCK_CFGF_OPTIMIZE       EQU 0100h
-MCK_CFGF_LINKBEAT       EQU 0200h
-MCK_CFGF_CONFIGPORT     EQU 0400h
+MCK_CFGF_LINKBEAT       EQU 0200h   ; reserved/unwired placeholder, see MCKR_CFG_LINKBEAT
 MCK_CFGF_PNP            EQU 0800h
-MCK_CFGF_SYNCREADY      EQU 1000h
 MCK_CFGF_FULLDUPLEX     EQU 2000h
-MCK_CFGF_ALL            EQU 3FFFh
+MCK_CFGF_ALL            EQU 2BFFh

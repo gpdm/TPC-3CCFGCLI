@@ -1,16 +1,31 @@
 ; ============================================================================
-; 3CCFGCLI.ASM - 0.5.3
+; 3CCFGCLI.ASM - 0.5.4
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
 ;
 ; ============================================================================
-; Supported CONFIGURE verbs in this 0.5.3 build: /ADAPTERNUM, /FULLDUPLEX,
-; /INT, /IOBASE, /MODEM, /OPTIMIZE, /PNP, /VERBOSE.
-; Not yet implemented in the transaction layer: /BADDRESS, /BSIZE,
-; /TR, /LINKBEAT, /CONFIGPORT, /SYNCREADY.
-; These option handlers remain explicit stubs that return
-; CFG_ERR_NOT_IMPLEMENTED.
+; - Supported CONFIGURE verbs in this 0.5.4 build:
+;    /ADAPTERNUM, /FULLDUPLEX, /INT, /IOBASE, /MODEM, /OPTIMIZE, /PNP, /VERBOSE.
+; - Not yet implemented in the transaction layer: /BADDRESS, /BSIZE, /TR.
+; - /LINKBEAT is deliberately not a CONFIGURE verb in this build (although it could);
+;    -> see the 0.5.4 changelog entry below.
 ; ============================================================================
+;
+; Changelog 0.5.4:
+;   - The original property-name table includes a 'LINKBEAT' string, but no
+;     disassembly evidence identifies which EEPROM word or bit it targeted,
+;     and 3Com's documentation (3c5x9b.pdf, Figure 6-12) describes "Link beat
+;     enabled" as a live ASIC register bit (Window 4/Port 0Ah, bit 7),
+;     not a confirmed EEPROM field.  Rather than guess and risk writing
+;     to a real adapter's EEPROM incorrectly, the verb surface (parser
+;     option, dispatch, handler stub) has been removed entirely.
+;     MCKR_CFG_LINKBEAT/MCK_CFGF_LINKBEAT remain defined in 3C509DEF.INC
+;     as inert, documented placeholders.
+;   - Added a read-only "Link Status" line to LIST, sourced from the live
+;     Media Type and Status register (Window 4/Port 0Ah) bit 11, "Valid
+;     link beat detected".  Reports "connected", "not connected", or
+;     "unavailable" when the adapter is not active.
+;
 ;
 ; Changelog 0.5.3:
 ;   - Added /OPTIMIZE CONFIGURE support for DOS, WINDOWS, OS/2, and SERVER.
@@ -168,10 +183,7 @@ CFG_OPT_BSIZE           EQU 4
 CFG_OPT_TR              EQU 5
 CFG_OPT_MODEM           EQU 6
 CFG_OPT_OPTIMIZE        EQU 7
-CFG_OPT_LINKBEAT        EQU 8
-CFG_OPT_CONFIGPORT      EQU 9
 CFG_OPT_PNP             EQU 10
-CFG_OPT_SYNCREADY       EQU 11
 CFG_OPT_FULLDUPLEX      EQU 12
 
 CFG_PARSE_ADAPTER       EQU 01h
@@ -269,7 +281,7 @@ CFG_ERR_OPTIMIZE_VERIFY     EQU 52
 
 DATASEG
 
-VERSION_STRING	DB '0.5.3', '$'
+VERSION_STRING	DB '0.5.4', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -466,6 +478,7 @@ msg_pnp_label   DB  "Plug and Play Capability = ", '$'
 msg_boot_label  DB  "Boot ROM = ", '$'
 msg_compat_label DB "Software Compatibility = failure level ", '$'
 msg_optimize_label DB "Optimization = ", '$'
+msg_link_status_label DB "Link Status = ", '$'
 msg_optimize_dos DB "DOS", '$'
 msg_optimize_windows DB "Windows", '$'
 msg_optimize_os2 DB "OS/2", '$'
@@ -477,6 +490,8 @@ msg_disabled    DB  "disabled", '$'
 msg_none        DB  "none", '$'
 msg_not_supported DB "not supported", '$'
 msg_unavailable DB  "unavailable", '$'
+msg_link_connected     DB "connected", '$'
+msg_link_not_connected DB "not connected", '$'
 msg_invalid_cfg DB  "invalid configuration", '$'
 msg_onboard_tp  DB  "on-board TP", '$'
 msg_external    DB  "external", '$'
@@ -515,6 +530,9 @@ ext_capability    DW 0FFFFh
 ext_config_ctrl   DW 0FFFFh
 ext_revision_info DW 0FFFFh
 ext_optimize      DW 0FFFFh
+; Live link status (Window 4/Port 0Ah bit 11); 0 = not connected,
+; 1 = connected, 0FFFFh = unavailable (adapter not active).
+ext_link_status   DW 0FFFFh
 
 ; CONFIGURE state.  nic_table itself is deliberately not extended.
 cfg_adapter_ordinal   DB 0
@@ -567,9 +585,6 @@ cfg_wait_start_lo     DW 0
 cfg_wait_start_hi     DW 0
 
 ; Original CONFIGURE property order is retained for prefix resolution.
-; CONFIGPORT is required by the reduced roadmap, but is not an entry in the
-; original primary CONFIGURE property table.  It is therefore appended at the
-; requested logical position and remains an unreachable hardware stub.
 cfg_name_adapternum DB 'ADAPTERNUM', 0
 cfg_name_int        DB 'INT', 0
 cfg_name_iobase     DB 'IOBASE', 0
@@ -579,10 +594,7 @@ cfg_name_tr         DB 'TR', 0
 cfg_name_xcvr       DB 'XCVR', 0
 cfg_name_modem      DB 'MODEM', 0
 cfg_name_optimize   DB 'OPTIMIZE', 0
-cfg_name_linkbeat   DB 'LINKBEAT', 0
-cfg_name_configport DB 'CONFIGPORT', 0
 cfg_name_pnp        DB 'PNP', 0
-cfg_name_syncready  DB 'SYNCREADY', 0
 cfg_name_fullduplex DB 'FULLDUPLEX', 0
 
 cfg_property_names DW OFFSET cfg_name_int
@@ -593,10 +605,7 @@ cfg_property_names DW OFFSET cfg_name_int
                    DW OFFSET cfg_name_xcvr
                    DW OFFSET cfg_name_modem
                    DW OFFSET cfg_name_optimize
-                   DW OFFSET cfg_name_linkbeat
-                   DW OFFSET cfg_name_configport
                    DW OFFSET cfg_name_pnp
-                   DW OFFSET cfg_name_syncready
                    DW OFFSET cfg_name_fullduplex
                    DW 0
 
@@ -609,10 +618,7 @@ cfg_property_ids DB CFG_OPT_INT
                  DB CFG_OPT_TR
                  DB CFG_OPT_MODEM
                  DB CFG_OPT_OPTIMIZE
-                 DB CFG_OPT_LINKBEAT
-                 DB CFG_OPT_CONFIGPORT
                  DB CFG_OPT_PNP
-                 DB CFG_OPT_SYNCREADY
                  DB CFG_OPT_FULLDUPLEX
 
 ; All 31 valid selectable 3C509 ISA I O bases.
@@ -1471,28 +1477,13 @@ PROC Cfg_Dispatch_Property NEAR
     ret
 @@Optimize:
     cmp     al, CFG_OPT_OPTIMIZE
-    jne     @@LinkBeat
-    call    Cfg_Handle_OPTIMIZE
-    ret
-@@LinkBeat:
-    cmp     al, CFG_OPT_LINKBEAT
-    jne     @@ConfigPort
-    call    Cfg_Handle_LINKBEAT
-    ret
-@@ConfigPort:
-    cmp     al, CFG_OPT_CONFIGPORT
     jne     @@PnP
-    call    Cfg_Handle_CONFIGPORT
+    call    Cfg_Handle_OPTIMIZE
     ret
 @@PnP:
     cmp     al, CFG_OPT_PNP
-    jne     @@SyncReady
-    call    Cfg_Handle_PNP
-    ret
-@@SyncReady:
-    cmp     al, CFG_OPT_SYNCREADY
     jne     @@FullDuplex
-    call    Cfg_Handle_SYNCREADY
+    call    Cfg_Handle_PNP
     ret
 @@FullDuplex:
     cmp     al, CFG_OPT_FULLDUPLEX
@@ -1875,16 +1866,6 @@ PROC Cfg_Handle_OPTIMIZE NEAR
     ret
 ENDP Cfg_Handle_OPTIMIZE
 
-PROC Cfg_Handle_LINKBEAT NEAR
-    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
-    ret
-ENDP Cfg_Handle_LINKBEAT
-
-PROC Cfg_Handle_CONFIGPORT NEAR
-    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
-    ret
-ENDP Cfg_Handle_CONFIGPORT
-
 PROC Cfg_Handle_PNP NEAR
     cmp     cx, 1
     jne     @@Invalid
@@ -1906,11 +1887,6 @@ PROC Cfg_Handle_PNP NEAR
     mov     [cfg_last_error], CFG_ERR_BAD_PNP
     ret
 ENDP Cfg_Handle_PNP
-
-PROC Cfg_Handle_SYNCREADY NEAR
-    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
-    ret
-ENDP Cfg_Handle_SYNCREADY
 
 PROC Cfg_Handle_FULLDUPLEX NEAR
     cmp     cx, 1
@@ -2680,6 +2656,10 @@ PROC Find_Duplicate_Id_Record NEAR
 ENDP Find_Duplicate_Id_Record
 
 PROC Discover_Id_Port_Cards NEAR
+    ; ISA ID-port discovery for 3C509/3C509B.
+    ; Classic 3Com contention sequence on ID_PORT (0110h): send the 255-byte
+    ; or short LFSR stream, probe the EEPROM manufacturer/product words, then
+    ; tag and activate the adapter at its runtime I/O base.
     push    ax
     push    bx
     push    dx
@@ -5730,6 +5710,8 @@ ENDP Select_Nic_Description
 ; The existing enumeration record is not modified.
 PROC Read_Extended_Nic_Info NEAR
     push    ax
+    push    bx
+    push    cx
     push    dx
 
     mov     [ext_addr_cfg], 0FFFFh
@@ -5738,6 +5720,7 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_config_ctrl], 0FFFFh
     mov     [ext_revision_info], 0FFFFh
     mov     [ext_optimize], 0FFFFh
+    mov     [ext_link_status], 0FFFFh
 
     mov     dx, [WORD si + NIC_IO_BASE]
     or      dx, dx
@@ -5753,6 +5736,27 @@ PROC Read_Extended_Nic_Info NEAR
     mov     al, EEPROM_COMPATIBILITY
     call    EEPROM_Read
     mov     [ext_compatibility], ax
+
+    ; Read the live Media Type and Status register (Window 4/Port 0Ah) to
+    ; surface the dynamic "Valid link beat detected" bit (bit 11) in LIST.
+    ; This is a live register, not an EEPROM field; the current window is
+    ; saved (on the stack) and restored around the switch to window 4.
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Nic_Get_Current_Window
+    push    ax
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, 4
+    call    Nic_Select_Window
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     bx, EL3_W4_MEDIA_STATUS
+    call    Nic_Reg_Read_Word
+    mov     cl, 11
+    shr     ax, cl
+    and     ax, 0001h
+    mov     [ext_link_status], ax
+    mov     dx, [WORD si + NIC_IO_BASE]
+    pop     ax
+    call    Nic_Select_Window
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_REVISION_INFO
@@ -5783,6 +5787,8 @@ PROC Read_Extended_Nic_Info NEAR
 
 @@Done:
     pop     dx
+    pop     cx
+    pop     bx
     pop     ax
     ret
 ENDP Read_Extended_Nic_Info
@@ -5951,6 +5957,34 @@ PROC Print_Optimize_Value NEAR
     pop     ax
     ret
 ENDP Print_Optimize_Value
+
+; Prints the live link status ("connected"/"not connected") read from the
+; Media Type and Status register (Window 4/Port 0Ah bit 11), or
+; "unavailable" if the adapter is not active.  See Read_Extended_Nic_Info.
+PROC Print_Link_Status_Value NEAR
+    push    ax
+    push    dx
+
+    mov     ax, [ext_link_status]
+    cmp     ax, 0FFFFh
+    je      @@Unavailable
+    or      ax, ax
+    jz      @@NotConnected
+
+    mov     dx, OFFSET msg_link_connected
+    jmp     @@Print
+@@NotConnected:
+    mov     dx, OFFSET msg_link_not_connected
+    jmp     @@Print
+@@Unavailable:
+    mov     dx, OFFSET msg_unavailable
+@@Print:
+    mov     ah, 09h
+    int     21h
+    pop     dx
+    pop     ax
+    ret
+ENDP Print_Link_Status_Value
 
 PROC Print_Boot_Rom_Value NEAR
     push    ax
@@ -6156,6 +6190,17 @@ call    Print_Optimize_Value
 mov     dx, OFFSET msg_crlf
 mov     ah, 09h
 int     21h
+
+    mov     dx, OFFSET msg_indent
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_link_status_label
+    mov     ah, 09h
+    int     21h
+    call    Print_Link_Status_Value
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
 
 pop     dx
 pop     ax
