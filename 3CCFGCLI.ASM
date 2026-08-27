@@ -134,6 +134,7 @@ CFG_OPT_FULLDUPLEX      EQU 12
 
 CFG_PARSE_ADAPTER       EQU 01h
 CFG_PARSE_INT           EQU 02h
+CFG_PARSE_VERBOSE       EQU 04h
 
 ; Common CONFIGURE result codes.
 CFG_ERR_NONE                EQU 0
@@ -160,7 +161,7 @@ CFG_ERR_INT_INACTIVE        EQU 20
 
 DATASEG
 
-VERSION_STRING	DB '0.3.2', '$'
+VERSION_STRING	DB '0.3.3', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -171,7 +172,8 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "  /? or /H          Display this help screen.", 0Dh, 0Ah
                 DB  "  LIST              Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah
                 DB  "  CONFIGURE         Configure supported ISA properties, currently /INT.", 0Dh, 0Ah
-                DB  "                    Use /ADAPTERNUM:N when more than one NIC is present.", 0Dh, 0Ah, '$'
+                DB  "                    Use /ADAPTERNUM:N when more than one NIC is present.", 0Dh, 0Ah
+                DB  "  /VERBOSE          Show detailed CONFIGURE transaction diagnostics.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
 
@@ -649,6 +651,36 @@ PROC Cfg_Parse_Options NEAR
 
 @@HaveIntroducer:
     inc     si
+
+    ; /VERBOSE is a global CONFIGURE diagnostic switch and takes no value.
+    ; It affects output only and never changes hardware transaction behavior.
+    cmp     [BYTE si], 'V'
+    jne     @@RegularOption
+    cmp     [BYTE si+1], 'E'
+    jne     @@RegularOption
+    cmp     [BYTE si+2], 'R'
+    jne     @@RegularOption
+    cmp     [BYTE si+3], 'B'
+    jne     @@RegularOption
+    cmp     [BYTE si+4], 'O'
+    jne     @@RegularOption
+    cmp     [BYTE si+5], 'S'
+    jne     @@RegularOption
+    cmp     [BYTE si+6], 'E'
+    jne     @@RegularOption
+    mov     al, [si+7]
+    or      al, al
+    jz      @@SetVerbose
+    cmp     al, ' '
+    je      @@SetVerbose
+    cmp     al, 09h
+    jne     @@RegularOption
+@@SetVerbose:
+    or      [cfg_parse_flags], CFG_PARSE_VERBOSE
+    add     si, 7
+    jmp     @@NextToken
+
+@@RegularOption:
     mov     bx, si                  ; BX = option name start.
     xor     cx, cx                  ; CX = option name length.
 
@@ -973,6 +1005,34 @@ PROC Cfg_Dispatch_Parsed_Properties NEAR
     or      al, al
     jz      @@Done
     inc     si                     ; Syntax was already validated in pass one.
+
+    ; /VERBOSE is global diagnostic state, not a hardware property.
+    cmp     [BYTE si], 'V'
+    jne     @@RegularProperty
+    cmp     [BYTE si+1], 'E'
+    jne     @@RegularProperty
+    cmp     [BYTE si+2], 'R'
+    jne     @@RegularProperty
+    cmp     [BYTE si+3], 'B'
+    jne     @@RegularProperty
+    cmp     [BYTE si+4], 'O'
+    jne     @@RegularProperty
+    cmp     [BYTE si+5], 'S'
+    jne     @@RegularProperty
+    cmp     [BYTE si+6], 'E'
+    jne     @@RegularProperty
+    mov     al, [si+7]
+    or      al, al
+    jz      @@SkipVerbose
+    cmp     al, ' '
+    je      @@SkipVerbose
+    cmp     al, 09h
+    jne     @@RegularProperty
+@@SkipVerbose:
+    add     si, 7
+    jmp     @@NextToken
+
+@@RegularProperty:
     mov     bx, si
     xor     cx, cx
 @@FindSeparator:
@@ -3001,7 +3061,7 @@ PROC Cfg_Checksum_0F_Low NEAR
 ENDP Cfg_Checksum_0F_Low
 
 ; ============================================================================
-; /INT hardware transaction, release 0.4
+; /INT hardware transaction, release 0.3.3
 ; ============================================================================
 ; Original transaction authority: sub_342.
 ;
@@ -3039,7 +3099,9 @@ PROC Cfg_Apply_INT NEAR
     jmp     @@Done
 
 @@Active:
-    ; Report the logical LIST ordinal selected by the existing selector.
+    ; Adapter selection detail is shown only in verbose mode.
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterAdapterMessage
     mov     dx, OFFSET msg_cfg_adapter_prefix
     mov     ah, 09h
     int     21h
@@ -3048,6 +3110,7 @@ PROC Cfg_Apply_INT NEAR
     mov     dx, OFFSET msg_cfg_adapter_suffix
     mov     ah, 09h
     int     21h
+@@AfterAdapterMessage:
 
     ; Preserve the established requested IRQ display, now emitted once after
     ; all parsing has completed so duplicate /INT options cause one transaction.
@@ -3060,9 +3123,12 @@ PROC Cfg_Apply_INT NEAR
     mov     ah, 09h
     int     21h
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterReadMessage
     mov     dx, OFFSET msg_cfg_read_irq
     mov     ah, 09h
     int     21h
+@@AfterReadMessage:
 
     ; Persistent current state is authoritative.  This is original sub_314
     ; behavior through the already present Cfg_Eeprom_Read helper.
@@ -3095,6 +3161,8 @@ PROC Cfg_Apply_INT NEAR
     and     bl, 0Fh
     mov     [cfg_int_current_irq], bl
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterCurrentStateMessages
     mov     dx, OFFSET msg_cfg_current_irq
     mov     ah, 09h
     int     21h
@@ -3112,16 +3180,18 @@ PROC Cfg_Apply_INT NEAR
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
+@@AfterCurrentStateMessages:
 
     mov     al, [cfg_int_current_irq]
     cmp     al, [cfg_int_value]
     jne     @@Prepare
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@Success
     mov     dx, OFFSET msg_cfg_irq_unchanged
     mov     ah, 09h
     int     21h
-    mov     [cfg_last_error], CFG_ERR_NONE
-    jmp     @@Done
+    jmp     @@Success
 
 @@Prepare:
     ; new word 09h = old word AND 0FFFh OR requested IRQ shifted left 12.
@@ -3144,6 +3214,8 @@ PROC Cfg_Apply_INT NEAR
     or      ax, bx
     mov     [cfg_int_new_live], ax
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterPrepareMessages
     mov     dx, OFFSET msg_cfg_prepare_irq
     mov     ah, 09h
     int     21h
@@ -3155,6 +3227,7 @@ PROC Cfg_Apply_INT NEAR
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
+@@AfterPrepareMessages:
 
     ; The original command line CONFIGURE path prepares an ID tagged ISA card
     ; with sub_335 followed by sub_334 before entering sub_342.  Reuse the
@@ -3170,9 +3243,12 @@ PROC Cfg_Apply_INT NEAR
     cmp     al, 7
     ja      @@PersistentWrite
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterPrepareActiveMessage
     mov     dx, OFFSET msg_cfg_prepare_active
     mov     ah, 09h
     int     21h
+@@AfterPrepareActiveMessage:
 
     mov     si, [cfg_selected_ptr]
     call    Cfg_Id_Deactivate_Selected
@@ -3248,16 +3324,22 @@ PROC Cfg_Apply_INT NEAR
     cmp     bl, [cfg_int_value]
     jne     @@LiveFail
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterActivePreparedMessage
     mov     dx, OFFSET msg_cfg_active_prepared
     mov     ah, 09h
     int     21h
+@@AfterActivePreparedMessage:
 
 @@PersistentWrite:
     ; First persistent write boundary.  All selection, validation, current
     ; state reporting and prospective value calculation are complete here.
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterWriteStartMessage
     mov     dx, OFFSET msg_cfg_write_irq
     mov     ah, 09h
     int     21h
+@@AfterWriteStartMessage:
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
@@ -3266,14 +3348,20 @@ PROC Cfg_Apply_INT NEAR
     call    Cfg_Eeprom_Write
     jc      @@WriteFail
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterWordWrittenMessage
     mov     dx, OFFSET msg_cfg_irq_word_written
     mov     ah, 09h
     int     21h
+@@AfterWordWrittenMessage:
 
     ; Original ordering is word 09h first, then sub_317, then word 0Fh low byte.
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterChecksumStartMessage
     mov     dx, OFFSET msg_cfg_update_checksum
     mov     ah, 09h
     int     21h
+@@AfterChecksumStartMessage:
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
@@ -3306,15 +3394,21 @@ PROC Cfg_Apply_INT NEAR
     cmp     ax, [cfg_int_new_word0f]
     jne     @@ChecksumFail
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterChecksumUpdatedMessage
     mov     dx, OFFSET msg_cfg_checksum_updated
     mov     ah, 09h
     int     21h
+@@AfterChecksumUpdatedMessage:
 
     ; sub_342 writes live window 0 register 08h directly while the adapter is
     ; active.  No ID port deactivate or reactivate surrounds this operation.
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterLiveStartMessage
     mov     dx, OFFSET msg_cfg_update_live
     mov     ah, 09h
     int     21h
+@@AfterLiveStartMessage:
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
@@ -3335,14 +3429,20 @@ PROC Cfg_Apply_INT NEAR
     cmp     bl, [cfg_int_value]
     jne     @@LiveFail
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterLiveUpdatedMessage
     mov     dx, OFFSET msg_cfg_live_updated
     mov     ah, 09h
     int     21h
+@@AfterLiveUpdatedMessage:
 
     ; Explicit final verification is an added reduced utility safety check.
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterVerifyStartMessage
     mov     dx, OFFSET msg_cfg_verifying
     mov     ah, 09h
     int     21h
+@@AfterVerifyStartMessage:
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
@@ -3358,6 +3458,8 @@ PROC Cfg_Apply_INT NEAR
     cmp     bl, [cfg_int_value]
     jne     @@VerifyFail
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@AfterEepromVerifiedMessage
     mov     dx, OFFSET msg_cfg_eeprom_verified
     mov     ah, 09h
     int     21h
@@ -3366,6 +3468,7 @@ PROC Cfg_Apply_INT NEAR
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
+@@AfterEepromVerifiedMessage:
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
@@ -3380,6 +3483,8 @@ PROC Cfg_Apply_INT NEAR
     cmp     bl, [cfg_int_value]
     jne     @@VerifyFail
 
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@Success
     mov     dx, OFFSET msg_cfg_live_verified
     mov     ah, 09h
     int     21h
@@ -3389,6 +3494,7 @@ PROC Cfg_Apply_INT NEAR
     mov     ah, 09h
     int     21h
 
+@@Success:
     mov     dx, OFFSET msg_cfg_completed
     mov     ah, 09h
     int     21h
