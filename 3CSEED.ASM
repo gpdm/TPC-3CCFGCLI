@@ -362,13 +362,12 @@ PROC Match_Token NEAR
     ret
 ENDP Match_Token
 
+; Deterministic baseline seed.  seed_product/seed_media are intentionally NOT
+; set here: the DATASEG defaults (PRODUCT_3C509_TP / media 0) apply for a bare
+; INIT call, while Seed_Model_TP/Combo/C/TPO/TPC set seed_product/seed_media
+; to their SKU-specific values BEFORE calling this proc and rely on them being
+; preserved.  NOPNP/NOFD also call this directly and expect the TP defaults.
 PROC Seed_Init NEAR
-    mov     [seed_product], PRODUCT_3C509_TP
-    mov     [seed_base], 0300h
-    mov     [seed_irq], 10
-    mov     [seed_asic], 4
-    mov     [seed_media], 0
-
     mov     [BYTE factory_mac+0], 02h
     mov     [BYTE factory_mac+1], 60h
     mov     [BYTE factory_mac+2], 8Ch
