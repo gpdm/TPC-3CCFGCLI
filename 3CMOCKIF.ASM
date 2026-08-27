@@ -232,7 +232,7 @@ PROC Save_State NEAR
     mov     ax, [word mock_w4_netdiag]
     mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_LIVE_W4_NETDIAG], ax
 
-    mov     ax, MCK_CFGF_INT + MCK_CFGF_IOBASE + MCK_CFGF_PORT + MCK_CFGF_PNP
+    mov     ax, MCK_CFGF_INT + MCK_CFGF_IOBASE + MCK_CFGF_PORT + MCK_CFGF_PNP + MCK_CFGF_MODEM
     mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_CFG_FLAGS], ax
     xor     ah, ah
     mov     al, [byte mock_irq]
@@ -250,6 +250,8 @@ PROC Save_State NEAR
     xor     ax, ax
 @@StorePnp:
     mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_CFG_PNP], ax
+    mov     ax, [word mock_state + 40h + (EEPROM_SOFTWARE_INFO * 2)]
+    mov     [WORD mock_file_state + MCK_HEADER_SIZE + MCKR_CFG_MODEM], ax
 
     mov     si, OFFSET mock_state + 40h
     mov     di, OFFSET mock_file_state + MCK_HEADER_SIZE + MCKR_EEPROM

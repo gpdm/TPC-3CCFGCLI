@@ -1,13 +1,19 @@
 ; ============================================================================
-; 3CCFGCLI.ASM - 0.5.0
+; 3CCFGCLI.ASM - 0.5.1
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
+;
+; Changelog 0.5.1:
+; Added /MODEM CONFIGURE support with NONE plus numeric validation
+; (1200/2400/9600/19200/38400 or 25..1600 in steps of 25), with transaction
+; staging, EEPROM write and verify via software information word 0Dh.
 ;
 ;
 ; Changelog 0.5.0:
 ; Added /PNP CONFIGURE support with boolean 0 or 1 input.  The centralized
 ; transaction now stages, writes and verifies EEPROM word 13h for PnP mode.
 ; Mock state persistence now records the PNP flag consistently with EEPROM.
+;
 ;
 ; Changelog 0.4.1:
 ; Backend split fully implemented.
@@ -25,9 +31,9 @@
 ;     changes persist coherently across runs.
 ;
 ; Supported CONFIGURE verbs in this 0.5.0 build: /ADAPTERNUM, /INT, /IOBASE,
-; /PNP, /VERBOSE.
+; /MODEM, /PNP, /VERBOSE.
 ; Not yet implemented in the transaction layer: /BADDRESS, /BSIZE,
-; /TR, /MODEM, /OPTIMIZE, /LINKBEAT, /CONFIGPORT, /SYNCREADY,
+; /TR, /OPTIMIZE, /LINKBEAT, /CONFIGPORT, /SYNCREADY,
 ; /FULLDUPLEX.  These option handlers remain explicit stubs that return
 ; CFG_ERR_NOT_IMPLEMENTED.
 ;
@@ -153,6 +159,7 @@ CFG_PARSE_INT           EQU 02h
 CFG_PARSE_VERBOSE       EQU 04h
 CFG_PARSE_IOBASE        EQU 08h
 CFG_PARSE_PNP           EQU 10h
+CFG_PARSE_MODEM         EQU 20h
 
 ; Strict CONFIGURE single occurrence tracking, independent of staged state.
 CFG_SEEN_ADAPTER        EQU 01h
@@ -160,6 +167,7 @@ CFG_SEEN_INT            EQU 02h
 CFG_SEEN_IOBASE         EQU 04h
 CFG_SEEN_VERBOSE        EQU 08h
 CFG_SEEN_PNP            EQU 10h
+CFG_SEEN_MODEM          EQU 20h
 
 ; Central CONFIGURE transaction change flags.
 CFG_TXN_CHG_WORD08       EQU 01h
@@ -170,12 +178,13 @@ CFG_TXN_MIGRATE_IO       EQU 10h
 CFG_TXN_IOBASE_CHANGED   EQU 20h
 CFG_TXN_INT_CHANGED      EQU 40h
 CFG_TXN_CHG_WORD13       EQU 80h
-CFG_PARSE_HW_MASK        EQU 1Ah
+CFG_TXN_CHG_WORD0D       EQU 0100h
+CFG_PARSE_HW_MASK        EQU 3Ah
 CFG_TXN_IO_DETECT_MASK   EQU 15h
 CFG_TXN_WORD09_INT_MASK  EQU 42h
-CFG_TXN_EEPROM_MASK      EQU 83h
+CFG_TXN_EEPROM_MASK      EQU 0183h
 CFG_TXN_LIVE06_MASK      EQU 14h
-CFG_TXN_COMMIT_MASK      EQU 0F0h
+CFG_TXN_COMMIT_MASK      EQU 01F0h
 CFG_TXN_INT_MIGRATE_MASK EQU 50h
 
 ; Common CONFIGURE result codes.
@@ -215,10 +224,15 @@ CFG_ERR_PNP_INACTIVE        EQU 32
 CFG_ERR_PNP_EEPROM_READ     EQU 33
 CFG_ERR_PNP_EEPROM_WRITE    EQU 34
 CFG_ERR_PNP_VERIFY          EQU 35
+CFG_ERR_BAD_MODEM           EQU 36
+CFG_ERR_MODEM_INACTIVE      EQU 37
+CFG_ERR_MODEM_EEPROM_READ   EQU 38
+CFG_ERR_MODEM_EEPROM_WRITE  EQU 39
+CFG_ERR_MODEM_VERIFY        EQU 40
 
 DATASEG
 
-VERSION_STRING	DB '0.5.0', '$'
+VERSION_STRING	DB '0.5.1', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -228,10 +242,11 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "Commands:", 0Dh, 0Ah
                 DB  "  /? or /H          Display this help screen.", 0Dh, 0Ah
                 DB  "  LIST              Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah
-                DB  "  CONFIGURE         Configure supported ISA properties, /INT, /IOBASE and /PNP.", 0Dh, 0Ah
+                DB  "  CONFIGURE         Configure supported ISA properties, /INT, /IOBASE, /MODEM and /PNP.", 0Dh, 0Ah
                 DB  "                    /ADAPTERNUM:N selects the NIC number shown by LIST.", 0Dh, 0Ah
                 DB  "                    /INT:N sets the IRQ.", 0Dh, 0Ah
                 DB  "                    /IOBASE:NNN sets the ISA I/O base address.", 0Dh, 0Ah
+                DB  "                    /MODEM:N|NONE sets modem speed/interrupt-disable tuning.", 0Dh, 0Ah
                 DB  "                    /PNP:0|1 sets Plug and Play mode.", 0Dh, 0Ah
                 DB  "  /VERBOSE          Show detailed CONFIGURE transaction diagnostics.", 0Dh, 0Ah, '$'
 
@@ -252,16 +267,20 @@ msg_cfg_no_property DB "No CONFIGURE property was specified.", 0Dh, 0Ah, '$'
 msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 0Dh, 0Ah, '$'
 msg_cfg_bad_int DB "Invalid /INT parameter. Value must be 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use 0 (disabled) or 1 (enabled).", 0Dh, 0Ah, '$'
+msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
 msg_cfg_int_ok DB "INT parameter accepted. Requested IRQ: ", '$'
 msg_cfg_pnp_ok DB "PNP parameter accepted. Requested Plug and Play mode: ", '$'
+msg_cfg_modem_ok DB "MODEM parameter accepted. Requested setting: ", '$'
 msg_cfg_crlf DB 0Dh, 0Ah, '$'
 msg_cfg_adapter_prefix DB "Adapter ", '$'
 msg_cfg_adapter_suffix DB " selected.", 0Dh, 0Ah, '$'
 msg_cfg_read_irq DB 0Dh, 0Ah, "Reading current IRQ configuration...", 0Dh, 0Ah, '$'
 msg_cfg_current_irq DB "Current IRQ: ", '$'
 msg_cfg_current_word09 DB "Current EEPROM word 09h: ", '$'
+msg_cfg_current_word0d DB "Current EEPROM word 0Dh: ", '$'
 msg_cfg_prepare_irq DB 0Dh, 0Ah, "Preparing IRQ change...", 0Dh, 0Ah, '$'
 msg_cfg_new_word09 DB "New EEPROM word 09h: ", '$'
+msg_cfg_new_word0d DB "New EEPROM word 0Dh: ", '$'
 msg_cfg_prepare_active DB 0Dh, 0Ah, "Preparing adapter using original ISA activation sequence...", 0Dh, 0Ah, '$'
 msg_cfg_active_prepared DB "Adapter reactivated and live IRQ staged.", 0Dh, 0Ah, '$'
 msg_cfg_irq_unchanged DB 0Dh, 0Ah, "IRQ is already configured to the requested value.", 0Dh, 0Ah
@@ -283,6 +302,7 @@ msg_cfg_live_fail DB "Live IRQ configuration update failed.", 0Dh, 0Ah, '$'
 msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_int_inactive DB "Selected adapter has no active I/O base for /INT configuration.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_inactive DB "Selected adapter has no active I/O base for /PNP configuration.", 0Dh, 0Ah, '$'
+msg_cfg_modem_inactive DB "Selected adapter has no active I/O base for /MODEM configuration.", 0Dh, 0Ah, '$'
 
 ; /IOBASE diagnostics.
 msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.", 0Dh, 0Ah, '$'
@@ -329,6 +349,14 @@ msg_cfg_pnp_eeprom_write_fail DB "EEPROM write timed out while writing Plug and 
 msg_cfg_pnp_verified DB "EEPROM Plug and Play mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_verify_fail DB "Plug and Play configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_completed DB 0Dh, 0Ah, "Plug and Play configuration completed successfully.", 0Dh, 0Ah, '$'
+msg_cfg_modem_unchanged DB 0Dh, 0Ah, "Modem speed setting is already configured to the requested value.", 0Dh, 0Ah
+                        DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_modem_word_written DB "Modem speed configuration word written.", 0Dh, 0Ah, '$'
+msg_cfg_modem_eeprom_read_fail DB "EEPROM read timed out while reading modem speed configuration.", 0Dh, 0Ah, '$'
+msg_cfg_modem_eeprom_write_fail DB "EEPROM write timed out while writing modem speed configuration.", 0Dh, 0Ah, '$'
+msg_cfg_modem_verified DB "EEPROM modem speed setting verified.", 0Dh, 0Ah, '$'
+msg_cfg_modem_verify_fail DB "Modem speed configuration verification failed.", 0Dh, 0Ah, '$'
+msg_cfg_modem_completed DB 0Dh, 0Ah, "Modem speed configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_txn_completed DB 0Dh, 0Ah, "Configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_txn_read DB 0Dh, 0Ah, "Reading current configuration...", 0Dh, 0Ah, '$'
 msg_cfg_txn_prepare DB 0Dh, 0Ah, "Preparing requested configuration...", 0Dh, 0Ah, '$'
@@ -376,6 +404,7 @@ msg_warn_label  DB  ", warning level ", '$'
 
 msg_enabled     DB  "enabled", '$'
 msg_disabled    DB  "disabled", '$'
+msg_none        DB  "none", '$'
 msg_not_supported DB "not supported", '$'
 msg_unavailable DB  "unavailable", '$'
 msg_invalid_cfg DB  "invalid configuration", '$'
@@ -431,6 +460,7 @@ cfg_options_ptr       DW 0
 cfg_int_value         DB 0
 cfg_iobase_value      DW 0
 cfg_pnp_value         DB 0
+cfg_modem_value       DW 0
 
 ; Central CONFIGURE transaction state.  Current state is snapshotted before any
 ; hardware modification.  Prospective state starts as an exact copy and is then
@@ -441,6 +471,8 @@ cfg_txn_old_word08        DW 0
 cfg_txn_new_word08        DW 0
 cfg_txn_old_word09        DW 0
 cfg_txn_new_word09        DW 0
+cfg_txn_old_word0d        DW 0
+cfg_txn_new_word0d        DW 0
 cfg_txn_old_word13        DW 0
 cfg_txn_new_word13        DW 0
 cfg_txn_old_live06        DW 0
@@ -453,7 +485,7 @@ cfg_txn_old_io_selector   DB 0
 cfg_txn_live_io_selector  DB 0
 cfg_txn_old_irq           DB 0
 cfg_txn_live_irq          DB 0
-cfg_txn_change_flags      DB 0
+cfg_txn_change_flags      DW 0
 cfg_txn_checksum          DB 0
 cfg_txn_activation_needed DB 0
 
@@ -923,8 +955,15 @@ PROC Cfg_Parse_Options NEAR
     jmp     @@CountProperty
 @@CheckSeenPNP:
     cmp     al, CFG_OPT_PNP
-    jne     @@CountProperty
+    jne     @@CheckSeenModem
     mov     al, CFG_SEEN_PNP
+    call    Cfg_Mark_Seen
+    jc      @@DuplicateProperty
+    jmp     @@CountProperty
+@@CheckSeenModem:
+    cmp     al, CFG_OPT_MODEM
+    jne     @@CountProperty
+    mov     al, CFG_SEEN_MODEM
     call    Cfg_Mark_Seen
     jc      @@DuplicateProperty
 @@CountProperty:
@@ -1579,7 +1618,92 @@ PROC Cfg_Handle_TR NEAR
 ENDP Cfg_Handle_TR
 
 PROC Cfg_Handle_MODEM NEAR
-    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    push    ax
+    push    bx
+    push    dx
+    push    si
+    push    cx
+
+    ; NONE disables the setting.
+    cmp     cx, 4
+    jne     @@ParseNumber
+    cmp     [BYTE si], 'N'
+    jne     @@ParseNumber
+    cmp     [BYTE si+1], 'O'
+    jne     @@ParseNumber
+    cmp     [BYTE si+2], 'N'
+    jne     @@ParseNumber
+    cmp     [BYTE si+3], 'E'
+    jne     @@ParseNumber
+    mov     [cfg_modem_value], 0
+    or      [cfg_parse_flags], CFG_PARSE_MODEM
+    mov     [cfg_last_error], CFG_ERR_NONE
+    jmp     @@Done
+
+@@ParseNumber:
+    ; Strict decimal parser: no sign, no suffix, no spaces.
+    or      cx, cx
+    jz      @@Invalid
+    cmp     cx, 5
+    ja      @@Invalid
+    xor     ax, ax
+@@DigitLoop:
+    mov     dl, [si]
+    cmp     dl, '0'
+    jb      @@Invalid
+    cmp     dl, '9'
+    ja      @@Invalid
+    cmp     ax, 6553
+    ja      @@Invalid
+    mov     bx, ax
+    shl     ax, 1
+    shl     bx, 1
+    shl     bx, 1
+    shl     bx, 1
+    add     ax, bx
+    sub     dl, '0'
+    xor     dh, dh
+    add     ax, dx
+    inc     si
+    dec     cx
+    jnz     @@DigitLoop
+
+    cmp     ax, 1200
+    je      @@Accept
+    cmp     ax, 2400
+    je      @@Accept
+    cmp     ax, 9600
+    je      @@Accept
+    cmp     ax, 19200
+    je      @@Accept
+    cmp     ax, 38400
+    je      @@Accept
+
+    cmp     ax, 25
+    jb      @@Invalid
+    cmp     ax, 1600
+    ja      @@Invalid
+    xor     dx, dx
+    mov     bx, 25
+    div     bx
+    or      dx, dx
+    jnz     @@Invalid
+
+@@Accept:
+    mov     [cfg_modem_value], ax
+    or      [cfg_parse_flags], CFG_PARSE_MODEM
+    mov     [cfg_last_error], CFG_ERR_NONE
+    jmp     @@Done
+
+@@Invalid:
+    mov     [cfg_last_error], CFG_ERR_BAD_MODEM
+
+@@Done:
+    pop     cx
+    pop     si
+    pop     dx
+    pop     bx
+    pop     ax
     ret
 ENDP Cfg_Handle_MODEM
 
@@ -1807,8 +1931,33 @@ PROC Cfg_Report_Error NEAR
     jmp     @@Print
 @@E35:
     cmp     al, CFG_ERR_PNP_VERIFY
-    jne     @@Done
+    jne     @@E36
     mov     dx, OFFSET msg_cfg_pnp_verify_fail
+    jmp     @@Print
+@@E36:
+    cmp     al, CFG_ERR_BAD_MODEM
+    jne     @@E37
+    mov     dx, OFFSET msg_cfg_bad_modem
+    jmp     @@Print
+@@E37:
+    cmp     al, CFG_ERR_MODEM_INACTIVE
+    jne     @@E38
+    mov     dx, OFFSET msg_cfg_modem_inactive
+    jmp     @@Print
+@@E38:
+    cmp     al, CFG_ERR_MODEM_EEPROM_READ
+    jne     @@E39
+    mov     dx, OFFSET msg_cfg_modem_eeprom_read_fail
+    jmp     @@Print
+@@E39:
+    cmp     al, CFG_ERR_MODEM_EEPROM_WRITE
+    jne     @@E40
+    mov     dx, OFFSET msg_cfg_modem_eeprom_write_fail
+    jmp     @@Print
+@@E40:
+    cmp     al, CFG_ERR_MODEM_VERIFY
+    jne     @@Done
+    mov     dx, OFFSET msg_cfg_modem_verify_fail
 @@Print:
     mov     ah, 09h
     int     21h
@@ -3289,8 +3438,13 @@ PROC Cfg_Txn_Read_Current NEAR
     jmp     @@Fail
 @@InactiveINT:
     test    [cfg_parse_flags], CFG_PARSE_PNP
-    jz      @@InactiveIRQ
+    jz      @@InactiveModem
     mov     [cfg_last_error], CFG_ERR_PNP_INACTIVE
+    jmp     @@Fail
+@@InactiveModem:
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@InactiveIRQ
+    mov     [cfg_last_error], CFG_ERR_MODEM_INACTIVE
     jmp     @@Fail
 @@InactiveIRQ:
     mov     [cfg_last_error], CFG_ERR_INT_INACTIVE
@@ -3336,6 +3490,19 @@ PROC Cfg_Txn_Read_Current NEAR
 @@NoWord13:
     mov     [cfg_txn_old_word13], 0
 @@Word13Done:
+
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@NoWord0D
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_SOFTWARE_INFO
+    call    Cfg_Eeprom_Read
+    jc      @@ReadMODEMFail
+    mov     [cfg_txn_old_word0d], ax
+    jmp     @@Word0DDone
+@@NoWord0D:
+    mov     [cfg_txn_old_word0d], 0
+@@Word0DDone:
 
     ; Both live words are required because original ISA reactivation restores
     ; Address Configuration and Resource Configuration together.
@@ -3392,6 +3559,11 @@ PROC Cfg_Txn_Read_Current NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_READ
+    jmp     @@Fail
+@@ReadMODEMFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    mov     [cfg_last_error], CFG_ERR_MODEM_EEPROM_READ
 @@Fail:
     pop     si
     pop     dx
@@ -3409,6 +3581,8 @@ PROC Cfg_Txn_Init_Prospective NEAR
     mov     [cfg_txn_new_word08], ax
     mov     ax, [cfg_txn_old_word09]
     mov     [cfg_txn_new_word09], ax
+    mov     ax, [cfg_txn_old_word0d]
+    mov     [cfg_txn_new_word0d], ax
     mov     ax, [cfg_txn_old_word13]
     mov     [cfg_txn_new_word13], ax
     mov     ax, [cfg_txn_old_live06]
@@ -3502,6 +3676,17 @@ PROC Cfg_Prepare_PNP NEAR
     ret
 ENDP Cfg_Prepare_PNP
 
+; Merge only the staged MODEM field into the prospective persistent image.
+PROC Cfg_Prepare_MODEM NEAR
+    push    ax
+
+    mov     ax, [cfg_modem_value]
+    mov     [cfg_txn_new_word0d], ax
+
+    pop     ax
+    ret
+ENDP Cfg_Prepare_MODEM
+
 ; Compare current and prospective states once after all properties are prepared.
 ; INT keeps release 0.3.3 unchanged semantics: its persistent EEPROM field is
 ; authoritative.  A matching persistent IRQ alone remains a no write success
@@ -3559,11 +3744,19 @@ PROC Cfg_Txn_Detect_Changes NEAR
 
 @@PNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
-    jz      @@Done
+    jz      @@MODEM
     mov     ax, [cfg_txn_old_word13]
     cmp     ax, [cfg_txn_new_word13]
-    je      @@Done
+    je      @@MODEM
     or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
+
+@@MODEM:
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@Done
+    mov     ax, [cfg_txn_old_word0d]
+    cmp     ax, [cfg_txn_new_word0d]
+    je      @@Done
+    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
 
 @@Done:
     pop     ax
@@ -3820,7 +4013,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 
 @@Word09:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD09
-    jz      @@Word13
+    jz      @@Word0D
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     bx, [cfg_txn_new_word09]
@@ -3828,8 +4021,23 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     call    Cfg_Eeprom_Write
     jc      @@Write09Fail
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@Checksum
+    jz      @@Word0D
     mov     dx, OFFSET msg_cfg_irq_word_written
+    mov     ah, 09h
+    int     21h
+
+@@Word0D:
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
+    jz      @@Word13
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     bx, [cfg_txn_new_word0d]
+    mov     al, EEPROM_SOFTWARE_INFO
+    call    Cfg_Eeprom_Write
+    jc      @@Write0DFail
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@Word13
+    mov     dx, OFFSET msg_cfg_modem_word_written
     mov     ah, 09h
     int     21h
 
@@ -3907,6 +4115,11 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_EEPROM_WRITE
+    jmp     @@Fail
+@@Write0DFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    mov     [cfg_last_error], CFG_ERR_MODEM_EEPROM_WRITE
     jmp     @@Fail
 @@Write13Fail:
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
@@ -4163,9 +4376,9 @@ PROC Cfg_Txn_Verify NEAR
 
 @@PNPPersistent:
     test    [cfg_parse_flags], CFG_PARSE_PNP
-    jz      @@Success
+    jz      @@MODEMPersistent
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
-    jz      @@Success
+    jz      @@MODEMPersistent
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CONFIG_CONTROL
@@ -4176,6 +4389,24 @@ PROC Cfg_Txn_Verify NEAR
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_pnp_verified
+    mov     ah, 09h
+    int     21h
+
+@@MODEMPersistent:
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@Success
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
+    jz      @@Success
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_SOFTWARE_INFO
+    call    Cfg_Eeprom_Read
+    jc      @@MODEMVerifyFail
+    cmp     ax, [cfg_txn_new_word0d]
+    jne     @@MODEMVerifyFail
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@Success
+    mov     dx, OFFSET msg_cfg_modem_verified
     mov     ah, 09h
     int     21h
 
@@ -4207,6 +4438,11 @@ PROC Cfg_Txn_Verify NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_PNP_VERIFY
+    jmp     @@Fail
+@@MODEMVerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    mov     [cfg_last_error], CFG_ERR_MODEM_VERIFY
 @@Fail:
     pop     si
     pop     dx
@@ -4314,6 +4550,16 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@Done
+    mov     dx, OFFSET msg_cfg_current_word0d
+    mov     ah, 09h
+    int     21h
+    mov     ax, [cfg_txn_old_word0d]
+    call    Print_HexWord
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
 @@Done:
     pop     dx
     pop     ax
@@ -4382,6 +4628,16 @@ PROC Cfg_Txn_Report_Prospective NEAR
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@Done
+    mov     dx, OFFSET msg_cfg_new_word0d
+    mov     ah, 09h
+    int     21h
+    mov     ax, [cfg_txn_new_word0d]
+    call    Print_HexWord
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
 @@Done:
     pop     dx
     pop     ax
@@ -4398,12 +4654,23 @@ PROC Cfg_Txn_Report_Success NEAR
     jnz     @@Generic
     test    [cfg_parse_flags], CFG_PARSE_INT
     jnz     @@Generic
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jnz     @@Generic
     mov     dx, OFFSET msg_cfg_pnp_completed
     jmp     @@Print
 @@Generic:
     mov     dx, OFFSET msg_cfg_txn_completed
     jmp     @@Print
 @@NoPNP:
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@NoMODEM
+    test    [cfg_parse_flags], CFG_PARSE_IOBASE
+    jnz     @@Generic
+    test    [cfg_parse_flags], CFG_PARSE_INT
+    jnz     @@Generic
+    mov     dx, OFFSET msg_cfg_modem_completed
+    jmp     @@Print
+@@NoMODEM:
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@INTOnly
     test    [cfg_parse_flags], CFG_PARSE_INT
@@ -4469,7 +4736,7 @@ PROC Cfg_Txn_Execute NEAR
 
 @@RequestedPNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
-    jz      @@Read
+    jz      @@RequestedMODEM
     mov     dx, OFFSET msg_cfg_pnp_ok
     mov     ah, 09h
     int     21h
@@ -4482,6 +4749,26 @@ PROC Cfg_Txn_Execute NEAR
 @@PnpPrint:
     mov     ah, 09h
     int     21h
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+
+@@RequestedMODEM:
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@Read
+    mov     dx, OFFSET msg_cfg_modem_ok
+    mov     ah, 09h
+    int     21h
+    mov     ax, [cfg_modem_value]
+    or      ax, ax
+    jne     @@PrintModemValue
+    mov     dx, OFFSET msg_none
+    mov     ah, 09h
+    int     21h
+    jmp     @@AfterRequestedModem
+@@PrintModemValue:
+    call    Print_DecWord
+@@AfterRequestedModem:
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
@@ -4507,8 +4794,12 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Prepare_INT
 @@PreparePNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
-    jz      @@Detect
+    jz      @@PrepareMODEM
     call    Cfg_Prepare_PNP
+@@PrepareMODEM:
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@Detect
+    call    Cfg_Prepare_MODEM
 @@Detect:
     call    Cfg_Txn_Detect_Changes
     call    Cfg_Txn_Report_Prospective
@@ -4532,18 +4823,26 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
 @@CheckPNPUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_PNP
-    jz      @@CheckAnyChange
+    jz      @@CheckMODEMUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
-    jnz     @@CheckAnyChange
+    jnz     @@CheckMODEMUnchanged
     mov     dx, OFFSET msg_cfg_pnp_unchanged
+    mov     ah, 09h
+    int     21h
+@@CheckMODEMUnchanged:
+    test    [cfg_parse_flags], CFG_PARSE_MODEM
+    jz      @@CheckAnyChange
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
+    jnz     @@CheckAnyChange
+    mov     dx, OFFSET msg_cfg_modem_unchanged
     mov     ah, 09h
     int     21h
 
 @@CheckAnyChange:
     ; No requested hardware change.  INT intentionally follows release 0.3.3
     ; persistent authoritative unchanged behavior.
-    mov     al, [cfg_txn_change_flags]
-    and     al, CFG_TXN_COMMIT_MASK
+    mov     ax, [cfg_txn_change_flags]
+    and     ax, CFG_TXN_COMMIT_MASK
     jnz     @@Preflight
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
     jz      @@Success
@@ -5371,5 +5670,44 @@ PROC Print_DecByte NEAR
     pop     ax
     ret
 ENDP Print_DecByte
+
+PROC Print_DecWord NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+
+    cmp     ax, 0
+    jne     @@Convert
+    mov     dl, '0'
+    mov     ah, 02h
+    int     21h
+    jmp     @@Done
+
+@@Convert:
+    xor     cx, cx
+@@DivLoop:
+    xor     dx, dx
+    mov     bx, 10
+    div     bx
+    push    dx
+    inc     cx
+    or      ax, ax
+    jnz     @@DivLoop
+
+@@PrintLoop:
+    pop     dx
+    add     dl, '0'
+    mov     ah, 02h
+    int     21h
+    loop    @@PrintLoop
+
+@@Done:
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Print_DecWord
 
 END Start
