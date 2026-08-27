@@ -1,6 +1,6 @@
 ; ============================================================================
 ; 3CCFGCLI.ASM
-; 3Com EtherLink III 3C509 and 3C509B ISA detection and LIST utility
+; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ;
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
 ;
@@ -41,9 +41,10 @@
 ; adapter.  The proven ID port contention, tagging, activation, record layout,
 ; MAC address, I O base and IRQ discovery path is intentionally left unchanged.
 ;
-; This file deliberately does not write the EEPROM.  CONFIGURE is rejected.
-; The prior reimplementation used incorrect EEPROM fields in its write path,
-; so retaining that code would risk changing the wrong configuration bits.
+; CONFIGURE infrastructure is present in this release, but every hardware
+; property handler is still an explicit stub.  EEPROM write, checksum and ISA
+; deactivate/reactivate helpers are present only as traceable future support.
+; No reachable CLI path calls a persistent write or changes live NIC settings.
 ; ============================================================================
 
 IDEAL
@@ -113,9 +114,41 @@ NIC_FLAG_ACTIVE         EQU 01h
 NIC_FLAG_FROM_ID        EQU 02h
 NIC_FLAG_OEM_MAC        EQU 04h
 
+; CONFIGURE property identifiers.  PORT maps to IOBASE, XCVR maps to TR.
+CFG_OPT_INT             EQU 1
+CFG_OPT_IOBASE          EQU 2
+CFG_OPT_BADDRESS        EQU 3
+CFG_OPT_BSIZE           EQU 4
+CFG_OPT_TR              EQU 5
+CFG_OPT_MODEM           EQU 6
+CFG_OPT_OPTIMIZE        EQU 7
+CFG_OPT_LINKBEAT        EQU 8
+CFG_OPT_CONFIGPORT      EQU 9
+CFG_OPT_PNP             EQU 10
+CFG_OPT_SYNCREADY       EQU 11
+CFG_OPT_FULLDUPLEX      EQU 12
+
+CFG_PARSE_ADAPTER       EQU 01h
+
+; Common CONFIGURE result codes.
+CFG_ERR_NONE                EQU 0
+CFG_ERR_NO_NIC              EQU 1
+CFG_ERR_BAD_ADAPTER         EQU 2
+CFG_ERR_REVALIDATE          EQU 3
+CFG_ERR_UNSUPPORTED_PRODUCT EQU 4
+CFG_ERR_UNSUPPORTED_ASIC    EQU 5
+CFG_ERR_EEPROM_TIMEOUT      EQU 6
+CFG_ERR_COMMAND_TIMEOUT     EQU 7
+CFG_ERR_BAD_OPTION          EQU 8
+CFG_ERR_MISSING_VALUE       EQU 9
+CFG_ERR_NOT_IMPLEMENTED     EQU 10
+CFG_ERR_ADAPTER_REQUIRED    EQU 11
+CFG_ERR_DUP_ADAPTER         EQU 12
+CFG_ERR_NO_PROPERTY         EQU 13
+
 DATASEG
 
-VERSION_STRING	DB '0.2', '$'
+VERSION_STRING	DB '0.3', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -125,10 +158,24 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "Commands:", 0Dh, 0Ah
                 DB  "  /? or /H          Display this help screen.", 0Dh, 0Ah
                 DB  "  LIST              Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah
-                DB  "  CONFIGURE         Disabled in this hardware enumeration build.", 0Dh, 0Ah, '$'
+                DB  "  CONFIGURE         Parse and validate ISA CONFIGURE requests.", 0Dh, 0Ah
+                DB  "                    Use /ADAPTERNUM:N when more than one NIC is present.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
-msg_cfg_blocked DB  "CONFIGURE is disabled in this hardware enumeration build.", 0Dh, 0Ah, '$'
+
+; CONFIGURE framework diagnostics.
+msg_cfg_bad_adapter DB "Invalid ADAPTERNUM value.", 0Dh, 0Ah, '$'
+msg_cfg_need_adapter DB "ADAPTERNUM is required when more than one adapter is installed.", 0Dh, 0Ah, '$'
+msg_cfg_dup_adapter DB "ADAPTERNUM was specified more than once.", 0Dh, 0Ah, '$'
+msg_cfg_revalidate DB "Selected adapter no longer matches the discovered NIC.", 0Dh, 0Ah, '$'
+msg_cfg_unsupported_product DB "Unsupported EtherLink III product.", 0Dh, 0Ah, '$'
+msg_cfg_unsupported_asic DB "Unsupported ASIC revision.", 0Dh, 0Ah, '$'
+msg_cfg_eeprom_timeout DB "EEPROM access timed out.", 0Dh, 0Ah, '$'
+msg_cfg_command_timeout DB "Adapter command timed out.", 0Dh, 0Ah, '$'
+msg_cfg_bad_option DB "Invalid CONFIGURE option.", 0Dh, 0Ah, '$'
+msg_cfg_missing_value DB "Missing CONFIGURE option value.", 0Dh, 0Ah, '$'
+msg_cfg_no_property DB "No CONFIGURE property was specified.", 0Dh, 0Ah, '$'
+msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 0Dh, 0Ah, '$'
 
 msg_list_hdr    DB  "NIC                            NIC", 0Dh, 0Ah
                 DB  "Number                       Description", 0Dh, 0Ah
@@ -204,6 +251,70 @@ ext_compatibility DW 0FFFFh
 ext_capability    DW 0FFFFh
 ext_config_ctrl   DW 0FFFFh
 ext_revision_info DW 0FFFFh
+
+; CONFIGURE state.  nic_table itself is deliberately not extended.
+cfg_adapter_ordinal   DB 0
+cfg_parse_flags       DB 0
+cfg_property_count    DB 0
+cfg_last_error        DB CFG_ERR_NONE
+cfg_timeout_latched   DB 0
+cfg_selected_index    DW 0FFFFh
+cfg_selected_ptr      DW 0
+cfg_options_ptr       DW 0
+cfg_wait_start_lo     DW 0
+cfg_wait_start_hi     DW 0
+
+; Original CONFIGURE property order is retained for prefix resolution.
+; CONFIGPORT is required by the reduced roadmap, but is not an entry in the
+; original primary CONFIGURE property table.  It is therefore appended at the
+; requested logical position and remains an unreachable hardware stub.
+cfg_name_adapternum DB 'ADAPTERNUM', 0
+cfg_name_int        DB 'INT', 0
+cfg_name_iobase     DB 'IOBASE', 0
+cfg_name_port       DB 'PORT', 0
+cfg_name_baddress   DB 'BADDRESS', 0
+cfg_name_bsize      DB 'BSIZE', 0
+cfg_name_tr         DB 'TR', 0
+cfg_name_xcvr       DB 'XCVR', 0
+cfg_name_modem      DB 'MODEM', 0
+cfg_name_optimize   DB 'OPTIMIZE', 0
+cfg_name_linkbeat   DB 'LINKBEAT', 0
+cfg_name_configport DB 'CONFIGPORT', 0
+cfg_name_pnp        DB 'PNP', 0
+cfg_name_syncready  DB 'SYNCREADY', 0
+cfg_name_fullduplex DB 'FULLDUPLEX', 0
+
+cfg_property_names DW OFFSET cfg_name_int
+                   DW OFFSET cfg_name_iobase
+                   DW OFFSET cfg_name_port
+                   DW OFFSET cfg_name_baddress
+                   DW OFFSET cfg_name_bsize
+                   DW OFFSET cfg_name_tr
+                   DW OFFSET cfg_name_xcvr
+                   DW OFFSET cfg_name_modem
+                   DW OFFSET cfg_name_optimize
+                   DW OFFSET cfg_name_linkbeat
+                   DW OFFSET cfg_name_configport
+                   DW OFFSET cfg_name_pnp
+                   DW OFFSET cfg_name_syncready
+                   DW OFFSET cfg_name_fullduplex
+                   DW 0
+
+; Canonical dispatch identifiers parallel the table above.
+cfg_property_ids DB CFG_OPT_INT
+                 DB CFG_OPT_IOBASE
+                 DB CFG_OPT_IOBASE
+                 DB CFG_OPT_BADDRESS
+                 DB CFG_OPT_BSIZE
+                 DB CFG_OPT_TR
+                 DB CFG_OPT_TR
+                 DB CFG_OPT_MODEM
+                 DB CFG_OPT_OPTIMIZE
+                 DB CFG_OPT_LINKBEAT
+                 DB CFG_OPT_CONFIGPORT
+                 DB CFG_OPT_PNP
+                 DB CFG_OPT_SYNCREADY
+                 DB CFG_OPT_FULLDUPLEX
 
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
@@ -337,9 +448,23 @@ PROC Parse_And_Execute NEAR
     jne     @@Help
     cmp     [BYTE si+5], 'G'
     jne     @@Help
-    mov     dx, OFFSET msg_cfg_blocked
-    mov     ah, 09h
-    int     21h
+    cmp     [BYTE si+6], 'U'
+    jne     @@Help
+    cmp     [BYTE si+7], 'R'
+    jne     @@Help
+    cmp     [BYTE si+8], 'E'
+    jne     @@Help
+    mov     al, [si+9]
+    or      al, al
+    jz      @@Configure
+    cmp     al, ' '
+    je      @@Configure
+    cmp     al, 09h
+    jne     @@Help
+
+@@Configure:
+    add     si, 9
+    call    Cmd_Configure
     ret
 
 @@Slash:
@@ -360,6 +485,711 @@ PROC Parse_And_Execute NEAR
     int     21h
     ret
 ENDP Parse_And_Execute
+
+; ============================================================================
+; CONFIGURE command framework
+; ============================================================================
+; Original references:
+;   sub_377, common CONFIGURE property loop
+;   sub_548, slash or minus switch parser with required values
+;   sub_531, colon or equals value separator
+;   sub_530 and sub_271, first matching case insensitive keyword prefix
+;   sub_554, ADAPTERNUM validation, confirmed directly in the original EXE
+;   sub_535, logical adapter selection
+;
+; This reduced parser keeps those semantics without importing the original
+; argv framework.  Start already uppercases ASCII input, so matching remains
+; case insensitive.  Every property is recognized, but every property handler
+; deliberately terminates in CFG_ERR_NOT_IMPLEMENTED in this release.
+PROC Cmd_Configure NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    mov     [cfg_adapter_ordinal], 0
+    mov     [cfg_parse_flags], 0
+    mov     [cfg_property_count], 0
+    mov     [cfg_last_error], CFG_ERR_NONE
+    mov     [cfg_timeout_latched], 0
+    mov     [cfg_selected_index], 0FFFFh
+    mov     [cfg_selected_ptr], 0
+    mov     [cfg_options_ptr], si
+
+    call    Cfg_Parse_Options
+    jc      @@Report
+
+    ; Reuse the exact discovery path used by LIST.  No second scanner exists.
+    call    Scan_All_3Com_Cards
+    cmp     [card_count], 0
+    jne     @@HaveNic
+    mov     [cfg_last_error], CFG_ERR_NO_NIC
+    jmp     @@Report
+
+@@HaveNic:
+    call    Cfg_Resolve_Adapter
+    jc      @@Report
+
+    mov     si, [cfg_selected_ptr]
+    call    Cfg_Revalidate_Selected
+    jc      @@Report
+
+    cmp     [cfg_property_count], 0
+    jne     @@Dispatch
+    mov     [cfg_last_error], CFG_ERR_NO_PROPERTY
+    jmp     @@Report
+
+@@Dispatch:
+    mov     si, [cfg_options_ptr]
+    call    Cfg_Dispatch_Parsed_Properties
+
+@@Report:
+    mov     al, [cfg_last_error]
+    call    Cfg_Report_Error
+
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cmd_Configure
+
+; Parse all tokens so a later invalid switch is not hidden by an earlier stub.
+; Input SI points immediately after CONFIGURE.
+; Output CF clear on syntactically valid options, CF set with cfg_last_error.
+PROC Cfg_Parse_Options NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    di
+
+@@NextToken:
+    mov     al, [si]
+    cmp     al, ' '
+    je      @@SkipWhite
+    cmp     al, 09h
+    jne     @@TokenStart
+@@SkipWhite:
+    inc     si
+    jmp     @@NextToken
+
+@@TokenStart:
+    or      al, al
+    jz      @@Success
+    cmp     al, '/'
+    je      @@HaveIntroducer
+    cmp     al, '-'
+    jne     @@BadOption
+
+@@HaveIntroducer:
+    inc     si
+    mov     bx, si                  ; BX = option name start.
+    xor     cx, cx                  ; CX = option name length.
+
+@@FindSeparator:
+    mov     al, [si]
+    cmp     al, ':'
+    je      @@HaveSeparator
+    cmp     al, '='
+    je      @@HaveSeparator
+    or      al, al
+    jz      @@MissingValue
+    cmp     al, ' '
+    je      @@MissingValue
+    cmp     al, 09h
+    je      @@MissingValue
+    inc     si
+    inc     cx
+    jmp     @@FindSeparator
+
+@@HaveSeparator:
+    or      cx, cx
+    jz      @@BadOption
+    inc     si                     ; SI = value start.
+    mov     dx, si                 ; DX = value start.
+    xor     di, di                 ; DI = value length.
+
+@@FindValueEnd:
+    mov     al, [si]
+    or      al, al
+    jz      @@ValueReady
+    cmp     al, ' '
+    je      @@ValueReady
+    cmp     al, 09h
+    je      @@ValueReady
+    inc     si
+    inc     di
+    jmp     @@FindValueEnd
+
+@@ValueReady:
+    or      di, di
+    jz      @@MissingValue
+
+    ; ADAPTERNUM is a selector, not a hardware property.
+    push    si
+    push    cx
+    push    di
+    mov     si, bx
+    mov     di, OFFSET cfg_name_adapternum
+    call    Cfg_Match_Name_Prefix
+    pop     di
+    pop     cx
+    pop     si
+    jnc     @@AdapterNumber
+
+    ; Match the original property order.  Aliases return canonical IDs.
+    push    si
+    push    dx
+    push    cx
+    mov     si, bx
+    call    Cfg_Match_Property
+    pop     cx
+    pop     dx
+    pop     si
+    jc      @@BadOption
+
+    inc     [cfg_property_count]
+    jmp     @@NextToken
+
+@@AdapterNumber:
+    test    [cfg_parse_flags], CFG_PARSE_ADAPTER
+    jnz     @@DuplicateAdapter
+    or      [cfg_parse_flags], CFG_PARSE_ADAPTER
+
+    push    si
+    mov     si, dx
+    mov     cx, di
+    call    Cfg_Parse_Adapter_Number
+    pop     si
+    jc      @@BadAdapter
+    mov     [cfg_adapter_ordinal], al
+    jmp     @@NextToken
+
+@@BadOption:
+    mov     [cfg_last_error], CFG_ERR_BAD_OPTION
+    jmp     @@Fail
+@@MissingValue:
+    mov     [cfg_last_error], CFG_ERR_MISSING_VALUE
+    jmp     @@Fail
+@@DuplicateAdapter:
+    mov     [cfg_last_error], CFG_ERR_DUP_ADAPTER
+    jmp     @@Fail
+@@BadAdapter:
+    mov     [cfg_last_error], CFG_ERR_BAD_ADAPTER
+@@Fail:
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    stc
+    ret
+@@Success:
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    clc
+    ret
+ENDP Cfg_Parse_Options
+
+; Input SI = typed name, CX = typed length, DI = full keyword.
+; Carry clear means the typed name is a prefix of the keyword.
+PROC Cfg_Match_Name_Prefix NEAR
+    push    ax
+    push    cx
+    push    si
+    push    di
+
+    or      cx, cx
+    jz      @@No
+@@Loop:
+    mov     al, [di]
+    or      al, al
+    jz      @@No
+    cmp     al, [si]
+    jne     @@No
+    inc     si
+    inc     di
+    loop    @@Loop
+
+    pop     di
+    pop     si
+    pop     cx
+    pop     ax
+    clc
+    ret
+@@No:
+    pop     di
+    pop     si
+    pop     cx
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Match_Name_Prefix
+
+; Input SI = typed property name, CX = length.
+; Output AL = canonical property ID, carry clear when matched.
+PROC Cfg_Match_Property NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    di
+    push    si
+
+    mov     di, OFFSET cfg_property_names
+    xor     bx, bx
+@@Next:
+    mov     dx, [di]
+    or      dx, dx
+    jz      @@NoMatch
+
+    push    si
+    push    cx
+    push    di
+    mov     di, dx
+    call    Cfg_Match_Name_Prefix
+    pop     di
+    pop     cx
+    pop     si
+    jnc     @@Found
+
+    add     di, 2
+    inc     bx
+    jmp     @@Next
+
+@@Found:
+    mov     al, [BYTE bx + cfg_property_ids]
+    pop     si
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@NoMatch:
+    pop     si
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Match_Property
+
+; Original sub_554 accepts exactly one or two decimal digits, values greater
+; than zero, then validates against the detected adapter count.  This helper
+; performs only the syntax and zero test.  Range is checked after discovery.
+; Input SI = value, CX = value length.  Output AL = ordinal.
+PROC Cfg_Parse_Adapter_Number NEAR
+    push    bx
+    push    cx
+    push    si
+
+    cmp     cx, 1
+    jb      @@Bad
+    cmp     cx, 2
+    ja      @@Bad
+
+    xor     ax, ax
+    mov     bl, [si]
+    cmp     bl, '0'
+    jb      @@Bad
+    cmp     bl, '9'
+    ja      @@Bad
+    sub     bl, '0'
+    mov     al, bl
+
+    cmp     cx, 1
+    je      @@CheckZero
+    mov     bl, [si+1]
+    cmp     bl, '0'
+    jb      @@Bad
+    cmp     bl, '9'
+    ja      @@Bad
+    sub     bl, '0'
+    shl     al, 1
+    mov     bl, al
+    shl     al, 1
+    shl     al, 1
+    add     al, bl                 ; AL = original digit times 10.
+    add     al, [si+1]
+    sub     al, '0'
+
+@@CheckZero:
+    or      al, al
+    jz      @@Bad
+    pop     si
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Bad:
+    pop     si
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Parse_Adapter_Number
+
+; Resolve the selector against the exact nic_table order produced by LIST.
+; Original behavior: one NIC defaults to adapter 1, multiple NICs require an
+; explicit selector.  cfg_selected_index is zero based, matching sub_535.
+PROC Cfg_Resolve_Adapter NEAR
+    push    ax
+    push    bx
+    push    dx
+
+    test    [cfg_parse_flags], CFG_PARSE_ADAPTER
+    jnz     @@Explicit
+    cmp     [card_count], 1
+    jbe     @@DefaultOne
+    mov     [cfg_last_error], CFG_ERR_ADAPTER_REQUIRED
+    jmp     @@Fail
+
+@@DefaultOne:
+    mov     [cfg_adapter_ordinal], 1
+@@Explicit:
+    xor     ax, ax
+    mov     al, [cfg_adapter_ordinal]
+    or      ax, ax
+    jz      @@Bad
+    cmp     ax, [card_count]
+    ja      @@Bad
+
+    dec     ax
+    mov     [cfg_selected_index], ax
+    mov     bx, NIC_RECORD_SIZE
+    mul     bx
+    add     ax, OFFSET nic_table
+    mov     [cfg_selected_ptr], ax
+
+    pop     dx
+    pop     bx
+    pop     ax
+    clc
+    ret
+@@Bad:
+    mov     [cfg_last_error], CFG_ERR_BAD_ADAPTER
+@@Fail:
+    pop     dx
+    pop     bx
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Resolve_Adapter
+
+; Rewalk the already validated option text after adapter selection and
+; revalidation.  This preserves original style sequential property dispatch
+; without storing a second request array.  A handler error stops later handlers,
+; matching the original sub_377 loop.  ADAPTERNUM is skipped because it has
+; already selected the logical adapter.
+PROC Cfg_Dispatch_Parsed_Properties NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    di
+    push    si
+
+@@NextToken:
+    mov     al, [si]
+    cmp     al, ' '
+    je      @@SkipWhite
+    cmp     al, 09h
+    jne     @@TokenStart
+@@SkipWhite:
+    inc     si
+    jmp     @@NextToken
+
+@@TokenStart:
+    or      al, al
+    jz      @@Done
+    inc     si                     ; Syntax was already validated in pass one.
+    mov     bx, si
+    xor     cx, cx
+@@FindSeparator:
+    mov     al, [si]
+    cmp     al, ':'
+    je      @@HaveSeparator
+    cmp     al, '='
+    je      @@HaveSeparator
+    inc     si
+    inc     cx
+    jmp     @@FindSeparator
+
+@@HaveSeparator:
+    inc     si
+    mov     dx, si
+    xor     di, di
+@@FindValueEnd:
+    mov     al, [si]
+    or      al, al
+    jz      @@ValueReady
+    cmp     al, ' '
+    je      @@ValueReady
+    cmp     al, 09h
+    je      @@ValueReady
+    inc     si
+    inc     di
+    jmp     @@FindValueEnd
+
+@@ValueReady:
+    push    si
+    push    cx
+    push    di
+    mov     si, bx
+    mov     di, OFFSET cfg_name_adapternum
+    call    Cfg_Match_Name_Prefix
+    pop     di
+    pop     cx
+    pop     si
+    jnc     @@NextToken
+
+    push    si
+    push    dx
+    push    cx
+    mov     si, bx
+    call    Cfg_Match_Property
+    pop     cx
+    pop     dx
+    pop     si
+    jc      @@InternalBadOption
+
+    push    si
+    mov     si, dx                 ; Handler value pointer.
+    mov     cx, di                 ; Handler value length.
+    call    Cfg_Dispatch_Property
+    pop     si
+    cmp     [cfg_last_error], CFG_ERR_NONE
+    jne     @@Done
+    jmp     @@NextToken
+
+@@InternalBadOption:
+    mov     [cfg_last_error], CFG_ERR_BAD_OPTION
+@@Done:
+    pop     si
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Dispatch_Parsed_Properties
+
+; Canonical property dispatcher.  Input AL = property ID, SI = value pointer,
+; CX = value length.  PORT maps to IOBASE and XCVR maps to TR before this point.
+; Every handler below is an explicit stub in release 0.3.
+PROC Cfg_Dispatch_Property NEAR
+    cmp     al, CFG_OPT_INT
+    jne     @@IOBase
+    call    Cfg_Handle_INT
+    ret
+@@IOBase:
+    cmp     al, CFG_OPT_IOBASE
+    jne     @@BAddress
+    call    Cfg_Handle_IOBASE
+    ret
+@@BAddress:
+    cmp     al, CFG_OPT_BADDRESS
+    jne     @@BSize
+    call    Cfg_Handle_BADDRESS
+    ret
+@@BSize:
+    cmp     al, CFG_OPT_BSIZE
+    jne     @@TR
+    call    Cfg_Handle_BSIZE
+    ret
+@@TR:
+    cmp     al, CFG_OPT_TR
+    jne     @@Modem
+    call    Cfg_Handle_TR
+    ret
+@@Modem:
+    cmp     al, CFG_OPT_MODEM
+    jne     @@Optimize
+    call    Cfg_Handle_MODEM
+    ret
+@@Optimize:
+    cmp     al, CFG_OPT_OPTIMIZE
+    jne     @@LinkBeat
+    call    Cfg_Handle_OPTIMIZE
+    ret
+@@LinkBeat:
+    cmp     al, CFG_OPT_LINKBEAT
+    jne     @@ConfigPort
+    call    Cfg_Handle_LINKBEAT
+    ret
+@@ConfigPort:
+    cmp     al, CFG_OPT_CONFIGPORT
+    jne     @@PnP
+    call    Cfg_Handle_CONFIGPORT
+    ret
+@@PnP:
+    cmp     al, CFG_OPT_PNP
+    jne     @@SyncReady
+    call    Cfg_Handle_PNP
+    ret
+@@SyncReady:
+    cmp     al, CFG_OPT_SYNCREADY
+    jne     @@FullDuplex
+    call    Cfg_Handle_SYNCREADY
+    ret
+@@FullDuplex:
+    cmp     al, CFG_OPT_FULLDUPLEX
+    jne     @@Bad
+    call    Cfg_Handle_FULLDUPLEX
+    ret
+@@Bad:
+    mov     [cfg_last_error], CFG_ERR_BAD_OPTION
+    ret
+ENDP Cfg_Dispatch_Property
+
+; Explicit future handler entry points.  They receive SI = value pointer and
+; CX = value length.  None reads or writes NIC configuration in this release.
+PROC Cfg_Handle_INT NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_INT
+
+PROC Cfg_Handle_IOBASE NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_IOBASE
+
+PROC Cfg_Handle_BADDRESS NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_BADDRESS
+
+PROC Cfg_Handle_BSIZE NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_BSIZE
+
+PROC Cfg_Handle_TR NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_TR
+
+PROC Cfg_Handle_MODEM NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_MODEM
+
+PROC Cfg_Handle_OPTIMIZE NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_OPTIMIZE
+
+PROC Cfg_Handle_LINKBEAT NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_LINKBEAT
+
+PROC Cfg_Handle_CONFIGPORT NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_CONFIGPORT
+
+PROC Cfg_Handle_PNP NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_PNP
+
+PROC Cfg_Handle_SYNCREADY NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_SYNCREADY
+
+PROC Cfg_Handle_FULLDUPLEX NEAR
+    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    ret
+ENDP Cfg_Handle_FULLDUPLEX
+
+PROC Cfg_Report_Error NEAR
+    push    ax
+    push    dx
+
+    or      al, al
+    jz      @@Done
+    cmp     al, CFG_ERR_NO_NIC
+    jne     @@E2
+    mov     dx, OFFSET msg_no_cards
+    jmp     @@Print
+@@E2:
+    cmp     al, CFG_ERR_BAD_ADAPTER
+    jne     @@E3
+    mov     dx, OFFSET msg_cfg_bad_adapter
+    jmp     @@Print
+@@E3:
+    cmp     al, CFG_ERR_REVALIDATE
+    jne     @@E4
+    mov     dx, OFFSET msg_cfg_revalidate
+    jmp     @@Print
+@@E4:
+    cmp     al, CFG_ERR_UNSUPPORTED_PRODUCT
+    jne     @@E5
+    mov     dx, OFFSET msg_cfg_unsupported_product
+    jmp     @@Print
+@@E5:
+    cmp     al, CFG_ERR_UNSUPPORTED_ASIC
+    jne     @@E6
+    mov     dx, OFFSET msg_cfg_unsupported_asic
+    jmp     @@Print
+@@E6:
+    cmp     al, CFG_ERR_EEPROM_TIMEOUT
+    jne     @@E7
+    mov     dx, OFFSET msg_cfg_eeprom_timeout
+    jmp     @@Print
+@@E7:
+    cmp     al, CFG_ERR_COMMAND_TIMEOUT
+    jne     @@E8
+    mov     dx, OFFSET msg_cfg_command_timeout
+    jmp     @@Print
+@@E8:
+    cmp     al, CFG_ERR_BAD_OPTION
+    jne     @@E9
+    mov     dx, OFFSET msg_cfg_bad_option
+    jmp     @@Print
+@@E9:
+    cmp     al, CFG_ERR_MISSING_VALUE
+    jne     @@E10
+    mov     dx, OFFSET msg_cfg_missing_value
+    jmp     @@Print
+@@E10:
+    cmp     al, CFG_ERR_NOT_IMPLEMENTED
+    jne     @@E11
+    mov     dx, OFFSET msg_cfg_not_implemented
+    jmp     @@Print
+@@E11:
+    cmp     al, CFG_ERR_ADAPTER_REQUIRED
+    jne     @@E12
+    mov     dx, OFFSET msg_cfg_need_adapter
+    jmp     @@Print
+@@E12:
+    cmp     al, CFG_ERR_DUP_ADAPTER
+    jne     @@E13
+    mov     dx, OFFSET msg_cfg_dup_adapter
+    jmp     @@Print
+@@E13:
+    cmp     al, CFG_ERR_NO_PROPERTY
+    jne     @@Done
+    mov     dx, OFFSET msg_cfg_no_property
+@@Print:
+    mov     ah, 09h
+    int     21h
+@@Done:
+    pop     dx
+    pop     ax
+    ret
+ENDP Cfg_Report_Error
 
 ; ============================================================================
 ; LIST command
@@ -1491,6 +2321,825 @@ PROC Scan_Active_Base_Ports NEAR
     pop     ax
     ret
 ENDP Scan_Active_Base_Ports
+
+; ============================================================================
+; Common CONFIGURE hardware infrastructure, deliberately unreachable from
+; property stubs in release 0.3
+; ============================================================================
+
+; Word register read, original sub_306.
+; Input DX = adapter base, BX = register offset.  Output AX = word.
+PROC Cfg_Reg_Read_Word NEAR
+    push    dx
+    add     dx, bx
+    in      ax, dx
+    pop     dx
+    ret
+ENDP Cfg_Reg_Read_Word
+
+; Word register write, original sub_308.
+; Input DX = adapter base, BX = register offset, AX = value.
+PROC Cfg_Reg_Write_Word NEAR
+    push    dx
+    add     dx, bx
+    out     dx, ax
+    pop     dx
+    ret
+ENDP Cfg_Reg_Write_Word
+
+; Byte register write, original sub_309.
+; Input DX = adapter base, BX = register offset, AL = value.
+PROC Cfg_Reg_Write_Byte NEAR
+    push    dx
+    add     dx, bx
+    out     dx, al
+    pop     dx
+    ret
+ENDP Cfg_Reg_Write_Byte
+
+; Reduced replacement for the original sub_139 timing dependency.  The original
+; result is an absolute count in seconds.  Busy waits only compare a delta of
+; at most two seconds, so seconds since midnight plus wrap correction preserves
+; the relevant behavior without importing calendar conversion routines.
+; Output DX:AX = seconds since midnight.
+PROC Cfg_Get_Time_Seconds NEAR
+    push    bx
+    push    cx
+    push    si
+    push    di
+
+    mov     ah, 2Ch
+    int     21h
+    push    dx                     ; BH after pop below will contain seconds.
+
+    xor     ax, ax
+    mov     al, ch
+    mov     bx, 3600
+    mul     bx
+    mov     si, ax
+    mov     di, dx
+
+    xor     ax, ax
+    mov     al, cl
+    mov     bx, 60
+    mul     bx
+    add     si, ax
+    adc     di, dx
+
+    pop     bx
+    xor     ax, ax
+    mov     al, bh
+    add     si, ax
+    adc     di, 0
+
+    mov     ax, si
+    mov     dx, di
+
+    pop     di
+    pop     si
+    pop     cx
+    pop     bx
+    ret
+ENDP Cfg_Get_Time_Seconds
+
+; Save the current second counter for the original greater than one second
+; timeout test shared by command and EEPROM polling.
+PROC Cfg_Start_Wait_Timer NEAR
+    push    ax
+    push    dx
+    call    Cfg_Get_Time_Seconds
+    mov     [cfg_wait_start_lo], ax
+    mov     [cfg_wait_start_hi], dx
+    pop     dx
+    pop     ax
+    ret
+ENDP Cfg_Start_Wait_Timer
+
+; Return carry set when more than one elapsed second has passed.
+PROC Cfg_Wait_Expired NEAR
+    push    ax
+    push    dx
+
+    call    Cfg_Get_Time_Seconds
+    sub     ax, [cfg_wait_start_lo]
+    sbb     dx, [cfg_wait_start_hi]
+    jnc     @@Compare
+
+    ; Midnight wrap.  86400 decimal = 0001:5180h.
+    add     ax, 05180h
+    adc     dx, 1
+
+@@Compare:
+    cmp     dx, 0
+    ja      @@Expired
+    cmp     ax, 1
+    ja      @@Expired
+
+    pop     dx
+    pop     ax
+    clc
+    ret
+@@Expired:
+    pop     dx
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Wait_Expired
+
+; Original sub_310 waits for command IDs 5, 8 and 0Bh by polling status bit
+; 1000h until clear or until elapsed time is greater than one second.
+; Input DX = adapter base.  Output carry set on timeout.
+PROC Cfg_Wait_Command_Ready NEAR
+    push    ax
+    push    bx
+
+    call    Cfg_Start_Wait_Timer
+@@Loop:
+    mov     bx, EL3_STATUS
+    call    Cfg_Reg_Read_Word
+    test    ax, STATUS_CMD_BUSY
+    jz      @@Ready
+    call    Cfg_Wait_Expired
+    jnc     @@Loop
+
+    mov     [cfg_timeout_latched], 1
+    mov     [cfg_last_error], CFG_ERR_COMMAND_TIMEOUT
+    pop     bx
+    pop     ax
+    stc
+    ret
+@@Ready:
+    pop     bx
+    pop     ax
+    clc
+    ret
+ENDP Cfg_Wait_Command_Ready
+
+; Test the exact product family used by the original ISA CONFIGURE helpers.
+; Input AX = product ID.  Carry clear means F0FFh masked value is 9050h.
+PROC Cfg_Is_Supported_Product NEAR
+    push    ax
+    and     ax, 0F0FFh
+    cmp     ax, 09050h
+    jne     @@No
+    pop     ax
+    clc
+    ret
+@@No:
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Is_Supported_Product
+
+; Original sub_313 hardware test.  Input AX = exact product ID, BL = ASIC
+; revision.  Carry clear means original early 3C509 behavior, revision below 2
+; and product family 9050h.  No 3C508 classification is present.
+PROC Cfg_Is_Original_3C509 NEAR
+    push    ax
+    call    Cfg_Is_Supported_Product
+    jc      @@No
+    cmp     bl, 2
+    jae     @@No
+    pop     ax
+    clc
+    ret
+@@No:
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Is_Original_3C509
+
+; Later 3C509B class for future restrictions.  Input AX product, BL revision.
+PROC Cfg_Is_Later_3C509B NEAR
+    push    ax
+    call    Cfg_Is_Supported_Product
+    jc      @@No
+    cmp     bl, 2
+    jb      @@No
+    pop     ax
+    clc
+    ret
+@@No:
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Is_Later_3C509B
+
+; Read live product and ASIC revision while restoring the caller's window.
+; This maps the useful part of original sub_313 to the existing verified
+; Check_3Com_Signature routine.  Input DX = adapter base.
+; Output AX = product ID, BL = ASIC revision, carry clear on success.
+PROC Cfg_Read_Product_Revision NEAR
+    call    Check_3Com_Signature
+    ret
+ENDP Cfg_Read_Product_Revision
+
+; Original sub_310 command issue helper.  Input DX = base, AX = command ID,
+; BX = argument.  Command zero uses the original early 3C509 byte write to
+; offset 0Fh.  Other commands encode command ID in bits 15 to 11.
+PROC Cfg_Issue_Command NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    mov     si, ax                 ; SI = command ID.
+    mov     di, bx                 ; DI = argument.
+    or      si, si
+    jnz     @@Normal
+
+    ; The original sub_310 operates on the already selected global base.
+    ; Here DX is that explicit base, so no record lookup is required.
+    or      dx, dx
+    jz      @@Normal
+    call    Cfg_Read_Product_Revision
+    jc      @@Normal
+    call    Cfg_Is_Original_3C509
+    jc      @@Normal
+
+    xor     al, al
+    mov     bx, 0Fh
+    call    Cfg_Reg_Write_Byte
+    jmp     @@MaybeWait
+
+@@Normal:
+    mov     ax, si
+    mov     cl, 11
+    shl     ax, cl
+    or      ax, di
+    mov     bx, EL3_COMMAND
+    call    Cfg_Reg_Write_Word
+
+@@MaybeWait:
+    cmp     si, 5
+    je      @@Wait
+    cmp     si, 8
+    je      @@Wait
+    cmp     si, 0Bh
+    jne     @@Done
+@@Wait:
+    call    Cfg_Wait_Command_Ready
+    jc      @@Timeout
+@@Done:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    clc
+    ret
+@@Timeout:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Issue_Command
+
+; EEPROM busy wait shared by original sub_314 and sub_315.
+; Input DX = adapter base.  Carry set on timeout.
+PROC Cfg_Eeprom_Wait_Ready NEAR
+    push    ax
+    push    bx
+
+    call    Cfg_Start_Wait_Timer
+@@Loop:
+    mov     bx, EL3_W0_EEPROM_COMMAND
+    call    Cfg_Reg_Read_Word
+    test    ax, EEPROM_BUSY
+    jz      @@Ready
+    call    Cfg_Wait_Expired
+    jnc     @@Loop
+
+    mov     [cfg_timeout_latched], 1
+    mov     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    pop     bx
+    pop     ax
+    stc
+    ret
+@@Ready:
+    pop     bx
+    pop     ax
+    clc
+    ret
+ENDP Cfg_Eeprom_Wait_Ready
+
+; EEPROM word read, original sub_314.  Input DX = base, AL = word number.
+; The routine selects window 0 and intentionally does not restore the previous
+; window, matching the original.  AX contains the data word.  Carry exposes the
+; original latched timeout state to reduced callers.
+PROC Cfg_Eeprom_Read NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    cmp     [cfg_timeout_latched], 0
+    je      @@Start
+    xor     ax, ax
+    mov     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    jmp     @@Fail
+
+@@Start:
+    xor     ah, ah
+    mov     si, ax
+    xor     al, al
+    call    Select_Window
+
+    mov     ax, si
+    or      ax, 0080h
+    mov     bx, EL3_W0_EEPROM_COMMAND
+    call    Cfg_Reg_Write_Word
+    call    Cfg_Eeprom_Wait_Ready
+
+    mov     bx, EL3_W0_EEPROM_DATA
+    call    Cfg_Reg_Read_Word
+    cmp     [cfg_timeout_latched], 0
+    jne     @@Fail
+
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Eeprom_Read
+
+; EEPROM word write, original sub_315, confirmed independently in 3CCFG.EXE.
+; Input DX = base, AL = word number, BX = data word.
+; Exact command sequence:
+;   window 0, 0030h, wait, 00C0h OR word, wait, write data,
+;   0030h, wait, 0040h OR word, wait.
+; The original continues through the sequence after a timeout, so this helper
+; does the same and returns the shared timeout latch in carry at the end.
+; IMPORTANT: no release 0.3 CLI path calls this procedure.
+PROC Cfg_Eeprom_Write NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    xor     ah, ah
+    mov     si, ax                 ; SI = EEPROM word number.
+    mov     di, bx                 ; DI = data word.
+
+    xor     al, al
+    call    Select_Window
+
+    mov     ax, 0030h
+    mov     bx, EL3_W0_EEPROM_COMMAND
+    call    Cfg_Reg_Write_Word
+    call    Cfg_Eeprom_Wait_Ready
+
+    mov     ax, 00C0h
+    or      ax, si
+    mov     bx, EL3_W0_EEPROM_COMMAND
+    call    Cfg_Reg_Write_Word
+    call    Cfg_Eeprom_Wait_Ready
+
+    mov     ax, di
+    mov     bx, EL3_W0_EEPROM_DATA
+    call    Cfg_Reg_Write_Word
+
+    mov     ax, 0030h
+    mov     bx, EL3_W0_EEPROM_COMMAND
+    call    Cfg_Reg_Write_Word
+    call    Cfg_Eeprom_Wait_Ready
+
+    mov     ax, 0040h
+    or      ax, si
+    mov     bx, EL3_W0_EEPROM_COMMAND
+    call    Cfg_Reg_Write_Word
+    call    Cfg_Eeprom_Wait_Ready
+
+    cmp     [cfg_timeout_latched], 0
+    jne     @@Fail
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    clc
+    ret
+@@Fail:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Eeprom_Write
+
+; XOR one EEPROM word into BL, both low byte and high byte.
+; Input AX = EEPROM word, BL = current checksum.  Output BL updated.
+PROC Cfg_Checksum_Xor_Word NEAR
+    xor     bl, al
+    xor     bl, ah
+    ret
+ENDP Cfg_Checksum_Xor_Word
+
+; Original sub_316, destination EEPROM word 0Fh high byte.
+; Domain: words 00h through 0Eh, excluding 08h, 09h and 0Dh.
+; Input DX = base.  Output AL = checksum, carry set on EEPROM timeout.
+PROC Cfg_Checksum_0F_High NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    xor     bx, bx
+    xor     si, si
+@@Loop:
+    cmp     si, 8
+    je      @@Next
+    cmp     si, 9
+    je      @@Next
+    cmp     si, 0Dh
+    je      @@Next
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+@@Next:
+    inc     si
+    cmp     si, 0Eh
+    jbe     @@Loop
+    mov     al, bl
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Checksum_0F_High
+
+; Original sub_317, destination EEPROM word 0Fh low byte.
+; Domain: words 08h through 0Dh, excluding 0Ah through 0Ch.
+PROC Cfg_Checksum_0F_Low NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    xor     bx, bx
+    mov     si, 8
+@@Loop:
+    cmp     si, 0Ah
+    jb      @@Read
+    cmp     si, 0Ch
+    jbe     @@Next
+@@Read:
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+@@Next:
+    inc     si
+    cmp     si, 0Dh
+    jbe     @@Loop
+    mov     al, bl
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Checksum_0F_Low
+
+; Original sub_318, destination EEPROM word 17h high byte.
+; Domains: words 10h through 12h and words 18h through 3Fh.
+PROC Cfg_Checksum_17_High NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    xor     bx, bx
+    mov     si, 10h
+@@First:
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, 12h
+    jbe     @@First
+
+    mov     si, 18h
+@@Second:
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, 3Fh
+    jbe     @@Second
+
+    mov     al, bl
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Checksum_17_High
+
+; Original sub_319, destination EEPROM word 17h low byte.
+; Domain: words 13h through 16h.
+PROC Cfg_Checksum_17_Low NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    xor     bx, bx
+    mov     si, 13h
+@@Loop:
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, 16h
+    jbe     @@Loop
+    mov     al, bl
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Checksum_17_Low
+
+; Revalidate the logical record selected from nic_table against live hardware.
+; Active records use the existing proven register signature path and then the
+; OEM station address from EEPROM.  An unassigned ID port record can be checked
+; read only by selecting its existing tag and re-reading the same identity words.
+; Input SI = selected record.  Carry set with cfg_last_error on failure.
+PROC Cfg_Revalidate_Selected NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    di
+    push    si
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    or      dx, dx
+    jz      @@ByTag
+
+    call    Check_3Com_Signature
+    jc      @@Mismatch
+    cmp     ax, [WORD si + NIC_PRODUCT_ID]
+    jne     @@Mismatch
+    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
+    je      @@Mac
+    cmp     bl, [BYTE si + NIC_ASIC_REV]
+    jne     @@Mismatch
+
+@@Mac:
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Get_Current_Window
+    mov     ch, al
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_OEM_NODE_0
+    call    Cfg_Eeprom_Read
+    jc      @@RestoreReadError
+    cmp     ah, [BYTE si + NIC_MAC_ADDR]
+    jne     @@RestoreMismatch
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 1]
+    jne     @@RestoreMismatch
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_OEM_NODE_1
+    call    Cfg_Eeprom_Read
+    jc      @@RestoreReadError
+    cmp     ah, [BYTE si + NIC_MAC_ADDR + 2]
+    jne     @@RestoreMismatch
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 3]
+    jne     @@RestoreMismatch
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_OEM_NODE_2
+    call    Cfg_Eeprom_Read
+    jc      @@RestoreReadError
+    cmp     ah, [BYTE si + NIC_MAC_ADDR + 4]
+    jne     @@RestoreMismatch
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 5]
+    jne     @@RestoreMismatch
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, ch
+    call    Select_Window
+    jmp     @@Good
+
+@@RestoreReadError:
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, ch
+    call    Select_Window
+    jmp     @@Fail
+@@RestoreMismatch:
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, ch
+    call    Select_Window
+    jmp     @@Mismatch
+
+@@ByTag:
+    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
+    jz      @@Mismatch
+    mov     al, [BYTE si + NIC_TAG]
+    or      al, al
+    jz      @@Mismatch
+    cmp     al, 7
+    ja      @@Mismatch
+
+    cli
+    cmp     [BYTE si + NIC_ID_MODE], 0
+    je      @@FullSequence
+    call    IdPort_Send_Short_Sequence
+    jmp     @@SelectTag
+@@FullSequence:
+    call    IdPort_Send_Full_Sequence
+@@SelectTag:
+    mov     dx, ID_PORT
+    mov     al, ID_CMD_SELECT_TAG
+    or      al, [BYTE si + NIC_TAG]
+    out     dx, al
+
+    mov     al, EEPROM_MFG_ID
+    call    IdPort_Read_Word
+    cmp     ax, 06D50h
+    jne     @@TagMismatch
+    mov     al, EEPROM_PRODUCT_ID
+    call    IdPort_Read_Word
+    cmp     ax, [WORD si + NIC_PRODUCT_ID]
+    jne     @@TagMismatch
+    call    Cfg_Is_Supported_Product
+    jc      @@TagUnsupported
+
+    mov     al, EEPROM_OEM_NODE_0
+    call    IdPort_Read_Word
+    cmp     ah, [BYTE si + NIC_MAC_ADDR]
+    jne     @@TagMismatch
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 1]
+    jne     @@TagMismatch
+    mov     al, EEPROM_OEM_NODE_1
+    call    IdPort_Read_Word
+    cmp     ah, [BYTE si + NIC_MAC_ADDR + 2]
+    jne     @@TagMismatch
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 3]
+    jne     @@TagMismatch
+    mov     al, EEPROM_OEM_NODE_2
+    call    IdPort_Read_Word
+    cmp     ah, [BYTE si + NIC_MAC_ADDR + 4]
+    jne     @@TagMismatch
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 5]
+    jne     @@TagMismatch
+    sti
+    jmp     @@Good
+
+@@TagUnsupported:
+    sti
+    mov     [cfg_last_error], CFG_ERR_UNSUPPORTED_PRODUCT
+    jmp     @@Fail
+@@TagMismatch:
+    sti
+@@Mismatch:
+    mov     [cfg_last_error], CFG_ERR_REVALIDATE
+@@Fail:
+    pop     si
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    stc
+    ret
+@@Good:
+    pop     si
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    clc
+    ret
+ENDP Cfg_Revalidate_Selected
+
+; ISA deactivation core recovered from original sub_335.
+; Input SI = selected ID record.  D8h plus tag selects it, C0h deactivates it.
+; IMPORTANT: unreachable from release 0.3 CONFIGURE property stubs.
+PROC Cfg_Id_Deactivate_Selected NEAR
+    push    ax
+    push    dx
+
+    cli
+    cmp     [BYTE si + NIC_ID_MODE], 0
+    je      @@Full
+    call    IdPort_Send_Short_Sequence
+    jmp     @@Selected
+@@Full:
+    call    IdPort_Send_Full_Sequence
+@@Selected:
+    mov     dx, ID_PORT
+    mov     al, ID_CMD_SELECT_TAG
+    or      al, [BYTE si + NIC_TAG]
+    out     dx, al
+    mov     al, 0C0h
+    out     dx, al
+    sti
+
+    pop     dx
+    pop     ax
+    ret
+ENDP Cfg_Id_Deactivate_Selected
+
+; ISA activation core recovered from original sub_334 and sub_335 reactivation.
+; Input SI = selected record.  Uses its existing tag and active I O base.
+; IMPORTANT: unreachable from release 0.3 CONFIGURE property stubs.
+PROC Cfg_Id_Activate_Selected NEAR
+    push    ax
+    push    bx
+    push    dx
+
+    cli
+    cmp     [BYTE si + NIC_ID_MODE], 0
+    je      @@Full
+    call    IdPort_Send_Short_Sequence
+    jmp     @@Select
+@@Full:
+    call    IdPort_Send_Full_Sequence
+@@Select:
+    mov     dx, ID_PORT
+    mov     al, ID_CMD_SELECT_TAG
+    or      al, [BYTE si + NIC_TAG]
+    out     dx, al
+
+    mov     ax, [WORD si + NIC_IO_BASE]
+    sub     ax, 0200h
+    mov     bx, 0010h
+    xor     dx, dx
+    div     bx
+    or      al, ID_CMD_ACTIVATE
+    mov     dx, ID_PORT
+    out     dx, al
+    sti
+
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Id_Activate_Selected
 
 ; ============================================================================
 ; Extended LIST information
