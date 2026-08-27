@@ -16,16 +16,16 @@
 ; has product-ID support without the matching EEPROM capability bit, or vice
 ; versa.  The two columns are separated below to make the dual gate explicit.
 ;
-;  Product             | EEPROM              | Product ID |
-;  Constant            | word 03h bits 15:8  | (hex)      | PNP | FULLDUPLEX | MODEM
-; ---------------------+---------------------+------------+-----+------------+------
-;  PRODUCT_3C509_TP    | 90h  (3C509B-TP)    |  9050h     |  1  |     1      |  1
-;  PRODUCT_3C509       | 91h  (3C509B-Combo) |  9150h     |  1  |     1      |  1
-;  PRODUCT_3C509_COMBO | 94h  (3C509B-C)     |  9450h     |  1  |     1      |  1
-;  PRODUCT_3C509_TPO   | 95h  (3C509B-TPO)   |  9550h     |  1  |     1      |  1
-;  PRODUCT_3C509_TPC   | 98h  (3C509B-TPC)   |  9850h     |  1  |     1      |  1
-;  (unknown/other)     | any other value     |  ????h     |  *  |     0      |  1
-; ---------------------+---------------------+------------+-----+------------+------
+;  Product             | EEPROM              | Product ID |     |            |       |
+;  Constant            | word 03h bits 15:8  | (hex)      | PNP | FULLDUPLEX | MODEM | /TR (transceiver types accepted)
+; ---------------------+---------------------+------------+-----+------------+-------+----------------------------------
+;  PRODUCT_3C509_TP    | 90h  (3C509B-TP)    |  9050h     |  1  |     1      |   1   | TP only
+;  PRODUCT_3C509       | 91h  (3C509B-Combo) |  9150h     |  1  |     1      |   1   | TP, AUI, AUTO
+;  PRODUCT_3C509_COMBO | 94h  (3C509B-C)     |  9450h     |  1  |     1      |   1   | TP, AUI, AUTO
+;  PRODUCT_3C509_TPO   | 95h  (3C509B-TPO)   |  9550h     |  1  |     1      |   1   | TP, AUI  (no AUTO; TPO excluded from auto-select path)
+;  PRODUCT_3C509_TPC   | 98h  (3C509B-TPC)   |  9850h     |  1  |     1      |   1   | TP, COAX
+;  (unknown/other)     | any other value     |  ????h     |  *  |     0      |   1   | (not recognised; /TR gate TBD)
+; ---------------------+---------------------+------------+-----+------------+-------+----------------------------------
 ;
 ; Notes:
 ;   PNP:        Gated on EEPROM_REVISION_INFO (word 14h) low byte >= 1.
@@ -46,6 +46,27 @@
 ;               field (EEPROM_SOFTWARE_INFO word 0Dh bits 14:0) is written
 ;               unconditionally for any recognised adapter.  Word 0Dh bit 15
 ;               is FULLDUPLEX and is always preserved during modem writes.
+;
+;   TR (/XCVR): Writes EEPROM_ADDR_CFG (word 08h) bits 15:14 (media selection).
+;               AUTO is only available on "later" cards (3C509B) that are not
+;               TPO; it is signalled by bit 7 of word 08h rather than bits
+;               15:14.  The 3C509B-TP has a single on-board TP connector and
+;               no external port, so AUI/COAX/AUTO are not meaningful for it.
+;               The 3C509B-TPC (coax) has no AUI port.
+;               Capability gate details are TBD pending /TR implementation.
+;
+;  EEPROM word 08h bits 15:14 | Bit 7 | Raw value | Symbolic name | LIST display
+;  ---------------------------+-------+-----------+---------------+---------------
+;  00                         |   0   |   0h      | TP            | on-board TP
+;  01                         |   0   |   1h      | AUI           | external
+;  10                         |   0   |   2h      | (normalised   | external
+;                             |       |           |  to AUI)      |
+;  11                         |   0   |   3h      | COAX          | on-board coax
+;  (any)                      |   1   |   -       | AUTO          | auto select
+;  ---------------------------+-------+-----------+---------------+---------------
+;  Note: bit 7 = AUTO overrides bits 15:14 in the display path.  Values 0 and 2
+;  both map to "external" on read-back (normalisation: raw 2 -> display as 1).
+;  AUTO is suppressed for 3C509B-TPO even on later-card hardware.
 ;
 ;   OPTIMIZE:   No separate product-ID gate was found.  The original utility
 ;               accepts the property for recognised adapters and stores the

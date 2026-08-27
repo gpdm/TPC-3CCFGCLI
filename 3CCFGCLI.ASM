@@ -1,17 +1,30 @@
 ; ============================================================================
-; 3CCFGCLI.ASM - 0.5.6
+; 3CCFGCLI.ASM - 0.5.7
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
 ;
 ; ============================================================================
-; - Supported CONFIGURE verbs in this 0.5.6 build:
+; - Supported CONFIGURE verbs in this 0.5.7 build:
 ;    /ADAPTERNUM, /BADDRESS, /BSIZE, /FULLDUPLEX, /INT, /IOBASE, /MODEM,
-;    /OPTIMIZE, /PNP, /VERBOSE.
-; - Not yet implemented in the transaction layer: /TR.
+;    /OPTIMIZE, /PNP, /TR (/XCVR alias), /VERBOSE.
 ; - /LINKBEAT is deliberately not a CONFIGURE verb in this build (although it could);
 ;    -> see the 0.5.4 changelog entry below.
 ; ============================================================================
 ;
+; Changelog 0.5.7:
+;   - Implemented /TR (/XCVR alias) CONFIGURE subverb.  Accepts TP, AUI,
+;     COAX, or AUTO.  Writes EEPROM_ADDR_CFG (word 08h) bits 15:14 (media
+;     selection); AUTO instead sets bit 7 (auto-select) and clears bits
+;     15:14.  Shares the existing word 08h transaction slot with /IOBASE,
+;     /BADDRESS, and /BSIZE.
+;   - Product-ID capability gate: 3C509B-TP accepts TP only; 3C509B-TPC
+;     accepts TP and COAX; 3C509B-TPO accepts TP and AUI (no AUTO);
+;     3C509B-Combo and 3C509B-C accept all four values; unrecognised
+;     products are rejected.
+;   - Added CFG_PARSE_TR / CFG_SEEN_TR flags and CFG_ERR_TR_* error codes.
+;   - Updated CFG_PARSE_HW_MASK to include CFG_PARSE_TR (0400h).
+;
+
 ; Changelog 0.5.6:
 ;   - Reordered capability gate checks ahead of the "parameter accepted" echo
 ;     for every gated CONFIGURE verb (/PNP, /FULLDUPLEX, /BADDRESS, /BSIZE).
@@ -241,6 +254,7 @@ CFG_PARSE_FULLDUPLEX    EQU 40h
 CFG_PARSE_OPTIMIZE      EQU 80h
 CFG_PARSE_BADDRESS      EQU 0100h
 CFG_PARSE_BSIZE         EQU 0200h
+CFG_PARSE_TR            EQU 0400h
 
 ; Strict CONFIGURE single occurrence tracking, independent of staged state.
 CFG_SEEN_ADAPTER        EQU 01h
@@ -253,6 +267,7 @@ CFG_SEEN_FULLDUPLEX     EQU 40h
 CFG_SEEN_OPTIMIZE       EQU 80h
 CFG_SEEN_BADDRESS       EQU 0100h
 CFG_SEEN_BSIZE          EQU 0200h
+CFG_SEEN_TR             EQU 0400h
 
 ; Central CONFIGURE transaction change flags.
 CFG_TXN_CHG_WORD08       EQU 01h
@@ -265,9 +280,10 @@ CFG_TXN_INT_CHANGED      EQU 40h
 CFG_TXN_CHG_WORD13       EQU 80h
 CFG_TXN_CHG_WORD0D       EQU 0100h
 CFG_TXN_CHG_WORD0F       EQU 0200h
-; Widened to also require the hardware transaction pipeline for /BADDRESS
-; and /BSIZE (bits 0100h/0200h), which share EEPROM word 08h with /IOBASE.
-CFG_PARSE_HW_MASK        EQU 03FAh
+; Widened to also require the hardware transaction pipeline for /BADDRESS,
+; /BSIZE, and /TR (bits 0100h/0200h/0400h), which share EEPROM word 08h
+; with /IOBASE.
+CFG_PARSE_HW_MASK        EQU 07FAh
 CFG_TXN_IO_DETECT_MASK   EQU 15h
 CFG_TXN_WORD09_INT_MASK  EQU 42h
 CFG_TXN_EEPROM_MASK      EQU 0383h
@@ -346,10 +362,16 @@ CFG_ERR_BSIZE_EEPROM_WRITE  EQU 62
 CFG_ERR_BSIZE_VERIFY        EQU 63
 CFG_ERR_BSIZE_NOT_CAPABLE   EQU 64
 CFG_ERR_BOOTROM_INCOMPLETE  EQU 65
+CFG_ERR_BAD_TR              EQU 66
+CFG_ERR_TR_INACTIVE         EQU 67
+CFG_ERR_TR_EEPROM_READ      EQU 68
+CFG_ERR_TR_EEPROM_WRITE     EQU 69
+CFG_ERR_TR_VERIFY           EQU 70
+CFG_ERR_TR_NOT_CAPABLE      EQU 71
 
 DATASEG
 
-VERSION_STRING	DB '0.5.6', '$'
+VERSION_STRING	DB '0.5.7', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -359,7 +381,7 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "Commands:", 0Dh, 0Ah
                 DB  "  /? or /H          Display this help screen.", 0Dh, 0Ah
                 DB  "  LIST              Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah
-                DB  "  CONFIGURE         Configure supported ISA properties, /BADDRESS, /BSIZE, /FULLDUPLEX, /INT, /IOBASE, /MODEM, /OPTIMIZE and /PNP.", 0Dh, 0Ah
+                DB  "  CONFIGURE         Configure supported ISA properties, /BADDRESS, /BSIZE, /FULLDUPLEX, /INT, /IOBASE, /MODEM, /OPTIMIZE, /PNP and /TR.", 0Dh, 0Ah
                 DB  "                    /ADAPTERNUM:N selects the NIC number shown by LIST.", 0Dh, 0Ah
                 DB  "                    /BADDRESS:NNNNN|NONE sets the Boot ROM base address (hex, C0000-DE000 in 2000h steps); requires /BSIZE.", 0Dh, 0Ah
                 DB  "                    /BSIZE:8|16|32 sets the Boot ROM size in K; requires /BADDRESS.", 0Dh, 0Ah
@@ -369,6 +391,8 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "                    /MODEM:N|NONE sets modem speed/interrupt-disable tuning.", 0Dh, 0Ah
                 DB  "                    /OPTIMIZE:DOS|WINDOWS|OS/2|SERVER sets EEPROM optimize mode.", 0Dh, 0Ah
                 DB  "                    /PNP:0|1 sets Plug and Play mode.", 0Dh, 0Ah
+                DB  "                    /TR:TP|AUI|COAX|AUTO sets the transceiver type.", 0Dh, 0Ah
+                DB  "                    /XCVR is an alias for /TR.", 0Dh, 0Ah
                 DB  "  /VERBOSE          Show detailed CONFIGURE transaction diagnostics.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
@@ -529,6 +553,27 @@ msg_cfg_bsize_eeprom_write_fail DB "EEPROM write timed out while writing Boot RO
 msg_cfg_bsize_verified DB "EEPROM Boot ROM size verified.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verify_fail DB "Boot ROM size configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_not_capable DB "This adapter does not support Boot ROM configuration.", 0Dh, 0Ah, '$'
+
+; /TR (/XCVR) diagnostics.  Transceiver selection shares EEPROM word 08h
+; bits 15:14 (and bit 7 for AUTO) with /IOBASE, /BADDRESS, and /BSIZE.
+msg_cfg_bad_tr DB "Invalid /TR parameter. Use TP, AUI, COAX, or AUTO.", 0Dh, 0Ah, '$'
+msg_cfg_tr_inactive DB "Selected adapter has no active I/O base for /TR configuration.", 0Dh, 0Ah, '$'
+msg_cfg_tr_not_capable DB "This adapter does not support the requested transceiver type.", 0Dh, 0Ah, '$'
+msg_cfg_tr_ok DB "TR parameter accepted. Requested transceiver: ", '$'
+msg_cfg_tr_unchanged DB 0Dh, 0Ah, "Transceiver type is already configured to the requested value.", 0Dh, 0Ah
+               DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_tr_word_written DB "Transceiver configuration word written.", 0Dh, 0Ah, '$'
+msg_cfg_tr_eeprom_read_fail DB "EEPROM read timed out while reading transceiver configuration.", 0Dh, 0Ah, '$'
+msg_cfg_tr_eeprom_write_fail DB "EEPROM write timed out while writing transceiver configuration.", 0Dh, 0Ah, '$'
+msg_cfg_tr_verified DB "EEPROM transceiver type verified.", 0Dh, 0Ah, '$'
+msg_cfg_tr_verify_fail DB "Transceiver configuration verification failed.", 0Dh, 0Ah, '$'
+msg_cfg_tr_completed DB 0Dh, 0Ah, "Transceiver configuration completed successfully.", 0Dh, 0Ah, '$'
+
+; Symbolic transceiver names used for /TR echo output.
+msg_tr_tp   DB "TP", '$'
+msg_tr_aui  DB "AUI", '$'
+msg_tr_coax DB "COAX", '$'
+msg_tr_auto DB "AUTO", '$'
 msg_cfg_txn_completed DB 0Dh, 0Ah, "Configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_txn_read DB 0Dh, 0Ah, "Reading current configuration...", 0Dh, 0Ah, '$'
 msg_cfg_txn_prepare DB 0Dh, 0Ah, "Preparing requested configuration...", 0Dh, 0Ah, '$'
@@ -652,6 +697,8 @@ cfg_optimize_value    DB 0
 ; (address = 0C0000h + index*2000h).  cfg_bsize_value: 0/1/2 = 8/16/32K.
 cfg_baddress_value    DB 0
 cfg_bsize_value       DB 0
+; cfg_tr_value: 0=TP, 1=AUI, 3=COAX, 0FFh=AUTO sentinel.
+cfg_tr_value          DB 0
 
 ; Central CONFIGURE transaction state.  Current state is snapshotted before any
 ; hardware modification.  Prospective state starts as an exact copy and is then
@@ -2006,7 +2053,62 @@ PROC Cfg_Handle_BSIZE NEAR
 ENDP Cfg_Handle_BSIZE
 
 PROC Cfg_Handle_TR NEAR
-    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    push    si
+    push    cx
+
+    ; Match TP (2), AUI (3), COAX (4), AUTO (4) by length then character.
+    cmp     cx, 2
+    jne     @@NotTP
+    cmp     [BYTE si], 'T'
+    jne     @@NotTP
+    cmp     [BYTE si+1], 'P'
+    jne     @@NotTP
+    mov     [cfg_tr_value], 0       ; TP  -> bits 15:14 = 00
+    jmp     @@Accept
+@@NotTP:
+    cmp     cx, 3
+    jne     @@NotAUI
+    cmp     [BYTE si], 'A'
+    jne     @@NotAUI
+    cmp     [BYTE si+1], 'U'
+    jne     @@NotAUI
+    cmp     [BYTE si+2], 'I'
+    jne     @@NotAUI
+    mov     [cfg_tr_value], 1       ; AUI -> bits 15:14 = 01
+    jmp     @@Accept
+@@NotAUI:
+    cmp     cx, 4
+    jne     @@Invalid
+    cmp     [BYTE si], 'C'
+    jne     @@NotCOAX
+    cmp     [BYTE si+1], 'O'
+    jne     @@NotCOAX
+    cmp     [BYTE si+2], 'A'
+    jne     @@NotCOAX
+    cmp     [BYTE si+3], 'X'
+    jne     @@NotCOAX
+    mov     [cfg_tr_value], 3       ; COAX -> bits 15:14 = 11
+    jmp     @@Accept
+@@NotCOAX:
+    cmp     [BYTE si], 'A'
+    jne     @@Invalid
+    cmp     [BYTE si+1], 'U'
+    jne     @@Invalid
+    cmp     [BYTE si+2], 'T'
+    jne     @@Invalid
+    cmp     [BYTE si+3], 'O'
+    jne     @@Invalid
+    mov     [cfg_tr_value], 0FFh    ; AUTO sentinel -> bit 7 of word 08h
+    jmp     @@Accept
+@@Invalid:
+    mov     [cfg_last_error], CFG_ERR_BAD_TR
+    jmp     @@Done
+@@Accept:
+    or      [cfg_parse_flags], CFG_PARSE_TR
+    mov     [cfg_last_error], CFG_ERR_NONE
+@@Done:
+    pop     cx
+    pop     si
     ret
 ENDP Cfg_Handle_TR
 
@@ -2551,8 +2653,38 @@ PROC Cfg_Report_Error NEAR
     jmp     @@Print
 @@E65:
     cmp     al, CFG_ERR_BOOTROM_INCOMPLETE
-    jne     @@Done
+    jne     @@E66
     mov     dx, OFFSET msg_cfg_bootrom_incomplete
+    jmp     @@Print
+@@E66:
+    cmp     al, CFG_ERR_BAD_TR
+    jne     @@E67
+    mov     dx, OFFSET msg_cfg_bad_tr
+    jmp     @@Print
+@@E67:
+    cmp     al, CFG_ERR_TR_INACTIVE
+    jne     @@E68
+    mov     dx, OFFSET msg_cfg_tr_inactive
+    jmp     @@Print
+@@E68:
+    cmp     al, CFG_ERR_TR_EEPROM_READ
+    jne     @@E69
+    mov     dx, OFFSET msg_cfg_tr_eeprom_read_fail
+    jmp     @@Print
+@@E69:
+    cmp     al, CFG_ERR_TR_EEPROM_WRITE
+    jne     @@E70
+    mov     dx, OFFSET msg_cfg_tr_eeprom_write_fail
+    jmp     @@Print
+@@E70:
+    cmp     al, CFG_ERR_TR_VERIFY
+    jne     @@E71
+    mov     dx, OFFSET msg_cfg_tr_verify_fail
+    jmp     @@Print
+@@E71:
+    cmp     al, CFG_ERR_TR_NOT_CAPABLE
+    jne     @@Done
+    mov     dx, OFFSET msg_cfg_tr_not_capable
 @@Print:
     mov     ah, 09h
     int     21h
@@ -4078,6 +4210,8 @@ PROC Cfg_Txn_Read_Current NEAR
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jnz     @@ReadWord08
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    jnz     @@ReadWord08
+    test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@NoWord08
 @@ReadWord08:
     mov     al, EEPROM_ADDR_CFG
@@ -4418,6 +4552,35 @@ PROC Cfg_Prepare_BSIZE NEAR
     ret
 ENDP Cfg_Prepare_BSIZE
 
+; Merge only the transceiver selection into the prospective EEPROM word 08h
+; image.  AUTO (sentinel 0FFh) clears bits 15:14 and sets bit 7.  TP/AUI/COAX
+; clear bit 7 and write the raw value into bits 15:14.  All other bits preserved.
+PROC Cfg_Prepare_TR NEAR
+    push    ax
+    push    bx
+    push    cx
+
+    mov     ax, [cfg_txn_new_word08]
+    and     ax, 3F7Fh               ; clear bits 15:14 and bit 7
+    mov     bl, [cfg_tr_value]
+    cmp     bl, 0FFh
+    jne     @@NotAuto
+    or      ax, 0080h               ; AUTO: set bit 7 only
+    jmp     @@Done
+@@NotAuto:
+    xor     bh, bh
+    mov     cl, 14
+    shl     bx, cl                  ; shift raw value into bits 15:14
+    or      ax, bx
+@@Done:
+    mov     [cfg_txn_new_word08], ax
+
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Prepare_TR
+
 ; Compare current and prospective states once after all properties are prepared.
 ; INT keeps release 0.3.3 unchanged semantics: its persistent EEPROM field is
 ; authoritative.  A matching persistent IRQ alone remains a no write success
@@ -4432,6 +4595,8 @@ PROC Cfg_Txn_Detect_Changes NEAR
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jnz     @@CheckWord08
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    jnz     @@CheckWord08
+    test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@INT
 
 @@CheckWord08:
@@ -5568,6 +5733,8 @@ PROC Cfg_Txn_Report_Success NEAR
     jnz     @@Generic
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jnz     @@Generic
+    test    [cfg_parse_flags], CFG_PARSE_TR
+    jnz     @@Generic
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@NoPNP
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
@@ -5753,7 +5920,69 @@ PROC Cfg_Txn_Execute NEAR
     mov     [cfg_last_error], CFG_ERR_BADDRESS_EEPROM_READ
     jmp     @@Done
 
+; Gate: /TR transceiver type must be valid for this specific product.
+; TP-only cards (3C509B-TP) reject AUI/COAX/AUTO.
+; Coax card (3C509B-TPC) rejects AUI and AUTO.
+; TPO (3C509B-TPO) rejects COAX and AUTO (no auto-select path on TPO).
+; Combo and C variants accept all four values.
+; Any unrecognised product ID is rejected.
 @@Requested:
+@@GateTR:
+    test    [cfg_parse_flags], CFG_PARSE_TR
+    jz      @@GateTR_Pass
+    mov     si, [cfg_selected_ptr]
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    cmp     ax, PRODUCT_3C509_TP
+    je      @@GateTR_TP
+    cmp     ax, PRODUCT_3C509_TPC
+    je      @@GateTR_TPC
+    cmp     ax, PRODUCT_3C509_TPO
+    je      @@GateTR_TPO
+    cmp     ax, PRODUCT_3C509
+    je      @@GateTR_All
+    cmp     ax, PRODUCT_3C509_COMBO
+    je      @@GateTR_All
+    ; Unrecognised product.
+    mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
+    jmp     @@Done
+
+@@GateTR_TP:
+    ; 3C509B-TP: only TP (0) is valid.
+    cmp     [cfg_tr_value], 0
+    je      @@GateTR_Pass
+    mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
+    jmp     @@Done
+
+@@GateTR_TPC:
+    ; 3C509B-TPC: TP (0) and COAX (3) only; no AUI (1) or AUTO (0FFh).
+    cmp     [cfg_tr_value], 0
+    je      @@GateTR_Pass
+    cmp     [cfg_tr_value], 3
+    je      @@GateTR_Pass
+    mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
+    jmp     @@Done
+
+@@GateTR_TPO:
+    ; 3C509B-TPO: TP (0) and AUI (1) only; no COAX (3) or AUTO (0FFh).
+    cmp     [cfg_tr_value], 0
+    je      @@GateTR_Pass
+    cmp     [cfg_tr_value], 1
+    je      @@GateTR_Pass
+    mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
+    jmp     @@Done
+
+@@GateTR_All:
+    ; 3C509B-Combo / 3C509B-C: TP, AUI, COAX, AUTO all valid.
+    ; Reject COAX (3) for non-TPC cards that reach this path.
+    cmp     [cfg_tr_value], 3
+    je      @@GateTR_NoCoax
+    jmp     @@GateTR_Pass
+@@GateTR_NoCoax:
+    mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
+    jmp     @@Done
+
+@@GateTR_Pass:
+@@RequestedIOBASE:
     ; Preserve normal requested parameter output from the existing releases.
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@RequestedINT
@@ -5864,7 +6093,7 @@ PROC Cfg_Txn_Execute NEAR
 
 @@RequestedBSize:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jz      @@Read
+    jz      @@RequestedTR
     mov     dx, OFFSET msg_cfg_bsize_ok
     mov     ah, 09h
     int     21h
@@ -5884,6 +6113,35 @@ PROC Cfg_Txn_Execute NEAR
 @@PrintBSizeValue:
     call    Print_DecWord
     mov     dx, OFFSET msg_kilobytes_suffix
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+
+@@RequestedTR:
+    test    [cfg_parse_flags], CFG_PARSE_TR
+    jz      @@Read
+    mov     dx, OFFSET msg_cfg_tr_ok
+    mov     ah, 09h
+    int     21h
+    cmp     [cfg_tr_value], 0FFh
+    jne     @@TRNotAuto
+    mov     dx, OFFSET msg_tr_auto
+    jmp     @@PrintTR
+@@TRNotAuto:
+    cmp     [cfg_tr_value], 0
+    jne     @@TRNotTP
+    mov     dx, OFFSET msg_tr_tp
+    jmp     @@PrintTR
+@@TRNotTP:
+    cmp     [cfg_tr_value], 1
+    jne     @@TRIsCoax
+    mov     dx, OFFSET msg_tr_aui
+    jmp     @@PrintTR
+@@TRIsCoax:
+    mov     dx, OFFSET msg_tr_coax
+@@PrintTR:
     mov     ah, 09h
     int     21h
     mov     dx, OFFSET msg_cfg_crlf
@@ -5935,8 +6193,13 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Prepare_BADDRESS
 @@PrepareBSizeOnly:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jz      @@Detect
+    jz      @@PrepareTR
     call    Cfg_Prepare_BSIZE
+@@PrepareTR:
+    ; Capability gate already passed in the gate phase above; stage only.
+    test    [cfg_parse_flags], CFG_PARSE_TR
+    jz      @@Detect
+    call    Cfg_Prepare_TR
 @@Detect:
     call    Cfg_Txn_Detect_Changes
     call    Cfg_Txn_Report_Prospective
@@ -6002,10 +6265,19 @@ PROC Cfg_Txn_Execute NEAR
 
 @@CheckBSizeUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    jz      @@CheckTRUnchanged
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
+    jnz     @@CheckTRUnchanged
+    mov     dx, OFFSET msg_cfg_bsize_unchanged
+    mov     ah, 09h
+    int     21h
+
+@@CheckTRUnchanged:
+    test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@CheckAnyChange
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jnz     @@CheckAnyChange
-    mov     dx, OFFSET msg_cfg_bsize_unchanged
+    mov     dx, OFFSET msg_cfg_tr_unchanged
     mov     ah, 09h
     int     21h
 
