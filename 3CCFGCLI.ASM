@@ -1,8 +1,13 @@
 ; ============================================================================
-; 3CCFGCLI.ASM - 0.4.1
+; 3CCFGCLI.ASM - 0.5.0
 ; 3Com EtherLink III 3C509 and 3C509B ISA LIST and CONFIGURE framework
 ; Target: MS DOS, Turbo Assembler, 8086 and 8088 only
 ;
+;
+; Changelog 0.5.0:
+; Added /PNP CONFIGURE support with boolean 0 or 1 input.  The centralized
+; transaction now stages, writes and verifies EEPROM word 13h for PnP mode.
+; Mock state persistence now records the PNP flag consistently with EEPROM.
 ;
 ; Changelog 0.4.1:
 ; Backend split fully implemented.
@@ -19,10 +24,10 @@
 ;     now tracks active-base and persistent state consistently so configuration
 ;     changes persist coherently across runs.
 ;
-; Supported CONFIGURE verbs in this 0.4.1 build: /ADAPTERNUM, /INT, /IOBASE,
-; /VERBOSE.
+; Supported CONFIGURE verbs in this 0.5.0 build: /ADAPTERNUM, /INT, /IOBASE,
+; /PNP, /VERBOSE.
 ; Not yet implemented in the transaction layer: /BADDRESS, /BSIZE,
-; /TR, /MODEM, /OPTIMIZE, /LINKBEAT, /CONFIGPORT, /PNP, /SYNCREADY,
+; /TR, /MODEM, /OPTIMIZE, /LINKBEAT, /CONFIGPORT, /SYNCREADY,
 ; /FULLDUPLEX.  These option handlers remain explicit stubs that return
 ; CFG_ERR_NOT_IMPLEMENTED.
 ;
@@ -147,12 +152,14 @@ CFG_PARSE_ADAPTER       EQU 01h
 CFG_PARSE_INT           EQU 02h
 CFG_PARSE_VERBOSE       EQU 04h
 CFG_PARSE_IOBASE        EQU 08h
+CFG_PARSE_PNP           EQU 10h
 
 ; Strict CONFIGURE single occurrence tracking, independent of staged state.
 CFG_SEEN_ADAPTER        EQU 01h
 CFG_SEEN_INT            EQU 02h
 CFG_SEEN_IOBASE         EQU 04h
 CFG_SEEN_VERBOSE        EQU 08h
+CFG_SEEN_PNP            EQU 10h
 
 ; Central CONFIGURE transaction change flags.
 CFG_TXN_CHG_WORD08       EQU 01h
@@ -162,12 +169,13 @@ CFG_TXN_CHG_LIVE08       EQU 08h
 CFG_TXN_MIGRATE_IO       EQU 10h
 CFG_TXN_IOBASE_CHANGED   EQU 20h
 CFG_TXN_INT_CHANGED      EQU 40h
-CFG_PARSE_HW_MASK        EQU 0Ah
+CFG_TXN_CHG_WORD13       EQU 80h
+CFG_PARSE_HW_MASK        EQU 1Ah
 CFG_TXN_IO_DETECT_MASK   EQU 15h
 CFG_TXN_WORD09_INT_MASK  EQU 42h
-CFG_TXN_EEPROM_MASK      EQU 03h
+CFG_TXN_EEPROM_MASK      EQU 83h
 CFG_TXN_LIVE06_MASK      EQU 14h
-CFG_TXN_COMMIT_MASK      EQU 70h
+CFG_TXN_COMMIT_MASK      EQU 0F0h
 CFG_TXN_INT_MIGRATE_MASK EQU 50h
 
 ; Common CONFIGURE result codes.
@@ -202,10 +210,15 @@ CFG_ERR_IOBASE_EEPROM_WRITE EQU 27
 CFG_ERR_IOBASE_LIVE         EQU 28
 CFG_ERR_IOBASE_VERIFY       EQU 29
 CFG_ERR_IOBASE_ACTIVATE     EQU 30
+CFG_ERR_BAD_PNP             EQU 31
+CFG_ERR_PNP_INACTIVE        EQU 32
+CFG_ERR_PNP_EEPROM_READ     EQU 33
+CFG_ERR_PNP_EEPROM_WRITE    EQU 34
+CFG_ERR_PNP_VERIFY          EQU 35
 
 DATASEG
 
-VERSION_STRING	DB '0.4.1', '$'
+VERSION_STRING	DB '0.5.0', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -215,10 +228,11 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "Commands:", 0Dh, 0Ah
                 DB  "  /? or /H          Display this help screen.", 0Dh, 0Ah
                 DB  "  LIST              Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah
-                DB  "  CONFIGURE         Configure supported ISA properties, /INT and /IOBASE.", 0Dh, 0Ah
+                DB  "  CONFIGURE         Configure supported ISA properties, /INT, /IOBASE and /PNP.", 0Dh, 0Ah
                 DB  "                    /ADAPTERNUM:N selects the NIC number shown by LIST.", 0Dh, 0Ah
                 DB  "                    /INT:N sets the IRQ.", 0Dh, 0Ah
                 DB  "                    /IOBASE:NNN sets the ISA I/O base address.", 0Dh, 0Ah
+                DB  "                    /PNP:0|1 sets Plug and Play mode.", 0Dh, 0Ah
                 DB  "  /VERBOSE          Show detailed CONFIGURE transaction diagnostics.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
@@ -237,7 +251,9 @@ msg_cfg_missing_value DB "Missing CONFIGURE option value.", 0Dh, 0Ah, '$'
 msg_cfg_no_property DB "No CONFIGURE property was specified.", 0Dh, 0Ah, '$'
 msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 0Dh, 0Ah, '$'
 msg_cfg_bad_int DB "Invalid /INT parameter. Value must be 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
+msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use 0 (disabled) or 1 (enabled).", 0Dh, 0Ah, '$'
 msg_cfg_int_ok DB "INT parameter accepted. Requested IRQ: ", '$'
+msg_cfg_pnp_ok DB "PNP parameter accepted. Requested Plug and Play mode: ", '$'
 msg_cfg_crlf DB 0Dh, 0Ah, '$'
 msg_cfg_adapter_prefix DB "Adapter ", '$'
 msg_cfg_adapter_suffix DB " selected.", 0Dh, 0Ah, '$'
@@ -266,6 +282,7 @@ msg_cfg_checksum_fail DB "EEPROM checksum update failed.", 0Dh, 0Ah, '$'
 msg_cfg_live_fail DB "Live IRQ configuration update failed.", 0Dh, 0Ah, '$'
 msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_int_inactive DB "Selected adapter has no active I/O base for /INT configuration.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_inactive DB "Selected adapter has no active I/O base for /PNP configuration.", 0Dh, 0Ah, '$'
 
 ; /IOBASE diagnostics.
 msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.", 0Dh, 0Ah, '$'
@@ -304,6 +321,15 @@ msg_cfg_eeprom_iobase_verified DB "EEPROM I/O base verified: ", '$'
 msg_cfg_live_iobase_verified DB "Live I/O base verified: ", '$'
 msg_cfg_iobase_completed DB 0Dh, 0Ah, "I/O base configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_combined_completed DB 0Dh, 0Ah, "I/O base and IRQ configuration completed successfully.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_unchanged DB 0Dh, 0Ah, "Plug and Play mode is already configured to the requested value.", 0Dh, 0Ah
+                      DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_word_written DB "Plug and Play configuration word written.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_eeprom_read_fail DB "EEPROM read timed out while reading Plug and Play configuration.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_eeprom_write_fail DB "EEPROM write timed out while writing Plug and Play configuration.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_verified DB "EEPROM Plug and Play mode verified.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_verify_fail DB "Plug and Play configuration verification failed.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_completed DB 0Dh, 0Ah, "Plug and Play configuration completed successfully.", 0Dh, 0Ah, '$'
+msg_cfg_txn_completed DB 0Dh, 0Ah, "Configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_txn_read DB 0Dh, 0Ah, "Reading current configuration...", 0Dh, 0Ah, '$'
 msg_cfg_txn_prepare DB 0Dh, 0Ah, "Preparing requested configuration...", 0Dh, 0Ah, '$'
 msg_cfg_txn_no_changes DB "No hardware changes required.", 0Dh, 0Ah, '$'
@@ -404,16 +430,19 @@ cfg_options_ptr       DW 0
 ; Staged property requests.  Handlers write only these values and parse flags.
 cfg_int_value         DB 0
 cfg_iobase_value      DW 0
+cfg_pnp_value         DB 0
 
 ; Central CONFIGURE transaction state.  Current state is snapshotted before any
 ; hardware modification.  Prospective state starts as an exact copy and is then
-; modified only by Cfg_Prepare_INT and Cfg_Prepare_IOBASE.
+; modified only by Cfg_Prepare_INT, Cfg_Prepare_IOBASE and Cfg_Prepare_PNP.
 cfg_txn_old_base          DW 0
 cfg_txn_new_base          DW 0
 cfg_txn_old_word08        DW 0
 cfg_txn_new_word08        DW 0
 cfg_txn_old_word09        DW 0
 cfg_txn_new_word09        DW 0
+cfg_txn_old_word13        DW 0
+cfg_txn_new_word13        DW 0
 cfg_txn_old_live06        DW 0
 cfg_txn_new_live06        DW 0
 cfg_txn_old_live08        DW 0
@@ -887,8 +916,15 @@ PROC Cfg_Parse_Options NEAR
     jmp     @@CountProperty
 @@CheckSeenIOBase:
     cmp     al, CFG_OPT_IOBASE
-    jne     @@CountProperty
+    jne     @@CheckSeenPNP
     mov     al, CFG_SEEN_IOBASE
+    call    Cfg_Mark_Seen
+    jc      @@DuplicateProperty
+    jmp     @@CountProperty
+@@CheckSeenPNP:
+    cmp     al, CFG_OPT_PNP
+    jne     @@CountProperty
+    mov     al, CFG_SEEN_PNP
     call    Cfg_Mark_Seen
     jc      @@DuplicateProperty
 @@CountProperty:
@@ -1343,8 +1379,8 @@ ENDP Cfg_Dispatch_Property
 
 ; Property handler entry points receive SI = value pointer and CX = value length.
 ; /INT preserves the hardware tested validation body and only stages its final
-; accepted value.  /IOBASE likewise parses and stages only.  Neither handler
-; performs hardware access.  Remaining property handlers are stubs.
+; accepted value.  /IOBASE and /PNP likewise parse and stage only.  No handler
+; performs hardware access directly.  Remaining property handlers are stubs.
 ; Input SI = /INT value pointer, CX = value length.
 ; Accepted canonical decimal forms are exactly:
 ;   3, 5, 7, 9, 10, 11, 12, 15
@@ -1563,7 +1599,24 @@ PROC Cfg_Handle_CONFIGPORT NEAR
 ENDP Cfg_Handle_CONFIGPORT
 
 PROC Cfg_Handle_PNP NEAR
-    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    cmp     cx, 1
+    jne     @@Invalid
+    mov     al, [si]
+    cmp     al, '0'
+    je      @@Zero
+    cmp     al, '1'
+    jne     @@Invalid
+    mov     [cfg_pnp_value], 1
+    or      [cfg_parse_flags], CFG_PARSE_PNP
+    mov     [cfg_last_error], CFG_ERR_NONE
+    ret
+@@Zero:
+    mov     [cfg_pnp_value], 0
+    or      [cfg_parse_flags], CFG_PARSE_PNP
+    mov     [cfg_last_error], CFG_ERR_NONE
+    ret
+@@Invalid:
+    mov     [cfg_last_error], CFG_ERR_BAD_PNP
     ret
 ENDP Cfg_Handle_PNP
 
@@ -1729,8 +1782,33 @@ PROC Cfg_Report_Error NEAR
     jmp     @@Print
 @@E30:
     cmp     al, CFG_ERR_IOBASE_ACTIVATE
-    jne     @@Done
+    jne     @@E31
     mov     dx, OFFSET msg_cfg_iobase_activate_fail
+    jmp     @@Print
+@@E31:
+    cmp     al, CFG_ERR_BAD_PNP
+    jne     @@E32
+    mov     dx, OFFSET msg_cfg_bad_pnp
+    jmp     @@Print
+@@E32:
+    cmp     al, CFG_ERR_PNP_INACTIVE
+    jne     @@E33
+    mov     dx, OFFSET msg_cfg_pnp_inactive
+    jmp     @@Print
+@@E33:
+    cmp     al, CFG_ERR_PNP_EEPROM_READ
+    jne     @@E34
+    mov     dx, OFFSET msg_cfg_pnp_eeprom_read_fail
+    jmp     @@Print
+@@E34:
+    cmp     al, CFG_ERR_PNP_EEPROM_WRITE
+    jne     @@E35
+    mov     dx, OFFSET msg_cfg_pnp_eeprom_write_fail
+    jmp     @@Print
+@@E35:
+    cmp     al, CFG_ERR_PNP_VERIFY
+    jne     @@Done
+    mov     dx, OFFSET msg_cfg_pnp_verify_fail
 @@Print:
     mov     ah, 09h
     int     21h
@@ -3210,6 +3288,11 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_last_error], CFG_ERR_IOBASE_INACTIVE
     jmp     @@Fail
 @@InactiveINT:
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@InactiveIRQ
+    mov     [cfg_last_error], CFG_ERR_PNP_INACTIVE
+    jmp     @@Fail
+@@InactiveIRQ:
     mov     [cfg_last_error], CFG_ERR_INT_INACTIVE
     jmp     @@Fail
 
@@ -3240,6 +3323,19 @@ PROC Cfg_Txn_Read_Current NEAR
 @@NoWord09:
     mov     [cfg_txn_old_word09], 0
 @@Word09Done:
+
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@NoWord13
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CONFIG_CONTROL
+    call    Cfg_Eeprom_Read
+    jc      @@ReadPNPFail
+    mov     [cfg_txn_old_word13], ax
+    jmp     @@Word13Done
+@@NoWord13:
+    mov     [cfg_txn_old_word13], 0
+@@Word13Done:
 
     ; Both live words are required because original ISA reactivation restores
     ; Address Configuration and Resource Configuration together.
@@ -3291,6 +3387,11 @@ PROC Cfg_Txn_Read_Current NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_EEPROM_READ
+    jmp     @@Fail
+@@ReadPNPFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_READ
 @@Fail:
     pop     si
     pop     dx
@@ -3308,6 +3409,8 @@ PROC Cfg_Txn_Init_Prospective NEAR
     mov     [cfg_txn_new_word08], ax
     mov     ax, [cfg_txn_old_word09]
     mov     [cfg_txn_new_word09], ax
+    mov     ax, [cfg_txn_old_word13]
+    mov     [cfg_txn_new_word13], ax
     mov     ax, [cfg_txn_old_live06]
     mov     [cfg_txn_new_live06], ax
     mov     ax, [cfg_txn_old_live08]
@@ -3382,6 +3485,23 @@ PROC Cfg_Prepare_INT NEAR
     ret
 ENDP Cfg_Prepare_INT
 
+; Merge only the staged PNP field into the prospective persistent image.
+; /PNP:0 encodes disabled state as config-control bits 3:2 equal 01b (0004h).
+PROC Cfg_Prepare_PNP NEAR
+    push    ax
+
+    mov     ax, [cfg_txn_new_word13]
+    and     ax, 0FFF3h
+    cmp     [cfg_pnp_value], 0
+    jne     @@Store
+    or      ax, 0004h
+@@Store:
+    mov     [cfg_txn_new_word13], ax
+
+    pop     ax
+    ret
+ENDP Cfg_Prepare_PNP
+
 ; Compare current and prospective states once after all properties are prepared.
 ; INT keeps release 0.3.3 unchanged semantics: its persistent EEPROM field is
 ; authoritative.  A matching persistent IRQ alone remains a no write success
@@ -3415,27 +3535,35 @@ PROC Cfg_Txn_Detect_Changes NEAR
 
 @@INT:
     test    [cfg_parse_flags], CFG_PARSE_INT
-    jz      @@Done
+    jz      @@PNP
     mov     ax, [cfg_txn_old_word09]
     cmp     ax, [cfg_txn_new_word09]
     je      @@INTPersistentSame
     or      [cfg_txn_change_flags], CFG_TXN_WORD09_INT_MASK
     mov     ax, [cfg_txn_old_live08]
     cmp     ax, [cfg_txn_new_live08]
-    je      @@Done
+    je      @@PNP
     or      [cfg_txn_change_flags], CFG_TXN_CHG_LIVE08
-    jmp     @@Done
+    jmp     @@PNP
 
 @@INTPersistentSame:
     ; During a real IOBASE migration the activation restore uses the requested
     ; staged IRQ, even when EEPROM already contains it.  Outside migration, the
     ; tested 0.3.3 unchanged INT path performs no live correction.
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
-    jz      @@Done
+    jz      @@PNP
     mov     ax, [cfg_txn_old_live08]
     cmp     ax, [cfg_txn_new_live08]
-    je      @@Done
+    je      @@PNP
     or      [cfg_txn_change_flags], CFG_TXN_CHG_LIVE08
+
+@@PNP:
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@Done
+    mov     ax, [cfg_txn_old_word13]
+    cmp     ax, [cfg_txn_new_word13]
+    je      @@Done
+    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
 
 @@Done:
     pop     ax
@@ -3692,7 +3820,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 
 @@Word09:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD09
-    jz      @@Checksum
+    jz      @@Word13
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     bx, [cfg_txn_new_word09]
@@ -3702,6 +3830,21 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
     jz      @@Checksum
     mov     dx, OFFSET msg_cfg_irq_word_written
+    mov     ah, 09h
+    int     21h
+
+@@Word13:
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
+    jz      @@Checksum
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     bx, [cfg_txn_new_word13]
+    mov     al, EEPROM_CONFIG_CONTROL
+    call    Cfg_Eeprom_Write
+    jc      @@Write13Fail
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@Checksum
+    mov     dx, OFFSET msg_cfg_pnp_word_written
     mov     ah, 09h
     int     21h
 
@@ -3764,6 +3907,11 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_EEPROM_WRITE
+    jmp     @@Fail
+@@Write13Fail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_WRITE
     jmp     @@Fail
 @@ChecksumFail:
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
@@ -3954,7 +4102,7 @@ PROC Cfg_Txn_Verify NEAR
 
 @@INTPersistent:
     test    [cfg_parse_flags], CFG_PARSE_INT
-    jz      @@Success
+    jz      @@PNPPersistent
     ; Preserve the standalone 0.3.3 unchanged path.  Verify INT only when its
     ; persistent field changed, or when an IO migration forced live restoration.
     test    [cfg_txn_change_flags], CFG_TXN_INT_MIGRATE_MASK
@@ -4013,6 +4161,24 @@ PROC Cfg_Txn_Verify NEAR
     mov     ah, 09h
     int     21h
 
+@@PNPPersistent:
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@Success
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
+    jz      @@Success
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CONFIG_CONTROL
+    call    Cfg_Eeprom_Read
+    jc      @@PNPVerifyFail
+    cmp     ax, [cfg_txn_new_word13]
+    jne     @@PNPVerifyFail
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@Success
+    mov     dx, OFFSET msg_cfg_pnp_verified
+    mov     ah, 09h
+    int     21h
+
 @@Success:
     pop     si
     pop     dx
@@ -4036,6 +4202,11 @@ PROC Cfg_Txn_Verify NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_VERIFY
+    jmp     @@Fail
+@@PNPVerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    mov     [cfg_last_error], CFG_ERR_PNP_VERIFY
 @@Fail:
     pop     si
     pop     dx
@@ -4221,6 +4392,18 @@ ENDP Cfg_Txn_Report_Prospective
 PROC Cfg_Txn_Report_Success NEAR
     push    dx
 
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@NoPNP
+    test    [cfg_parse_flags], CFG_PARSE_IOBASE
+    jnz     @@Generic
+    test    [cfg_parse_flags], CFG_PARSE_INT
+    jnz     @@Generic
+    mov     dx, OFFSET msg_cfg_pnp_completed
+    jmp     @@Print
+@@Generic:
+    mov     dx, OFFSET msg_cfg_txn_completed
+    jmp     @@Print
+@@NoPNP:
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@INTOnly
     test    [cfg_parse_flags], CFG_PARSE_INT
@@ -4274,12 +4457,31 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
 @@RequestedINT:
     test    [cfg_parse_flags], CFG_PARSE_INT
-    jz      @@Read
+    jz      @@RequestedPNP
     mov     dx, OFFSET msg_cfg_int_ok
     mov     ah, 09h
     int     21h
     mov     al, [cfg_int_value]
     call    Print_DecByte
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+
+@@RequestedPNP:
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@Read
+    mov     dx, OFFSET msg_cfg_pnp_ok
+    mov     ah, 09h
+    int     21h
+    cmp     [cfg_pnp_value], 0
+    je      @@PnpDisabled
+    mov     dx, OFFSET msg_enabled
+    jmp     @@PnpPrint
+@@PnpDisabled:
+    mov     dx, OFFSET msg_disabled
+@@PnpPrint:
+    mov     ah, 09h
+    int     21h
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
@@ -4301,8 +4503,12 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Prepare_IOBASE
 @@PrepareINT:
     test    [cfg_parse_flags], CFG_PARSE_INT
-    jz      @@Detect
+    jz      @@PreparePNP
     call    Cfg_Prepare_INT
+@@PreparePNP:
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@Detect
+    call    Cfg_Prepare_PNP
 @@Detect:
     call    Cfg_Txn_Detect_Changes
     call    Cfg_Txn_Report_Prospective
@@ -4318,10 +4524,18 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
 @@CheckINTUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_INT
-    jz      @@CheckAnyChange
+    jz      @@CheckPNPUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_INT_CHANGED
-    jnz     @@CheckAnyChange
+    jnz     @@CheckPNPUnchanged
     mov     dx, OFFSET msg_cfg_irq_unchanged
+    mov     ah, 09h
+    int     21h
+@@CheckPNPUnchanged:
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@CheckAnyChange
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
+    jnz     @@CheckAnyChange
+    mov     dx, OFFSET msg_cfg_pnp_unchanged
     mov     ah, 09h
     int     21h
 
