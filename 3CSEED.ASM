@@ -24,6 +24,7 @@ msg_banner_suffix DB 0Dh, 0Ah, '$'
 msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  INIT         Create deterministic one-card seed (3C509B-TP profile).', 0Dh, 0Ah
              DB '  RANDOM       Create randomized one-card seed state.', 0Dh, 0Ah
+             DB '  ADD model [io] [irq]  Append one card; defaults pick next free I/O.', 0Dh, 0Ah
              DB '  CLEAR        Delete 3C509B.MCK.', 0Dh, 0Ah
              DB '  3C509B-TP    Seed as 3C509B-TP  (product 9050h, twisted-pair).', 0Dh, 0Ah
              DB '  3C509B-COMBO Seed as 3C509B      (product 9150h, combo/AUI).', 0Dh, 0Ah
@@ -47,11 +48,17 @@ msg_ok_nopnp DB 'Seed file created (NOPNP).', 0Dh, 0Ah, '$'
 msg_ok_nofd  DB 'Seed file created (NOFD).', 0Dh, 0Ah, '$'
 msg_ok_linkup   DB 'Seed file created (LINKUP).', 0Dh, 0Ah, '$'
 msg_ok_linkdown DB 'Seed file created (LINKDOWN).', 0Dh, 0Ah, '$'
+msg_ok_add   DB 'Seed file updated (ADD).', 0Dh, 0Ah, '$'
 msg_fail_io  DB 'File I/O error.', 0Dh, 0Ah, '$'
 msg_bad_arg  DB 'Invalid command argument.', 0Dh, 0Ah, '$'
+msg_add_too_many DB 'Too many mock NIC records.', 0Dh, 0Ah, '$'
+msg_no_free_iobase DB 'No free default I/O base remains.', 0Dh, 0Ah, '$'
+msg_bad_iobase DB 'Invalid I/O base argument.', 0Dh, 0Ah, '$'
+msg_bad_irq  DB 'Invalid IRQ argument.', 0Dh, 0Ah, '$'
 
 kw_init      DB 'INIT', 0
 kw_random    DB 'RANDOM', 0
+kw_add       DB 'ADD', 0
 kw_clear     DB 'CLEAR', 0
 kw_tp        DB '3C509B-TP', 0
 kw_combo     DB '3C509B-COMBO', 0
@@ -65,6 +72,8 @@ kw_linkdown  DB 'LINKDOWN', 0
 
 cmd_buffer   DB 128 DUP (0)
 state_blob   DB MCK_FILE_SIZE DUP (0)
+state_record_offset DW MCK_HEADER_SIZE
+state_record_count DB 0
 
 seed_product DW PRODUCT_3C509_TP
 seed_base    DW 0300h
@@ -170,6 +179,9 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_random
     call    Match_Token
     jnc     @@DoRandom
+    mov     dx, OFFSET kw_add
+    call    Match_Token
+    jnc     @@DoAdd
     mov     dx, OFFSET kw_clear
     call    Match_Token
     jnc     @@DoClear
@@ -230,6 +242,15 @@ PROC Parse_And_Run NEAR
     call    Seed_Random
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_rand
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoAdd:
+    call    Consume_Token
+    call    Seed_Add
+    jc      @@Done
+    mov     dx, OFFSET msg_ok_add
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -371,6 +392,428 @@ PROC Match_Token NEAR
     ret
 ENDP Match_Token
 
+PROC Skip_Spaces NEAR
+@@Loop:
+    mov     al, [BYTE si]
+    cmp     al, ' '
+    je      @@Advance
+    cmp     al, 09h
+    je      @@Advance
+    ret
+@@Advance:
+    inc     si
+    jmp     @@Loop
+ENDP Skip_Spaces
+
+PROC Consume_Token NEAR
+@@Loop:
+    mov     al, [BYTE si]
+    or      al, al
+    jz      @@Done
+    cmp     al, ' '
+    je      @@Done
+    cmp     al, 09h
+    je      @@Done
+    inc     si
+    jmp     @@Loop
+@@Done:
+    ret
+ENDP Consume_Token
+
+PROC Parse_Model_Token NEAR
+    push    dx
+
+    mov     dx, OFFSET kw_tp
+    call    Match_Token
+    jnc     @@TP
+    mov     dx, OFFSET kw_combo
+    call    Match_Token
+    jnc     @@Combo
+    mov     dx, OFFSET kw_c
+    call    Match_Token
+    jnc     @@C
+    mov     dx, OFFSET kw_tpo
+    call    Match_Token
+    jnc     @@TPO
+    mov     dx, OFFSET kw_tpc
+    call    Match_Token
+    jnc     @@TPC
+    pop     dx
+    stc
+    ret
+
+@@TP:
+    mov     [seed_product], PRODUCT_3C509_TP
+    mov     [seed_media], 0
+    call    Consume_Token
+    pop     dx
+    clc
+    ret
+@@Combo:
+    mov     [seed_product], PRODUCT_3C509
+    mov     [seed_media], 1
+    call    Consume_Token
+    pop     dx
+    clc
+    ret
+@@C:
+    mov     [seed_product], PRODUCT_3C509_COMBO
+    mov     [seed_media], 0
+    call    Consume_Token
+    pop     dx
+    clc
+    ret
+@@TPO:
+    mov     [seed_product], PRODUCT_3C509_TPO
+    mov     [seed_media], 0
+    call    Consume_Token
+    pop     dx
+    clc
+    ret
+@@TPC:
+    mov     [seed_product], PRODUCT_3C509_TPC
+    mov     [seed_media], 3
+    call    Consume_Token
+    pop     dx
+    clc
+    ret
+ENDP Parse_Model_Token
+
+PROC Parse_IOBase_Token NEAR
+    push    bx
+    push    cx
+    push    dx
+
+    xor     dx, dx
+    xor     cx, cx
+@@Loop:
+    mov     al, [BYTE si]
+    or      al, al
+    jz      @@DoneDigits
+    cmp     al, ' '
+    je      @@DoneDigits
+    cmp     al, 09h
+    je      @@DoneDigits
+    cmp     al, '0'
+    jb      @@Bad
+    cmp     al, '9'
+    jbe     @@Digit
+    cmp     al, 'A'
+    jb      @@Bad
+    cmp     al, 'F'
+    ja      @@Bad
+    sub     al, 'A' - 10
+    jmp     @@Accumulate
+@@Digit:
+    sub     al, '0'
+@@Accumulate:
+    cmp     cx, 4
+    jae     @@Bad
+    mov     bl, al
+    mov     ax, dx
+    shl     ax, 1
+    jc      @@Bad
+    shl     ax, 1
+    jc      @@Bad
+    shl     ax, 1
+    jc      @@Bad
+    shl     ax, 1
+    jc      @@Bad
+    xor     bh, bh
+    add     ax, bx
+    jc      @@Bad
+    mov     dx, ax
+    inc     si
+    inc     cx
+    jmp     @@Loop
+@@DoneDigits:
+    or      cx, cx
+    jz      @@Bad
+    mov     ax, dx
+    cmp     ax, VALID_IOBASE_MIN
+    jb      @@Bad
+    cmp     ax, VALID_IOBASE_MAX
+    ja      @@Bad
+    sub     ax, VALID_IOBASE_MIN
+    test    ax, VALID_IOBASE_STEP - 1
+    jnz     @@Bad
+    add     ax, VALID_IOBASE_MIN
+    mov     [seed_base], ax
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Bad:
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Parse_IOBase_Token
+
+PROC Parse_IRQ_Token NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    di
+ 
+    mov     di, si
+    xor     dx, dx
+    mov     al, [BYTE di]
+    or      al, al
+    jz      @@Bad
+    cmp     al, ' '
+    je      @@Bad
+    cmp     al, 09h
+    je      @@Bad
+    cmp     al, '0'
+    jb      @@Bad
+    cmp     al, '9'
+    ja      @@Bad
+    sub     al, '0'
+    mov     dl, al
+    inc     di
+ 
+    mov     al, [BYTE di]
+    or      al, al
+    jz      @@CheckValue
+    cmp     al, ' '
+    je      @@CheckValue
+    cmp     al, 09h
+    je      @@CheckValue
+    cmp     al, '0'
+    jb      @@Bad
+    cmp     al, '9'
+    ja      @@Bad
+    sub     al, '0'
+    mov     bl, dl
+    shl     bl, 1
+    mov     cl, bl
+    shl     bl, 1
+    shl     bl, 1
+    add     bl, cl
+    add     bl, al
+    mov     dl, bl
+    inc     di
+@@CheckValue:
+    mov     si, di
+    mov     bx, OFFSET irq_table
+    mov     cx, 8
+@@Check:
+    cmp     dl, [BYTE bx]
+    je      @@Good
+    inc     bx
+    loop    @@Check
+    jmp     @@Bad
+@@Good:
+    mov     [seed_irq], dl
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Bad:
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Parse_IRQ_Token
+
+PROC Set_Record_Offset_By_Index NEAR
+    push    bx
+
+    xor     bx, bx
+    mov     bl, al
+    mov     bh, bl
+    xor     bl, bl
+    add     bx, MCK_HEADER_SIZE
+    mov     [state_record_offset], bx
+
+    pop     bx
+    ret
+ENDP Set_Record_Offset_By_Index
+
+PROC Init_State_Blob NEAR
+    push    ax
+    push    cx
+    push    di
+
+    mov     di, OFFSET state_blob
+    mov     cx, MCK_FILE_SIZE
+    xor     ax, ax
+    rep     stosb
+
+    mov     [BYTE state_blob + MCK_OFF_MAGIC0], MCK_MAGIC_0
+    mov     [BYTE state_blob + MCK_OFF_MAGIC1], MCK_MAGIC_1
+    mov     [BYTE state_blob + MCK_OFF_MAGIC2], MCK_MAGIC_2
+    mov     [BYTE state_blob + MCK_OFF_MAGIC3], MCK_MAGIC_3
+    mov     [WORD state_blob + MCK_OFF_VERSION], MCK_VERSION
+    mov     [BYTE state_blob + MCK_OFF_RECORD_COUNT], 0
+    mov     [byte state_record_count], 0
+    mov     [word state_record_offset], MCK_HEADER_SIZE
+
+    pop     di
+    pop     cx
+    pop     ax
+    ret
+ENDP Init_State_Blob
+
+PROC Load_State_File NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    call    Init_State_Blob
+
+    mov     dx, OFFSET MOCK_STATE_FILE
+    xor     al, al
+    mov     ah, 3Dh
+    int     21h
+    jc      @@Done
+    mov     bx, ax
+    mov     cx, MCK_FILE_SIZE
+    mov     dx, OFFSET state_blob
+    mov     ah, 3Fh
+    int     21h
+    mov     ah, 3Eh
+    int     21h
+
+    cmp     [BYTE state_blob + MCK_OFF_MAGIC0], MCK_MAGIC_0
+    jne     @@Reset
+    cmp     [BYTE state_blob + MCK_OFF_MAGIC1], MCK_MAGIC_1
+    jne     @@Reset
+    cmp     [BYTE state_blob + MCK_OFF_MAGIC2], MCK_MAGIC_2
+    jne     @@Reset
+    cmp     [BYTE state_blob + MCK_OFF_MAGIC3], MCK_MAGIC_3
+    jne     @@Reset
+
+    mov     ax, [WORD state_blob + MCK_OFF_VERSION]
+    cmp     ax, MCK_VERSION
+    je      @@VersionOk
+    cmp     ax, MCK_VERSION_V1
+    jne     @@Reset
+@@VersionOk:
+    mov     al, [BYTE state_blob + MCK_OFF_RECORD_COUNT]
+    cmp     [WORD state_blob + MCK_OFF_VERSION], MCK_VERSION_V1
+    jne     @@Clamp
+    or      al, al
+    jne     @@Clamp
+    mov     al, 1
+@@Clamp:
+    cmp     al, MCK_MAX_RECORDS
+    jbe     @@CountOk
+    mov     al, MCK_MAX_RECORDS
+@@CountOk:
+    mov     [byte state_record_count], al
+    mov     [BYTE state_blob + MCK_OFF_RECORD_COUNT], al
+    jmp     @@Done
+
+@@Reset:
+    call    Init_State_Blob
+@@Done:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Load_State_File
+
+PROC Is_Base_In_Use NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    di
+
+    mov     bx, dx
+    xor     ax, ax
+    mov     cl, [byte state_record_count]
+    xor     ch, ch
+@@Loop:
+    or      cx, cx
+    jz      @@Free
+    push    ax
+    call    Set_Record_Offset_By_Index
+    pop     ax
+    mov     di, [state_record_offset]
+    cmp     [BYTE state_blob + di + MCKR_PRESENT], 0
+    je      @@Next
+    cmp     [WORD state_blob + di + MCKR_ACTIVE_BASE], bx
+    je      @@Used
+@@Next:
+    inc     al
+    dec     cx
+    jmp     @@Loop
+@@Free:
+    pop     di
+    pop     cx
+    pop     bx
+    pop     ax
+    clc
+    ret
+@@Used:
+    pop     di
+    pop     cx
+    pop     bx
+    pop     ax
+    stc
+    ret
+ENDP Is_Base_In_Use
+
+PROC Choose_Default_Base NEAR
+    push    ax
+    push    cx
+    push    dx
+    push    si
+
+    mov     cx, 31
+    mov     si, OFFSET iobase_table
+@@Loop:
+    mov     dx, [WORD si]
+    call    Is_Base_In_Use
+    jnc     @@Found
+    add     si, 2
+    loop    @@Loop
+    stc
+    jmp     @@Done
+@@Found:
+    mov     [seed_base], dx
+    clc
+@@Done:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     ax
+    ret
+ENDP Choose_Default_Base
+
+PROC Set_Default_Macs_For_Index NEAR
+    add     al, 1
+
+    mov     [BYTE factory_mac+0], 02h
+    mov     [BYTE factory_mac+1], 60h
+    mov     [BYTE factory_mac+2], 8Ch
+    mov     [BYTE factory_mac+3], 12h
+    mov     [BYTE factory_mac+4], 34h
+    mov     [BYTE factory_mac+5], al
+
+    mov     [BYTE oem_mac+0], 02h
+    mov     [BYTE oem_mac+1], 60h
+    mov     [BYTE oem_mac+2], 8Ch
+    mov     [BYTE oem_mac+3], 65h
+    mov     [BYTE oem_mac+4], 43h
+    mov     [BYTE oem_mac+5], al
+    ret
+ENDP Set_Default_Macs_For_Index
+
 ; Deterministic baseline seed.  seed_product/seed_media are intentionally NOT
 ; set here: the DATASEG defaults (PRODUCT_3C509_TP / media 0) apply for a bare
 ; INIT call, while Seed_Model_TP/Combo/C/TPO/TPC set seed_product/seed_media
@@ -479,6 +922,105 @@ PROC Seed_Random NEAR
     pop     ax
     ret
 ENDP Seed_Random
+
+PROC Seed_Add NEAR
+    push    ax
+    push    dx
+    push    si
+
+    mov     [seed_asic], 4
+    mov     [seed_irq], 10
+
+    call    Skip_Spaces
+    call    Parse_Model_Token
+    jnc     @@ModelOk
+    mov     dx, OFFSET msg_bad_arg
+    mov     ah, 09h
+    int     21h
+    stc
+    jmp     @@Done
+
+@@ModelOk:
+    call    Load_State_File
+    mov     al, [byte state_record_count]
+    cmp     al, MCK_MAX_RECORDS
+    jb      @@RoomOk
+    mov     dx, OFFSET msg_add_too_many
+    mov     ah, 09h
+    int     21h
+    stc
+    jmp     @@Done
+
+@@RoomOk:
+    call    Skip_Spaces
+    mov     al, [BYTE si]
+    or      al, al
+    jz      @@PickDefaultBase
+    call    Parse_IOBase_Token
+    jnc     @@MaybeIRQ
+    mov     dx, OFFSET msg_bad_iobase
+    mov     ah, 09h
+    int     21h
+    stc
+    jmp     @@Done
+
+@@PickDefaultBase:
+    call    Choose_Default_Base
+    jnc     @@MaybeIRQ
+    mov     dx, OFFSET msg_no_free_iobase
+    mov     ah, 09h
+    int     21h
+    stc
+    jmp     @@Done
+
+@@MaybeIRQ:
+    call    Skip_Spaces
+    mov     al, [BYTE si]
+    or      al, al
+    jz      @@Append
+    call    Parse_IRQ_Token
+    jnc     @@CheckEnd
+    mov     dx, OFFSET msg_bad_irq
+    mov     ah, 09h
+    int     21h
+    stc
+    jmp     @@Done
+
+@@CheckEnd:
+    call    Skip_Spaces
+    cmp     [BYTE si], 0
+    je      @@Append
+    mov     dx, OFFSET msg_bad_arg
+    mov     ah, 09h
+    int     21h
+    stc
+    jmp     @@Done
+
+@@Append:
+    mov     al, [byte state_record_count]
+    call    Set_Default_Macs_For_Index
+    mov     al, [byte state_record_count]
+    call    Set_Record_Offset_By_Index
+    call    Build_Record_Current
+    inc     [byte state_record_count]
+    mov     al, [byte state_record_count]
+    mov     [BYTE state_blob + MCK_OFF_RECORD_COUNT], al
+    call    Write_State_File
+    jnc     @@Success
+    mov     dx, OFFSET msg_fail_io
+    mov     ah, 09h
+    int     21h
+    stc
+    jmp     @@Done
+
+@@Success:
+    clc
+@@Done:
+    pop     si
+    pop     dx
+    pop     ax
+    ret
+ENDP Seed_Add
 
 PROC Seed_Clear NEAR
     push    ax
@@ -611,70 +1153,62 @@ PROC Seed_LinkDown NEAR
     ret
 ENDP Seed_LinkDown
 
-PROC Build_State NEAR
+PROC Build_Record_Current NEAR
     push    ax
     push    bx
     push    cx
     push    dx
     push    si
     push    di
+ 
+    mov     di, [state_record_offset]
 
-    mov     di, OFFSET state_blob
-    mov     cx, MCK_FILE_SIZE
-    xor     al, al
-    rep     stosb
-
-    mov     [BYTE state_blob + MCK_OFF_MAGIC0], MCK_MAGIC_0
-    mov     [BYTE state_blob + MCK_OFF_MAGIC1], MCK_MAGIC_1
-    mov     [BYTE state_blob + MCK_OFF_MAGIC2], MCK_MAGIC_2
-    mov     [BYTE state_blob + MCK_OFF_MAGIC3], MCK_MAGIC_3
-    mov     [WORD state_blob + MCK_OFF_VERSION], MCK_VERSION
-    mov     [BYTE state_blob + MCK_OFF_RECORD_COUNT], 1
-
-    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCKR_PRESENT], 1
-    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCKR_ACTIVE], 1
-    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCKR_TAG], 1
-    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCKR_ID_MODE], 1
-    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCKR_CURRENT_WINDOW], 0
+    mov     [BYTE state_blob + di + MCKR_PRESENT], 1
+    mov     [BYTE state_blob + di + MCKR_ACTIVE], 1
+    mov     al, [byte state_record_count]
+    inc     al
+    mov     [BYTE state_blob + di + MCKR_TAG], al
+    mov     [BYTE state_blob + di + MCKR_ID_MODE], 1
+    mov     [BYTE state_blob + di + MCKR_CURRENT_WINDOW], 0
     mov     al, [seed_asic]
-    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCKR_ASIC_REV], al
+    mov     [BYTE state_blob + di + MCKR_ASIC_REV], al
     mov     al, [seed_irq]
-    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCKR_IRQ], al
+    mov     [BYTE state_blob + di + MCKR_IRQ], al
     mov     ax, [seed_base]
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_ACTIVE_BASE], ax
+    mov     [WORD state_blob + di + MCKR_ACTIVE_BASE], ax
     mov     ax, [seed_product]
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_PRODUCT_ID], ax
-
+    mov     [WORD state_blob + di + MCKR_PRODUCT_ID], ax
+ 
     mov     ax, MCK_CFGF_ALL
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_FLAGS], ax
-
+    mov     [WORD state_blob + di + MCKR_CFG_FLAGS], ax
+ 
     xor     ah, ah
     mov     al, [seed_irq]
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_INT], ax
+    mov     [WORD state_blob + di + MCKR_CFG_INT], ax
     mov     ax, [seed_base]
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_IOBASE], ax
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_PORT], ax
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_BADDRESS], 0
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_BSIZE], 0
-
+    mov     [WORD state_blob + di + MCKR_CFG_IOBASE], ax
+    mov     [WORD state_blob + di + MCKR_CFG_PORT], ax
+    mov     [WORD state_blob + di + MCKR_CFG_BADDRESS], 0
+    mov     [WORD state_blob + di + MCKR_CFG_BSIZE], 0
+ 
     xor     ah, ah
     mov     al, [seed_media]
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_TR], ax
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_XCVR], ax
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_MODEM], 0
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_OPTIMIZE], 0
+    mov     [WORD state_blob + di + MCKR_CFG_TR], ax
+    mov     [WORD state_blob + di + MCKR_CFG_XCVR], ax
+    mov     [WORD state_blob + di + MCKR_CFG_MODEM], 0
+    mov     [WORD state_blob + di + MCKR_CFG_OPTIMIZE], 0
     ; MCKR_CFG_LINKBEAT is an inert placeholder (see 3C509DEF.INC); it is
     ; never derived from anything configurable, so it is left at zero.
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_LINKBEAT], 0
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_PNP], 1
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_FULLDUPLEX], 0
-
+    mov     [WORD state_blob + di + MCKR_CFG_LINKBEAT], 0
+    mov     [WORD state_blob + di + MCKR_CFG_PNP], 1
+    mov     [WORD state_blob + di + MCKR_CFG_FULLDUPLEX], 0
+ 
     ; Live link status default: a freshly seeded card is assumed to be
     ; connected (Media Type and Status register bit 11 set), consistent
     ; with the "nominal by default" convention used elsewhere (e.g. PNP,
     ; FULLDUPLEX capability).  Use SEED LINKDOWN for the negative case.
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W4_MEDIA_STATUS], 0800h
-
+    mov     [WORD state_blob + di + MCKR_LIVE_W4_MEDIA_STATUS], 0800h
+ 
     mov     si, EEPROM_MFG_ID
     mov     ax, 06D50h
     call    EEPROM_Write_SI
@@ -754,35 +1288,39 @@ PROC Build_State NEAR
 
     ; Preserve the documented default optimization mode (DOS) in the high byte
     ; of EEPROM word 0Fh before the checksum pass fills in the low byte.
-    mov     ah, [BYTE state_blob + MCK_HEADER_SIZE + MCKR_CFG_OPTIMIZE]
+    mov     bx, [state_record_offset]
+    mov     ah, [BYTE state_blob + bx + MCKR_CFG_OPTIMIZE]
     xor     al, al
     mov     si, EEPROM_CHECKSUM
     call    EEPROM_Write_SI
-
+ 
     call    Build_Checksum
-
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W0_MFG], 06D50h
+ 
+    mov     di, [state_record_offset]
+    mov     [WORD state_blob + di + MCKR_LIVE_W0_MFG], 06D50h
     mov     ax, [seed_product]
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W0_PRODUCT], ax
+    mov     [WORD state_blob + di + MCKR_LIVE_W0_PRODUCT], ax
     mov     si, EEPROM_ADDR_CFG
     call    EEPROM_Read_SI
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W0_ADDR_CFG], ax
+    mov     [WORD state_blob + di + MCKR_LIVE_W0_ADDR_CFG], ax
     mov     si, EEPROM_RESOURCE_CFG
     call    EEPROM_Read_SI
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W0_RES_CFG], ax
-
+    mov     [WORD state_blob + di + MCKR_LIVE_W0_RES_CFG], ax
+ 
     xor     ah, ah
     mov     al, [seed_asic]
     shl     ax, 1
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W4_NETDIAG], ax
-
+    mov     [WORD state_blob + di + MCKR_LIVE_W4_NETDIAG], ax
+ 
     lea     si, [factory_mac]
-    mov     di, OFFSET state_blob + MCK_HEADER_SIZE + MCKR_FACTORY_MAC
+    mov     di, [state_record_offset]
+    add     di, OFFSET state_blob + MCKR_FACTORY_MAC
     mov     cx, 6
     rep     movsb
-
+ 
     lea     si, [oem_mac]
-    mov     di, OFFSET state_blob + MCK_HEADER_SIZE + MCKR_OEM_MAC
+    mov     di, [state_record_offset]
+    add     di, OFFSET state_blob + MCKR_OEM_MAC
     mov     cx, 6
     rep     movsb
 
@@ -792,6 +1330,16 @@ PROC Build_State NEAR
     pop     cx
     pop     bx
     pop     ax
+    ret
+ENDP Build_Record_Current
+
+PROC Build_State NEAR
+    call    Init_State_Blob
+    mov     [byte state_record_count], 1
+    mov     [BYTE state_blob + MCK_OFF_RECORD_COUNT], 1
+    xor     al, al
+    call    Set_Record_Offset_By_Index
+    call    Build_Record_Current
     ret
 ENDP Build_State
 
@@ -852,10 +1400,13 @@ ENDP Build_Checksum
 PROC EEPROM_Write_SI NEAR
     ; Input SI = EEPROM word index, AX = value to write.
     push    bx
+    push    di
+    mov     di, [state_record_offset]
     mov     bx, si
     and     bx, 003Fh
     shl     bx, 1
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_EEPROM + bx], ax
+    mov     [WORD state_blob + di + MCKR_EEPROM + bx], ax
+    pop     di
     pop     bx
     ret
 ENDP EEPROM_Write_SI
@@ -863,11 +1414,14 @@ ENDP EEPROM_Write_SI
 PROC EEPROM_Read NEAR
     ; Input AL = EEPROM word index, output AX = value.
     push    bx
+    push    di
+    mov     di, [state_record_offset]
     xor     bh, bh
     mov     bl, al
     and     bl, 03Fh
     shl     bx, 1
-    mov     ax, [WORD state_blob + MCK_HEADER_SIZE + MCKR_EEPROM + bx]
+    mov     ax, [WORD state_blob + di + MCKR_EEPROM + bx]
+    pop     di
     pop     bx
     ret
 ENDP EEPROM_Read
@@ -875,10 +1429,13 @@ ENDP EEPROM_Read
 PROC EEPROM_Read_SI NEAR
     ; Input SI = EEPROM word index, output AX = value.
     push    bx
+    push    di
+    mov     di, [state_record_offset]
     mov     bx, si
     and     bx, 003Fh
     shl     bx, 1
-    mov     ax, [WORD state_blob + MCK_HEADER_SIZE + MCKR_EEPROM + bx]
+    mov     ax, [WORD state_blob + di + MCKR_EEPROM + bx]
+    pop     di
     pop     bx
     ret
 ENDP EEPROM_Read_SI
@@ -888,6 +1445,14 @@ PROC Write_State_File NEAR
     push    bx
     push    cx
     push    dx
+ 
+    mov     [BYTE state_blob + MCK_OFF_MAGIC0], MCK_MAGIC_0
+    mov     [BYTE state_blob + MCK_OFF_MAGIC1], MCK_MAGIC_1
+    mov     [BYTE state_blob + MCK_OFF_MAGIC2], MCK_MAGIC_2
+    mov     [BYTE state_blob + MCK_OFF_MAGIC3], MCK_MAGIC_3
+    mov     [WORD state_blob + MCK_OFF_VERSION], MCK_VERSION
+    mov     al, [byte state_record_count]
+    mov     [BYTE state_blob + MCK_OFF_RECORD_COUNT], al
 
     mov     ah, 3Ch
     xor     cx, cx

@@ -140,13 +140,17 @@ VALID_IOBASE_MAX        EQU 03E0h
 VALID_IOBASE_STEP       EQU 0010h
 
 ; ---------------------------------------------------------------------------
-; 3C509B.MCK file layout (v1)
+; 3C509B.MCK file layout (v2, multi-record)
 ; ---------------------------------------------------------------------------
 MCK_MAGIC_0             EQU '3'
 MCK_MAGIC_1             EQU 'C'
 MCK_MAGIC_2             EQU '5'
 MCK_MAGIC_3             EQU 'M'
-MCK_VERSION             EQU 0001h
+MCK_VERSION_V1          EQU 0001h
+MCK_VERSION             EQU 0002h
+; Multi-record mock state is designed to preserve the CLI-visible contract for
+; normal distinct-base adapter discovery/configuration.  Same-active-IOBASE
+; records remain a deliberate conflict-simulation case; see 3CMOCKIF.ASM.
 
 MCK_OFF_MAGIC0          EQU 0
 MCK_OFF_MAGIC1          EQU 1
@@ -206,9 +210,10 @@ MCKR_LIVE_W4_MEDIA_STATUS EQU 52    ; DW
 MCKR_EEPROM             EQU 64      ; 64 words = 128 bytes
 MCKR_FACTORY_MAC        EQU 192     ; 6 bytes
 MCKR_OEM_MAC            EQU 198     ; 6 bytes
-
+ 
+MCK_MAX_RECORDS         EQU 6
 MCK_RECORD_SIZE         EQU 256
-MCK_FILE_SIZE           EQU MCK_HEADER_SIZE + MCK_RECORD_SIZE
+MCK_FILE_SIZE           EQU MCK_HEADER_SIZE + (MCK_MAX_RECORDS * MCK_RECORD_SIZE)
 
 MCK_CFGF_INT            EQU 0001h
 MCK_CFGF_IOBASE         EQU 0002h

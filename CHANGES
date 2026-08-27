@@ -1,3 +1,16 @@
+Changelog 0.6.1:
+  - Expanded the mock state file to a multi-record layout so the mock backend
+    can enumerate and persist multiple seeded 3C509B adapters in one image.
+  - Added 3CSEED ADD model [io] [irq] for appending mock NICs, with automatic
+    default I/O base selection when the caller omits the base.
+  - Added MULTI_NIC smoke coverage for multi-adapter LIST output,
+    ADAPTERNUM-required CONFIGURE behavior, targeted adapter updates, and
+    /IOBASE collision rejection against another discovered adapter.
+  - Added explicit duplicate-I/O-base mock coverage to verify that a
+    pre-existing conflicting seed can still migrate one selected adapter to a
+    new I/O base.
+
+
 Changelog 0.6.0:
   - Fixed the CLI help screen so /VERBOSE is documented correctly as a
     CONFIGURE sub-switch, and shortened its description to keep the option
