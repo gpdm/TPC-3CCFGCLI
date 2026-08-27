@@ -41,10 +41,11 @@
 ; adapter.  The proven ID port contention, tagging, activation, record layout,
 ; MAC address, I O base and IRQ discovery path is intentionally left unchanged.
 ;
-; CONFIGURE infrastructure is present in this release, but every hardware
-; property handler is still an explicit stub.  EEPROM write, checksum and ISA
-; deactivate/reactivate helpers are present only as traceable future support.
-; No reachable CLI path calls a persistent write or changes live NIC settings.
+; CONFIGURE infrastructure is present in this release.  /INT performs only
+; strict input parsing and validation, then reports the accepted requested IRQ.
+; It does not read or modify IRQ configuration.  All other hardware property
+; handlers remain explicit stubs.  EEPROM write, checksum and ISA deactivate or
+; reactivate helpers remain unreachable from CONFIGURE property handlers.
 ; ============================================================================
 
 IDEAL
@@ -145,10 +146,11 @@ CFG_ERR_NOT_IMPLEMENTED     EQU 10
 CFG_ERR_ADAPTER_REQUIRED    EQU 11
 CFG_ERR_DUP_ADAPTER         EQU 12
 CFG_ERR_NO_PROPERTY         EQU 13
+CFG_ERR_BAD_INT             EQU 14
 
 DATASEG
 
-VERSION_STRING	DB '0.3', '$'
+VERSION_STRING	DB '0.3.1', '$'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
@@ -176,6 +178,9 @@ msg_cfg_bad_option DB "Invalid CONFIGURE option.", 0Dh, 0Ah, '$'
 msg_cfg_missing_value DB "Missing CONFIGURE option value.", 0Dh, 0Ah, '$'
 msg_cfg_no_property DB "No CONFIGURE property was specified.", 0Dh, 0Ah, '$'
 msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 0Dh, 0Ah, '$'
+msg_cfg_bad_int DB "Invalid /INT parameter. Value must be 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
+msg_cfg_int_ok DB "INT parameter accepted. Requested IRQ: ", '$'
+msg_cfg_read_only DB 0Dh, 0Ah, "No hardware changes performed.", 0Dh, 0Ah, '$'
 
 msg_list_hdr    DB  "NIC                            NIC", 0Dh, 0Ah
                 DB  "Number                       Description", 0Dh, 0Ah
@@ -261,6 +266,7 @@ cfg_timeout_latched   DB 0
 cfg_selected_index    DW 0FFFFh
 cfg_selected_ptr      DW 0
 cfg_options_ptr       DW 0
+cfg_int_value         DB 0
 cfg_wait_start_lo     DW 0
 cfg_wait_start_hi     DW 0
 
@@ -985,7 +991,7 @@ ENDP Cfg_Dispatch_Parsed_Properties
 
 ; Canonical property dispatcher.  Input AL = property ID, SI = value pointer,
 ; CX = value length.  PORT maps to IOBASE and XCVR maps to TR before this point.
-; Every handler below is an explicit stub in release 0.3.
+; /INT is parser only in release 0.3.1.  All other handlers remain stubs.
 PROC Cfg_Dispatch_Property NEAR
     cmp     al, CFG_OPT_INT
     jne     @@IOBase
@@ -1053,8 +1059,91 @@ ENDP Cfg_Dispatch_Property
 
 ; Explicit future handler entry points.  They receive SI = value pointer and
 ; CX = value length.  None reads or writes NIC configuration in this release.
+; Release 0.3.1 parser only.
+; Input SI = /INT value pointer, CX = value length.
+; Accepted canonical decimal forms are exactly:
+;   3, 5, 7, 9, 10, 11, 12, 15
+; No EEPROM or live NIC configuration access is performed here.
 PROC Cfg_Handle_INT NEAR
-    mov     [cfg_last_error], CFG_ERR_NOT_IMPLEMENTED
+    push    ax
+    push    bx
+    push    dx
+
+    cmp     cx, 1
+    je      @@OneDigit
+    cmp     cx, 2
+    je      @@TwoDigits
+    jmp     @@Invalid
+
+@@OneDigit:
+    mov     al, [si]
+    cmp     al, '3'
+    je      @@StoreOne
+    cmp     al, '5'
+    je      @@StoreOne
+    cmp     al, '7'
+    je      @@StoreOne
+    cmp     al, '9'
+    je      @@StoreOne
+    jmp     @@Invalid
+
+@@StoreOne:
+    sub     al, '0'
+    jmp     @@Accepted
+
+@@TwoDigits:
+    mov     al, [si]
+    cmp     al, '1'
+    jne     @@Invalid
+    mov     al, [si+1]
+    cmp     al, '0'
+    je      @@TenToTwelve
+    cmp     al, '1'
+    je      @@TenToTwelve
+    cmp     al, '2'
+    je      @@TenToTwelve
+    cmp     al, '5'
+    jne     @@Invalid
+    mov     al, 15
+    jmp     @@Accepted
+
+@@TenToTwelve:
+    sub     al, '0'
+    add     al, 10
+
+@@Accepted:
+    mov     [cfg_int_value], al
+    mov     [cfg_last_error], CFG_ERR_NONE
+
+    ; Preserve the validated text pointer and length across DOS output.
+    push    si
+    push    cx
+    mov     dx, OFFSET msg_cfg_int_ok
+    mov     ah, 09h
+    int     21h
+    pop     cx
+    pop     si
+
+    ; Print the exact validated value text through standard output.
+    ; DOS function 40h uses handle 1 and therefore remains visible in
+    ; normal use and is captured correctly by command redirection.
+    mov     bx, 1
+    mov     dx, si
+    mov     ah, 40h
+    int     21h
+
+    mov     dx, OFFSET msg_cfg_read_only
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@Invalid:
+    mov     [cfg_last_error], CFG_ERR_BAD_INT
+
+@@Done:
+    pop     dx
+    pop     bx
+    pop     ax
     ret
 ENDP Cfg_Handle_INT
 
@@ -1180,8 +1269,13 @@ PROC Cfg_Report_Error NEAR
     jmp     @@Print
 @@E13:
     cmp     al, CFG_ERR_NO_PROPERTY
-    jne     @@Done
+    jne     @@E14
     mov     dx, OFFSET msg_cfg_no_property
+    jmp     @@Print
+@@E14:
+    cmp     al, CFG_ERR_BAD_INT
+    jne     @@Done
+    mov     dx, OFFSET msg_cfg_bad_int
 @@Print:
     mov     ah, 09h
     int     21h
