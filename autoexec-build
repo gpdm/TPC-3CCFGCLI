@@ -6,4 +6,5 @@ cycles=max limit 50000
 CLS
 MOUNT C: . >NUL
 C:
-BUILD
+CALL BUILD
+EXIT

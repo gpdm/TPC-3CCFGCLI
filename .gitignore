@@ -1,0 +1,6 @@
+# ignore build and test logs
+BUILD.LOG
+TEST.LOG
+# also ignore the Windows directory
+# (it may be created by TASM native install)
+WINDOWS
