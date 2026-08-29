@@ -4,3 +4,5 @@ TEST.LOG
 # also ignore the Windows directory
 # (it may be created by TASM native install)
 WINDOWS
+# Ignore the macOS creep
+.DS_Store
