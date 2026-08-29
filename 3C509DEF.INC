@@ -182,30 +182,18 @@ MCKR_CFG_TR             EQU 24      ; DW
 MCKR_CFG_XCVR           EQU 26      ; DW
 MCKR_CFG_MODEM          EQU 28      ; DW
 MCKR_CFG_OPTIMIZE       EQU 30      ; DW
-; MCKR_CFG_LINKBEAT is an inert placeholder.  The original 3CCFG utility's
-; property-name table includes a 'LINKBEAT' string, so the verb name was
-; likely recognised, but no disassembly evidence pins down which EEPROM
-; word or bit it wrote, if any.  Per 3Com's EtherLink III Technical
-; Reference (3c5x9b.pdf, Figure 6-12, Media Type and Status Register,
-; Window 4 / Port 0Ah), "Link beat enabled" is bit 7 of a live ASIC
-; register, not a documented EEPROM field, defaulting to 0 and meant to
-; be set by driver software at initialization.  This field remains
-; defined for layout completeness but is deliberately NOT wired to any
-; CONFIGURE verb.  See EL3_W4_MEDIA_STATUS below for the live, read-only
-; link status bit that IS surfaced (in LIST) instead.
-MCKR_CFG_LINKBEAT       EQU 32      ; DW - reserved/unwired placeholder
-MCKR_CFG_PNP            EQU 36      ; DW
-MCKR_CFG_FULLDUPLEX     EQU 40      ; DW
+MCKR_CFG_PNP            EQU 34      ; DW
+MCKR_CFG_FULLDUPLEX     EQU 38      ; DW
 
-MCKR_LIVE_W0_MFG        EQU 42      ; DW
-MCKR_LIVE_W0_PRODUCT    EQU 44      ; DW
-MCKR_LIVE_W0_ADDR_CFG   EQU 46      ; DW
-MCKR_LIVE_W0_RES_CFG    EQU 48      ; DW
-MCKR_LIVE_W4_NETDIAG    EQU 50      ; DW
+MCKR_LIVE_W0_MFG        EQU 40      ; DW
+MCKR_LIVE_W0_PRODUCT    EQU 42      ; DW
+MCKR_LIVE_W0_ADDR_CFG   EQU 44      ; DW
+MCKR_LIVE_W0_RES_CFG    EQU 46      ; DW
+MCKR_LIVE_W4_NETDIAG    EQU 48      ; DW
 ; Live Media Type and Status register (Window 4/Port 0Ah) bit 11, "Valid
 ; link beat detected" (read only) per 3c5x9b.pdf Figure 6-12.  This is
 ; the dynamic cable-link indicator surfaced by LIST as "Link Status".
-MCKR_LIVE_W4_MEDIA_STATUS EQU 52    ; DW
+MCKR_LIVE_W4_MEDIA_STATUS EQU 50    ; DW
 
 MCKR_EEPROM             EQU 64      ; 64 words = 128 bytes
 MCKR_FACTORY_MAC        EQU 192     ; 6 bytes
@@ -224,7 +212,6 @@ MCK_CFGF_TR             EQU 0020h
 MCK_CFGF_XCVR           EQU 0040h
 MCK_CFGF_MODEM          EQU 0080h
 MCK_CFGF_OPTIMIZE       EQU 0100h
-MCK_CFGF_LINKBEAT       EQU 0200h   ; reserved/unwired placeholder, see MCKR_CFG_LINKBEAT
 MCK_CFGF_PNP            EQU 0800h
 MCK_CFGF_FULLDUPLEX     EQU 2000h
-MCK_CFGF_ALL            EQU 2BFFh
+MCK_CFGF_ALL            EQU 29FFh

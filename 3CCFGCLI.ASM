@@ -6,8 +6,6 @@
 ; - Supported CONFIGURE verbs in this build:
 ;    /ADAPTERNUM, /BADDRESS, /BSIZE, /FULLDUPLEX, /INT, /IOBASE, /MODEM,
 ;    /OPTIMIZE, /PNP, /TR (/XCVR alias), /VERBOSE.
-; - /LINKBEAT is deliberately not a CONFIGURE verb in this build (although it could);
-;    -> see the 0.5.4 entry in CHANGES.
 ;
 ; - See CHANGES for the complete release history.
 ; ============================================================================

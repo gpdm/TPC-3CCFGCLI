@@ -1197,9 +1197,6 @@ PROC Build_Record_Current NEAR
     mov     [WORD state_blob + di + MCKR_CFG_XCVR], ax
     mov     [WORD state_blob + di + MCKR_CFG_MODEM], 0
     mov     [WORD state_blob + di + MCKR_CFG_OPTIMIZE], 0
-    ; MCKR_CFG_LINKBEAT is an inert placeholder (see 3C509DEF.INC); it is
-    ; never derived from anything configurable, so it is left at zero.
-    mov     [WORD state_blob + di + MCKR_CFG_LINKBEAT], 0
     mov     [WORD state_blob + di + MCKR_CFG_PNP], 1
     mov     [WORD state_blob + di + MCKR_CFG_FULLDUPLEX], 0
  
