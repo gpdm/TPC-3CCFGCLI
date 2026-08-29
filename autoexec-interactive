@@ -1,6 +1,11 @@
 [cpu]
 cycles=max limit 50000
 
+[dos]
+ems=true
+xms=true
+memsize=16
+
 [autoexec]
 @ECHO OFF
 CLS
