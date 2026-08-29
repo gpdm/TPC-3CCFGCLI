@@ -72,18 +72,48 @@ Supported `CONFIGURE` subverbs include:
 - `/BSIZE`
 - `/VERBOSE` (new enhancement)
 
-
 ## Where 3CCFGCLI differs
 
-`3CCFGCLI` saw some changes and extensions compared to the reference implementation.
+`3CCFGCLI` saw some changes and extensions compared to the reference implementation,
+or skipped reimplementation of some features altogether.
+
+### /LINKBEAT configuration verb
+
+`CONFIGURE /LINKBEAT` was investigated across the available reference utility
+versions. Version 3.2 still lists both `/LINKBEAT` and `/SYNCREADY` in its HELP
+text, but neither command branches to an implementation. Version 3.0 has the
+same behavior. Version 2.1 contains an active `/LINKBEAT` parser branch.
+
+The 3C509B technical reference resolves the apparent discrepancy: Link Beat
+enable is bit 7 of the Media Type and Status register (Window 4, port 0Ah), not
+an EEPROM setting. It is a live ASIC register value, so it is not persistent
+across a reset or power cycle and is normally initialized by the network driver.
+
+For that reason, `3CCFGCLI` intentionally does not reimplement
+`CONFIGURE /LINKBEAT`. The `LIST` command retains its `Link Status` ("Link Beat")
+display, as described below.
+
+### /SYNCREADY configuration verb
+
+Version 3.x and 2.1 of `3C5X9CFG.EXE` advertise also a `/SYNCREADY` configuration verb
+in its HELP text, although it doesn't branch into actual code.
+
+This is still under analysis, see also [TODO.TXT](TODO.TXT).
+
+
+### /VERBOSE configuration verb
 
 `/VERBOSE` is a diagnostic aid. It prints additional EEPROM and live-register
 read/write detail so transactions can be traced while debugging hardware
 behavior, mock-state issues, or parser/transaction sequencing.
 
+
+### Enhanded LIST verb
+
 The `LIST` verb was also extended beyond the original implementation.
 Because the text-mode UI is intentionally absent, the `LIST` display now
-includes additional configuration and status details.
+includes additional configuration and status details, including current `Link Status`
+("Link Beat").
 
 Here's an example:
 
@@ -249,3 +279,4 @@ In this case, use an explicit override as shown below:
 - 3Com EtherLink III User’s Guide: <https://archive.org/details/09-1310-000>
 - 3Com EtherLink III technical reference: <https://www.janwagemakers.be/PIC18F452_3COM_3C509B_Ethernet/3c5x9b.pdf>
 - 3Com EtherLink III drivers: <http://www.win3x.org/win3board/viewtopic.php?t=281&view=min>
+- 3Com EtherDisk v3.5 for the EtherLink III Family (include 3C5X9CFG.EXE v2.1) <https://archive.org/details/3com_etherdiskv35etherlinkiiifamily_830346005>

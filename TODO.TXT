@@ -1,12 +1,12 @@
 3CCFG TODO
 ==========
 
-- Reevaluate CONFIGURE /LINKBEAT and /SYNCREADY:
-  - Analysis of the 3.2 codebase suggests they were only mentioned in CLI
-    help, not actually implemented in code; verify whether an older utility
-    version exposes clearer behavior.
-  - Consult the 3Com technical reference for the 3C509B "Synchronous Ready"
-    and "Link Beat" EEPROM bits (see page 7-20 and page 7-26) to confirm the
-    likely intended mapping.
-  - If yes, reassess whether they belong in scoped CLI parity and should be
-    implemented.
+- Reevaluate CONFIGURE /SYNCREADY:
+	- Version 3.2 lists it in CLI help but does not branch into implementation.
+	- Version 3.0 has the same behavior.
+	- Version 2.1 has no /SYNCREADY parser entry or handler.
+	- Consult the 3Com technical reference for any "Synchronous Ready" EEPROM
+		bit (pages 7-20 and 7-26) and determine whether it was an intended
+		persistent configuration setting.
+	- Reassess whether it belongs in scoped CLI parity after its hardware
+		mapping and persistence semantics are confirmed.
