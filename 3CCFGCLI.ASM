@@ -4277,14 +4277,14 @@ PROC Cfg_Prepare_PNP NEAR
 ENDP Cfg_Prepare_PNP
 
 ; Merge only the staged MODEM field into the prospective persistent image.
-; EEPROM word 0Dh bit 15 is FULLDUPLEX and must be preserved.  Only bits 14:0
-; are owned by the modem speed field.  Always use read-modify-write.
+; EEPROM word 0Dh bits 15 and 14 are FULLDUPLEX and LINKBEAT_DISABLE.
+; Only bits 13:0 are owned by the modem speed field. Always use RMW.
 PROC Cfg_Prepare_MODEM NEAR
     push    ax
 
     mov     ax, [cfg_txn_new_word0d]
-    and     ax, 8000h               ; preserve bit 15 (FULLDUPLEX)
-    or      ax, [cfg_modem_value]   ; modem value is already masked to 14:0
+    and     ax, 0C000h              ; preserve FULLDUPLEX and LINKBEAT_DISABLE
+    or      ax, [cfg_modem_value]   ; modem value is constrained to bits 13:0
     mov     [cfg_txn_new_word0d], ax
 
     pop     ax

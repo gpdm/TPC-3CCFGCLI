@@ -1,2 +1,2 @@
 ; Shared project version metadata for all release executables.
-VERSION_STRING DB '0.6.2', '$'
+VERSION_STRING DB '0.6.3', '$'

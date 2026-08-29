@@ -42,10 +42,11 @@
 ;               being set.  Both conditions must hold.  In practice all five
 ;               known SKUs ship with word 10h bit 0 = 1.
 ;
-;   MODEM:      No capability gate in the original utility.  The modem speed
-;               field (EEPROM_SOFTWARE_INFO word 0Dh bits 14:0) is written
-;               unconditionally for any recognised adapter.  Word 0Dh bit 15
-;               is FULLDUPLEX and is always preserved during modem writes.
+;   MODEM:      No capability gate in the original utility. The modem speed
+;               field occupies EEPROM_SOFTWARE_INFO word 0Dh bits 13:0 and is
+;               written unconditionally for any recognised adapter. Bits 15
+;               (FULLDUPLEX) and 14 (LINKBEAT_DISABLE) are preserved during
+;               modem writes.
 ;
 ;   TR (/XCVR): Writes EEPROM_ADDR_CFG (word 08h) bits 15:14 (media selection).
 ;               AUTO is only available on "later" cards (3C509B) that are not
@@ -101,6 +102,12 @@ EEPROM_OEM_NODE_0       EQU 0Ah
 EEPROM_OEM_NODE_1       EQU 0Bh
 EEPROM_OEM_NODE_2       EQU 0Ch
 EEPROM_SOFTWARE_INFO    EQU 0Dh
+EEPROM_SOFTWARE_INFO_FULLDUPLEX        EQU 8000h
+; Persistent driver policy. When set, the driver clears bit 7 of the live
+; Window 4 Media Type and Status register during adapter initialization.
+; CONFIGURE /LINKBEAT is intentionally unimplemented.
+EEPROM_SOFTWARE_INFO_LINKBEAT_DISABLE  EQU 4000h
+EEPROM_SOFTWARE_INFO_MODEM_MASK         EQU 3FFFh
 EEPROM_COMPATIBILITY    EQU 0Eh
 EEPROM_CHECKSUM         EQU 0Fh
 EEPROM_CAPABILITY       EQU 10h

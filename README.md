@@ -77,6 +77,18 @@ Supported `CONFIGURE` subverbs include:
 `3CCFGCLI` saw some changes and extensions compared to the reference implementation,
 or skipped reimplementation of some features altogether.
 
+
+### Not Implemented Features
+
+The orignal `3C5C9CFG.EXE` implemented many more features that those found in the
+current reimplementations.
+The following list of features and functionalities were deliberately skipped in the implementation.
+
+- MEWEL-based Text-mode UI
+- `/LANGUAGE` CLI verb
+- `/ECHOSERVER` CLI verb
+- `/RUN` CLI verb
+
 ### /LINKBEAT configuration verb
 
 `CONFIGURE /LINKBEAT` was investigated across the available reference utility
@@ -84,14 +96,14 @@ versions. Version 3.2 still lists both `/LINKBEAT` and `/SYNCREADY` in its HELP
 text, but neither command branches to an implementation. Version 3.0 has the
 same behavior. Version 2.1 contains an active `/LINKBEAT` parser branch.
 
-The 3C509B technical reference resolves the apparent discrepancy: Link Beat
-enable is bit 7 of the Media Type and Status register (Window 4, port 0Ah), not
-an EEPROM setting. It is a live ASIC register value, so it is not persistent
-across a reset or power cycle and is normally initialized by the network driver.
+The 3C509B technical reference identifies Link Beat Disable as bit 14 of the
+EEPROM Software Information word (offset 0Dh). This persistent setting directs
+the network driver to set or clear bit 7 of the Media Type and Status register
+(Window 4, port 0Ah) when it initializes the adapter. The register value is
+live; the EEPROM policy that directs the driver is retained across power cycles.
 
-For that reason, `3CCFGCLI` intentionally does not reimplement
-`CONFIGURE /LINKBEAT`. The `LIST` command retains its `Link Status` ("Link Beat")
-display, as described below.
+`CONFIGURE /LINKBEAT` is not yet implemented in `3CCFGCLI`. The `LIST` command
+retains its `Link Status` ("Link Beat") display, as described below.
 
 ### /SYNCREADY configuration verb
 
@@ -223,6 +235,7 @@ profiles, capability overrides, and cleanup states.
 | `3C509B-TPC` | Product 9850h, media=coax. |
 | `NOPNP` | INIT + `EEPROM_REVISION_INFO=0` → PNP capability gate fails. |
 | `NOFD` | INIT + `EEPROM_CAPABILITY=0` → FULLDUPLEX capability gate fails. |
+| `NOLINKBEAT` | INIT + `EEPROM_SOFTWARE_INFO` bit 14 set for MODEM preservation tests. |
 
 
 ### Test flow

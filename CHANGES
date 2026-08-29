@@ -1,7 +1,16 @@
+Changelog 0.6.3:
+  - Defined the persistent Link Beat Disable policy as EEPROM Software
+    Information word 0Dh bit 14. CONFIGURE /LINKBEAT remains unimplemented.
+  - Fixed /MODEM read-modify-write behavior to preserve both the Link Beat
+    Disable and Full Duplex bits in EEPROM word 0Dh.
+  - Added NOLINKBEAT mock seeding and a regression test for MODEM preservation
+    of the Link Beat Disable policy.
+
+
 Changelog 0.6.2:
   - Removed obsolete mock-state LINKBEAT configuration field and flag
-    definitions. Link Beat is a live ASIC register setting, not an EEPROM
-    configuration value.
+    definitions. The field did not map to the actual EEPROM Software
+    Information Link Beat Disable bit.
   - Realigned the following mock configuration and live-register fields after
     removing the unused LINKBEAT slot. The read-only Link Status display in
     LIST remains unchanged.

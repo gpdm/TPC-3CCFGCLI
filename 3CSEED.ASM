@@ -33,6 +33,7 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  3C509B-TPC   Seed as 3C509B-TPC  (product 9850h, coax).', 0Dh, 0Ah
              DB '  NOPNP        Seed as non-PNP-capable card (gate test).', 0Dh, 0Ah
              DB '  NOFD         Seed as non-FULLDUPLEX-capable card (gate test).', 0Dh, 0Ah
+             DB '  NOLINKBEAT   INIT profile with EEPROM Link Beat Disable set.', 0Dh, 0Ah
              DB '  LINKUP       INIT profile with live Link Status forced connected.', 0Dh, 0Ah
              DB '  LINKDOWN     INIT profile with live Link Status forced not connected.', 0Dh, 0Ah
              DB '$'
@@ -46,6 +47,7 @@ msg_ok_tpo   DB 'Seed file created (3C509B-TPO).', 0Dh, 0Ah, '$'
 msg_ok_tpc   DB 'Seed file created (3C509B-TPC).', 0Dh, 0Ah, '$'
 msg_ok_nopnp DB 'Seed file created (NOPNP).', 0Dh, 0Ah, '$'
 msg_ok_nofd  DB 'Seed file created (NOFD).', 0Dh, 0Ah, '$'
+msg_ok_nolinkbeat DB 'Seed file created (NOLINKBEAT).', 0Dh, 0Ah, '$'
 msg_ok_linkup   DB 'Seed file created (LINKUP).', 0Dh, 0Ah, '$'
 msg_ok_linkdown DB 'Seed file created (LINKDOWN).', 0Dh, 0Ah, '$'
 msg_ok_add   DB 'Seed file updated (ADD).', 0Dh, 0Ah, '$'
@@ -67,6 +69,7 @@ kw_tpo       DB '3C509B-TPO', 0
 kw_tpc       DB '3C509B-TPC', 0
 kw_nopnp     DB 'NOPNP', 0
 kw_nofd      DB 'NOFD', 0
+kw_nolinkbeat DB 'NOLINKBEAT', 0
 kw_linkup    DB 'LINKUP', 0
 kw_linkdown  DB 'LINKDOWN', 0
 
@@ -206,6 +209,9 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_nofd
     call    Match_Token
     jnc     @@DoNoFD
+    mov     dx, OFFSET kw_nolinkbeat
+    call    Match_Token
+    jnc     @@DoNoLinkBeat
     mov     dx, OFFSET kw_linkup
     call    Match_Token
     jnc     @@DoLinkUp
@@ -315,6 +321,14 @@ PROC Parse_And_Run NEAR
     call    Seed_NoFD
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_nofd
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoNoLinkBeat:
+    call    Seed_NoLinkBeat
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_nolinkbeat
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -1124,6 +1138,22 @@ PROC Seed_NoFD NEAR
     stc
     ret
 ENDP Seed_NoFD
+
+PROC Seed_NoLinkBeat NEAR
+    ; INIT profile, then set the persistent Link Beat Disable policy in
+    ; EEPROM_SOFTWARE_INFO word 0Dh bit 14.
+    call    Seed_Init
+    jc      @@Fail
+    mov     si, EEPROM_SOFTWARE_INFO
+    mov     ax, EEPROM_SOFTWARE_INFO_LINKBEAT_DISABLE
+    call    EEPROM_Write_SI
+    call    Build_Checksum
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_NoLinkBeat
 
 PROC Seed_LinkUp NEAR
     ; INIT profile with the live link status explicitly forced to
