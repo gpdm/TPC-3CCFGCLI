@@ -444,6 +444,7 @@ msg_pnp_label   DB  "Plug and Play Capability = ", '$'
 msg_boot_label  DB  "Boot ROM = ", '$'
 msg_compat_label DB "Software Compatibility = failure level ", '$'
 msg_optimize_label DB "Optimization = ", '$'
+msg_modem_label DB "Modem Speed = ", '$'
 msg_link_status_label DB "Link Status = ", '$'
 msg_optimize_dos DB "DOS", '$'
 msg_optimize_windows DB "Windows", '$'
@@ -500,6 +501,9 @@ ext_optimize      DW 0FFFFh
 ; Live link status (Window 4/Port 0Ah bit 11); 0 = not connected,
 ; 1 = connected, 0FFFFh = unavailable (adapter not active).
 ext_link_status   DW 0FFFFh
+; Raw EEPROM_SOFTWARE_INFO (word 0Dh); bits 13:0 are the MODEM field, masked
+; with EEPROM_SOFTWARE_INFO_MODEM_MASK by Print_Modem_Value before display.
+ext_software_info DW 0FFFFh
 
 ; CONFIGURE state.  nic_table itself is deliberately not extended.
 cfg_adapter_ordinal   DB 0
@@ -1200,9 +1204,9 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     mov     ax, [save_word08]
     and     ax, 001Fh
-    shl     ax, 1
-    mov     bx, ax
-    mov     ax, [WORD io_scan_table + bx]
+    mov     cl, 4
+    shl     ax, cl
+    add     ax, 0200h
     call    Save_Append_Hex_Word
     mov     si, OFFSET save_pnp
     call    Save_Append_String
@@ -1231,13 +1235,16 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     mov     ax, [save_word0d]
     and     ax, EEPROM_SOFTWARE_INFO_MODEM_MASK
-    or      ax, ax
-    jnz     @@ModemValue
+    call    Decode_Modem_Value
+    jc      @@ModemNone
+    cmp     ax, 0FFFFh
+    je      @@ModemNone         ; Unrecognised encoding: fall back to NONE,
+                                 ; a value our own parser is guaranteed to accept.
+    call    Save_Append_Dec_Word
+    jmp     @@Optimize
+@@ModemNone:
     mov     si, OFFSET save_none
     call    Save_Append_String
-    jmp     @@Optimize
-@@ModemValue:
-    call    Save_Append_Dec_Word
 @@Optimize:
     mov     si, OFFSET save_optimize
     call    Save_Append_String
@@ -2520,7 +2527,8 @@ PROC Cfg_Handle_MODEM NEAR
     push    si
     push    cx
 
-    ; NONE disables the setting.
+    ; NONE disables the setting; the original utility encodes this as
+    ; EEPROM_MODEM_NONE, not zero (see 3C509DEF.INC).
     cmp     cx, 4
     jne     @@ParseNumber
     cmp     [BYTE si], 'N'
@@ -2531,7 +2539,7 @@ PROC Cfg_Handle_MODEM NEAR
     jne     @@ParseNumber
     cmp     [BYTE si+3], 'E'
     jne     @@ParseNumber
-    mov     [cfg_modem_value], 0
+    mov     [cfg_modem_value], EEPROM_MODEM_NONE
     or      [cfg_parse_flags], CFG_PARSE_MODEM
     mov     [cfg_last_error], CFG_ERR_NONE
     jmp     @@Done
@@ -2564,16 +2572,18 @@ PROC Cfg_Handle_MODEM NEAR
     dec     cx
     jnz     @@DigitLoop
 
+    ; The five named speeds are hardware-tuned constants measured against
+    ; real hardware, not a formula derived from the baud number.
     cmp     ax, 1200
-    je      @@Accept
+    je      @@Named1200
     cmp     ax, 2400
-    je      @@Accept
+    je      @@Named2400
     cmp     ax, 9600
-    je      @@Accept
+    je      @@Named9600
     cmp     ax, 19200
-    je      @@Accept
+    je      @@Named19200
     cmp     ax, 38400
-    je      @@Accept
+    je      @@Named38400
 
     cmp     ax, 25
     jb      @@Invalid
@@ -2584,6 +2594,27 @@ PROC Cfg_Handle_MODEM NEAR
     div     bx
     or      dx, dx
     jnz     @@Invalid
+    ; AX = step count (1-64); raw = ((count-1) << 8) | 20h.
+    dec     ax
+    mov     cl, 8
+    shl     ax, cl
+    or      ax, 0020h
+    jmp     @@Accept
+
+@@Named1200:
+    mov     ax, EEPROM_MODEM_1200
+    jmp     @@Accept
+@@Named2400:
+    mov     ax, EEPROM_MODEM_2400
+    jmp     @@Accept
+@@Named9600:
+    mov     ax, EEPROM_MODEM_9600
+    jmp     @@Accept
+@@Named19200:
+    mov     ax, EEPROM_MODEM_19200
+    jmp     @@Accept
+@@Named38400:
+    mov     ax, EEPROM_MODEM_38400
 
 @@Accept:
     mov     [cfg_modem_value], ax
@@ -6515,14 +6546,21 @@ PROC Cfg_Txn_Execute NEAR
     mov     ah, 09h
     int     21h
     mov     ax, [cfg_modem_value]
-    or      ax, ax
-    jne     @@PrintModemValue
+    call    Decode_Modem_Value
+    jc      @@PrintModemNone
+    cmp     ax, 0FFFFh
+    je      @@PrintModemUnknown
+    call    Print_DecWord
+    jmp     @@AfterRequestedModem
+@@PrintModemNone:
     mov     dx, OFFSET msg_none
     mov     ah, 09h
     int     21h
     jmp     @@AfterRequestedModem
-@@PrintModemValue:
-    call    Print_DecWord
+@@PrintModemUnknown:
+    mov     dx, OFFSET msg_unknown_value
+    mov     ah, 09h
+    int     21h
 @@AfterRequestedModem:
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
@@ -7152,6 +7190,7 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_revision_info], 0FFFFh
     mov     [ext_optimize], 0FFFFh
     mov     [ext_link_status], 0FFFFh
+    mov     [ext_software_info], 0FFFFh
 
     mov     dx, [WORD si + NIC_IO_BASE]
     or      dx, dx
@@ -7167,6 +7206,11 @@ PROC Read_Extended_Nic_Info NEAR
     mov     al, EEPROM_COMPATIBILITY
     call    EEPROM_Read
     mov     [ext_compatibility], ax
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_SOFTWARE_INFO
+    call    EEPROM_Read
+    mov     [ext_software_info], ax
 
     ; Read the live Media Type and Status register (Window 4/Port 0Ah) to
     ; surface the dynamic "Valid link beat detected" bit (bit 11) in LIST.
@@ -7388,6 +7432,109 @@ PROC Print_Optimize_Value NEAR
     pop     ax
     ret
 ENDP Print_Optimize_Value
+
+; Decodes a raw EEPROM_SOFTWARE_INFO MODEM field (bits 13:0, already masked
+; with EEPROM_SOFTWARE_INFO_MODEM_MASK).  Returns CF=1 for "no custom modem
+; tuning" (zero, or the measured EEPROM_MODEM_NONE constant); otherwise CF=0
+; and AX = the friendly value to display: a named baud rate, the equivalent
+; custom step value (25-1600), or 0FFFFh if the encoding is unrecognised.
+PROC Decode_Modem_Value NEAR
+    push    dx
+    push    cx
+
+    or      ax, ax
+    jz      @@None
+    cmp     ax, EEPROM_MODEM_NONE
+    je      @@None
+    cmp     ax, EEPROM_MODEM_1200
+    je      @@Named1200
+    cmp     ax, EEPROM_MODEM_2400
+    je      @@Named2400
+    cmp     ax, EEPROM_MODEM_9600
+    je      @@Named9600
+    cmp     ax, EEPROM_MODEM_19200
+    je      @@Named19200
+    cmp     ax, EEPROM_MODEM_38400
+    je      @@Named38400
+
+    mov     dx, ax
+    and     dx, 00FFh
+    cmp     dx, 0020h
+    jne     @@Unknown
+    mov     cl, 8
+    shr     ax, cl
+    inc     ax
+    mov     cx, 25
+    mul     cx
+    clc
+    jmp     @@Done
+
+@@Named1200:
+    mov     ax, 1200
+    jmp     @@ValueDone
+@@Named2400:
+    mov     ax, 2400
+    jmp     @@ValueDone
+@@Named9600:
+    mov     ax, 9600
+    jmp     @@ValueDone
+@@Named19200:
+    mov     ax, 19200
+    jmp     @@ValueDone
+@@Named38400:
+    mov     ax, 38400
+@@ValueDone:
+    clc
+    jmp     @@Done
+
+@@Unknown:
+    mov     ax, 0FFFFh
+    clc
+    jmp     @@Done
+
+@@None:
+    stc
+
+@@Done:
+    pop     cx
+    pop     dx
+    ret
+ENDP Decode_Modem_Value
+
+; Prints the persistent MODEM (Interrupt Disable Time) setting via
+; Decode_Modem_Value: "none", a friendly baud/step value, or "unknown" for an
+; unrecognised raw encoding.
+PROC Print_Modem_Value NEAR
+    push    ax
+
+    mov     ax, [ext_software_info]
+    cmp     ax, 0FFFFh
+    je      @@Unavailable
+    and     ax, EEPROM_SOFTWARE_INFO_MODEM_MASK
+    call    Decode_Modem_Value
+    jc      @@None
+    cmp     ax, 0FFFFh
+    je      @@UnknownEnc
+    call    Print_DecWord
+    jmp     @@Done
+@@None:
+    mov     dx, OFFSET msg_none
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+@@UnknownEnc:
+    mov     dx, OFFSET msg_unknown_value
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+@@Unavailable:
+    mov     dx, OFFSET msg_unavailable
+    mov     ah, 09h
+    int     21h
+@@Done:
+    pop     ax
+    ret
+ENDP Print_Modem_Value
 
 ; Prints the live link status ("connected"/"not connected") read from the
 ; Media Type and Status register (Window 4/Port 0Ah bit 11), or
@@ -7629,6 +7776,17 @@ call    Print_Optimize_Value
 mov     dx, OFFSET msg_crlf
 mov     ah, 09h
 int     21h
+
+    mov     dx, OFFSET msg_indent
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_modem_label
+    mov     ah, 09h
+    int     21h
+    call    Print_Modem_Value
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
 
     mov     dx, OFFSET msg_indent
     mov     ah, 09h

@@ -1,3 +1,23 @@
+Changelog 0.6.7:
+  - Added a Modem Speed line to LIST, reading EEPROM_SOFTWARE_INFO bits 13:0.
+  - Fixed a real-hardware conformance bug: the persistent /MODEM field is NOT
+    the literal baud number. Bits 7:0 of the 14-bit field are always 20h;
+    bits 13:8 hold a 6-bit count. Directly typed custom values (25-1600 step
+    25) encode as (value/25)-1 in bits 13:8 (confirmed empirically: 25->20h,
+    50->120h). The five named speeds (1200/2400/9600/19200/38400) are
+    separate hardware-tuned constants using the same layout, not derived
+    from the baud number by that formula; measured directly against the
+    original utility on real hardware and recorded as EEPROM_MODEM_* in
+    3C509DEF.INC. NONE is 3F20h, not zero. Cfg_Handle_MODEM, the CLI's
+    verbose/echo output, LIST, and SAVECONFIG were all updated to encode and
+    decode through this corrected mapping.
+  - Fixed a related SAVECONFIG bug: the exported /IOBASE value was decoded
+    through io_scan_table, which is only a port-probing order list, not an
+    index-to-address mapping. The real encoding is linear (address =
+    0200h + index*10h), matching Cfg_Prepare_IOBASE and 3CSEED.ASM. Restore
+    batches previously could carry the wrong I/O base.
+
+
 Changelog 0.6.6:
   - Fixed a real-hardware conformance bug: /PNP and /FULLDUPLEX now require
     ENABLED or DISABLED, matching the original 3C5X9CFG.EXE v3.2 command-line

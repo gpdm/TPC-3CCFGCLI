@@ -155,8 +155,10 @@ includes additional configuration and status details, including current `Link St
 Here's an example:
 
 ```text
-3Com EtherLink III CLI Configuration Program v0.6.1
-derived from the original 3Com EtherLink III Configuration Utility v3.2
+3Com EtherLink III CLI Configuration Program v0.6.7
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 NIC                            NIC
 Number                       Description
@@ -170,6 +172,7 @@ Number                       Description
        Boot ROM = disabled
        Software Compatibility = failure level 0, warning level 0
        Optimization = DOS
+       Modem Speed = none
        Link Status = connected
 ```
 

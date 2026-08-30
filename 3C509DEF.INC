@@ -48,6 +48,17 @@
 ;               (FULLDUPLEX) and 14 (LINKBEAT_DISABLE) are preserved during
 ;               modem writes.
 ;
+;               The 14-bit field is NOT the literal baud number. Bits 7:0 are
+;               always 20h; bits 13:8 hold a 6-bit count. For a directly typed
+;               custom value V in [25,1600] step 25, bits 13:8 = (V/25)-1 (this
+;               was confirmed empirically: V=25 -> 0020h, V=50 -> 0120h). The
+;               five named speeds (NONE, 1200, 2400, 9600, 19200, 38400) are
+;               separate hardware-tuned constants using the same bit layout,
+;               NOT derived from the baud number by that same formula; they
+;               were measured directly against the original utility on real
+;               hardware (see EEPROM_MODEM_* below). NONE (3F20h) has bits
+;               13:8 all set (3Fh = 63), the maximum count.
+;
 ;   TR (/XCVR): Writes EEPROM_ADDR_CFG (word 08h) bits 15:14 (media selection).
 ;               AUTO is only available on "later" cards (3C509B) that are not
 ;               TPO; it is signalled by bit 7 of word 08h rather than bits
@@ -108,6 +119,14 @@ EEPROM_SOFTWARE_INFO_FULLDUPLEX        EQU 8000h
 ; CONFIGURE /LINKBEAT is intentionally unimplemented.
 EEPROM_SOFTWARE_INFO_LINKBEAT_DISABLE  EQU 4000h
 EEPROM_SOFTWARE_INFO_MODEM_MASK         EQU 3FFFh
+; Empirically measured raw MODEM encodings (see comment above); the CLI's
+; encode (Cfg_Handle_MODEM) and decode (Decode_Modem_Value) logic use these.
+EEPROM_MODEM_NONE       EQU 3F20h
+EEPROM_MODEM_1200       EQU 3320h
+EEPROM_MODEM_2400       EQU 2720h
+EEPROM_MODEM_9600       EQU 1320h
+EEPROM_MODEM_19200      EQU 0920h
+EEPROM_MODEM_38400      EQU 0420h
 EEPROM_COMPATIBILITY    EQU 0Eh
 EEPROM_CHECKSUM         EQU 0Fh
 EEPROM_CAPABILITY       EQU 10h
