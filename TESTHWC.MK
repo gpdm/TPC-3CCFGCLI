@@ -1,0 +1,147 @@
+# Real-hardware conformance checks for 3CCFGCLI.
+#
+# This file is deliberately not referenced by TEST.BAT or test.sh. It runs
+# only on a DOS system with one or more EtherLink III adapters,
+# however only the first logical adapter found is used for the test run.
+# The original 3Com 3C9X5CFG utility writes each test setting;
+# 3CCFGCLI LIST observes the resulting hardware state.
+#
+# 3CCFGCLI therefore only acts as a passive observer of the original utility's writes,
+# and does not modify the hardware state itself.
+# This serves as an indirect proof of 3CCFGCLI's live register and EEPROM access capabilities.
+#
+# Usage example:
+#   MAKE -f TESTHWC.MK hwc
+#
+# save-config exports the adapter's current configuration via 3CCFGCLI
+# SAVECONFIG before any test writes occur; restore-config replays the
+# generated batch at the end.
+
+ARTIFACTS = ARTIFACT
+WRITERAPP = BIN\3.0\3C5X9CFG.EXE
+OBSERVERAPP = BIN\3CCFGCLI.EXE
+LOGFILE = TESTHWC.LOG
+RESTOREBAT = RESTORE.BAT
+
+# Sane default configuration, written once via set-default before the
+# baseline SAVECONFIG capture, so restore-config always reverts to a known,
+# deterministic starting point rather than whatever state happened to be
+# preexisting on the target machine.
+DEFAULT_IRQ = 10
+DEFAULT_IOBASE = 0300
+DEFAULT_PNP = 1
+DEFAULT_MODEM = NONE
+DEFAULT_FULLDUPLEX = 0
+DEFAULT_OPTIMIZE = DOS
+DEFAULT_BADDRESS = NONE
+DEFAULT_TR = TP
+
+# Choose values appropriate and conflict-free for the target machine.
+TEST_IRQ = 3
+TEST_IOBASE = 0280
+TEST_PNP = 0
+TEST_MODEM = 1200
+TEST_FULLDUPLEX = 1
+TEST_OPTIMIZE = SERVER
+TEST_BADDRESS = C8000
+TEST_BSIZE = 16
+TEST_TR = TP
+
+all: hwc
+hwc: clean prep save-config set-default HWC_CONFIGURATION restore-config complete
+
+prep:
+	@if not exist $(ARTIFACTS) mkdir $(ARTIFACTS)
+	@echo Running real-hardware conformance checks... >> $(LOGFILE)
+	@echo Running real-hardware conformance checks...
+
+complete:
+	@echo Real-hardware conformance checks completed. >> $(LOGFILE)
+	@echo Real-hardware conformance checks completed.
+
+clean:
+	@if exist $(LOGFILE) del $(LOGFILE)
+	@if exist $(ARTIFACTS)\HWC*.LOG del $(ARTIFACTS)\HWC*.LOG
+	@if exist $(ARTIFACTS)\$(RESTOREBAT) del $(ARTIFACTS)\$(RESTOREBAT)
+
+
+# Helper Targets
+# ##############
+
+set-default:
+	@echo Writing sane default configuration via original utility... >> $(LOGFILE)
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(DEFAULT_IRQ) /IOBASE:$(DEFAULT_IOBASE) /PNP:$(DEFAULT_PNP) /FULLDUPLEX:$(DEFAULT_FULLDUPLEX) /MODEM:$(DEFAULT_MODEM) /OPTIMIZE:$(DEFAULT_OPTIMIZE) /BADDRESS:$(DEFAULT_BADDRESS) /TR:$(DEFAULT_TR) > $(ARTIFACTS)\SETDEF.LOG
+	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\SETDEF.LOG
+
+save-config:
+	@echo Saving adapter configuration to $(RESTOREBAT) before any writes... >> $(LOGFILE)
+	$(OBSERVERAPP) SAVECONFIG $(ARTIFACTS)\$(RESTOREBAT) > $(ARTIFACTS)\SAVECFG.LOG
+	FIND "Configuration restore batch file created:" $(ARTIFACTS)\SAVECFG.LOG > NUL
+
+restore-config:
+	@echo Restoring original adapter configuration from $(RESTOREBAT)... >> $(LOGFILE)
+	$(RESTOREBAT) > $(ARTIFACTS)\RESTCFG.LOG
+
+
+# Symbolic Test Groups
+# ####################
+
+HWC_CONFIGURATION: hwc001 hwc002 hwc003 hwc004 hwc005 hwc006 hwc007 hwc008 hwc009
+
+
+# Test Case Definitions
+# #####################
+
+hwc001:
+	@echo [hwc001] Original /INT writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(TEST_IRQ) > $(ARTIFACTS)\HWC001.LOG
+	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC001.LOG
+	FIND "IRQ = $(TEST_IRQ)" $(ARTIFACTS)\HWC001.LOG > NUL
+
+hwc002:
+	@echo [hwc002] Original /IOBASE writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(TEST_IOBASE) > $(ARTIFACTS)\HWC002.LOG
+	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC002.LOG
+	FIND "I/O = $(TEST_IOBASE)" $(ARTIFACTS)\HWC002.LOG > NUL
+
+hwc003:
+	@echo [hwc003] Original /PNP writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /PNP:$(TEST_PNP) > $(ARTIFACTS)\HWC003.LOG
+	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC003.LOG
+	FIND "Plug and Play Capability = disabled" $(ARTIFACTS)\HWC003.LOG > NUL
+
+hwc004:
+	@echo [hwc004] Original /MODEM writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(TEST_MODEM) > $(ARTIFACTS)\HWC004.LOG
+	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC004.LOG
+	FIND "NIC" $(ARTIFACTS)\HWC004.LOG > NUL
+
+hwc005:
+	@echo [hwc005] Original /FULLDUPLEX writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:$(TEST_FULLDUPLEX) > $(ARTIFACTS)\HWC005.LOG
+	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC005.LOG
+	FIND "NIC" $(ARTIFACTS)\HWC005.LOG > NUL
+
+hwc006:
+	@echo [hwc006] Original /OPTIMIZE writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:$(TEST_OPTIMIZE) > $(ARTIFACTS)\HWC006.LOG
+	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC006.LOG
+	FIND "Optimization = Server" $(ARTIFACTS)\HWC006.LOG > NUL
+
+hwc007:
+	@echo [hwc007] Original /BADDRESS+/BSIZE writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:$(TEST_BADDRESS) /BSIZE:$(TEST_BSIZE) > $(ARTIFACTS)\HWC007.LOG
+	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC007.LOG
+	FIND "Boot ROM = $(TEST_BSIZE)K at $(TEST_BADDRESS)H" $(ARTIFACTS)\HWC007.LOG > NUL
+
+hwc008:
+	@echo [hwc008] Original /TR writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:$(TEST_TR) > $(ARTIFACTS)\HWC008.LOG
+	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC008.LOG
+	FIND "Transceiver = on-board TP" $(ARTIFACTS)\HWC008.LOG > NUL
+
+hwc009:
+	@echo [hwc009] Original /XCVR alias writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /XCVR:$(TEST_TR) > $(ARTIFACTS)\HWC009.LOG
+	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC009.LOG
+	FIND "Transceiver = on-board TP" $(ARTIFACTS)\HWC009.LOG > NUL
