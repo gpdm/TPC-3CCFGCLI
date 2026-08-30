@@ -303,9 +303,7 @@ In this case, use an explicit override as shown below:
 
 ## References
 
-- Project context and upstream ideas: <https://github.com/hackerb9/3C509B-nestor>
-- 3Com EtherLink III User’s Guide: <https://archive.org/details/09-1310-000>
-- 3Com EtherLink III technical reference: <https://www.janwagemakers.be/PIC18F452_3COM_3C509B_Ethernet/3c5x9b.pdf>
-- 3Com EtherLink III drivers: <http://www.win3x.org/win3board/viewtopic.php?t=281&view=min>
-- 3Com EtherDisk v3.5 for the EtherLink III Family (includes 3C5X9CFG.EXE v2.1) <https://archive.org/details/3com_etherdiskv35etherlinkiiifamily_830346005>
-- 3Com EtherDisk v3.x (includes 3C509.EXE v1.2) <https://archive.org/details/3-com-ether-disk-v-3.x>
+- [Project context and upstream ideas](https://github.com/hackerb9/3C509B-nestor)
+- [3Com EtherLink III User's Guide](https://archive.org/details/09-1310-000)
+- [3Com EtherLink III technical reference](https://www.janwagemakers.be/PIC18F452_3COM_3C509B_Ethernet/3c5x9b.pdf)
+- Original [3Com 3C509 configuration utilities](3C5X9CFG)

@@ -17,16 +17,18 @@
 # SAVECONFIG before any test writes occur; restore-config replays the
 # generated batch at the end.
 
-ARTIFACTS = ARTIFACT
-MAKEEXE = \TASM\BIN\MAKE
-WRITERAPP = BIN\3.0\3C5X9CFG.EXE
-OBSERVERAPP = BIN\3CCFGCLI.EXE
+RESTOREBAT = RESTORE.BAT
+MAKEEXE = MAKE
+WRITERAPP = 3C5X9CFG.EXE
+OBSERVERAPP = 3CCFGCLI.EXE
 # Restoration defaults to WRITERAPP (the original utility) until 3CCFGCLI's
 # own EEPROM writes are separately verified as trustworthy. Override with
 # hwc-restore-self to restore through OBSERVERAPP instead.
 RESTOREAPP = $(WRITERAPP)
+
+# local location
+ARTIFACTS = ARTIFACT
 LOGFILE = TESTHWC.LOG
-RESTOREBAT = RESTORE.BAT
 
 # Sane default configuration, written once via set-default before the
 # baseline SAVECONFIG capture, so restore-config always reverts to a known,
