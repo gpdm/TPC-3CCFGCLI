@@ -182,7 +182,9 @@ include 'VERSION.INC'
 
 msg_banner_prefix DB  "3Com EtherLink III CLI Configuration Program v", '$'
 msg_banner_suffix DB  0Dh, 0Ah
-                  DB  "derived from the original 3Com EtherLink III Configuration Utility v3.2", 0Dh, 0Ah, 0Dh, 0Ah, '$'
+                  DB  "by The Phintage Collector (Gianpaolo Del Matto)", 0Dh, 0Ah
+                  DB  "https://github.com/gpdm/TPC-3CCFGCLI", 0Dh, 0Ah
+                  DB  "reimplementation of the original 3Com EtherLink III Configuration Utility v3.2", 0Dh, 0Ah, 0Dh, 0Ah, '$'
 
 msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "Commands:", 0Dh, 0Ah
@@ -190,8 +192,9 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    Display this help screen.", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "  LIST", 0Dh, 0Ah
                 DB  "    Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah, 0Dh, 0Ah
-                DB  "  SAVECONFIG file", 0Dh, 0Ah
-                DB  "    Export all adapter configurations to a restore batch file.", 0Dh, 0Ah, 0Dh, 0Ah
+                DB  "  SAVECONFIG file [/EXECFILE:program]", 0Dh, 0Ah
+                DB  "    Export all adapter configurations to a restore batch file.", 0Dh, 0Ah
+                DB  "    /EXECFILE overrides the embedded program name (default: self).", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "  CONFIGURE [options]", 0Dh, 0Ah
                 DB  "    Configure ISA adapter properties. Options:", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    /ADAPTERNUM:N                  Select adapter N (from LIST).", 0Dh, 0Ah
@@ -213,6 +216,8 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
 msg_save_missing DB "SAVECONFIG requires an output filename.", 0Dh, 0Ah, '$'
 msg_save_bad_name DB "Invalid SAVECONFIG output filename.", 0Dh, 0Ah, '$'
+msg_save_bad_option DB "Invalid SAVECONFIG option.", 0Dh, 0Ah, '$'
+msg_save_bad_execfile DB "Invalid SAVECONFIG /EXECFILE value.", 0Dh, 0Ah, '$'
 msg_save_no_active DB "SAVECONFIG found no adapters with an active I/O base.", 0Dh, 0Ah, '$'
 msg_save_read_fail DB "Unable to read adapter EEPROM for SAVECONFIG.", 0Dh, 0Ah, '$'
 msg_save_write_fail DB "Unable to write SAVECONFIG output file.", 0Dh, 0Ah, '$'
@@ -603,6 +608,9 @@ io_scan_table   DW  0300h, 0310h, 0320h, 0330h, 0340h, 0350h, 0360h, 0370h
 
 cmd_buffer      DB  128 DUP(0)
 save_filename   DB  128 DUP(0)
+save_execname   DB  64 DUP(0)
+save_execname_default DB '3CCFGCLI.EXE', 0
+save_execfile_kw DB 'EXECFILE:', 0
 save_buffer     DB  1024 DUP(0)
 save_length     DW  0
 save_handle     DW  0
@@ -613,7 +621,7 @@ save_word0d     DW  0
 save_word0f     DW  0
 save_word13     DW  0
 save_revision   DW  0
-save_prefix     DB  '3CCFGCLI.EXE CONFIGURE', 0
+save_configure_suffix DB ' CONFIGURE', 0
 save_adapternum DB  ' /ADAPTERNUM:', 0
 save_int        DB  ' /INT:', 0
 save_iobase     DB  ' /IOBASE:', 0
@@ -886,6 +894,69 @@ PROC Cmd_SaveConfig NEAR
     xor     al, al
     mov     [BYTE di], al
 
+    ; Default program name embedded in each restore line is this build,
+    ; unless /EXECFILE overrides it.
+    push    si
+    mov     di, OFFSET save_execname
+    mov     si, OFFSET save_execname_default
+@@CopyDefaultExec:
+    lodsb
+    mov     [BYTE di], al
+    inc     di
+    or      al, al
+    jnz     @@CopyDefaultExec
+    pop     si
+
+@@SkipWhite2:
+    mov     al, [si]
+    cmp     al, ' '
+    je      @@Advance2
+    cmp     al, 09h
+    jne     @@CheckOption
+@@Advance2:
+    inc     si
+    jmp     @@SkipWhite2
+
+@@CheckOption:
+    or      al, al
+    jz      @@ScanCards
+    cmp     al, '/'
+    je      @@ExecSlash
+    cmp     al, '-'
+    jne     @@BadOption
+@@ExecSlash:
+    inc     si
+    mov     di, OFFSET save_execfile_kw
+@@MatchExec:
+    mov     al, [BYTE di]
+    or      al, al
+    jz      @@ExecMatched
+    cmp     al, [BYTE si]
+    jne     @@BadOption
+    inc     di
+    inc     si
+    jmp     @@MatchExec
+@@ExecMatched:
+    mov     di, OFFSET save_execname
+    mov     cx, 63
+@@CopyExec:
+    mov     al, [si]
+    or      al, al
+    jz      @@ExecCopied
+    cmp     al, ' '
+    je      @@ExecCopied
+    cmp     al, 09h
+    je      @@ExecCopied
+    mov     [BYTE di], al
+    inc     di
+    inc     si
+    loop    @@CopyExec
+    jmp     @@BadExecFile
+@@ExecCopied:
+    xor     al, al
+    mov     [BYTE di], al
+
+@@ScanCards:
     call    Scan_All_3Com_Cards
     cmp     [card_count], 0
     je      @@NoCards
@@ -977,6 +1048,12 @@ PROC Cmd_SaveConfig NEAR
     jmp     @@Print
 @@Missing:
     mov     dx, OFFSET msg_save_missing
+    jmp     @@Print
+@@BadOption:
+    mov     dx, OFFSET msg_save_bad_option
+    jmp     @@Print
+@@BadExecFile:
+    mov     dx, OFFSET msg_save_bad_execfile
     jmp     @@Print
 @@BadName:
     mov     dx, OFFSET msg_save_bad_name
@@ -1102,7 +1179,9 @@ PROC Save_Build_Command NEAR
     push    cx
     push    dx
     push    si
-    mov     si, OFFSET save_prefix
+    mov     si, OFFSET save_execname
+    call    Save_Append_String
+    mov     si, OFFSET save_configure_suffix
     call    Save_Append_String
     mov     si, OFFSET save_adapternum
     call    Save_Append_String

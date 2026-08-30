@@ -1,9 +1,21 @@
+Changelog 0.6.5:
+  - Added an optional SAVECONFIG /EXECFILE:program argument that overrides the
+    embedded restore program name (default: this executable), including
+    literal DOS batch parameter placeholders such as %1.
+  - TESTHWC.MK: use SAVECONFIG /EXECFILE:%1 for its baseline capture,
+    so restore-config replays the generated batch through a configurable
+    RESTOREAPP (default: the original 3Com utility)
+  - Added hwc-restore-self, overriding RESTOREAPP to restore through
+    3CCFGCLI itself once its own EEPROM writes are trusted.
+  - Added an author attribution line and repository URL to the program banner
+
+
 Changelog 0.6.4:
   - Added read-only SAVECONFIG file export for every installed adapter with an
     active I/O base. It writes one 3CCFGCLI CONFIGURE /ADAPTERNUM:N restore
     line per adapter from persistent EEPROM settings.
-  - Added mock smoke coverage for SAVECONFIG output, multi-adapter export, and
-    missing-filename errors.
+  - Added mock smoke coverage for SAVECONFIG output, multi-adapter export,
+    /EXECFILE override, and missing-filename errors.
 
 
 Changelog 0.6.3:

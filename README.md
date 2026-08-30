@@ -122,11 +122,15 @@ behavior, mock-state issues, or parser/transaction sequencing.
 
 ### SAVECONFIG command verb
 
-`SAVECONFIG [filename.bat]` reads the persistent configuration of every installed
-adapter with an active I/O base and writes a batch file with one
-`3CCFGCLI.EXE CONFIGURE /ADAPTERNUM:N ...` restore line per adapter.
+`SAVECONFIG [filename.bat] [/EXECFILE:program]` reads the persistent configuration
+of every installed adapter with an active I/O base and writes a batch file with
+one `program CONFIGURE /ADAPTERNUM:N ...` restore line per adapter.
+
+`program` defaults to this executable; `/EXECFILE` overrides it with any literal text,
+including a DOS batch parameter placeholder like `%1`, so a restore batch can
+instead replay through the original 3Com utility.
 It exports the implemented persistent settings only and does not modify any
-adapter. This is handy for storing your last configuration, but is also used
+adapter. This is handy for storing your last configuration, but is mainly used
 internally for the standalone hardware conformance tests.
 
 

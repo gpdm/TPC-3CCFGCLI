@@ -8,6 +8,10 @@
 ```
 
 - **Never** pipe, grep, or tail the build.sh or test.sh scripts. Just run them bare.
+- **Never** precede build.sh or test.sh with extra shell commands (e.g. `rm`,
+  `find`, cache-busting) "just in case." `prep` in TEST.MK already clears
+  `ARTIFACT\*.LOG` and TEST.LOG before every run. If you suspect stale state,
+  investigate and confirm it first; don't add speculative cleanup commands.
 - Scripts default to `/Applications/DOSBox-X.app/Contents/MacOS/dosbox-x`;
   override with `DOSBOX_BIN=/path/to/dosbox-x` when needed.
 - Build artifacts: `BIN/3CCFGCLI.EXE` (real HW), `BIN/3CHWMOCK.EXE` (mock HW), `BIN/3CSEED.EXE` (seeder).
