@@ -209,7 +209,7 @@ t017:
 
 t018:
 	@echo [t018] Testing mock CONFIGURE /PNP transition to disabled... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:0 > $(ARTIFACTS)\T018.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED > $(ARTIFACTS)\T018.LOG
 	FIND "PNP parameter accepted. Requested Plug and Play mode: disabled" $(ARTIFACTS)\T018.LOG > NUL
 	FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T018.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T018.LOG
@@ -217,30 +217,30 @@ t018:
 
 t019:
 	@echo [t019] Testing mock CONFIGURE /PNP transition back to enabled... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:1 > $(ARTIFACTS)\T019.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED > $(ARTIFACTS)\T019.LOG
 	FIND "PNP parameter accepted. Requested Plug and Play mode: enabled" $(ARTIFACTS)\T019.LOG > NUL
 	FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T019.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T019.LOG
 	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T019.LOG > NUL
 
 t020:
-	@echo [t020] Testing mock CONFIGURE /PNP invalid numeric value... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:3 > $(ARTIFACTS)\T020.LOG
-	FIND "Invalid /PNP parameter. Use 0 (disabled) or 1 (enabled)." $(ARTIFACTS)\T020.LOG > NUL
+	@echo [t020] Testing mock CONFIGURE /PNP rejects legacy numeric value... >> TEST.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:1 > $(ARTIFACTS)\T020.LOG
+	FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T020.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T020.LOG
 	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T020.LOG > NUL
 
 t021:
 	@echo [t021] Testing mock CONFIGURE /PNP symbolic false value... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:FALSE > $(ARTIFACTS)\T021.LOG
-	FIND "Invalid /PNP parameter. Use 0 (disabled) or 1 (enabled)." $(ARTIFACTS)\T021.LOG > NUL
+	FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T021.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T021.LOG
 	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T021.LOG > NUL
 
 t022:
 	@echo [t022] Testing mock CONFIGURE /PNP arbitrary invalid input... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:OTHERINVALIDINPUT > $(ARTIFACTS)\T022.LOG
-	FIND "Invalid /PNP parameter. Use 0 (disabled) or 1 (enabled)." $(ARTIFACTS)\T022.LOG > NUL
+	FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T022.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T022.LOG
 	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T022.LOG > NUL
 
@@ -290,49 +290,49 @@ t077:
 
 t028:
 	@echo [t028] Testing mock CONFIGURE /FULLDUPLEX transition to enabled... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:1 > $(ARTIFACTS)\T028.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED > $(ARTIFACTS)\T028.LOG
 	FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T028.LOG > NUL
 	FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T028.LOG > NUL
 
 t029:
 	@echo [t029] Testing mock CONFIGURE /FULLDUPLEX unchanged transition at enabled... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:1 /VERBOSE > $(ARTIFACTS)\T029.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE > $(ARTIFACTS)\T029.LOG
 	FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T029.LOG > NUL
 	FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T029.LOG > NUL
 
 t030:
 	@echo [t030] Testing mock CONFIGURE /FULLDUPLEX transition to disabled... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:0 > $(ARTIFACTS)\T030.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED > $(ARTIFACTS)\T030.LOG
 	FIND "FULLDUPLEX parameter accepted. Requested mode: disabled" $(ARTIFACTS)\T030.LOG > NUL
 	FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T030.LOG > NUL
 
 t031:
-	@echo [t031] Testing mock CONFIGURE /FULLDUPLEX invalid numeric value... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:2 > $(ARTIFACTS)\T031.LOG
-	FIND "Invalid /FULLDUPLEX parameter. Use 0 (half duplex) or 1 (full duplex)." $(ARTIFACTS)\T031.LOG > NUL
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:0 /VERBOSE >> $(ARTIFACTS)\T031.LOG
+	@echo [t031] Testing mock CONFIGURE /FULLDUPLEX rejects legacy numeric value... >> TEST.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:1 > $(ARTIFACTS)\T031.LOG
+	FIND "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T031.LOG > NUL
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED /VERBOSE >> $(ARTIFACTS)\T031.LOG
 	FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T031.LOG > NUL
 
 t032:
 	@echo [t032] Testing mock CONFIGURE /FULLDUPLEX invalid symbolic input... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:TRUE > $(ARTIFACTS)\T032.LOG
-	FIND "Invalid /FULLDUPLEX parameter. Use 0 (half duplex) or 1 (full duplex)." $(ARTIFACTS)\T032.LOG > NUL
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:0 /VERBOSE >> $(ARTIFACTS)\T032.LOG
+	FIND "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T032.LOG > NUL
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED /VERBOSE >> $(ARTIFACTS)\T032.LOG
 	FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T032.LOG > NUL
 
 t033:
-	@echo [t033] Testing PNP capability gate: NOPNP seed rejects /PNP:1... >> TEST.LOG
+	@echo [t033] Testing PNP capability gate: NOPNP seed rejects /PNP:ENABLED... >> TEST.LOG
 	BIN\3CSEED.EXE NOPNP > $(ARTIFACTS)\T033.LOG
 	FIND "Seed file created (NOPNP)." $(ARTIFACTS)\T033.LOG > NUL
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:1 >> $(ARTIFACTS)\T033.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED >> $(ARTIFACTS)\T033.LOG
 	FIND "This adapter does not support Plug and Play configuration." $(ARTIFACTS)\T033.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T033.LOG
 
 t034:
-	@echo [t034] Testing FULLDUPLEX capability gate: NOFD seed rejects /FULLDUPLEX:1... >> TEST.LOG
+	@echo [t034] Testing FULLDUPLEX capability gate: NOFD seed rejects /FULLDUPLEX:ENABLED... >> TEST.LOG
 	BIN\3CSEED.EXE NOFD > $(ARTIFACTS)\T034.LOG
 	FIND "Seed file created (NOFD)." $(ARTIFACTS)\T034.LOG > NUL
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:1 >> $(ARTIFACTS)\T034.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T034.LOG
 	FIND "This adapter does not support full duplex configuration." $(ARTIFACTS)\T034.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T034.LOG
 
@@ -400,8 +400,8 @@ t042:
 
 
 t043:
-	@echo [t043] Testing mock CONFIGURE /BADDRESS:NONE disables Boot ROM... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:NONE > $(ARTIFACTS)\T043.LOG
+	@echo [t043] Testing mock CONFIGURE /BSIZE:DISABLED disables Boot ROM... >> TEST.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED > $(ARTIFACTS)\T043.LOG
 	FIND "Configuration completed successfully." $(ARTIFACTS)\T043.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T043.LOG
 	FIND "Boot ROM = disabled" $(ARTIFACTS)\T043.LOG > NUL
@@ -410,7 +410,7 @@ t043:
 t044:
 	@echo [t044] Testing mock CONFIGURE /BADDRESS out-of-range address... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:E0000 /BSIZE:16 > $(ARTIFACTS)\T044.LOG
-	FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps, or NONE." $(ARTIFACTS)\T044.LOG > NUL
+	FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T044.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T044.LOG
 	FIND "Boot ROM = disabled" $(ARTIFACTS)\T044.LOG > NUL
 
@@ -418,7 +418,7 @@ t044:
 t045:
 	@echo [t045] Testing mock CONFIGURE /BADDRESS non-aligned address... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C1000 /BSIZE:16 > $(ARTIFACTS)\T045.LOG
-	FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps, or NONE." $(ARTIFACTS)\T045.LOG > NUL
+	FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T045.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T045.LOG
 	FIND "Boot ROM = disabled" $(ARTIFACTS)\T045.LOG > NUL
 
@@ -426,13 +426,13 @@ t045:
 t046:
 	@echo [t046] Testing mock CONFIGURE /BSIZE invalid value... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:64 > $(ARTIFACTS)\T046.LOG
-	FIND "Invalid /BSIZE parameter. Use 8, 16, or 32." $(ARTIFACTS)\T046.LOG > NUL
+	FIND "Invalid /BSIZE parameter. Use 8, 16, 32, or DISABLED." $(ARTIFACTS)\T046.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T046.LOG
 	FIND "Boot ROM = disabled" $(ARTIFACTS)\T046.LOG > NUL
 
 
 t047:
-	@echo [t047] Testing mock CONFIGURE /BSIZE alone is rejected (pairing rule)... >> TEST.LOG
+	@echo [t047] Testing mock CONFIGURE /BSIZE alone (real size) is rejected (pairing rule)... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:16 > $(ARTIFACTS)\T047.LOG
 	FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T047.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T047.LOG
@@ -440,7 +440,7 @@ t047:
 
 
 t048:
-	@echo [t048] Testing mock CONFIGURE /BADDRESS non-NONE alone is rejected (pairing rule)... >> TEST.LOG
+	@echo [t048] Testing mock CONFIGURE /BADDRESS alone is rejected (pairing rule)... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 > $(ARTIFACTS)\T048.LOG
 	FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T048.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T048.LOG
@@ -448,9 +448,9 @@ t048:
 
 
 t049:
-	@echo [t049] Testing mock CONFIGURE /BADDRESS:NONE combined with /BSIZE is rejected... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:NONE /BSIZE:16 > $(ARTIFACTS)\T049.LOG
-	FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T049.LOG > NUL
+	@echo [t049] Testing mock CONFIGURE /BADDRESS combined with /BSIZE:DISABLED is ignored... >> TEST.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:DISABLED > $(ARTIFACTS)\T049.LOG
+	FIND "Configuration completed successfully." $(ARTIFACTS)\T049.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T049.LOG
 	FIND "Boot ROM = disabled" $(ARTIFACTS)\T049.LOG > NUL
 
@@ -601,14 +601,14 @@ t066:
 t067:
 	@echo [t067] Testing combined CONFIGURE /MODEM+/FULLDUPLEX transaction... >> TEST.LOG
 	BIN\3CSEED.EXE INIT > $(ARTIFACTS)\T067.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /FULLDUPLEX:1 /VERBOSE >> $(ARTIFACTS)\T067.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T067.LOG
 	FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T067.LOG > NUL
 	FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T067.LOG > NUL
 	FIND "New EEPROM word 0Dh: " $(ARTIFACTS)\T067.LOG > NUL
 	FIND "Configuration completed successfully." $(ARTIFACTS)\T067.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /VERBOSE >> $(ARTIFACTS)\T067.LOG
 	FIND "Modem speed setting is already configured to the requested value." $(ARTIFACTS)\T067.LOG > NUL
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:1 /VERBOSE >> $(ARTIFACTS)\T067.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T067.LOG
 	FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T067.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T067.LOG
 

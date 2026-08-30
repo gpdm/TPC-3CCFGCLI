@@ -200,17 +200,17 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    /ADAPTERNUM:N                  Select adapter N (from LIST).", 0Dh, 0Ah
                 DB  "    /INT:N                         Set IRQ (3,5,7,9,10,11,12,15).", 0Dh, 0Ah
                 DB  "    /IOBASE:NNN                    Set ISA I/O base address (hex).", 0Dh, 0Ah
-                DB  "    /PNP:0|1                       Plug and Play mode.", 0Dh, 0Ah
-                DB  "    /FULLDUPLEX:0|1                Full duplex mode.", 0Dh, 0Ah
+                DB  "    /PNP:ENABLED|DISABLED          Plug and Play mode.", 0Dh, 0Ah
+                DB  "    /FULLDUPLEX:ENABLED|DISABLED   Full duplex mode.", 0Dh, 0Ah
                 DB  "    /TR:TP|AUI|COAX|AUTO           Transceiver type.", 0Dh, 0Ah
                 DB  "    /XCVR:...                      Alias for /TR.", 0Dh, 0Ah
                 DB  "    /MODEM:N|NONE                  Modem speed/interrupt-disable tuning.", 0Dh, 0Ah
                 DB  "    /OPTIMIZE:DOS|WINDOWS|OS/2|SERVER", 0Dh, 0Ah
                 DB  "                                   Network workload optimization.", 0Dh, 0Ah
-                DB  "    /BADDRESS:NNNNN|NONE           Boot ROM base (hex, C0000-DE000,", 0Dh, 0Ah
+                DB  "    /BADDRESS:NNNNN                Boot ROM base (hex, C0000-DE000,", 0Dh, 0Ah
                 DB  "                                   2000h steps); requires /BSIZE.", 0Dh, 0Ah
-                DB  "    /BSIZE:8|16|32                 Boot ROM size in KB;", 0Dh, 0Ah
-                DB  "                                   requires /BADDRESS.", 0Dh, 0Ah
+                DB  "    /BSIZE:8|16|32|DISABLED       Boot ROM size in KB, or DISABLED;", 0Dh, 0Ah
+                DB  "                                   a size requires /BADDRESS.", 0Dh, 0Ah
                 DB  "    /VERBOSE                       Show verbose transaction details.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
@@ -237,7 +237,7 @@ msg_cfg_missing_value DB "Missing CONFIGURE option value.", 0Dh, 0Ah, '$'
 msg_cfg_no_property DB "No CONFIGURE property was specified.", 0Dh, 0Ah, '$'
 msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 0Dh, 0Ah, '$'
 msg_cfg_bad_int DB "Invalid /INT parameter. Value must be 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
-msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use 0 (disabled) or 1 (enabled).", 0Dh, 0Ah, '$'
+msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
 msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER.", 0Dh, 0Ah, '$'
 msg_cfg_int_ok DB "INT parameter accepted. Requested IRQ: ", '$'
@@ -343,7 +343,7 @@ msg_cfg_optimize_verified DB "EEPROM optimize mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_verify_fail DB "Optimize mode configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_completed DB 0Dh, 0Ah, "Optimize mode configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_not_capable DB "This adapter does not support Plug and Play configuration.", 0Dh, 0Ah, '$'
-msg_cfg_bad_fullduplex DB "Invalid /FULLDUPLEX parameter. Use 0 (half duplex) or 1 (full duplex).", 0Dh, 0Ah, '$'
+msg_cfg_bad_fullduplex DB "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_fullduplex_ok DB "FULLDUPLEX parameter accepted. Requested mode: ", '$'
 msg_cfg_fd_unchanged DB 0Dh, 0Ah, "Full duplex mode is already configured to the requested value.", 0Dh, 0Ah
                      DB "No hardware changes required.", 0Dh, 0Ah, '$'
@@ -357,9 +357,9 @@ msg_cfg_fd_not_capable DB "This adapter does not support full duplex configurati
 
 ; /BADDRESS and /BSIZE diagnostics.  Both share EEPROM word 08h (bits 11:8
 ; and 13:12) with /IOBASE (bits 4:0); see Cfg_Prepare_BADDRESS/BSIZE.
-msg_cfg_bad_baddress DB "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps, or NONE.", 0Dh, 0Ah, '$'
-msg_cfg_bad_bsize DB "Invalid /BSIZE parameter. Use 8, 16, or 32.", 0Dh, 0Ah, '$'
-msg_cfg_bootrom_incomplete DB "/BADDRESS and /BSIZE must be specified together (or use /BADDRESS:NONE alone to disable).", 0Dh, 0Ah, '$'
+msg_cfg_bad_baddress DB "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps.", 0Dh, 0Ah, '$'
+msg_cfg_bad_bsize DB "Invalid /BSIZE parameter. Use 8, 16, 32, or DISABLED.", 0Dh, 0Ah, '$'
+msg_cfg_bootrom_incomplete DB "/BADDRESS and /BSIZE must be specified together (or use /BSIZE:DISABLED alone to disable).", 0Dh, 0Ah, '$'
 msg_cfg_baddress_ok DB "BADDRESS parameter accepted. Requested base address: ", '$'
 msg_cfg_bsize_ok DB "BSIZE parameter accepted. Requested size: ", '$'
 msg_cfg_baddress_inactive DB "Selected adapter has no active I/O base for /BADDRESS configuration.", 0Dh, 0Ah, '$'
@@ -520,12 +520,13 @@ cfg_modem_value       DW 0
 cfg_fullduplex_value  DB 0
 cfg_optimize_value    DB 0
 ; cfg_baddress_value: raw 0-15 Boot ROM base index
-; (address = 0C0000h + index*2000h).  cfg_baddress_none is the separate
-; /BADDRESS:NONE sentinel because value zero is a valid minimum address.
-; cfg_bsize_value: 0/1/2 = 8/16/32K.
+; (address = 0C0000h + index*2000h).
+; cfg_bsize_value: 0/1/2 = 8/16/32K, meaningful only when cfg_bsize_disabled=0.
+; cfg_bsize_disabled is the /BSIZE:DISABLED sentinel, since value zero is a
+; valid size (8K) as well as a valid base index.
 cfg_baddress_value    DB 0
-cfg_baddress_none     DB 0
 cfg_bsize_value       DB 0
+cfg_bsize_disabled    DB 0
 ; cfg_tr_value: 0=TP, 1=AUI, 3=COAX, 0FFh=AUTO sentinel.
 cfg_tr_value          DB 0
 
@@ -633,6 +634,8 @@ save_baddress   DB  ' /BADDRESS:', 0
 save_bsize      DB  ' /BSIZE:', 0
 save_tr         DB  ' /TR:', 0
 save_none       DB  'NONE', 0
+save_enabled    DB  'ENABLED', 0
+save_disabled   DB  'DISABLED', 0
 save_dos        DB  'DOS', 0
 save_windows    DB  'WINDOWS', 0
 save_os2        DB  'OS/2', 0
@@ -1207,23 +1210,23 @@ PROC Save_Build_Command NEAR
     and     ax, 000Ch
     cmp     ax, 0004h
     jne     @@PnpOn
-    mov     al, '0'
+    mov     si, OFFSET save_disabled
     jmp     @@PnpDone
 @@PnpOn:
-    mov     al, '1'
+    mov     si, OFFSET save_enabled
 @@PnpDone:
-    call    Save_Append_Char
+    call    Save_Append_String
     mov     si, OFFSET save_fd
     call    Save_Append_String
     mov     ax, [save_word0d]
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jz      @@FdOff
-    mov     al, '1'
+    mov     si, OFFSET save_enabled
     jmp     @@FdDone
 @@FdOff:
-    mov     al, '0'
+    mov     si, OFFSET save_disabled
 @@FdDone:
-    call    Save_Append_Char
+    call    Save_Append_String
     mov     si, OFFSET save_modem
     call    Save_Append_String
     mov     ax, [save_word0d]
@@ -1259,7 +1262,7 @@ PROC Save_Build_Command NEAR
 @@OptDone:
     call    Save_Append_String
     mov     ax, [save_word08]
-    and     ax, 0F00h
+    and     ax, 3F00h              ; Base (bits 11:8) and size (bits 13:12).
     jz      @@NoRom
     mov     si, OFFSET save_baddress
     call    Save_Append_String
@@ -1298,9 +1301,11 @@ PROC Save_Build_Command NEAR
     call    Save_Append_Dec_Word
     jmp     @@Tr
 @@NoRom:
-    mov     si, OFFSET save_baddress
+    ; The original utility does not accept /BADDRESS:NONE; disabling the
+    ; Boot ROM is expressed with /BSIZE:DISABLED alone.
+    mov     si, OFFSET save_bsize
     call    Save_Append_String
-    mov     si, OFFSET save_none
+    mov     si, OFFSET save_disabled
     call    Save_Append_String
 @@Tr:
     mov     si, OFFSET save_tr
@@ -2343,26 +2348,6 @@ PROC Cfg_Handle_BADDRESS NEAR
     push    dx
     push    si
 
-    mov     [cfg_baddress_none], 0
-
-    ; NONE disables the Boot ROM; no /BSIZE is required with it.
-    cmp     cx, 4
-    jne     @@ParseHex
-    cmp     [BYTE si], 'N'
-    jne     @@ParseHex
-    cmp     [BYTE si+1], 'O'
-    jne     @@ParseHex
-    cmp     [BYTE si+2], 'N'
-    jne     @@ParseHex
-    cmp     [BYTE si+3], 'E'
-    jne     @@ParseHex
-    mov     [cfg_baddress_value], 0
-    mov     [cfg_baddress_none], 1
-    or      [cfg_parse_flags], CFG_PARSE_BADDRESS
-    mov     [cfg_last_error], CFG_ERR_NONE
-    jmp     @@Done
-
-@@ParseHex:
     call    Cfg_Parse_BAddress_Hex
     jc      @@Invalid
     mov     [cfg_baddress_value], al
@@ -2385,6 +2370,35 @@ PROC Cfg_Handle_BSIZE NEAR
     push    dx
     push    si
 
+    mov     [cfg_bsize_disabled], 0
+
+    ; DISABLED turns off the Boot ROM; /BADDRESS may accompany it but is
+    ; then ignored.
+    cmp     cx, 8
+    jne     @@ParseSize
+    cmp     [BYTE si], 'D'
+    jne     @@ParseSize
+    cmp     [BYTE si+1], 'I'
+    jne     @@ParseSize
+    cmp     [BYTE si+2], 'S'
+    jne     @@ParseSize
+    cmp     [BYTE si+3], 'A'
+    jne     @@ParseSize
+    cmp     [BYTE si+4], 'B'
+    jne     @@ParseSize
+    cmp     [BYTE si+5], 'L'
+    jne     @@ParseSize
+    cmp     [BYTE si+6], 'E'
+    jne     @@ParseSize
+    cmp     [BYTE si+7], 'D'
+    jne     @@ParseSize
+    mov     [cfg_bsize_value], 0
+    mov     [cfg_bsize_disabled], 1
+    or      [cfg_parse_flags], CFG_PARSE_BSIZE
+    mov     [cfg_last_error], CFG_ERR_NONE
+    jmp     @@Done
+
+@@ParseSize:
     ; Strict decimal parser: no sign, no suffix, no spaces, 2 digits max.
     or      cx, cx
     jz      @@Invalid
@@ -2670,46 +2684,110 @@ PROC Cfg_Handle_OPTIMIZE NEAR
 ENDP Cfg_Handle_OPTIMIZE
 
 PROC Cfg_Handle_PNP NEAR
-    cmp     cx, 1
+    cmp     cx, 7
+    je      @@CheckEnabled
+    cmp     cx, 8
+    je      @@CheckDisabled
+    jmp     @@Invalid
+
+@@CheckEnabled:
+    cmp     [BYTE si], 'E'
     jne     @@Invalid
-    mov     al, [si]
-    cmp     al, '0'
-    je      @@Zero
-    cmp     al, '1'
+    cmp     [BYTE si+1], 'N'
+    jne     @@Invalid
+    cmp     [BYTE si+2], 'A'
+    jne     @@Invalid
+    cmp     [BYTE si+3], 'B'
+    jne     @@Invalid
+    cmp     [BYTE si+4], 'L'
+    jne     @@Invalid
+    cmp     [BYTE si+5], 'E'
+    jne     @@Invalid
+    cmp     [BYTE si+6], 'D'
     jne     @@Invalid
     mov     [cfg_pnp_value], 1
-    or      [cfg_parse_flags], CFG_PARSE_PNP
-    mov     [cfg_last_error], CFG_ERR_NONE
-    ret
-@@Zero:
+    jmp     @@Accept
+
+@@CheckDisabled:
+    cmp     [BYTE si], 'D'
+    jne     @@Invalid
+    cmp     [BYTE si+1], 'I'
+    jne     @@Invalid
+    cmp     [BYTE si+2], 'S'
+    jne     @@Invalid
+    cmp     [BYTE si+3], 'A'
+    jne     @@Invalid
+    cmp     [BYTE si+4], 'B'
+    jne     @@Invalid
+    cmp     [BYTE si+5], 'L'
+    jne     @@Invalid
+    cmp     [BYTE si+6], 'E'
+    jne     @@Invalid
+    cmp     [BYTE si+7], 'D'
+    jne     @@Invalid
     mov     [cfg_pnp_value], 0
+
+@@Accept:
     or      [cfg_parse_flags], CFG_PARSE_PNP
     mov     [cfg_last_error], CFG_ERR_NONE
-    ret
+    jmp     @@Done
 @@Invalid:
     mov     [cfg_last_error], CFG_ERR_BAD_PNP
+@@Done:
     ret
 ENDP Cfg_Handle_PNP
 
 PROC Cfg_Handle_FULLDUPLEX NEAR
-    cmp     cx, 1
+    cmp     cx, 7
+    je      @@CheckEnabled
+    cmp     cx, 8
+    je      @@CheckDisabled
+    jmp     @@Invalid
+
+@@CheckEnabled:
+    cmp     [BYTE si], 'E'
     jne     @@Invalid
-    mov     al, [si]
-    cmp     al, '0'
-    je      @@Zero
-    cmp     al, '1'
+    cmp     [BYTE si+1], 'N'
+    jne     @@Invalid
+    cmp     [BYTE si+2], 'A'
+    jne     @@Invalid
+    cmp     [BYTE si+3], 'B'
+    jne     @@Invalid
+    cmp     [BYTE si+4], 'L'
+    jne     @@Invalid
+    cmp     [BYTE si+5], 'E'
+    jne     @@Invalid
+    cmp     [BYTE si+6], 'D'
     jne     @@Invalid
     mov     [cfg_fullduplex_value], 1
-    or      [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    mov     [cfg_last_error], CFG_ERR_NONE
-    ret
-@@Zero:
+    jmp     @@Accept
+
+@@CheckDisabled:
+    cmp     [BYTE si], 'D'
+    jne     @@Invalid
+    cmp     [BYTE si+1], 'I'
+    jne     @@Invalid
+    cmp     [BYTE si+2], 'S'
+    jne     @@Invalid
+    cmp     [BYTE si+3], 'A'
+    jne     @@Invalid
+    cmp     [BYTE si+4], 'B'
+    jne     @@Invalid
+    cmp     [BYTE si+5], 'L'
+    jne     @@Invalid
+    cmp     [BYTE si+6], 'E'
+    jne     @@Invalid
+    cmp     [BYTE si+7], 'D'
+    jne     @@Invalid
     mov     [cfg_fullduplex_value], 0
+
+@@Accept:
     or      [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     mov     [cfg_last_error], CFG_ERR_NONE
-    ret
+    jmp     @@Done
 @@Invalid:
     mov     [cfg_last_error], CFG_ERR_BAD_FULLDUPLEX
+@@Done:
     ret
 ENDP Cfg_Handle_FULLDUPLEX
 
@@ -4897,15 +4975,17 @@ ENDP Cfg_Prepare_OPTIMIZE
 ; preserved.  The raw requested index is written as-is; any alignment
 ; "rounding" for a given size is a read-side hardware/display concern
 ; already handled faithfully by Print_Boot_Rom_Value, not enforced here.
+; Merge only the staged Boot ROM base field into the prospective EEPROM
+; word 08h image.  Bits 11:8 are owned by BADDRESS; all other bits preserved.
+; If /BSIZE:DISABLED is also staged, Cfg_Prepare_BSIZE runs afterwards and
+; clears this field again, so an /BADDRESS given alongside DISABLED is
+; effectively ignored.
 PROC Cfg_Prepare_BADDRESS NEAR
     push    ax
     push    bx
     push    cx
 
     mov     ax, [cfg_txn_new_word08]
-    cmp     [cfg_baddress_none], 1
-    je      @@Disable
-
     and     ax, 0F0FFh
     xor     bx, bx
     mov     bl, [cfg_baddress_value]
@@ -4913,29 +4993,26 @@ PROC Cfg_Prepare_BADDRESS NEAR
     shl     bx, cl
     or      ax, bx
     mov     [cfg_txn_new_word08], ax
-    jmp     @@Done
 
-@@Disable:
-    ; /BADDRESS:NONE clears both Boot ROM base and size bits while preserving
-    ; media and I/O settings in the same EEPROM word.
-    and     ax, 0C0FFh
-    mov     [cfg_txn_new_word08], ax
-
-@@Done:
     pop     cx
     pop     bx
     pop     ax
     ret
 ENDP Cfg_Prepare_BADDRESS
 
-; Merge only the staged Boot ROM size field into the prospective EEPROM
-; word 08h image.  Bits 13:12 are owned by BSIZE; all other bits preserved.
+; Merge the staged Boot ROM size field into the prospective EEPROM word 08h
+; image.  Bits 13:12 are owned by BSIZE; all other bits preserved.  When
+; /BSIZE:DISABLED was staged, both the size and base fields are cleared
+; instead, overriding any /BADDRESS staged earlier in the same transaction.
 PROC Cfg_Prepare_BSIZE NEAR
     push    ax
     push    bx
     push    cx
 
     mov     ax, [cfg_txn_new_word08]
+    cmp     [cfg_bsize_disabled], 1
+    je      @@Disable
+
     and     ax, 0CFFFh
     xor     bx, bx
     mov     bl, [cfg_bsize_value]
@@ -4943,7 +5020,13 @@ PROC Cfg_Prepare_BSIZE NEAR
     shl     bx, cl
     or      ax, bx
     mov     [cfg_txn_new_word08], ax
+    jmp     @@Done
 
+@@Disable:
+    and     ax, 0C0FFh
+    mov     [cfg_txn_new_word08], ax
+
+@@Done:
     pop     cx
     pop     bx
     pop     ax
@@ -5816,6 +5899,8 @@ PROC Cfg_Txn_Verify NEAR
 
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@BSizeVerify
+    cmp     [cfg_bsize_disabled], 1
+    je      @@BSizeVerify        ; BADDRESS is ignored/cleared by BSIZE:DISABLED.
     mov     ax, bx
     and     ax, 0F00h
     mov     cl, 8
@@ -5856,11 +5941,13 @@ PROC Cfg_Txn_Verify NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jnz     @@BootRomVerifyFailBAddress
-    mov     [cfg_last_error], CFG_ERR_BSIZE_VERIFY
-    jmp     @@Fail
-@@BootRomVerifyFailBAddress:
+    jz      @@BootRomVerifyFailBSize
+    cmp     [cfg_bsize_disabled], 1
+    je      @@BootRomVerifyFailBSize
     mov     [cfg_last_error], CFG_ERR_BADDRESS_VERIFY
+    jmp     @@Fail
+@@BootRomVerifyFailBSize:
+    mov     [cfg_last_error], CFG_ERR_BSIZE_VERIFY
     jmp     @@Fail
 @@ReachFail:
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
@@ -6279,18 +6366,15 @@ PROC Cfg_Txn_Execute NEAR
     jz      @@Requested
 
 @@BootRomRequested:
-    ; Pairing rule: /BADDRESS and /BSIZE must be specified together, except
-    ; /BADDRESS:NONE may be given alone to disable the Boot ROM.
+    ; Pairing rule: /BSIZE:DISABLED may be given alone (any /BADDRESS given
+    ; alongside is then ignored) to disable the Boot ROM.  Otherwise
+    ; /BADDRESS and /BSIZE:8|16|32 must both be specified.
+    test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    jz      @@BootRomIncomplete
+    cmp     [cfg_bsize_disabled], 1
+    je      @@BootRomCapabilityGate
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@BootRomIncomplete
-    test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jnz     @@BootRomBothGiven
-    cmp     [cfg_baddress_none], 1
-    je      @@BootRomCapabilityGate
-    jmp     @@BootRomIncomplete
-@@BootRomBothGiven:
-    cmp     [cfg_baddress_none], 1
-    je      @@BootRomIncomplete
     jmp     @@BootRomCapabilityGate
 @@BootRomIncomplete:
     mov     [cfg_last_error], CFG_ERR_BOOTROM_INCOMPLETE
@@ -6469,15 +6553,6 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_cfg_baddress_ok
     mov     ah, 09h
     int     21h
-    cmp     [cfg_baddress_none], 1
-    je      @@PrintBAddressNone
-    jmp     @@PrintBAddressValue
-@@PrintBAddressNone:
-    mov     dx, OFFSET msg_none
-    mov     ah, 09h
-    int     21h
-    jmp     @@AfterRequestedBAddress
-@@PrintBAddressValue:
     xor     ax, ax
     mov     al, [cfg_baddress_value]
     mov     cx, 2000h
@@ -6487,7 +6562,6 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_hex_suffix
     mov     ah, 09h
     int     21h
-@@AfterRequestedBAddress:
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
@@ -6498,6 +6572,8 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_cfg_bsize_ok
     mov     ah, 09h
     int     21h
+    cmp     [cfg_bsize_disabled], 1
+    je      @@PrintBSizeDisabled
     mov     al, [cfg_bsize_value]
     xor     ah, ah
     cmp     al, 0
@@ -6516,6 +6592,12 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_kilobytes_suffix
     mov     ah, 09h
     int     21h
+    jmp     @@AfterBSizeValue
+@@PrintBSizeDisabled:
+    mov     dx, OFFSET msg_disabled
+    mov     ah, 09h
+    int     21h
+@@AfterBSizeValue:
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h

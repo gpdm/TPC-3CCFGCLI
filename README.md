@@ -86,6 +86,7 @@ current reimplementations.
 The following list of features and functionalities were deliberately skipped in the implementation.
 
 - MEWEL-based Text-mode UI
+- EISA and MCA support (including /SLOT configuration subverb)
 - `/LANGUAGE` CLI verb
 - `/ECHOSERVER` CLI verb
 - `/RUN` CLI verb
@@ -112,6 +113,16 @@ Version 3.x and 2.1 of `3C5X9CFG.EXE` advertise also a `/SYNCREADY` configuratio
 in its HELP text, although it doesn't branch into actual code.
 
 This is still under analysis, see also [TODO.TXT](TODO.TXT).
+
+### /CONFIGPORT configuration verb
+
+`/CONFIGPORT` is an ISA-only workaround parameter in the original utility. Per
+its HELP text, it is used only if the program has trouble running on the
+target machine, and accepts an I/O address in the 100h-1E0h range (in
+increments of 10h) to relocate the adapter's ID port used during EEPROM/ISA
+probing. It does not configure a persistent adapter setting.
+
+`CONFIGURE /CONFIGPORT` is not implemented in `3CCFGCLI` at this time.
 
 
 ### /VERBOSE configuration verb

@@ -1,3 +1,19 @@
+Changelog 0.6.6:
+  - Fixed a real-hardware conformance bug: /PNP and /FULLDUPLEX now require
+    ENABLED or DISABLED, matching the original 3C5X9CFG.EXE v3.2 command-line
+    grammar exactly. The previous 0|1 syntax is no longer accepted.
+  - SAVECONFIG now emits /PNP:ENABLED|DISABLED and
+    /FULLDUPLEX:ENABLED|DISABLED so restore batches replay correctly through
+    either 3CCFGCLI or the original utility via /EXECFILE.
+  - Documented the /CONFIGPORT verb in README.md as an ISA ID-port relocation
+    workaround from the original utility, not implemented in 3CCFGCLI.
+  - Fixed another real-hardware conformance bug: disabling the Boot ROM is
+    now done via /BSIZE:DISABLED, matching the original utility. /BADDRESS
+    no longer accepts NONE; it only takes an address and is ignored when
+    /BSIZE:DISABLED is also given. SAVECONFIG emits /BSIZE:DISABLED without
+    an accompanying /BADDRESS when the Boot ROM is off.
+
+
 Changelog 0.6.5:
   - Added an optional SAVECONFIG /EXECFILE:program argument that overrides the
     embedded restore program name (default: this executable), including
