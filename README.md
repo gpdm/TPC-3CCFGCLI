@@ -192,7 +192,8 @@ Example:
 - For interactive installation, run [interactive.sh](interactive.sh), which
   starts DOSBox-X with `C:` mapped to the current working directory.
   This allows running the Borland TASM installer directly from floppy disk images.
-- Alternatively, just copy `TASM.EXE`, `TLINK.EXE`, and `MAKE.EXE` into `./TASM/BIN`.
+- Alternatively, just copy `TASM.EXE`, `TLINK.EXE`, `MAKE.EXE`, `32RTM.EXE` and
+  `DPMI32VM.OVL` into `./TASM/BIN`.
 
 
 ### Build flow
