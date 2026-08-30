@@ -56,6 +56,7 @@ The new implementation currently covers:
 - `HELP`
 - `LIST`
 - `CONFIGURE`
+- `SAVECONFIG file` (exports a restore batch file for all installed adapters)
 
 Supported `CONFIGURE` subverbs include:
 
@@ -118,6 +119,15 @@ This is still under analysis, see also [TODO.TXT](TODO.TXT).
 `/VERBOSE` is a diagnostic aid. It prints additional EEPROM and live-register
 read/write detail so transactions can be traced while debugging hardware
 behavior, mock-state issues, or parser/transaction sequencing.
+
+### SAVECONFIG command verb
+
+`SAVECONFIG [filename.bat]` reads the persistent configuration of every installed
+adapter with an active I/O base and writes a batch file with one
+`3CCFGCLI.EXE CONFIGURE /ADAPTERNUM:N ...` restore line per adapter.
+It exports the implemented persistent settings only and does not modify any
+adapter. This is handy for storing your last configuration, but is also used
+internally for the standalone hardware conformance tests.
 
 
 ### Enhanded LIST verb

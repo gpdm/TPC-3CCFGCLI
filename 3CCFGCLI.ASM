@@ -190,6 +190,8 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    Display this help screen.", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "  LIST", 0Dh, 0Ah
                 DB  "    Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah, 0Dh, 0Ah
+                DB  "  SAVECONFIG file", 0Dh, 0Ah
+                DB  "    Export all adapter configurations to a restore batch file.", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "  CONFIGURE [options]", 0Dh, 0Ah
                 DB  "    Configure ISA adapter properties. Options:", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    /ADAPTERNUM:N                  Select adapter N (from LIST).", 0Dh, 0Ah
@@ -209,6 +211,12 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    /VERBOSE                       Show verbose transaction details.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
+msg_save_missing DB "SAVECONFIG requires an output filename.", 0Dh, 0Ah, '$'
+msg_save_bad_name DB "Invalid SAVECONFIG output filename.", 0Dh, 0Ah, '$'
+msg_save_no_active DB "SAVECONFIG found no adapters with an active I/O base.", 0Dh, 0Ah, '$'
+msg_save_read_fail DB "Unable to read adapter EEPROM for SAVECONFIG.", 0Dh, 0Ah, '$'
+msg_save_write_fail DB "Unable to write SAVECONFIG output file.", 0Dh, 0Ah, '$'
+msg_save_ok DB "Configuration restore batch file created: ", '$'
 
 ; CONFIGURE framework diagnostics.
 msg_cfg_bad_adapter DB "Invalid ADAPTERNUM value.", 0Dh, 0Ah, '$'
@@ -594,6 +602,37 @@ io_scan_table   DW  0300h, 0310h, 0320h, 0330h, 0340h, 0350h, 0360h, 0370h
                 DW  0000h
 
 cmd_buffer      DB  128 DUP(0)
+save_filename   DB  128 DUP(0)
+save_buffer     DB  1024 DUP(0)
+save_length     DW  0
+save_handle     DW  0
+save_adapter_num DW 0
+save_word08     DW  0
+save_word09     DW  0
+save_word0d     DW  0
+save_word0f     DW  0
+save_word13     DW  0
+save_revision   DW  0
+save_prefix     DB  '3CCFGCLI.EXE CONFIGURE', 0
+save_adapternum DB  ' /ADAPTERNUM:', 0
+save_int        DB  ' /INT:', 0
+save_iobase     DB  ' /IOBASE:', 0
+save_pnp        DB  ' /PNP:', 0
+save_fd         DB  ' /FULLDUPLEX:', 0
+save_modem      DB  ' /MODEM:', 0
+save_optimize   DB  ' /OPTIMIZE:', 0
+save_baddress   DB  ' /BADDRESS:', 0
+save_bsize      DB  ' /BSIZE:', 0
+save_tr         DB  ' /TR:', 0
+save_none       DB  'NONE', 0
+save_dos        DB  'DOS', 0
+save_windows    DB  'WINDOWS', 0
+save_os2        DB  'OS/2', 0
+save_server     DB  'SERVER', 0
+save_tp         DB  'TP', 0
+save_aui        DB  'AUI', 0
+save_coax       DB  'COAX', 0
+save_auto       DB  'AUTO', 0
 
 CODESEG
 
@@ -706,7 +745,7 @@ PROC Parse_And_Execute NEAR
 
 @@TryList:
     cmp     [BYTE si], 'L'
-    jne     @@TryConfig
+    jne     @@TrySaveConfig
     cmp     [BYTE si+1], 'I'
     jne     @@TryConfig
     cmp     [BYTE si+2], 'S'
@@ -721,6 +760,37 @@ PROC Parse_And_Execute NEAR
     cmp     al, 09h
     je      @@List
     jmp     @@Help
+
+@@TrySaveConfig:
+    cmp     [BYTE si], 'S'
+    jne     @@TryConfig
+    cmp     [BYTE si+1], 'A'
+    jne     @@TryConfig
+    cmp     [BYTE si+2], 'V'
+    jne     @@TryConfig
+    cmp     [BYTE si+3], 'E'
+    jne     @@TryConfig
+    cmp     [BYTE si+4], 'C'
+    jne     @@TryConfig
+    cmp     [BYTE si+5], 'O'
+    jne     @@TryConfig
+    cmp     [BYTE si+6], 'N'
+    jne     @@TryConfig
+    cmp     [BYTE si+7], 'F'
+    jne     @@TryConfig
+    cmp     [BYTE si+8], 'I'
+    jne     @@TryConfig
+    cmp     [BYTE si+9], 'G'
+    jne     @@TryConfig
+    mov     al, [si+10]
+    cmp     al, ' '
+    je      @@SaveConfig
+    cmp     al, 09h
+    jne     @@TryConfig
+@@SaveConfig:
+    add     si, 10
+    call    Cmd_SaveConfig
+    ret
 
 @@TryConfig:
     cmp     [BYTE si], 'C'
@@ -772,6 +842,425 @@ PROC Parse_And_Execute NEAR
     int     21h
     ret
 ENDP Parse_And_Execute
+
+; ==========================================================================
+; SAVECONFIG command. Exports the recognized persistent configuration of one
+; adapter as a DOS batch file. The command never writes NIC registers/EEPROM.
+; ==========================================================================
+PROC Cmd_SaveConfig NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+@@SkipWhite:
+    mov     al, [si]
+    cmp     al, ' '
+    je      @@Advance
+    cmp     al, 09h
+    jne     @@Name
+@@Advance:
+    inc     si
+    jmp     @@SkipWhite
+@@Name:
+    or      al, al
+    jz      @@Missing
+    mov     di, OFFSET save_filename
+    mov     cx, 127
+@@Copy:
+    mov     al, [si]
+    or      al, al
+    jz      @@Copied
+    cmp     al, ' '
+    je      @@Copied
+    cmp     al, 09h
+    je      @@Copied
+    mov     [BYTE di], al
+    inc     di
+    inc     si
+    loop    @@Copy
+    jmp     @@BadName
+@@Copied:
+    xor     al, al
+    mov     [BYTE di], al
+
+    call    Scan_All_3Com_Cards
+    cmp     [card_count], 0
+    je      @@NoCards
+
+    mov     [save_length], 0
+    mov     [current_card], 0
+    mov     si, OFFSET nic_table
+@@ExportLoop:
+    mov     dx, [WORD si + NIC_IO_BASE]
+    or      dx, dx
+    jz      @@SkipAdapter
+
+    mov     al, EEPROM_ADDR_CFG
+    call    EEPROM_Read
+    mov     [save_word08], ax
+    mov     al, EEPROM_RESOURCE_CFG
+    call    EEPROM_Read
+    mov     [save_word09], ax
+    mov     al, EEPROM_SOFTWARE_INFO
+    call    EEPROM_Read
+    mov     [save_word0d], ax
+    mov     al, EEPROM_CHECKSUM
+    call    EEPROM_Read
+    mov     [save_word0f], ax
+    mov     al, EEPROM_CONFIG_CONTROL
+    call    EEPROM_Read
+    mov     [save_word13], ax
+    mov     al, EEPROM_REVISION_INFO
+    call    EEPROM_Read
+    mov     [save_revision], ax
+
+    mov     ax, [current_card]
+    inc     ax
+    mov     [save_adapter_num], ax
+    call    Save_Build_Command
+    jc      @@ReadFail
+
+@@SkipAdapter:
+    add     si, NIC_RECORD_SIZE
+    inc     [current_card]
+    mov     ax, [current_card]
+    cmp     ax, [card_count]
+    jb      @@ExportLoop
+
+    cmp     [save_length], 0
+    je      @@NoActive
+
+    mov     ah, 3Ch
+    xor     cx, cx
+    mov     dx, OFFSET save_filename
+    int     21h
+    jc      @@WriteFail
+    mov     [save_handle], ax
+    mov     bx, ax
+    mov     ah, 40h
+    mov     cx, [save_length]
+    mov     dx, OFFSET save_buffer
+    int     21h
+    jc      @@CloseFail
+    cmp     ax, [save_length]
+    jne     @@CloseFail
+    mov     bx, [save_handle]
+    mov     ah, 3Eh
+    int     21h
+    mov     dx, OFFSET msg_save_ok
+    mov     ah, 09h
+    int     21h
+    mov     si, OFFSET save_filename
+    call    Save_Print_Filename
+    mov     dx, OFFSET msg_cfg_crlf
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+@@CloseFail:
+    mov     bx, [save_handle]
+    mov     ah, 3Eh
+    int     21h
+@@WriteFail:
+    mov     dx, OFFSET msg_save_write_fail
+    jmp     @@Print
+@@ReadFail:
+    mov     dx, OFFSET msg_save_read_fail
+    jmp     @@Print
+@@NoActive:
+    mov     dx, OFFSET msg_save_no_active
+    jmp     @@Print
+@@NoCards:
+    mov     dx, OFFSET msg_no_cards
+    jmp     @@Print
+@@Missing:
+    mov     dx, OFFSET msg_save_missing
+    jmp     @@Print
+@@BadName:
+    mov     dx, OFFSET msg_save_bad_name
+@@Print:
+    mov     ah, 09h
+    int     21h
+@@Done:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cmd_SaveConfig
+
+PROC Save_Print_Filename NEAR
+    push    ax
+    push    dx
+@@Loop:
+    mov     dl, [BYTE si]
+    or      dl, dl
+    jz      @@Done
+    mov     ah, 02h
+    int     21h
+    inc     si
+    jmp     @@Loop
+@@Done:
+    pop     dx
+    pop     ax
+    ret
+ENDP Save_Print_Filename
+
+PROC Save_Append_Char NEAR
+    push    di
+    mov     di, OFFSET save_buffer
+    add     di, [save_length]
+    stosb
+    inc     [save_length]
+    pop     di
+    ret
+ENDP Save_Append_Char
+
+PROC Save_Append_String NEAR
+    push    ax
+@@Loop:
+    lodsb
+    or      al, al
+    jz      @@Done
+    call    Save_Append_Char
+    jmp     @@Loop
+@@Done:
+    pop     ax
+    ret
+ENDP Save_Append_String
+
+PROC Save_Append_Hex_Nibble NEAR
+    and     al, 0Fh
+    add     al, '0'
+    cmp     al, '9'
+    jbe     @@Out
+    add     al, 7
+@@Out:
+    call    Save_Append_Char
+    ret
+ENDP Save_Append_Hex_Nibble
+
+PROC Save_Append_Hex_Word NEAR
+    push    ax
+    mov     al, ah
+    shr     al, 1
+    shr     al, 1
+    shr     al, 1
+    shr     al, 1
+    call    Save_Append_Hex_Nibble
+    pop     ax
+    push    ax
+    mov     al, ah
+    call    Save_Append_Hex_Nibble
+    pop     ax
+    push    ax
+    mov     al, al
+    shr     al, 1
+    shr     al, 1
+    shr     al, 1
+    shr     al, 1
+    call    Save_Append_Hex_Nibble
+    pop     ax
+    call    Save_Append_Hex_Nibble
+    ret
+ENDP Save_Append_Hex_Word
+
+PROC Save_Append_Dec_Word NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    xor     cx, cx
+    mov     bx, 10
+@@Divide:
+    xor     dx, dx
+    div     bx
+    push    dx
+    inc     cx
+    or      ax, ax
+    jnz     @@Divide
+@@Output:
+    pop     dx
+    mov     al, dl
+    add     al, '0'
+    call    Save_Append_Char
+    loop    @@Output
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Save_Append_Dec_Word
+
+PROC Save_Build_Command NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    mov     si, OFFSET save_prefix
+    call    Save_Append_String
+    mov     si, OFFSET save_adapternum
+    call    Save_Append_String
+    mov     ax, [save_adapter_num]
+    call    Save_Append_Dec_Word
+    mov     si, OFFSET save_int
+    call    Save_Append_String
+    mov     ax, [save_word09]
+    mov     cl, 12
+    shr     ax, cl
+    call    Save_Append_Dec_Word
+    mov     si, OFFSET save_iobase
+    call    Save_Append_String
+    mov     ax, [save_word08]
+    and     ax, 001Fh
+    shl     ax, 1
+    mov     bx, ax
+    mov     ax, [WORD io_scan_table + bx]
+    call    Save_Append_Hex_Word
+    mov     si, OFFSET save_pnp
+    call    Save_Append_String
+    mov     ax, [save_word13]
+    and     ax, 000Ch
+    cmp     ax, 0004h
+    jne     @@PnpOn
+    mov     al, '0'
+    jmp     @@PnpDone
+@@PnpOn:
+    mov     al, '1'
+@@PnpDone:
+    call    Save_Append_Char
+    mov     si, OFFSET save_fd
+    call    Save_Append_String
+    mov     ax, [save_word0d]
+    test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jz      @@FdOff
+    mov     al, '1'
+    jmp     @@FdDone
+@@FdOff:
+    mov     al, '0'
+@@FdDone:
+    call    Save_Append_Char
+    mov     si, OFFSET save_modem
+    call    Save_Append_String
+    mov     ax, [save_word0d]
+    and     ax, EEPROM_SOFTWARE_INFO_MODEM_MASK
+    or      ax, ax
+    jnz     @@ModemValue
+    mov     si, OFFSET save_none
+    call    Save_Append_String
+    jmp     @@Optimize
+@@ModemValue:
+    call    Save_Append_Dec_Word
+@@Optimize:
+    mov     si, OFFSET save_optimize
+    call    Save_Append_String
+    mov     ax, [save_word0f]
+    mov     al, ah
+    cmp     al, 1
+    je      @@OptWindows
+    cmp     al, 2
+    je      @@OptOs2
+    cmp     al, 4
+    je      @@OptServer
+    mov     si, OFFSET save_dos
+    jmp     @@OptDone
+@@OptWindows:
+    mov     si, OFFSET save_windows
+    jmp     @@OptDone
+@@OptOs2:
+    mov     si, OFFSET save_os2
+    jmp     @@OptDone
+@@OptServer:
+    mov     si, OFFSET save_server
+@@OptDone:
+    call    Save_Append_String
+    mov     ax, [save_word08]
+    and     ax, 0F00h
+    jz      @@NoRom
+    mov     si, OFFSET save_baddress
+    call    Save_Append_String
+    mov     ax, [save_word08]
+    and     ax, 0F00h
+    mov     cl, 8
+    shr     ax, cl
+    mov     cl, 13
+    shl     ax, cl
+    mov     dl, 0Ch
+    mov     al, dl
+    call    Save_Append_Hex_Nibble
+    mov     ax, [save_word08]
+    and     ax, 0F00h
+    mov     cl, 5
+    shl     ax, cl
+    call    Save_Append_Hex_Word
+    mov     si, OFFSET save_bsize
+    call    Save_Append_String
+    mov     ax, [save_word08]
+    and     ax, 3000h
+    mov     cl, 12
+    shr     ax, cl
+    or      ax, ax
+    jz      @@Size8
+    cmp     ax, 1
+    je      @@Size16
+    mov     ax, 32
+    jmp     @@SizeDone
+@@Size8:
+    mov     ax, 8
+    jmp     @@SizeDone
+@@Size16:
+    mov     ax, 16
+@@SizeDone:
+    call    Save_Append_Dec_Word
+    jmp     @@Tr
+@@NoRom:
+    mov     si, OFFSET save_baddress
+    call    Save_Append_String
+    mov     si, OFFSET save_none
+    call    Save_Append_String
+@@Tr:
+    mov     si, OFFSET save_tr
+    call    Save_Append_String
+    mov     ax, [save_word08]
+    test    ax, 0080h
+    jnz     @@TrAuto
+    mov     cl, 14
+    shr     ax, cl
+    cmp     al, 1
+    je      @@TrAui
+    cmp     al, 3
+    je      @@TrCoax
+    mov     si, OFFSET save_tp
+    jmp     @@TrDone
+@@TrAuto:
+    mov     si, OFFSET save_auto
+    jmp     @@TrDone
+@@TrAui:
+    mov     si, OFFSET save_aui
+    jmp     @@TrDone
+@@TrCoax:
+    mov     si, OFFSET save_coax
+@@TrDone:
+    call    Save_Append_String
+    mov     al, 0Dh
+    call    Save_Append_Char
+    mov     al, 0Ah
+    call    Save_Append_Char
+    clc
+    jmp     @@Done
+@@Done:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Save_Build_Command
 
 ; ============================================================================
 ; CONFIGURE command framework
