@@ -37,3 +37,20 @@
   We're bootstrapping ourselves here, but this way we can fully very EEPROM reads in the
   first place, which tells us, that also the EEPROM writes should technically be correct,
   because the registers are the same for either operation.
+
+
+- Bugs:
+
+  Boot ROM Activation:
+
+  Boot ROM (/BADDRESS & /BSIZE) seem to probe if a ROM is actually socketed.
+  The original utility prevents configuration if it doesn't find a Boot ROM installed.
+
+  Need to figure out, how this works exactly.
+
+
+
+  Optimization verb:
+
+  Apparently, the readout is not correct. We're always getting "DOS" optimization,
+  even if a different value was set using 3C5X9CFG utility.

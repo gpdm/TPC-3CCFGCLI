@@ -1,3 +1,16 @@
+Changelog 0.6.8:
+  - Fixed a LIST readout gap: the persistent full duplex setting was never
+    displayed. LIST now emits a "Full Duplex = enabled|disabled" line,
+    decoded from EEPROM_SOFTWARE_INFO (word 0Dh) bit 15. Adapters that do
+    not pass the full duplex capability gate (product ID plus
+    EEPROM_CAPABILITY bit 0) report "not supported", matching the gate
+    already enforced by CONFIGURE /FULLDUPLEX.
+  - This also repairs the standalone hardware conformance check hwc005 in
+    TESTHWC.MK, which asserted on a "Full Duplex =" line that the CLI never
+    produced.
+  - renamed "I/O" label in `LIST` readout to "IOBASE"
+
+
 Changelog 0.6.7:
   - Added a Modem Speed line to LIST, reading EEPROM_SOFTWARE_INFO bits 13:0.
   - Fixed a real-hardware conformance bug: the persistent /MODEM field is NOT

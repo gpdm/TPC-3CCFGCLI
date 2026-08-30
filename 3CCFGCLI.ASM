@@ -434,7 +434,7 @@ msg_tpcoax      DB  "-TPCoax", '$'
 msg_unknown     DB  "-EtherLinkIII", '$'
 msg_eth_addr    DB  ": Ethernet Address = ", '$'
 msg_indent      DB  "       ", '$'
-msg_io          DB  "I/O = ", '$'
+msg_iobase      DB  "IOBASE = ", '$'
 msg_irq         DB  ", IRQ = ", '$'
 msg_no_io       DB  "unassigned", '$'
 
@@ -445,6 +445,7 @@ msg_boot_label  DB  "Boot ROM = ", '$'
 msg_compat_label DB "Software Compatibility = failure level ", '$'
 msg_optimize_label DB "Optimization = ", '$'
 msg_modem_label DB "Modem Speed = ", '$'
+msg_fullduplex_label DB "Full Duplex = ", '$'
 msg_link_status_label DB "Link Status = ", '$'
 msg_optimize_dos DB "DOS", '$'
 msg_optimize_windows DB "Windows", '$'
@@ -504,6 +505,9 @@ ext_link_status   DW 0FFFFh
 ; Raw EEPROM_SOFTWARE_INFO (word 0Dh); bits 13:0 are the MODEM field, masked
 ; with EEPROM_SOFTWARE_INFO_MODEM_MASK by Print_Modem_Value before display.
 ext_software_info DW 0FFFFh
+; Full duplex capability verdict; 0 = not supported, 1 = supported,
+; 0FFh = unavailable (adapter not active or EEPROM read timed out).
+ext_fd_capable    DB 0FFh
 
 ; CONFIGURE state.  nic_table itself is deliberately not extended.
 cfg_adapter_ordinal   DB 0
@@ -3318,7 +3322,7 @@ PROC Cmd_List NEAR
     mov     dx, OFFSET msg_indent
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_io
+    mov     dx, OFFSET msg_iobase
     mov     ah, 09h
     int     21h
     mov     ax, [WORD si + NIC_IO_BASE]
@@ -7191,6 +7195,7 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_optimize], 0FFFFh
     mov     [ext_link_status], 0FFFFh
     mov     [ext_software_info], 0FFFFh
+    mov     [ext_fd_capable], 0FFh
 
     mov     dx, [WORD si + NIC_IO_BASE]
     or      dx, dx
@@ -7211,6 +7216,35 @@ PROC Read_Extended_Nic_Info NEAR
     mov     al, EEPROM_SOFTWARE_INFO
     call    EEPROM_Read
     mov     [ext_software_info], ax
+
+    ; Full duplex capability, mirroring the CONFIGURE /FULLDUPLEX gate: a
+    ; known ISA product ID plus EEPROM_CAPABILITY (word 10h) bit 0.  Read
+    ; here unconditionally because that gate does not depend on the later
+    ; card revision layout guarding the ext_capability read further below.
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    cmp     ax, PRODUCT_3C509_TP
+    je      @@FdProductOk
+    cmp     ax, PRODUCT_3C509
+    je      @@FdProductOk
+    cmp     ax, PRODUCT_3C509_COMBO
+    je      @@FdProductOk
+    cmp     ax, PRODUCT_3C509_TPO
+    je      @@FdProductOk
+    cmp     ax, PRODUCT_3C509_TPC
+    je      @@FdProductOk
+    mov     [ext_fd_capable], 0
+    jmp     @@FdCapDone
+@@FdProductOk:
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CAPABILITY
+    call    EEPROM_Read
+    cmp     ax, 0FFFFh
+    je      @@FdCapDone
+    mov     [ext_fd_capable], 0
+    test    ax, 0001h
+    jz      @@FdCapDone
+    mov     [ext_fd_capable], 1
+@@FdCapDone:
 
     ; Read the live Media Type and Status register (Window 4/Port 0Ah) to
     ; surface the dynamic "Valid link beat detected" bit (bit 11) in LIST.
@@ -7536,6 +7570,43 @@ PROC Print_Modem_Value NEAR
     ret
 ENDP Print_Modem_Value
 
+; Prints the persistent full duplex setting from EEPROM_SOFTWARE_INFO
+; (word 0Dh) bit 15, gated by the capability verdict computed in
+; Read_Extended_Nic_Info.
+PROC Print_Full_Duplex_Value NEAR
+    push    ax
+    push    dx
+
+    mov     al, [ext_fd_capable]
+    cmp     al, 0FFh
+    je      @@Unavailable
+    or      al, al
+    jz      @@NotSupported
+
+    mov     ax, [ext_software_info]
+    cmp     ax, 0FFFFh
+    je      @@Unavailable
+    test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jz      @@Disabled
+
+    mov     dx, OFFSET msg_enabled
+    jmp     @@Print
+@@Disabled:
+    mov     dx, OFFSET msg_disabled
+    jmp     @@Print
+@@NotSupported:
+    mov     dx, OFFSET msg_not_supported
+    jmp     @@Print
+@@Unavailable:
+    mov     dx, OFFSET msg_unavailable
+@@Print:
+    mov     ah, 09h
+    int     21h
+    pop     dx
+    pop     ax
+    ret
+ENDP Print_Full_Duplex_Value
+
 ; Prints the live link status ("connected"/"not connected") read from the
 ; Media Type and Status register (Window 4/Port 0Ah bit 11), or
 ; "unavailable" if the adapter is not active.  See Read_Extended_Nic_Info.
@@ -7784,6 +7855,17 @@ int     21h
     mov     ah, 09h
     int     21h
     call    Print_Modem_Value
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
+
+    mov     dx, OFFSET msg_indent
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_fullduplex_label
+    mov     ah, 09h
+    int     21h
+    call    Print_Full_Duplex_Value
     mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h

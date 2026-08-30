@@ -155,7 +155,7 @@ includes additional configuration and status details, including current `Link St
 Here's an example:
 
 ```text
-3Com EtherLink III CLI Configuration Program v0.6.7
+3Com EtherLink III CLI Configuration Program v0.6.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -165,7 +165,7 @@ Number                       Description
 --------------------------------------------------------------------------
   1    3Com 3C509B-TP: Ethernet Address = 02608C654321
        EtherLink III 16-bit ISA NIC
-       I/O = 0300, IRQ = 10
+       IOBASE = 0300, IRQ = 10
        ASIC Revision = 4
        Transceiver = on-board TP
        Plug and Play Capability = enabled
@@ -173,6 +173,7 @@ Number                       Description
        Software Compatibility = failure level 0, warning level 0
        Optimization = DOS
        Modem Speed = none
+       Full Duplex = disabled
        Link Status = connected
 ```
 
