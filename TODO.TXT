@@ -24,3 +24,16 @@
   noncompliant bus that would otherwise not be supported (for example, an
   ISA bus running faster than spec). This bit defaults to 0 on power-up, but is
   overwritten from the EEPROM
+
+
+- Hardware Compliance Tests  
+
+  Sketch: have 3ccfgcli extended to dump EEPROM values to a batch file using
+  a new /SAVECONFIG verb.
+
+  Then go into new TESTHWC.MK, reconfigure the actual NIC using the original 3c5x9cfg.exe binary,
+  and cross-check with 3ccfgcli if we can read back correctly.
+
+  We're bootstrapping ourselves here, but this way we can fully very EEPROM reads in the
+  first place, which tells us, that also the EEPROM writes should technically be correct,
+  because the registers are the same for either operation.
