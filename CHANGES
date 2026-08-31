@@ -63,6 +63,8 @@ Changelog 0.7.0:
     the established ID-port sequence/commands, while activation and ID Global
     Reset operate from adapters currently in ID_CMD rather than host-side
     selected-tag state.
+  - Made mock Nic_Get_Current_Window read and decode the emulated Status
+    Register window bits, matching the REALHW backend path.
 
 
 Changelog 0.6.9:

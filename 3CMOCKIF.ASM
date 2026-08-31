@@ -795,13 +795,12 @@ PROC Nic_Select_Window NEAR
 ENDP Nic_Select_Window
 
 PROC Nic_Get_Current_Window NEAR
-    call    Mock_Ensure_Record_By_Base
-    jc      @@None
-    xor     ax, ax
-    mov     al, [byte mock_current_window]
-    ret
-@@None:
-    xor     ax, ax
+    push    cx
+    call    Nic_Read_Status
+    mov     cl, 13
+    shr     ax, cl
+    and     ax, 0007h
+    pop     cx
     ret
 ENDP Nic_Get_Current_Window
 
