@@ -596,6 +596,7 @@ save_execfile_kw DB 'EXECFILE:', 0
 save_buffer     DB  1024 DUP(0)
 save_length     DW  0
 save_handle     DW  0
+save_file_open  DB  0
 save_adapter_num DW 0
 save_word08     DW  0
 save_word09     DW  0
@@ -970,6 +971,7 @@ PROC Cmd_SaveConfig NEAR
     je      @@NoCards
 
     mov     [save_length], 0
+    mov     [save_file_open], 0
     mov     [current_card], 0
     mov     si, OFFSET nic_table
 @@ExportLoop:
@@ -994,7 +996,7 @@ PROC Cmd_SaveConfig NEAR
     inc     ax
     mov     [save_adapter_num], ax
     call    Save_Build_Command
-    jc      @@ReadFail
+    jc      @@WriteFail
 
 @@SkipAdapter:
     add     si, NIC_RECORD_SIZE
@@ -1003,26 +1005,13 @@ PROC Cmd_SaveConfig NEAR
     cmp     ax, [card_count]
     jb      @@ExportLoop
 
-    cmp     [save_length], 0
+    cmp     [save_file_open], 0
     je      @@NoActive
 
-    mov     ah, 3Ch
-    xor     cx, cx
-    mov     dx, OFFSET save_filename
-    int     21h
-    jc      @@WriteFail
-    mov     [save_handle], ax
-    mov     bx, ax
-    mov     ah, 40h
-    mov     cx, [save_length]
-    mov     dx, OFFSET save_buffer
-    int     21h
-    jc      @@CloseFail
-    cmp     ax, [save_length]
-    jne     @@CloseFail
     mov     bx, [save_handle]
     mov     ah, 3Eh
     int     21h
+    jc      @@WriteFail
     mov     dx, OFFSET msg_save_ok
     mov     ah, 09h
     int     21h
@@ -1032,10 +1021,6 @@ PROC Cmd_SaveConfig NEAR
     mov     ah, 09h
     int     21h
     jmp     @@Done
-@@CloseFail:
-    mov     bx, [save_handle]
-    mov     ah, 3Eh
-    int     21h
 @@WriteFail:
     mov     dx, OFFSET msg_save_write_fail
     jmp     @@Print
@@ -1175,12 +1160,13 @@ PROC Save_Append_Dec_Word NEAR
     ret
 ENDP Save_Append_Dec_Word
 
-PROC Save_Build_Command NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    dx
-    push    si
+; Start one independently executable CONFIGURE command line.  The DOS PSP
+; command tail excludes the executable name, so /EXECFILE does not reduce its
+; 127-byte limit.
+PROC Save_Begin_Command NEAR
+    call    Save_Open_File
+    jc      @@Fail
+    mov     [save_length], 0
     mov     si, OFFSET save_execname
     call    Save_Append_String
     mov     si, OFFSET save_configure_suffix
@@ -1189,6 +1175,71 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     mov     ax, [save_adapter_num]
     call    Save_Append_Dec_Word
+    clc
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Save_Begin_Command
+
+; Append CR/LF and persist the current command line.
+PROC Save_Flush_Command NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    mov     al, 0Dh
+    call    Save_Append_Char
+    mov     al, 0Ah
+    call    Save_Append_Char
+    mov     bx, [save_handle]
+    mov     ah, 40h
+    mov     cx, [save_length]
+    mov     dx, OFFSET save_buffer
+    int     21h
+    jc      @@Fail
+    cmp     ax, [save_length]
+    jne     @@Fail
+    mov     [save_length], 0
+    clc
+    jmp     @@Done
+@@Fail:
+    stc
+@@Done:
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Save_Flush_Command
+
+; Lazily create the output so a no-active-adapter error leaves no empty file.
+PROC Save_Open_File NEAR
+    cmp     [save_file_open], 0
+    jne     @@Done
+    mov     ah, 3Ch
+    xor     cx, cx
+    mov     dx, OFFSET save_filename
+    int     21h
+    jc      @@Fail
+    mov     [save_handle], ax
+    mov     [save_file_open], 1
+@@Done:
+    clc
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Save_Open_File
+
+PROC Save_Build_Command NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    call    Save_Begin_Command
+    jc      @@Fail
     mov     si, OFFSET save_int
     call    Save_Append_String
     mov     ax, [save_word09]
@@ -1271,6 +1322,11 @@ PROC Save_Build_Command NEAR
     mov     ax, [save_word08]
     and     ax, 3F00h              ; Base (bits 11:8) and size (bits 13:12).
     jz      @@NoRom
+    ; Keep the required /BADDRESS+/BSIZE pair together on its own line.
+    call    Save_Flush_Command
+    jc      @@Fail
+    call    Save_Begin_Command
+    jc      @@Fail
     mov     si, OFFSET save_baddress
     call    Save_Append_String
     mov     ax, [save_word08]
@@ -1338,12 +1394,10 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_coax
 @@TrDone:
     call    Save_Append_String
-    mov     al, 0Dh
-    call    Save_Append_Char
-    mov     al, 0Ah
-    call    Save_Append_Char
-    clc
+    call    Save_Flush_Command
     jmp     @@Done
+@@Fail:
+    stc
 @@Done:
     pop     si
     pop     dx

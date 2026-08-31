@@ -1,6 +1,30 @@
+Changelog 0.7.1:
+  - SAVECONFIG now writes independently executable restore commands and keeps
+    the required /BADDRESS + /BSIZE pair together on a second line.
+
+
 Changelog 0.7.0:
   - Corrected CONFIGURE, LIST, and SAVECONFIG Software Optimization handling
     to use EEPROM word 0Dh bits 5:4; Windows and OS/2 share its 10b value.
+  - Corrected mock reset and byte-I/O protocol behavior:
+    - Command-register Global Reset now fully returns the addressed adapter to
+      its configuration-facing power-on-reset state, including removal of its
+      active ISA decode.
+    - Start Coaxial Transceiver now records only coax-start state and does not
+      incorrectly assert Command-In-Progress.
+    - Replaced command-only byte pairing with generic low-byte/high-byte,
+      same-register, same-window, same-direction pairing; intervening
+      same-adapter access invalidates an incomplete pair.
+    - Removed init-time direct tag clearing.  ID initialization now performs
+      the established ID-port sequence/commands, while activation and ID Global
+      Reset operate from adapters currently in ID_CMD rather than host-side
+      selected-tag state.
+    - Made mock Nic_Get_Current_Window read and decode the emulated Status
+      Register window bits, matching the REALHW backend path.
+  - Centralized 3C509B hardware constants in 3C509DEF.INC.
+  - Updated 3CSEED.ASM to use those shared definitions instead of duplicating
+    register fields, EEPROM defaults, link-status values, and checksum ranges.
+  - Corrected stale comments around EEPROM word 0Fh; seeder behavior unchanged.
   - Reworked the mock backend toward a register-accurate 3C509B device model.
     MCK v3 separates persistent EEPROM from live register and activation state.
   - Implemented EEPROM Busy polling, command/data sequencing, write enable,
@@ -52,26 +76,7 @@ Changelog 0.7.0:
       from any 3CCFGCLI code path, so they are not yet covered by TEST.MK;
       this is intentional scope discipline for this pass (see TODO.TXT).
       Full smoke + hardware-limit suite re-verified with no regressions.
-- Corrected mock reset and byte-I/O protocol behavior:
-  - Command-register Global Reset now fully returns the addressed adapter to
-    its configuration-facing power-on-reset state, including removal of its
-    active ISA decode.
-  - Start Coaxial Transceiver now records only coax-start state and does not
-    incorrectly assert Command-In-Progress.
-  - Replaced command-only byte pairing with generic low-byte/high-byte,
-    same-register, same-window, same-direction pairing; intervening
-    same-adapter access invalidates an incomplete pair.
-  - Removed init-time direct tag clearing.  ID initialization now performs
-    the established ID-port sequence/commands, while activation and ID Global
-    Reset operate from adapters currently in ID_CMD rather than host-side
-    selected-tag state.
-  - Made mock Nic_Get_Current_Window read and decode the emulated Status
-    Register window bits, matching the REALHW backend path.
-- Centralized 3C509B hardware constants in 3C509DEF.INC.
-- Updated 3CSEED.ASM to use those shared definitions instead of duplicating
-  register fields, EEPROM defaults, link-status values, and checksum ranges.
-- Corrected stale comments around EEPROM word 0Fh; seeder behavior unchanged.
-
+      
 
 Changelog 0.6.9:
   - Fixed a control-flow bug in the CONFIGURE VERBOSE reporting path where
