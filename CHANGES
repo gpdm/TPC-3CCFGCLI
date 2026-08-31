@@ -11,6 +11,45 @@ Changelog 0.7.0:
     contention for untagged adapters.
   - Updated 3CSEED to create 3C509B-capable EEPROM images with live state and
     checksum data suitable for the hardware model.
+  - Completed the Stage 1 low-level hardware-faithful mock model:
+    - Implemented Window 3 Internal Configuration as live 32-bit register
+      state, loaded from EEPROM words 12h/13h only during documented
+      reset/automatic configuration (never continuously mirrored), and a
+      minimal Window 2 live station-address register for architectural
+      completeness (both currently unreachable from 3CCFGCLI).
+    - Fixed ID-port FFh (Activate at preconfigured base): it is now a
+      distinct command derived from the live Window 0 Address
+      Configuration selector, no longer misinterpreted as E0h + selector
+      1Fh.
+    - Fixed ID-port Global Reset (C0h-CFh, now a proper range check) to
+      broadcast the documented reset to every adapter record currently in
+      MCK_ID_CMD, instead of only a single previously-selected tagged
+      adapter.  Distinguished it from Command-Register Global Reset and
+      from 3CCFGCLI's utility-level deactivate sequence.
+    - Introduced a central Command Register decoder (Select Window, plus
+      Global Reset and Start Coaxial Transceiver for architectural
+      completeness; both are not presently reachable from 3CCFGCLI) shared
+      by both word and byte access paths.
+    - Wired the MCK v3 record's Command-In-Progress state into the Status
+      Register (bit 12) with a deterministic busy-then-clear model, and
+      changed Nic_Wait_Command_Ready from an unconditional success stub to
+      a real poll of that state.
+    - Implemented mock Nic_IO_Read_Byte/Nic_IO_Write_Byte on the same
+      physical/register dispatch as word access, including Command
+      Register low/high byte pairing (a low byte alone no longer executes
+      a command; an unrelated adapter access invalidates a pending byte).
+    - Removed the dead MCK v2 record layout (MCKR_*, MCK_CFGF_*,
+      MCK_VERSION_V2) from 3C509DEF.INC now that MCK v3 fully replaced it,
+      and fixed a stray MCKR_PRESENT reference in 3CSEED.ASM to MCK3R_PRESENT.
+    - Documented the per-adapter/shared-bus/host-scratch classification of
+      the existing ID-port scratch variables; no state was relocated, since
+      the existing split (per-record contention shift registers vs. shared
+      single-target state) was already correct.
+    - New surfaces added in this pass (Window 2/3 registers, FFh, byte
+      I/O, bytewise Command Register completion) are not yet reachable
+      from any 3CCFGCLI code path, so they are not yet covered by TEST.MK;
+      this is intentional scope discipline for this pass (see TODO.TXT).
+      Full smoke + hardware-limit suite re-verified with no regressions.
 
 Changelog 0.6.9:
   - Fixed a control-flow bug in the CONFIGURE VERBOSE reporting path where

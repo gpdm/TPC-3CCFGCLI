@@ -757,7 +757,7 @@ PROC Is_Base_In_Use NEAR
     call    Set_Record_Offset_By_Index
     pop     ax
     mov     di, [state_record_offset]
-    cmp     [BYTE state_blob + di + MCKR_PRESENT], 0
+    cmp     [BYTE state_blob + di + MCK3R_PRESENT], 0
     je      @@Next
     cmp     [WORD state_blob + di + MCK3R_ACTIVE_BASE], bx
     je      @@Used

@@ -596,7 +596,11 @@ EEPROM_MODEM_38400      EQU 0420h
 EEPROM_COMPATIBILITY    EQU 0Eh
 EEPROM_CHECKSUM         EQU 0Fh
 EEPROM_CAPABILITY       EQU 10h
-EEPROM_CONFIG_CONTROL   EQU 13h
+; Window 3 Internal Configuration is loaded from these two EEPROM words at
+; reset/automatic configuration only (see 3C509DEF.INC Window 3 section
+; above and Mock_Automatic_Configuration in 3CMOCKIF.ASM).  Low word first.
+EEPROM_INTERNAL_CONFIG_LO EQU 12h
+EEPROM_CONFIG_CONTROL   EQU 13h    ; also EEPROM_INTERNAL_CONFIG_HI
 EEPROM_REVISION_INFO    EQU 14h
 EEPROM_SECONDARY_CHECKSUM EQU 17h
 
@@ -611,6 +615,11 @@ ID_CMD_SELECT_TAG       EQU 0D8h
 ID_CMD_ACTIVATE         EQU 0E0h
 ID_CMD_GLOBAL_RESET     EQU 0C0h
 ID_CMD_ACTIVATE_CONFIGURED EQU 0FFh
+; Masks used to decode the ID_CMD_* ranges above.  ID_CMD_ACTIVATE_CONFIGURED
+; (FFh) numerically falls inside the E0h-FFh activate range and must be
+; special-cased *before* the masked E0h-FEh comparison; see 3CMOCKIF.ASM.
+ID_CMD_ACTIVATE_MASK    EQU 0E0h
+ID_CMD_GLOBAL_RESET_MASK EQU 0F0h
 
 EL3_COMMAND             EQU 0Eh
 EL3_STATUS              EQU 0Eh
@@ -632,7 +641,15 @@ EL3_W4_NET_DIAG         EQU 06h
 ; this build).  See 3c5x9b.pdf Figure 6-12.
 EL3_W4_MEDIA_STATUS     EQU 0Ah
 
+CMD_OPCODE_MASK         EQU 0F800h
+; Command Register opcodes reachable from documented 3CCFGCLI/hardware flows.
+; Only Select Window is currently issued by 3CCFGCLI; Global Reset and Start
+; Coaxial Transceiver are modeled for architectural completeness of the
+; central command decoder (see Mock_Command_Register_Write, 3CMOCKIF.ASM)
+; but are not presently reachable from any 3CCFGCLI code path.
+CMD_GLOBAL_RESET        EQU 0000h
 CMD_SELECT_WINDOW       EQU 0800h
+CMD_START_COAX          EQU 1000h
 STATUS_CMD_BUSY         EQU 1000h
 EEPROM_BUSY             EQU 8000h
 STATUS_WINDOW_MASK      EQU 0E000h
@@ -667,14 +684,14 @@ VALID_IOBASE_MAX        EQU 03E0h
 VALID_IOBASE_STEP       EQU 0010h
 
 ; ---------------------------------------------------------------------------
-; 3C509B.MCK file layout (v2, multi-record)
+; 3C509B.MCK file layout (v3, register-accurate multi-record; see the
+; MCK3R_* device image below)
 ; ---------------------------------------------------------------------------
 MCK_MAGIC_0             EQU '3'
 MCK_MAGIC_1             EQU 'C'
 MCK_MAGIC_2             EQU '5'
 MCK_MAGIC_3             EQU 'M'
 MCK_VERSION_V1          EQU 0001h
-MCK_VERSION_V2          EQU 0002h
 MCK_VERSION             EQU 0003h
 ; Multi-record mock state is designed to preserve the CLI-visible contract for
 ; normal distinct-base adapter discovery/configuration.  Same-active-IOBASE
@@ -688,61 +705,9 @@ MCK_OFF_VERSION         EQU 4       ; DW
 MCK_OFF_RECORD_COUNT    EQU 6       ; DB
 MCK_HEADER_SIZE         EQU 16
 
-MCKR_PRESENT            EQU 0       ; DB
-MCKR_ACTIVE             EQU 1       ; DB
-MCKR_TAG                EQU 2       ; DB
-MCKR_ID_MODE            EQU 3       ; DB
-MCKR_CURRENT_WINDOW     EQU 4       ; DB
-MCKR_ASIC_REV           EQU 5       ; DB
-MCKR_IRQ                EQU 6       ; DB
-MCKR_RSVD0              EQU 7       ; DB
-
-MCKR_ACTIVE_BASE        EQU 8       ; DW
-MCKR_PRODUCT_ID         EQU 10      ; DW
-
-MCKR_CFG_FLAGS          EQU 12      ; DW
-MCKR_CFG_INT            EQU 14      ; DW
-MCKR_CFG_IOBASE         EQU 16      ; DW
-MCKR_CFG_PORT           EQU 18      ; DW
-MCKR_CFG_BADDRESS       EQU 20      ; DW
-MCKR_CFG_BSIZE          EQU 22      ; DW
-MCKR_CFG_TR             EQU 24      ; DW
-MCKR_CFG_XCVR           EQU 26      ; DW
-MCKR_CFG_MODEM          EQU 28      ; DW
-MCKR_CFG_OPTIMIZE       EQU 30      ; DW
-MCKR_CFG_PNP            EQU 34      ; DW
-MCKR_CFG_FULLDUPLEX     EQU 38      ; DW
-
-MCKR_LIVE_W0_MFG        EQU 40      ; DW
-MCKR_LIVE_W0_PRODUCT    EQU 42      ; DW
-MCKR_LIVE_W0_ADDR_CFG   EQU 44      ; DW
-MCKR_LIVE_W0_RES_CFG    EQU 46      ; DW
-MCKR_LIVE_W4_NETDIAG    EQU 48      ; DW
-; Live Media Type and Status register (Window 4/Port 0Ah) bit 11, "Valid
-; link beat detected" (read only) per 3c5x9b.pdf Figure 6-12.  This is
-; the dynamic cable-link indicator surfaced by LIST as "Link Status".
-MCKR_LIVE_W4_MEDIA_STATUS EQU 50    ; DW
-
-MCKR_EEPROM             EQU 64      ; 64 words = 128 bytes
-MCKR_FACTORY_MAC        EQU 192     ; 6 bytes
-MCKR_OEM_MAC            EQU 198     ; 6 bytes
- 
 MCK_MAX_RECORDS         EQU 6
 MCK_RECORD_SIZE         EQU 256
 MCK_FILE_SIZE           EQU MCK_HEADER_SIZE + (MCK_MAX_RECORDS * MCK_RECORD_SIZE)
-
-MCK_CFGF_INT            EQU 0001h
-MCK_CFGF_IOBASE         EQU 0002h
-MCK_CFGF_PORT           EQU 0004h
-MCK_CFGF_BADDRESS       EQU 0008h
-MCK_CFGF_BSIZE          EQU 0010h
-MCK_CFGF_TR             EQU 0020h
-MCK_CFGF_XCVR           EQU 0040h
-MCK_CFGF_MODEM          EQU 0080h
-MCK_CFGF_OPTIMIZE       EQU 0100h
-MCK_CFGF_PNP            EQU 0800h
-MCK_CFGF_FULLDUPLEX     EQU 2000h
-MCK_CFGF_ALL            EQU 29FFh
 
 ; ---------------------------------------------------------------------------
 ; 3C509B.MCK v3 device image.  The image represents powered hardware: live
