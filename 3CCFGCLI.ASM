@@ -424,9 +424,9 @@ msg_optimize_label DB "Optimization = ", '$'
 msg_modem_label DB "Modem Speed = ", '$'
 msg_fullduplex_label DB "Full Duplex = ", '$'
 msg_link_status_label DB "Link Status = ", '$'
+msg_optimize_reserved DB "Reserved", '$'
 msg_optimize_dos DB "DOS", '$'
-msg_optimize_windows DB "Windows", '$'
-msg_optimize_os2 DB "OS/2", '$'
+msg_optimize_windows DB "Windows or OS/2", '$'
 msg_optimize_server DB "Server", '$'
 msg_warn_label  DB  ", warning level ", '$'
 
@@ -598,7 +598,6 @@ save_adapter_num DW 0
 save_word08     DW  0
 save_word09     DW  0
 save_word0d     DW  0
-save_word0f     DW  0
 save_word13     DW  0
 save_configure_suffix DB ' CONFIGURE', 0
 save_adapternum DB  ' /ADAPTERNUM:', 0
@@ -985,9 +984,6 @@ PROC Cmd_SaveConfig NEAR
     mov     al, EEPROM_SOFTWARE_INFO
     call    EEPROM_Read
     mov     [save_word0d], ax
-    mov     al, EEPROM_CHECKSUM
-    call    EEPROM_Read
-    mov     [save_word0f], ax
     mov     al, EEPROM_CONFIG_CONTROL
     call    EEPROM_Read
     mov     [save_word13], ax
@@ -1245,20 +1241,25 @@ PROC Save_Build_Command NEAR
 @@Optimize:
     mov     si, OFFSET save_optimize
     call    Save_Append_String
-    mov     ax, [save_word0f]
-    mov     al, ah
+    mov     ax, [save_word0d]
+    mov     cl, 4
+    shr     ax, cl
+    and     ax, 0003h
     cmp     al, 1
-    je      @@OptWindows
+    je      @@OptDos
     cmp     al, 2
     je      @@OptOs2
-    cmp     al, 4
+    cmp     al, 3
     je      @@OptServer
+    ; 00b is reserved; use a parser-valid, conservative restore fallback.
     mov     si, OFFSET save_dos
     jmp     @@OptDone
-@@OptWindows:
-    mov     si, OFFSET save_windows
+@@OptDos:
+    mov     si, OFFSET save_dos
     jmp     @@OptDone
 @@OptOs2:
+    ; Value 10b is Windows client, but the original UI combines it with OS/2.
+    ; Retain the established OS/2 restore keyword rather than add an alias.
     mov     si, OFFSET save_os2
     jmp     @@OptDone
 @@OptServer:
@@ -6915,6 +6916,7 @@ PROC Read_Extended_Nic_Info NEAR
     mov     al, EEPROM_SOFTWARE_INFO
     call    EEPROM_Read
     mov     [ext_software_info], ax
+    mov     [ext_optimize], ax
 
     ; Full duplex capability, mirroring the CONFIGURE /FULLDUPLEX gate: a
     ; known ISA product ID plus EEPROM_CAPABILITY (word 10h) bit 0.  Read
@@ -6987,11 +6989,6 @@ PROC Read_Extended_Nic_Info NEAR
     mov     al, EEPROM_CONFIG_CONTROL
     call    EEPROM_Read
     mov     [ext_config_ctrl], ax
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_CHECKSUM
-    call    EEPROM_Read
-    mov     [ext_optimize], ax
 
 @@Done:
     pop     dx
@@ -7120,23 +7117,23 @@ PROC Print_Optimize_Code NEAR
     push    dx
 
     cmp     al, 0
-    je      @@Dos
+    je      @@Reserved
     cmp     al, 1
-    je      @@Windows
+    je      @@Dos
     cmp     al, 2
-    je      @@Os2
-    cmp     al, 4
+    je      @@Windows
+    cmp     al, 3
     je      @@Server
     mov     dx, OFFSET msg_unknown_value
+    jmp     @@Print
+@@Reserved:
+    mov     dx, OFFSET msg_optimize_reserved
     jmp     @@Print
 @@Dos:
     mov     dx, OFFSET msg_optimize_dos
     jmp     @@Print
 @@Windows:
     mov     dx, OFFSET msg_optimize_windows
-    jmp     @@Print
-@@Os2:
-    mov     dx, OFFSET msg_optimize_os2
     jmp     @@Print
 @@Server:
     mov     dx, OFFSET msg_optimize_server
@@ -7150,11 +7147,14 @@ ENDP Print_Optimize_Code
 
 PROC Print_Optimize_Value NEAR
     push    ax
+    push    cx
 
     mov     ax, [ext_optimize]
     cmp     ax, 0FFFFh
     je      @@Unavailable
-    mov     al, ah
+    mov     cl, 4
+    shr     ax, cl
+    and     al, 03h
     call    Print_Optimize_Code
     jmp     @@Done
 @@Unavailable:
@@ -7162,6 +7162,7 @@ PROC Print_Optimize_Value NEAR
     mov     ah, 09h
     int     21h
 @@Done:
+    pop     cx
     pop     ax
     ret
 ENDP Print_Optimize_Value

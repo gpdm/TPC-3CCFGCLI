@@ -1160,7 +1160,7 @@ PROC Seed_LinkUp NEAR
     ; seed exists for test clarity and as the counterpart to LINKDOWN.
     call    Seed_Init
     jc      @@Fail
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W4_MEDIA_INPUT], 2800h
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W4_MEDIA_INPUT], W4_MEDIA_STATUS_LINK_UP
     call    Write_State_File
     ret
 @@Fail:
@@ -1173,7 +1173,7 @@ PROC Seed_LinkDown NEAR
     ; mirror cleared, so LIST reports "not connected".
     call    Seed_Init
     jc      @@Fail
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W4_MEDIA_INPUT], 2000h
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W4_MEDIA_INPUT], W4_MEDIA_STATUS_RESERVED_ONE
     call    Write_State_File
     ret
 @@Fail:
@@ -1201,10 +1201,10 @@ PROC Build_Record_Current NEAR
  
     ; The deterministic diagnostic input supplies the read-only reserved-one
     ; and valid-link-beat bits.  Driver-controlled media bits start clear.
-    mov     [WORD state_blob + di + MCK3R_W4_MEDIA_INPUT], 2800h
+    mov     [WORD state_blob + di + MCK3R_W4_MEDIA_INPUT], W4_MEDIA_STATUS_LINK_UP
  
     mov     si, EEPROM_MFG_ID
-    mov     ax, 06D50h
+    mov     ax, EEPROM_MFG_ID_3COM
     call    EEPROM_Write_SI
 
     mov     si, EEPROM_PRODUCT_ID
@@ -1243,15 +1243,15 @@ PROC Build_Record_Current NEAR
 
     mov     ax, [seed_base]
     sub     ax, VALID_IOBASE_MIN
-    mov     cl, 4
+    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
     shr     ax, cl
-    and     al, 01Fh
+    and     al, W0_ADDRESS_CFG_IOBASE_MASK
     xor     ah, ah
     mov     bx, ax
     xor     ax, ax
     mov     al, [seed_media]
-    and     ax, 0003h
-    mov     cl, 14
+    and     ax, W0_ADDRESS_CFG_XCVR_VALUE_MASK
+    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shl     ax, cl
     or      ax, bx
     mov     si, EEPROM_ADDR_CFG
@@ -1259,8 +1259,9 @@ PROC Build_Record_Current NEAR
 
     xor     ah, ah
     mov     al, [seed_irq]
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shl     ax, cl
+    and     ax, W0_RESOURCE_CFG_IRQ_MASK
     mov     si, EEPROM_RESOURCE_CFG
     call    EEPROM_Write_SI
 
@@ -1271,17 +1272,18 @@ PROC Build_Record_Current NEAR
     mov     ax, 0000h
     call    EEPROM_Write_SI
     mov     si, EEPROM_CAPABILITY
-    mov     ax, 2083h
+    mov     ax, EEPROM_CAPABILITY_3C509B
     call    EEPROM_Write_SI
     mov     si, EEPROM_CONFIG_CONTROL
     mov     ax, 0000h
     call    EEPROM_Write_SI
     mov     si, EEPROM_REVISION_INFO
-    mov     ax, 0001h
+    mov     ax, EEPROM_REVISION_3C509B
     call    EEPROM_Write_SI
 
-    ; Preserve the documented default optimization mode (DOS) in the high byte
-    ; of EEPROM word 0Fh before the checksum pass fills in the low byte.
+    ; Legacy fixture initialization retained until the deferred OPTIMIZE and
+    ; checksum alignment pass.  Word 0Fh is not the documented optimization
+    ; field; the checksum pass below owns its bytes.
     xor     ax, ax
     mov     si, EEPROM_CHECKSUM
     call    EEPROM_Write_SI
@@ -1291,7 +1293,7 @@ PROC Build_Record_Current NEAR
     mov     di, [state_record_offset]
     mov     ax, [seed_product]
     mov     [WORD state_blob + di + MCK3R_W0_PRODUCT], ax
-    mov     [WORD state_blob + di + MCK3R_W0_CONFIG_CONTROL], 4E01h
+    mov     [WORD state_blob + di + MCK3R_W0_CONFIG_CONTROL], W0_CONFIG_CONTROL_3C509B_DEFAULT
     mov     si, EEPROM_ADDR_CFG
     call    EEPROM_Read_SI
     mov     [WORD state_blob + di + MCK3R_W0_ADDRESS_CFG], ax
@@ -1325,14 +1327,12 @@ PROC Build_Checksum NEAR
     push    dx
     push    si
 
-    ; Preserve the verified project encoding: word 0Fh high byte is the
-    ; optimization policy, while the low byte is the configurable checksum.
-    ; The high-domain XOR is retained for fixture diagnostics but is not
-    ; stored because it conflicts with observed 3C5X9CFG output.
+    ; Legacy fixture checksum behavior is retained pending the deferred
+    ; checksum-alignment pass.  EEPROM word 0Fh is not an optimization field.
     xor     bx, bx
     xor     si, si
 @@PrimaryHigh:
-    cmp     si, 0Fh
+    cmp     si, EEPROM_CHECKSUM
     jae     @@PrimaryLowStart
     cmp     si, EEPROM_ADDR_CFG
     je      @@PrimaryHighNext
@@ -1370,25 +1370,25 @@ PROC Build_Checksum NEAR
     xor     bl, al
     xor     bl, ah
     inc     si
-    cmp     si, 13h
+    cmp     si, EEPROM_SECONDARY_VITAL_END
     jb      @@SecondaryHighA
-    mov     si, 20h
+    mov     si, EEPROM_SECONDARY_VITAL_PNP_START
 @@SecondaryHighB:
     call    EEPROM_Read_SI
     xor     bl, al
     xor     bl, ah
     inc     si
-    cmp     si, 40h
+    cmp     si, EEPROM_SECONDARY_VITAL_PNP_END
     jb      @@SecondaryHighB
 
     xor     bh, bh
-    mov     si, 13h
+    mov     si, EEPROM_SECONDARY_CONFIG_START
 @@SecondaryLow:
     call    EEPROM_Read_SI
     xor     bh, al
     xor     bh, ah
     inc     si
-    cmp     si, 17h
+    cmp     si, EEPROM_SECONDARY_CONFIG_END
     jb      @@SecondaryLow
     mov     si, EEPROM_SECONDARY_CHECKSUM
     mov     ax, bx
