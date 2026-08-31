@@ -93,3 +93,91 @@
   This means, the existing function must be adapted to split the command line into two
   chunks of not more than 256 bytes (actually, preferrably around 128 byes +/- 20 bytes).
 
+
+
+
+
+SPEC ALIGNMENT FOLLOW-UP
+
+The current implementation still contains several configuration semantics inherited from reverse engineering of the original 3Com utility that do not match the documented 3C509B hardware layout in the 3Com Technical Reference.
+
+These issues are intentionally deferred until after the current hardware-faithful mock refactor is complete.
+
+Required follow-up:
+
+* Rework EEPROM Software Information word 0Dh according to the documented 3C509B layout.
+
+  * Bit 15 is documented as zero and must not be treated as FULLDUPLEX.
+  * Bit 14 is Link Beat Disable.
+  * Bits 13:8 are Maximum Interrupt Disable Time.
+  * Bits 7:6 are zero/reserved.
+  * Bits 5:4 are Software Optimization.
+  * Bits 3:0 are Select Boot Protocol.
+
+* Revisit CONFIGURE /FULLDUPLEX.
+
+  The current implementation treats EEPROM word 0Dh bit 15 as a Full Duplex flag, but this is not supported by the 3C509B Technical Reference.
+
+  Determine whether FULLDUPLEX belongs to another documented register/EEPROM field, is utility-specific behaviour requiring another authoritative source, or should be removed from the 3C509B configuration model.
+
+* Rework CONFIGURE /MODEM.
+
+  The documented modem-related hardware field is only EEPROM word 0Dh bits 13:8, Maximum Interrupt Disable Time.
+
+  Existing raw values such as 1320h combine this field with other independent Software Information fields and must not be treated as one monolithic modem value.
+
+* Rework CONFIGURE /OPTIMIZE.
+
+  Software Optimization is documented in EEPROM word 0Dh bits 5:4, not EEPROM word 0Fh high byte.
+
+  EEPROM word 0Fh is entirely checksum data.
+
+  Documented optimization encodings are:
+
+  ```
+  00b = Reserved
+  01b = DOS client
+  10b = Windows client
+  11b = Server
+  ```
+
+  Note that the MEWEL Text UI shows "Windows or OS/2" as combined value.
+  The 3C5X9CFG however accepts those as individual arguments.
+
+  I assume this is in fact them same optimization level value in the EEPROM, and just a symbolic alias.
+
+  Note 2: Card always defaults to `DOS` as a default.
+
+
+* Rework Plug and Play capability detection.
+
+  ISA Plug and Play capability is documented in EEPROM word 10h bit 0.
+
+  EEPROM word 14h bits 3:0 identify the adapter revision class, with value 1 identifying 3C509B-class hardware, and must not be used as a substitute PnP capability bit.
+
+* Revisit transceiver capability handling.
+
+  The documented connector availability should ultimately come from the live Window 0 Configuration Control register capability bits rather than only from a hard-coded Product ID matrix.
+
+  Documented 3C509B connector variants include:
+
+  ```
+  TPO     10BASE-T
+  TP      10BASE-T + AUI
+  Coax    AUI + BNC
+  COMBO   10BASE-T + AUI + BNC
+  ```
+
+  AUTO SELECT should operate from the hardware-reported connector capabilities.
+
+* Revisit Product ID 9850h.
+
+  The currently used 9850h value is not identified as a 3C509B Product ID in the Technical Reference used for the hardware model.
+
+  Keep it only if another authoritative source confirms its meaning.
+
+* Correct documentation and constants after the behavioural changes are implemented.
+
+Do not add new mock behaviour or regression tests that further depend on the current FULLDUPLEX, MODEM, OPTIMIZE, PNP-capability, or transceiver-capability interpretations unless specifically required for preserving existing behaviour during the refactor.
+
+The current mock refactor may continue independently, because these issues concern configuration-field interpretation rather than the low-level register, EEPROM-controller, ID-port, activation, and I/O-dispatch architecture.

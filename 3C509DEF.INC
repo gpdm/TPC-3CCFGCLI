@@ -1,104 +1,570 @@
 ; ---------------------------------------------------------------------------
 ; 3C509DEF.INC
-; Shared constants for 3CCFGCLI and 3CSEED.
+; Shared 3C509B hardware, EEPROM, ISA ID-port and mock-device definitions.
 ; ---------------------------------------------------------------------------
 ;
-; Supported ISA product IDs and per-feature capability matrix.
+; Hardware target
+; ---------------------------------------------------------------------------
 ;
-; The original 3CCFG utility gates certain configuration verbs on two
-; independent mechanisms:
+; The hardware model in this project targets the ISA 3Com EtherLink III
+; 3C509B family.
 ;
-;   (A) EEPROM-driven: a capability field read at run time decides support.
-;   (B) Product-ID-driven: the utility dispatches on the product ID word and
-;       takes a "not capable" path for any unrecognised ID.
+; Unless explicitly marked otherwise, the hardware definitions and bit
+; meanings in this file follow:
 ;
-; For the five known ISA SKUs both mechanisms agree; no known ISA 3C509 SKU
-; has product-ID support without the matching EEPROM capability bit, or vice
-; versa.  The two columns are separated below to make the dual gate explicit.
+;     3Com EtherLink III Parallel Tasking
+;     ISA, EISA, Micro Channel, and PCMCIA
+;     Adapter Drivers Technical Reference
+;     Manual 09-0398-002B, August 1994
 ;
-;  Product             | EEPROM              | Product ID |     |            |       |
-;  Constant            | word 03h bits 15:8  | (hex)      | PNP | FULLDUPLEX | MODEM | /TR (transceiver types accepted)
-; ---------------------+---------------------+------------+-----+------------+-------+----------------------------------
-;  PRODUCT_3C509_TP    | 90h  (3C509B-TP)    |  9050h     |  1  |     1      |   1   | TP only
-;  PRODUCT_3C509       | 91h  (3C509B-Combo) |  9150h     |  1  |     1      |   1   | TP, AUI, AUTO
-;  PRODUCT_3C509_COMBO | 94h  (3C509B-C)     |  9450h     |  1  |     1      |   1   | TP, AUI, AUTO
-;  PRODUCT_3C509_TPO   | 95h  (3C509B-TPO)   |  9550h     |  1  |     1      |   1   | TP, AUI  (no AUTO; TPO excluded from auto-select path)
-;  PRODUCT_3C509_TPC   | 98h  (3C509B-TPC)   |  9850h     |  1  |     1      |   1   | TP, COAX
-;  (unknown/other)     | any other value     |  ????h     |  *  |     0      |   1   | (not recognised; /TR gate TBD)
-; ---------------------+---------------------+------------+-----+------------+-------+----------------------------------
+; The mock backend is intended to reproduce the configuration-facing hardware
+; behaviour described by that reference.  It is not intended to emulate packet
+; transmission, receive/transmit FIFOs, statistics, or the complete Ethernet
+; controller.
 ;
-; Notes:
-;   PNP:        Gated on EEPROM_REVISION_INFO (word 14h) low byte >= 1.
-;               This is a pure EEPROM flag; the value is set by the
-;               manufacturer or configuration tool, not derived from the
-;               product ID.  A card whose word 14h low byte is zero will
-;               refuse /PNP configuration regardless of its product ID.
-;               Marked (*) above because it is EEPROM-content-dependent,
-;               not product-ID-dependent.
+; Behaviour reconstructed from the original 3Com configuration utility must
+; not override documented 3C509B hardware semantics.  Any utility-specific
+; behaviour that is not defined by the hardware reference should be identified
+; separately as an application-level compatibility behaviour.
 ;
-;   FULLDUPLEX: Gated on BOTH product ID recognition (the five IDs above
-;               dispatch to the capable path; any other ID falls to the
-;               not-capable path) AND on EEPROM_CAPABILITY (word 10h) bit 0
-;               being set.  Both conditions must hold.  In practice all five
-;               known SKUs ship with word 10h bit 0 = 1.
 ;
-;   MODEM:      No capability gate in the original utility. The modem speed
-;               field occupies EEPROM_SOFTWARE_INFO word 0Dh bits 13:0 and is
-;               written unconditionally for any recognised adapter. Bits 15
-;               (FULLDUPLEX) and 14 (LINKBEAT_DISABLE) are preserved during
-;               modem writes.
+; ---------------------------------------------------------------------------
+; 3C509B ISA product variants
+; ---------------------------------------------------------------------------
 ;
-;               The 14-bit field is NOT the literal baud number. Bits 7:0 are
-;               always 20h; bits 13:8 hold a 6-bit count. For a directly typed
-;               custom value V in [25,1600] step 25, bits 13:8 = (V/25)-1 (this
-;               was confirmed empirically: V=25 -> 0020h, V=50 -> 0120h). The
-;               five named speeds (NONE, 1200, 2400, 9600, 19200, 38400) are
-;               separate hardware-tuned constants using the same bit layout,
-;               NOT derived from the baud number by that same formula; they
-;               were measured directly against the original utility on real
-;               hardware (see EEPROM_MODEM_* below). NONE (3F20h) has bits
-;               13:8 all set (3Fh = 63), the maximum count.
+; EEPROM word 03h contains the 3C5X9 Product ID.
 ;
-;   TR (/XCVR): Writes EEPROM_ADDR_CFG (word 08h) bits 15:14 (media selection).
-;               AUTO is only available on "later" cards (3C509B) that are not
-;               TPO; it is signalled by bit 7 of word 08h rather than bits
-;               15:14.  The 3C509B-TP has a single on-board TP connector and
-;               no external port, so AUI/COAX/AUTO are not meaningful for it.
-;               The 3C509B-TPC (coax) has no AUI port.
-;               Capability gate details are TBD pending /TR implementation.
+; Product IDs documented by the 3Com reference for the ISA 3C509/3C509B
+; family are:
 ;
-;  EEPROM word 08h bits 15:14 | Bit 7 | Raw value | Symbolic name | LIST display
-;  ---------------------------+-------+-----------+---------------+---------------
-;  00                         |   0   |   0h      | TP            | on-board TP
-;  01                         |   0   |   1h      | AUI           | external
-;  10                         |   0   |   2h      | (normalised   | external
-;                             |       |           |  to AUI)      |
-;  11                         |   0   |   3h      | COAX          | on-board coax
-;  (any)                      |   1   |   -       | AUTO          | auto select
-;  ---------------------------+-------+-----------+---------------+---------------
-;  Note: bit 7 = AUTO overrides bits 15:14 in the display path.  Values 0 and 2
-;  both map to "external" on read-back (normalisation: raw 2 -> display as 1).
-;  AUTO is suppressed for 3C509B-TPO even on later-card hardware.
+;     9150h    3C509 / 3C509B
+;     9050h    3C509-TP / 3C509B-TP
+;     9450h    3C509-COMBO / 3C509B-COMBO
+;     9550h    3C509-TPO / 3C509B-TPO
 ;
-;   OPTIMIZE:   No separate product-ID gate was found.  The original utility
-;               accepts the property for recognised adapters and stores the
-;               high byte of EEPROM_CHECKSUM (word 0Fh bits 15:8).
-;               The documented CLI keywords are DOS, WINDOWS, OS/2, and SERVER.
-;               The additional raw values below appear to be undocumented and
-;               are not implemented as symbolic names in the CLI.
+; The reference does not document 9850h as a 3C509B Product ID.
 ;
-;  EEPROM word 0Fh bits 15:8 | Raw value | Symbolic name | Comments
-;  --------------------------+-----------+---------------+-------------------------
-;  15:8                      | 00h       | DOS           | implemented
-;  15:8                      | 01h       | WINDOWS       | implemented
-;  15:8                      | 02h       | OS/2          | implemented; literal slash
-;  15:8                      | 04h       | SERVER        | implemented
-;  15:8                      | 06h       | UNKNOWN       | not implemented
-;  15:8                      | 08h       | UNKNOWN       | not implemented
-;  15:8                      | 0Dh       | UNKNOWN       | not implemented
-;  15:8                      | 0Eh       | UNKNOWN       | not implemented
-;  15:8                      | 0Fh       | UNKNOWN       | not implemented
+; The documented ISA connector configurations are:
 ;
+;     3C509B-TPO
+;         one connector:
+;             10BASE-T
+;
+;     3C509B-TP
+;         two connectors:
+;             10BASE-T
+;             AUI
+;
+;     3C509B-Coax
+;         two connectors:
+;             AUI
+;             BNC / 10BASE2
+;
+;     3C509B-COMBO
+;         three connectors:
+;             10BASE-T
+;             AUI
+;             BNC / 10BASE2
+;
+; Connector availability is exposed by the live Window 0 Configuration
+; Control register and should be treated as hardware capability information.
+;
+;
+; ---------------------------------------------------------------------------
+; Persistent EEPROM state versus live register state
+; ---------------------------------------------------------------------------
+;
+; EEPROM configuration and live ASIC registers are distinct hardware state.
+;
+; In particular:
+;
+;     EEPROM 08h  -> persistent Address Configuration
+;     EEPROM 09h  -> persistent Resource Configuration
+;     EEPROM 12h  -> persistent Internal Configuration word 0
+;     EEPROM 13h  -> persistent Internal Configuration word 1
+;
+; These values must not be treated as continuously mirrored live registers.
+;
+; For ISA 3C509B, automatic configuration after:
+;
+;     power-on reset
+;     Configuration Control RST
+;     Command-register Global Reset
+;     ID-port Global Reset
+;
+; performs the following documented reload:
+;
+;     EEPROM 03h -> Window 0 Product ID
+;     EEPROM 08h -> Window 0 Address Configuration
+;     EEPROM 09h -> Window 0 Resource Configuration
+;     EEPROM 12h/13h -> Window 3 Internal Configuration
+;
+; The station address is NOT automatically copied into Window 2.
+; Driver software must read the station address from EEPROM words 00h-02h and
+; explicitly program the Window 2 station-address registers.
+;
+;
+; ---------------------------------------------------------------------------
+; Window 0 Configuration Control register, offset 04h
+; ---------------------------------------------------------------------------
+;
+; Relevant 3C509B read-only POR capability bits:
+;
+;     bit 14      1 = ISA interface
+;
+;     bit 13      AUI connector available
+;                 0 = no AUI
+;                 1 = AUI present
+;
+;     bit 12      on-board 10BASE2 transceiver available
+;                 0 = no BNC transceiver
+;                 1 = BNC / 10BASE2 present
+;
+;     bits 11:10  operating mode
+;                 11b = normal operation
+;                 other values reserved
+;
+;     bit 9       on-board 10BASE-T transceiver available
+;                 0 = no TP transceiver
+;                 1 = 10BASE-T present
+;
+;     bit 8       VCO selection on 3C509B
+;                 0 = external VCO
+;                 1 = internal on-chip VCO
+;
+; Relevant writable control bits:
+;
+;     bit 2       RST
+;                 1 = reset adapter to power-on-reset state
+;
+;     bit 0       ENA
+;                 0 = adapter disabled
+;                 1 = adapter enabled
+;
+; The connector capability bits are hardware state.  Software should use
+; these bits rather than infer connector availability solely from Product ID.
+;
+;
+; ---------------------------------------------------------------------------
+; Window 0 Address Configuration register / EEPROM word 08h
+; ---------------------------------------------------------------------------
+;
+;     bits 15:14  XCVR
+;
+;                 00b = twisted pair / 10BASE-T
+;                 01b = AUI
+;                 10b = reserved / undefined
+;                 11b = BNC / 10BASE2
+;
+;     bits 13:12  Boot ROM Size
+;
+;                 00b = 8 K
+;                 01b = 16 K
+;                 10b = 32 K
+;                 11b = 64 K
+;
+;     bits 11:8   Boot ROM Base
+;
+;     bit 7       AUTO SELECT
+;
+;                 0 = use XCVR selection
+;                 1 = driver must ignore XCVR and auto-select among the
+;                     connectors reported by Configuration Control
+;
+;                 AUTO SELECT is software configuration information.  It does
+;                 not itself switch the physical transceiver.
+;
+;     bit 6       must be zero
+;
+;     bit 5       reserved
+;
+;     bits 4:0    ISA I/O Base selector
+;
+;                 00h through 1Eh select:
+;
+;                     base = 0200h + selector * 10h
+;
+;                 therefore valid ISA bases are 0200h through 03E0h.
+;
+;                 1Fh selects EISA slot-specific addressing and is outside
+;                 the ISA-only scope of 3CCFGCLI.
+;
+; For 10BASE-T, driver software must also configure Link Beat and Jabber in
+; Window 4 Media Type and Status.
+;
+; For BNC / 10BASE2, driver software must issue Start Coaxial Transceiver
+; through the Command register.
+;
+;
+; ---------------------------------------------------------------------------
+; Window 0 Resource Configuration register / EEPROM word 09h
+; ---------------------------------------------------------------------------
+;
+;     bits 15:12  IRQ
+;
+; Valid enabled IRQ values:
+;
+;     3, 5, 7, 9, 10, 11, 12, 15
+;
+; Other encoded values disable the IRQ line drivers.
+;
+; For 3C509B:
+;
+;     bit 6       Synchronous Ready
+;
+;                 0 = normal I/O operation
+;                 1 = assert I/OCHRDY for every I/O access
+;
+;
+; ---------------------------------------------------------------------------
+; EEPROM word 0Dh, Software Information
+; ---------------------------------------------------------------------------
+;
+; The documented 3C509B Software Information layout is:
+;
+;     bit 15      must be zero
+;
+;     bit 14      Link Beat Disable
+;
+;                 0 = driver should enable Link Beat
+;                 1 = driver should disable Link Beat
+;
+;                 This EEPROM bit is driver policy.  It does not directly
+;                 modify Window 4 Media Type and Status.
+;
+;     bits 13:8   Maximum Interrupt Disable Time
+;
+;                 The encoded value plus one is the maximum number of
+;                 25 microsecond intervals for which the driver may disable
+;                 interrupts.
+;
+;                 Example:
+;
+;                     encoded 19 decimal
+;                     -> (19 + 1) * 25 us
+;                     -> 500 us
+;
+;                 The 3Com reference explicitly gives a 9600 baud modem as
+;                 the example producing encoded value 19.
+;
+;     bits 7:6    must be zero
+;
+;     bits 5:4    Software Optimization
+;
+;                 00b = Reserved
+;                 01b = DOS client
+;                 10b = Windows client
+;                 11b = Server
+;
+;     bits 3:0    Select Boot Protocol
+;
+;                 Selects a protocol present in the Boot ROM for remote
+;                 program loading.
+;
+; IMPORTANT:
+;
+; There is no documented FULLDUPLEX bit in EEPROM word 0Dh.
+; Bit 15 is documented as zero.
+;
+; A MODEM configuration property must modify only bits 13:8 if it is intended
+; to represent the documented Maximum Interrupt Disable Time.
+;
+; MODEM must preserve:
+;
+;     bit 14
+;     bits 7:6
+;     bits 5:4
+;     bits 3:0
+;
+; In particular, values such as 1320h must not be interpreted as a single
+; "modem value":
+;
+;     13h in bits 13:8 = Maximum Interrupt Disable Time
+;     2 in bits 5:4    = Windows client optimization
+;
+; These are independent fields in the same EEPROM word.
+;
+;
+; ---------------------------------------------------------------------------
+; EEPROM word 0Eh, Compatibility Word
+; ---------------------------------------------------------------------------
+;
+;     bits 15:8   Fail Level
+;     bits 7:0    Warning Level
+;
+; For 3C509B both documented values are zero.
+;
+;
+; ---------------------------------------------------------------------------
+; EEPROM word 0Fh, Primary Checksum
+; ---------------------------------------------------------------------------
+;
+; BOTH bytes of EEPROM word 0Fh are checksums.
+;
+; High byte:
+;
+;     byte XOR of both bytes of EEPROM words 00h through 0Eh,
+;     excluding:
+;
+;         08h
+;         09h
+;         0Dh
+;
+; Low byte:
+;
+;     byte XOR of both bytes of:
+;
+;         08h
+;         09h
+;         0Dh
+;
+; The high byte normally remains unchanged during user configuration.
+; The low byte changes when configurable values in words 08h, 09h, or 0Dh
+; are changed.
+;
+; EEPROM word 0Fh MUST NOT be used to store Software Optimization.
+;
+;
+; ---------------------------------------------------------------------------
+; EEPROM word 10h, Capabilities Word, 3C509B
+; ---------------------------------------------------------------------------
+;
+; Documented ISA 3C509B value:
+;
+;     2083h
+;
+; Bit definitions:
+;
+;     bit 0       Plug and Play supported
+;                 set on ISA 3C509B
+;
+;     bit 1       always one
+;
+;     bits 2:6    always zero
+;
+;     bit 7       CRC pass-through supported
+;                 always set on 3C509B
+;
+;     bits 8:9    always zero
+;
+;     bits 10:12  reserved, read zero
+;
+;     bit 13      Power Management supported
+;                 always set on 3C509B
+;
+;     bits 14:15  reserved, read zero
+;
+; Plug and Play CAPABILITY is therefore represented by EEPROM word 10h,
+; bit 0.
+;
+; EEPROM word 14h Adapter Revision Level must not be used as a replacement
+; for this capability bit.
+;
+;
+; ---------------------------------------------------------------------------
+; Window 3 Internal Configuration / EEPROM words 12h and 13h
+; ---------------------------------------------------------------------------
+;
+; The Internal Configuration register is 32 bits wide and is loaded from
+; EEPROM words 12h and 13h at startup/reset.
+;
+; Both halves may be accessed as 16-bit values.
+;
+; Relevant 3C509B field:
+;
+;     bits 19:18  ISA ACTIVATION SELECT
+;
+;                 00b = both ISA activation mechanisms enabled
+;                       default
+;
+;                 01b = classic ISA contention only
+;
+;                 10b = ISA Plug and Play only
+;
+;                 11b = both ISA activation mechanisms enabled
+;
+; Since bits 19:18 are bits 3:2 of EEPROM word 13h:
+;
+;     word13 bits 3:2 = 00b or 11b
+;         classic contention and PnP enabled
+;
+;     word13 bits 3:2 = 01b
+;         PnP disabled, classic contention enabled
+;
+;     word13 bits 3:2 = 10b
+;         classic contention disabled, PnP enabled
+;
+; A CONFIGURE /PNP operation that means "enable or disable Plug and Play while
+; retaining classic ISA contention" should therefore change this field
+; according to the documented activation-select encoding.
+;
+;
+; ---------------------------------------------------------------------------
+; EEPROM word 14h, Secondary Software Information
+; ---------------------------------------------------------------------------
+;
+; Relevant documented fields:
+;
+;     bit 14      Auto Power
+;
+;                 0 = Auto Power Enable
+;                 1 = Auto Power Disable
+;
+;     bit 4       Boot ROM Size Valid
+;
+;                 Indicates that a Boot ROM is installed and the ROM Size
+;                 field is valid even if Boot ROM Base is zero.
+;
+;     bits 3:0    Adapter Revision Level
+;
+;                 0 = original 3C509-class hardware
+;                 1 = 3C509B-class hardware
+;
+; Adapter Revision Level identifies the hardware revision class.
+; It is NOT the documented Plug and Play capability bit.
+;
+;
+; ---------------------------------------------------------------------------
+; EEPROM word 17h, Secondary Checksums
+; ---------------------------------------------------------------------------
+;
+; High byte:
+;
+;     Vital Data Checksum
+;
+;     byte XOR over:
+;
+;         words 10h through 12h
+;         words 20h through 3Fh
+;
+; Low byte:
+;
+;     Configurable Data Checksum
+;
+;     byte XOR over:
+;
+;         words 13h through 16h
+;
+; Therefore changing EEPROM word 13h requires recalculation of the LOW byte
+; of EEPROM word 17h.
+;
+;
+; ---------------------------------------------------------------------------
+; EEPROM words 18h through 3Fh
+; ---------------------------------------------------------------------------
+;
+; ISA Plug and Play Resource Data.
+;
+; These locations contain data structured according to the ISA Plug and Play
+; Resource Data specification.
+;
+; They are persistent raw EEPROM data and must not be regenerated or modified
+; by the mock unless an explicitly implemented operation requires it.
+;
+;
+; ---------------------------------------------------------------------------
+; ISA ID port and activation
+; ---------------------------------------------------------------------------
+;
+; After automatic configuration the ID Sequence State Machine is in ID_WAIT.
+;
+; The ID port is one of:
+;
+;     01x0h
+;
+; where x is any hexadecimal digit.
+;
+; Writing zero selects/resets ID-port sequence recognition.
+;
+; The normal ID sequence contains 255 bytes:
+;
+;     initial value = FFh
+;
+;     for each byte:
+;         output current value
+;         shift left
+;         if the old high bit was one:
+;             XOR with CFh
+;
+; The normal sequence begins with FFh and ends with 98h.
+;
+; After the complete sequence the adapter enters ID_CMD.
+;
+; Relevant ID_CMD command ranges:
+;
+;     00h-7Fh
+;         return to ID_WAIT
+;
+;     80h-BFh
+;         read EEPROM word n
+;         n = low six bits
+;
+;     C0h-CFh
+;         ID Global Reset
+;         reset adapter to power-on-reset state
+;
+;     D0h-D7h
+;         Set Tag n
+;
+;     D8h-DFh
+;         Test adapter tag n
+;         mismatching adapters return to ID_WAIT
+;
+;     E0h-FEh
+;         Activate adapter
+;
+;         low five command bits are copied into Address Configuration
+;         bits 4:0 and therefore select the active ISA I/O base.
+;
+;         adapter returns to ID_WAIT.
+;
+;     FFh
+;         Activate adapter at the PRECONFIGURED I/O base address.
+;
+;         This is a distinct command and must not be interpreted as selector
+;         1Fh.
+;
+;         adapter returns to ID_WAIT.
+;
+; ID-port EEPROM data is returned serially.
+;
+; During each contention read:
+;
+;     EEPROM Data bit 15 is driven onto host data bit 0
+;     EEPROM Data shifts left one position after the read
+;
+; Multiple adapters use open-drain contention.
+;
+; If an adapter drives one while another adapter drives zero, the bus reads
+; zero.  The adapter that attempted to drive one detects the mismatch, loses
+; contention, and returns to ID_WAIT.
+;
+; The ID state machine continues to operate after an adapter has been
+; activated.
+;
+;
+; ---------------------------------------------------------------------------
+; Mock-model rule
+; ---------------------------------------------------------------------------
+;
+; The mock represents hardware state, not CONFIGURE command intent.
+;
+; It must not automatically:
+;
+;     repair EEPROM checksums
+;     copy EEPROM values into live registers outside documented reset loading
+;     move active I/O decoding merely because EEPROM 08h changed
+;     change live IRQ state merely because EEPROM 09h changed
+;     apply Link Beat policy merely because EEPROM 0Dh changed
+;     infer connector capabilities from a CLI product name when the live
+;         Configuration Control register provides the hardware capability
+;     reinterpret reserved hardware values as supported values
+;
+; Software must perform the same hardware operations required by a physical
+; 3C509B.
+;
+; ---------------------------------------------------------------------------
+
 
 ID_PORT                 EQU 0110h    ; sometimes referenced as CONFIG_PORT
 
