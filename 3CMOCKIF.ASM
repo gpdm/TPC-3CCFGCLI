@@ -41,9 +41,9 @@
 ;   mock_contender_visible/mock_id_contention_active (which record, if any,
 ;   is still contending), mock_selected_tag/mock_selected_valid (which tag
 ;   was isolated by the last SELECT_TAG, used to route direct EEPROM reads
-;   -- see @@ReadContender in Nic_IdPort_Write_Command), mock_cmd_byte_*
-;   (Command Register byte-pair assembly latch; see its own declaration
-;   comment below).
+;   -- see @@ReadContender in Nic_IdPort_Write_Command), mock_byte_pair_*
+;   (host-side byte-pair assembly state; see its own declaration comment
+;   below).
 ;
 ;   Temporary host-side scratch (sequence recognition bookkeeping that has
 ;   no per-adapter meaning at all, since every untagged adapter tracks the
@@ -101,13 +101,17 @@ mock_command_busy DB 0
 ; mirrors MCKRF_ACTIVE.  Set by a (currently unreachable) Start Coaxial
 ; Transceiver command; configuration-visible state only, no analog model.
 mock_coax_started DB 0
-; Command Register (EL3_COMMAND, offset 0Eh/0Fh) low/high byte assembly
-; latch.  A low-byte write alone must not execute a command; only the
-; high-byte write, paired with a still-valid pending low byte from the SAME
-; adapter's active base, assembles and dispatches the full command word.
-mock_cmd_byte_pending DB 0
-mock_cmd_byte_low DB 0
-mock_cmd_byte_base DW 0000h
+; Generic byte-pair state for every configuration-facing 16-bit register.
+; A pair is valid only when the high byte immediately follows the low byte
+; of the same register, adapter, window, and access direction.  The low
+; write is held until completion; the low read latches one coherent word.
+mock_byte_pair_pending DB 0
+mock_byte_pair_index DB 0FFh
+mock_byte_pair_offset DW 0000h
+mock_byte_pair_window DB 0
+mock_byte_pair_write DB 0
+mock_byte_pair_low DB 0
+mock_byte_pair_word DW 0000h
 
 ; Global mock discovery state.
 mock_selected_tag DB 0
@@ -173,9 +177,8 @@ PROC Init_State NEAR
     mov     [byte mock_record_count], 0
     mov     [byte mock_loaded_index], 0FFh
     mov     [byte mock_contender_index], 0FFh
-    mov     [byte mock_cmd_byte_pending], 0
-    mov     [byte mock_cmd_byte_low], 0
-    mov     [word mock_cmd_byte_base], 0
+    mov     [byte mock_byte_pair_pending], 0
+    mov     [byte mock_byte_pair_index], 0FFh
     ret
 ENDP Init_State
 
@@ -998,33 +1001,6 @@ PROC Mock_Reg_Read_Word NEAR
     ret
 ENDP Mock_Reg_Read_Word
 
-; Peek the raw stored word for (window, offset) with NO read-time side
-; effects (no EEPROM busy decrement/data latch, no command-busy decrement).
-; Used only to recover the untouched half of a register during a byte
-; write merge; never used for a semantic register read.  EEPROM_COMMAND is
-; the only register with read side effects, so it is special-cased; every
-; other register's write path already masks out any synthesized read-only
-; bits (see Mock_Reg_Write_Word), so routing through Mock_Reg_Read_Word for
-; those is safe.
-PROC Mock_Reg_Peek_Raw_Word NEAR
-    push    cx
-    mov     cl, [byte mock_current_window]
-    cmp     cl, 0
-    jne     @@NotWindow0
-    cmp     bx, EL3_W0_EEPROM_COMMAND
-    jne     @@RawWindow0
-    mov     ax, [word mock_state + EL3_W0_EEPROM_COMMAND]
-    jmp     @@PeekDone
-@@RawWindow0:
-    mov     ax, [word mock_state + bx]
-    jmp     @@PeekDone
-@@NotWindow0:
-    call    Mock_Reg_Read_Word
-@@PeekDone:
-    pop     cx
-    ret
-ENDP Mock_Reg_Peek_Raw_Word
-
 ; Shared word-level register resolution used by both Nic_IO_Read_Word and
 ; Nic_IO_Read_Byte, once the physical port has already been resolved to a
 ; loaded record.  Input BX = even offset within the 16-byte adapter region.
@@ -1048,22 +1024,20 @@ PROC Mock_Resolve_And_Read_Word NEAR
     ret
 ENDP Mock_Resolve_And_Read_Word
 
-; Invalidates a pending Command Register byte-pair latch if the access now
-; underway targets a different adapter than the one that owns the pending
-; low byte.  Each 3C509B is an independent chip; only a genuinely
-; unrelated-adapter access between the two halves invalidates the pair.
-PROC Mock_Cmd_Latch_Check_Adapter NEAR
+; A word access is an intervening access for any outstanding byte pair on
+; this adapter.  Accesses to other adapters do not invalidate the pair.
+PROC Mock_Byte_Pair_Invalidate_Current NEAR
     push    ax
-    cmp     [byte mock_cmd_byte_pending], 0
-    je      @@LatchCheckDone
-    mov     ax, [word mock_active_base]
-    cmp     ax, [word mock_cmd_byte_base]
-    je      @@LatchCheckDone
-    mov     [byte mock_cmd_byte_pending], 0
-@@LatchCheckDone:
+    cmp     [byte mock_byte_pair_pending], 0
+    je      @@Done
+    mov     al, [byte mock_loaded_index]
+    cmp     al, [byte mock_byte_pair_index]
+    jne     @@Done
+    mov     [byte mock_byte_pair_pending], 0
+@@Done:
     pop     ax
     ret
-ENDP Mock_Cmd_Latch_Check_Adapter
+ENDP Mock_Byte_Pair_Invalidate_Current
 
 PROC Nic_IO_Read_Word NEAR
     push    bx
@@ -1076,7 +1050,7 @@ PROC Nic_IO_Read_Word NEAR
     call    Mock_Load_Record_By_Index
     jc      @@Absent
 @@Loaded:
-    call    Mock_Cmd_Latch_Check_Adapter
+    call    Mock_Byte_Pair_Invalidate_Current
     pop     dx
     push    dx
     mov     bx, dx
@@ -1091,11 +1065,9 @@ PROC Nic_IO_Read_Word NEAR
     ret
 ENDP Nic_IO_Read_Word
 
-; Byte-wide equivalent of Nic_IO_Read_Word.  Operates on the same physical
-; 16-byte I/O region and the same register/window model as word access by
-; resolving through the identical dispatch and extracting the requested
-; byte lane.  No ordering is required for reads (see 3CMOCKIF.ASM notes on
-; Command Register byte writes for the one case that does require pairing).
+; Byte-wide equivalent of Nic_IO_Read_Word.  Reads use the same physical
+; dispatch as word access, but a low-byte read snapshots one coherent word
+; and only the immediate matching high-byte read consumes that snapshot.
 PROC Nic_IO_Read_Byte NEAR
     push    bx
     push    cx
@@ -1108,7 +1080,6 @@ PROC Nic_IO_Read_Byte NEAR
     call    Mock_Load_Record_By_Index
     jc      @@Absent
 @@Loaded:
-    call    Mock_Cmd_Latch_Check_Adapter
     pop     dx
     push    dx
     mov     bx, dx
@@ -1116,11 +1087,42 @@ PROC Nic_IO_Read_Byte NEAR
     mov     cl, bl
     and     cl, 01h
     and     bx, 0FFFEh
-    call    Mock_Resolve_And_Read_Word
     or      cl, cl
     jz      @@Low
+    cmp     [byte mock_byte_pair_pending], 0
+    je      @@InvalidHigh
+    mov     al, [byte mock_loaded_index]
+    cmp     al, [byte mock_byte_pair_index]
+    jne     @@InvalidHigh
+    cmp     [word mock_byte_pair_offset], bx
+    jne     @@InvalidHigh
+    mov     al, [byte mock_current_window]
+    cmp     al, [byte mock_byte_pair_window]
+    jne     @@InvalidHigh
+    cmp     [byte mock_byte_pair_write], 0
+    jne     @@InvalidHigh
+    mov     ax, [word mock_byte_pair_word]
+    mov     [byte mock_byte_pair_pending], 0
     mov     al, ah
+    xor     ah, ah
+    jmp     @@Done
+@@InvalidHigh:
+    call    Mock_Byte_Pair_Invalidate_Current
+    call    Mock_Resolve_And_Read_Word
+    mov     al, ah
+    xor     ah, ah
+    jmp     @@Done
 @@Low:
+    call    Mock_Byte_Pair_Invalidate_Current
+    call    Mock_Resolve_And_Read_Word
+    mov     [word mock_byte_pair_word], ax
+    mov     al, [byte mock_loaded_index]
+    mov     [byte mock_byte_pair_index], al
+    mov     [word mock_byte_pair_offset], bx
+    mov     al, [byte mock_current_window]
+    mov     [byte mock_byte_pair_window], al
+    mov     [byte mock_byte_pair_write], 0
+    mov     [byte mock_byte_pair_pending], 1
     xor     ah, ah
     jmp     @@Done
 @@Absent:
@@ -1285,20 +1287,17 @@ PROC Mock_Command_Register_Write NEAR
 @@CheckGlobalReset:
     cmp     bx, CMD_GLOBAL_RESET
     jne     @@CheckStartCoax
-    ; Command-Register Global Reset reloads live registers from EEPROM,
-    ; distinct from ID-port Global Reset (which also returns the adapter to
-    ; ID_WAIT/untagged) and from the CLI's utility-level deactivate helper.
-    ; It intentionally does not touch mock_active/mock_active_base/mock_tag:
-    ; the decoded I/O base is established only via ID-port Activate.
-    call    Mock_Automatic_Configuration
-    mov     [byte mock_command_busy], 1
+    ; Command-register Global Reset is a power-on-reset-equivalent reset:
+    ; it removes the active ISA decode as well as reloading live state.
+    ; The access that issued this command is intentionally its final access
+    ; at the old base until a subsequent normal ID-port activation.
+    call    Mock_Reset_Loaded_Record
     call    Save_State
     jmp     @@CmdDone
 @@CheckStartCoax:
     cmp     bx, CMD_START_COAX
     jne     @@CmdDone
     mov     [byte mock_coax_started], 1
-    mov     [byte mock_command_busy], 1
     mov     [byte mock_state_dirty], 1
     call    Save_State
 @@CmdDone:
@@ -1317,15 +1316,12 @@ PROC Nic_IO_Write_Word NEAR
     call    Mock_Load_Record_By_Index
     jc      @@Absent
 @@Loaded:
-    call    Mock_Cmd_Latch_Check_Adapter
+    call    Mock_Byte_Pair_Invalidate_Current
     pop     ax
     mov     bx, dx
     sub     bx, [word mock_active_base]
     cmp     bx, EL3_COMMAND
     jne     @@Register
-    ; A full-word write supersedes any half-completed byte assembly for
-    ; this adapter and dispatches immediately.
-    mov     [byte mock_cmd_byte_pending], 0
     call    Mock_Command_Register_Write
     jmp     @@Done
 @@Register:
@@ -1339,15 +1335,9 @@ PROC Nic_IO_Write_Word NEAR
     ret
 ENDP Nic_IO_Write_Word
 
-; Byte-wide equivalent of Nic_IO_Write_Word, operating on the same physical
-; region and register/window model.  Only the Command Register requires
-; low-byte-then-high-byte pairing (the opcode spans bits 15:11, entirely in
-; the high byte, so a low byte alone carries no decodable command).  Every
-; other 16-bit register is a plain storage latch: each byte write merges
-; with the current stored half and is applied immediately, matching real
-; hardware's combinatorial (non-latched-trigger) behavior for those
-; registers.  See Mock_Reg_Peek_Raw_Word for why this merge has no read
-; side effects.
+; Byte-wide equivalent of Nic_IO_Write_Word.  A low byte starts a pending
+; 16-bit write; no register effect occurs until the immediate matching high
+; byte completes it.  This applies equally to Command and normal registers.
 PROC Nic_IO_Write_Byte NEAR
     push    bx
     push    cx
@@ -1361,48 +1351,51 @@ PROC Nic_IO_Write_Byte NEAR
     call    Mock_Load_Record_By_Index
     jc      @@Absent
 @@Loaded:
-    call    Mock_Cmd_Latch_Check_Adapter
     pop     ax
     mov     bx, dx
     sub     bx, [word mock_active_base]
-    cmp     bx, EL3_COMMAND
-    je      @@CommandLow
-    cmp     bx, EL3_COMMAND + 1
-    je      @@CommandHigh
     mov     cl, bl
     and     cl, 01h
     and     bx, 0FFFEh
-    mov     ch, al
-    call    Mock_Reg_Peek_Raw_Word
     or      cl, cl
-    jz      @@GenLow
-    mov     ah, ch
-    jmp     @@GenMerged
-@@GenLow:
-    mov     al, ch
-@@GenMerged:
+    jz      @@Low
+    cmp     [byte mock_byte_pair_pending], 0
+    je      @@InvalidHigh
+    mov     cl, [byte mock_loaded_index]
+    cmp     cl, [byte mock_byte_pair_index]
+    jne     @@InvalidHigh
+    cmp     [word mock_byte_pair_offset], bx
+    jne     @@InvalidHigh
+    mov     cl, [byte mock_current_window]
+    cmp     cl, [byte mock_byte_pair_window]
+    jne     @@InvalidHigh
+    cmp     [byte mock_byte_pair_write], 1
+    jne     @@InvalidHigh
+    mov     ah, al
+    mov     al, [byte mock_byte_pair_low]
+    mov     [byte mock_byte_pair_pending], 0
+    cmp     bx, EL3_COMMAND
+    jne     @@RegisterComplete
+    call    Mock_Command_Register_Write
+    jmp     @@Done
+@@RegisterComplete:
     call    Mock_Reg_Write_Word
     jmp     @@Done
-@@CommandLow:
-    ; A low-byte write alone must not execute a command.
-    mov     [byte mock_cmd_byte_low], al
-    mov     [byte mock_cmd_byte_pending], 1
-    push    ax
-    mov     ax, [word mock_active_base]
-    mov     [word mock_cmd_byte_base], ax
-    pop     ax
+@@InvalidHigh:
+    ; A high byte without an immediate matching low byte is discarded.
+    ; It cannot complete a read-direction pair or one for another register.
+    call    Mock_Byte_Pair_Invalidate_Current
     jmp     @@Done
-@@CommandHigh:
-    ; The high byte alone (no valid pending low byte) does not execute;
-    ; Mock_Cmd_Latch_Check_Adapter has already dropped any latch that
-    ; belonged to an unrelated adapter, so a still-pending latch here is
-    ; guaranteed to belong to this same adapter.
-    cmp     [byte mock_cmd_byte_pending], 0
-    je      @@Done
-    mov     ah, al
-    mov     al, [byte mock_cmd_byte_low]
-    mov     [byte mock_cmd_byte_pending], 0
-    call    Mock_Command_Register_Write
+@@Low:
+    call    Mock_Byte_Pair_Invalidate_Current
+    mov     [byte mock_byte_pair_low], al
+    mov     al, [byte mock_loaded_index]
+    mov     [byte mock_byte_pair_index], al
+    mov     [word mock_byte_pair_offset], bx
+    mov     al, [byte mock_current_window]
+    mov     [byte mock_byte_pair_window], al
+    mov     [byte mock_byte_pair_write], 1
+    mov     [byte mock_byte_pair_pending], 1
     jmp     @@Done
 @@Absent:
     pop     ax
@@ -1491,6 +1484,7 @@ PROC Mock_Automatic_Configuration NEAR
     or      [word mock_w4_media_status], W4_MEDIA_STATUS_RESERVED_ONE
     mov     [byte mock_eeprom_busy], 0
     and     [byte mock_eeprom_flags], NOT MCKEF_WRITE_ENABLED
+    mov     [byte mock_eeprom_pending], 0
     mov     [byte mock_command_busy], 0
     mov     [byte mock_coax_started], 0
     mov     [byte mock_state_dirty], 1
@@ -1499,6 +1493,24 @@ PROC Mock_Automatic_Configuration NEAR
     pop     ax
     ret
 ENDP Mock_Automatic_Configuration
+
+; Reset the currently loaded adapter to the configuration-facing
+; power-on-reset state.  This is intentionally shared by Command Register
+; Global Reset and ID-port Global Reset; callers retain responsibility for
+; deciding which adapter(s) receive that reset.
+PROC Mock_Reset_Loaded_Record NEAR
+    mov     [byte mock_active], 0
+    mov     [word mock_active_base], 0
+    mov     [byte mock_tag], 0
+    mov     [byte mock_id_state], MCK_ID_WAIT
+    mov     [word mock_id_shift], 0
+    mov     [byte mock_id_bits_left], 0
+    call    Mock_Automatic_Configuration
+    mov     [byte mock_selected_valid], 0
+    mov     [byte mock_selected_tag], 0
+    mov     [byte mock_byte_pair_pending], 0
+    ret
+ENDP Mock_Reset_Loaded_Record
 
 
 PROC Nic_Activate_Tagged_Cards NEAR
@@ -1640,8 +1652,12 @@ PROC Mock_Id_Reset_Sequence NEAR
     ret
 ENDP Mock_Id_Reset_Sequence
 
-; Move every untagged adapter into ID_CMD after a successful ID sequence.
-PROC Mock_Id_Enter_Untagged_Command NEAR
+; A successful supported ID re-entry sequence returns every present adapter
+; to ID_CMD.
+; Tagged adapters still do not participate in untagged EEPROM contention;
+; Mock_Id_Start_Contention_Read filters them by tag, while D8h-DFh can
+; subsequently narrow the ID_CMD population to one tag.
+PROC Mock_Id_Enter_Command NEAR
     push    ax
     push    cx
     push    di
@@ -1657,8 +1673,6 @@ PROC Mock_Id_Enter_Untagged_Command NEAR
     pop     ax
     cmp     [BYTE di + MCK3R_PRESENT], 0
     je      @@Next
-    cmp     [BYTE di + MCK3R_TAG], 0
-    jne     @@Next
     mov     [BYTE di + MCK3R_ID_STATE], MCK_ID_CMD
 @@Next:
     inc     al
@@ -1669,7 +1683,7 @@ PROC Mock_Id_Enter_Untagged_Command NEAR
     pop     cx
     pop     ax
     ret
-ENDP Mock_Id_Enter_Untagged_Command
+ENDP Mock_Id_Enter_Command
 
 ; Input AL = EEPROM word.  Each untagged ID_CMD adapter receives its own
 ; serial register; subsequent reads implement wired-AND contention.
@@ -1838,7 +1852,7 @@ PROC Mock_Id_Process_Sequence_Byte NEAR
     cmp     [word mock_id_sequence_count], 255
     jb      @@Done
     mov     [byte mock_id_command_ready], 1
-    call    Mock_Id_Enter_Untagged_Command
+    call    Mock_Id_Enter_Command
     call    Mock_Find_First_Command_Contender
     jc      @@Done
     mov     [byte mock_contender_index], al
@@ -1860,43 +1874,183 @@ ENDP Mock_Id_Process_Sequence_Byte
 ; Records not currently in MCK_ID_CMD are untouched.
 PROC Mock_Id_Global_Reset_All NEAR
     push    ax
+    push    bx
     push    cx
+    push    dx
     push    di
 
     call    Mock_Commit_Loaded_Record
 
-    xor     ax, ax
-    mov     cl, [byte mock_record_count]
-    xor     ch, ch
+    mov     bl, [byte mock_record_count]
+    xor     dl, dl
 @@ScanLoop:
-    or      cx, cx
-    jz      @@ScanDone
-    push    ax
+    cmp     dl, bl
+    jae     @@ScanDone
+    mov     al, dl
     call    Mock_Get_Record_Ptr
-    pop     ax
     cmp     [BYTE di + MCK3R_PRESENT], 0
     je      @@ScanNext
     cmp     [BYTE di + MCK3R_ID_STATE], MCK_ID_CMD
     jne     @@ScanNext
+    mov     al, dl
     call    Mock_Load_Record_By_Index
     jc      @@ScanNext
-    mov     [byte mock_active], 0
-    mov     [word mock_active_base], 0
-    mov     [byte mock_tag], 0
-    mov     [byte mock_id_state], MCK_ID_WAIT
-    call    Mock_Automatic_Configuration
+    call    Mock_Reset_Loaded_Record
     call    Mock_Commit_Loaded_Record
 @@ScanNext:
-    inc     al
-    dec     cx
+    inc     dl
     jmp     @@ScanLoop
 @@ScanDone:
+    mov     [byte mock_selected_valid], 0
+    mov     [byte mock_selected_tag], 0
+    mov     [byte mock_loaded_index], 0FFh
     call    Save_State
     pop     di
+    pop     dx
     pop     cx
+    pop     bx
     pop     ax
     ret
 ENDP Mock_Id_Global_Reset_All
+
+; ID_CMD D8h-DFh is a bus command.  Every adapter presently in ID_CMD
+; observes it; only the matching tag remains in that state.  selected_* is
+; retained only to route subsequent direct EEPROM serial reads, never as the
+; authority for later activation.
+; Input AL = selected tag.
+PROC Mock_Id_Select_Tag NEAR
+    push    ax
+    push    bx
+    push    dx
+    push    di
+
+    mov     dh, al
+    call    Mock_Commit_Loaded_Record
+    mov     bl, [byte mock_record_count]
+    xor     dl, dl
+    mov     [byte mock_selected_valid], 0
+@@Loop:
+    cmp     dl, bl
+    jae     @@Done
+    mov     al, dl
+    call    Mock_Get_Record_Ptr
+    cmp     [BYTE di + MCK3R_PRESENT], 0
+    je      @@Next
+    cmp     [BYTE di + MCK3R_ID_STATE], MCK_ID_CMD
+    jne     @@Next
+    cmp     [BYTE di + MCK3R_TAG], dh
+    je      @@Match
+    mov     [BYTE di + MCK3R_ID_STATE], MCK_ID_WAIT
+    jmp     @@Next
+@@Match:
+    mov     [byte mock_selected_tag], dh
+    mov     [byte mock_selected_valid], 1
+@@Next:
+    inc     dl
+    jmp     @@Loop
+@@Done:
+    mov     [byte mock_loaded_index], 0FFh
+    call    Save_State
+    pop     di
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Mock_Id_Select_Tag
+
+; Broadcast an ID-port Activate command to every adapter presently in
+; ID_CMD.  Input AL = explicit E0h-FEh selector; AH nonzero requests FFh
+; configured-base activation.  The adapter's own live Address Configuration
+; supplies the FFh selector, so selected_* does not authorize activation.
+PROC Mock_Id_Activate_Eligible NEAR
+    push    ax
+    push    bx
+    push    dx
+    push    di
+
+    mov     dh, al
+    mov     dl, ah
+    call    Mock_Commit_Loaded_Record
+    mov     bl, [byte mock_record_count]
+    xor     bh, bh
+@@Loop:
+    cmp     bh, bl
+    jae     @@Done
+    mov     al, bh
+    call    Mock_Get_Record_Ptr
+    cmp     [BYTE di + MCK3R_PRESENT], 0
+    je      @@Next
+    cmp     [BYTE di + MCK3R_ID_STATE], MCK_ID_CMD
+    jne     @@Next
+    or      dl, dl
+    jz      @@Explicit
+    mov     ax, [WORD di + MCK3R_W0_ADDRESS_CFG]
+    and     ax, 001Fh
+    jmp     @@MakeBase
+@@Explicit:
+    xor     ax, ax
+    mov     al, dh
+    and     ax, 001Fh
+@@MakeBase:
+    shl     ax, 1
+    shl     ax, 1
+    shl     ax, 1
+    shl     ax, 1
+    add     ax, 0200h
+    mov     [WORD di + MCK3R_ACTIVE_BASE], ax
+    or      [BYTE di + MCK3R_FLAGS], MCKRF_ACTIVE
+    mov     [BYTE di + MCK3R_ID_STATE], MCK_ID_WAIT
+@@Next:
+    inc     bh
+    jmp     @@Loop
+@@Done:
+    mov     [byte mock_selected_valid], 0
+    mov     [byte mock_selected_tag], 0
+    mov     [byte mock_loaded_index], 0FFh
+    call    Save_State
+    pop     di
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Mock_Id_Activate_Eligible
+
+; The documented initialization sequence uses D0h (Set Tag 0) after each
+; re-entry sequence to return adapters to the untagged ID_WAIT population.
+; This changes powered state through the modeled ID command, never merely
+; because the backend was loaded for a new DOS process.
+PROC Mock_Id_Clear_All_Tags NEAR
+    push    ax
+    push    bx
+    push    dx
+    push    di
+
+    call    Mock_Commit_Loaded_Record
+    mov     bl, [byte mock_record_count]
+    xor     dl, dl
+@@Loop:
+    cmp     dl, bl
+    jae     @@Done
+    mov     al, dl
+    call    Mock_Get_Record_Ptr
+    cmp     [BYTE di + MCK3R_PRESENT], 0
+    je      @@Next
+    mov     [BYTE di + MCK3R_TAG], 0
+    mov     [BYTE di + MCK3R_ID_STATE], MCK_ID_WAIT
+@@Next:
+    inc     dl
+    jmp     @@Loop
+@@Done:
+    mov     [byte mock_selected_valid], 0
+    mov     [byte mock_selected_tag], 0
+    mov     [byte mock_loaded_index], 0FFh
+    call    Save_State
+    pop     di
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Mock_Id_Clear_All_Tags
 
 PROC Nic_IdPort_Write_Command NEAR
     push    ax
@@ -1936,6 +2090,8 @@ PROC Nic_IdPort_Write_Command NEAR
     and     bl, 0F8h
     cmp     bl, ID_CMD_SET_TAG
     jne     @@CheckSelect
+    cmp     al, ID_CMD_SET_TAG
+    je      @@ClearAllTags
     cmp     [byte mock_contender_visible], 0
     je      @@Done
     mov     al, [byte mock_contender_index]
@@ -1954,6 +2110,12 @@ PROC Nic_IdPort_Write_Command NEAR
     mov     [byte mock_contender_index], 0FFh
     mov     [byte mock_id_contention_active], 0
     jmp     @@Done
+@@ClearAllTags:
+    call    Mock_Id_Clear_All_Tags
+    mov     [byte mock_contender_visible], 0
+    mov     [byte mock_contender_index], 0FFh
+    mov     [byte mock_id_contention_active], 0
+    jmp     @@Done
 
 @@CheckSelect:
     mov     bl, al
@@ -1961,16 +2123,11 @@ PROC Nic_IdPort_Write_Command NEAR
     cmp     bl, ID_CMD_SELECT_TAG
     jne     @@CheckActivate
     and     al, 07h
-    mov     dl, al
     cmp     [byte mock_id_command_ready], 0
     je      @@ClearSelected
-    call    Mock_Ensure_Record_By_Tag
-    jc      @@ClearSelected
-    mov     [byte mock_id_state], MCK_ID_CMD
-    mov     [byte mock_state_dirty], 1
-    call    Mock_Commit_Loaded_Record
-    mov     [byte mock_selected_tag], dl
-    mov     [byte mock_selected_valid], 1
+    call    Mock_Id_Select_Tag
+    cmp     [byte mock_selected_valid], 0
+    je      @@ClearSelected
     mov     [byte mock_id_contention_active], 0
     jmp     @@Done
 @@ClearSelected:
@@ -1984,54 +2141,19 @@ PROC Nic_IdPort_Write_Command NEAR
     ; numerically falls inside that mask's match set.
     cmp     al, ID_CMD_ACTIVATE_CONFIGURED
     jne     @@CheckActivateRange
-    cmp     [byte mock_selected_valid], 0
-    je      @@Done
-    mov     al, [byte mock_selected_tag]
-    call    Mock_Ensure_Record_By_Tag
-    jc      @@Done
-    cmp     [byte mock_id_state], MCK_ID_CMD
-    jne     @@Done
-    ; Derive the activated base from the LIVE Window 0 Address
-    ; Configuration register (bits 4:0), not from EEPROM word 08h and not
-    ; from a hard-coded selector 1Fh.
-    mov     ax, [word mock_state + EL3_W0_ADDRESS_CFG]
-    and     ax, 001Fh
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    add     ax, 0200h
-    mov     [word mock_active_base], ax
-    mov     [byte mock_active], 1
-    mov     [byte mock_id_state], MCK_ID_WAIT
-    mov     [byte mock_state_dirty], 1
-    call    Save_State
+    xor     ax, ax
+    inc     ah
+    call    Mock_Id_Activate_Eligible
     jmp     @@Done
 @@CheckActivateRange:
     mov     bl, al
     and     bl, ID_CMD_ACTIVATE_MASK
     cmp     bl, ID_CMD_ACTIVATE
     jne     @@CheckDeactivate
-    cmp     [byte mock_selected_valid], 0
-    je      @@Done
-    mov     al, [byte mock_selected_tag]
-    call    Mock_Ensure_Record_By_Tag
-    jc      @@Done
-    cmp     [byte mock_id_state], MCK_ID_CMD
-    jne     @@Done
     mov     al, bh
     and     al, 1Fh
     xor     ah, ah
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    add     ax, 0200h
-    mov     [word mock_active_base], ax
-    mov     [byte mock_active], 1
-    mov     [byte mock_id_state], MCK_ID_WAIT
-    mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Id_Activate_Eligible
     jmp     @@Done
 
 @@CheckDeactivate:
@@ -2041,8 +2163,8 @@ PROC Nic_IdPort_Write_Command NEAR
     ; mock_selected_tag/valid track a *different* concept (the target of
     ; direct EEPROM-word reads once a tag has been isolated; see
     ; @@ReadContender above) and must not gate this broadcast.  This is
-    ; also distinct from Command-Register Global Reset (which reloads live
-    ; registers but leaves tag/active/decoded-base untouched) and from
+    ; also distinct from Command-Register Global Reset (which resets one
+    ; adapter to its complete POR state) and from
     ; Cfg_Id_Deactivate_Selected's utility-level sequence in 3CCFGCLI.ASM,
     ; which narrows ID_CMD membership down to one adapter via SELECT_TAG
     ; before issuing this command -- that narrowing is what makes today's
@@ -2093,18 +2215,16 @@ ENDP Nic_IdPort_Send_Full_Sequence
 PROC Nic_IdPort_Send_Short_Sequence NEAR
     ; Existing CLI flows use the measured short reentry sequence.  Preserve
     ; that compatibility until its exact device-state semantics are verified.
+    ; It re-enters the ID command population; untagged-only filtering occurs
+    ; later at contention-read time, while D8h-DFh narrows tagged targets.
     mov     [byte mock_selected_valid], 0
     mov     [byte mock_selected_tag], 0
     mov     [byte mock_id_command_ready], 1
+    call    Mock_Id_Enter_Command
     call    Mock_Find_First_Untagged_Record
     jc      @@NoCard
     mov     [byte mock_contender_index], al
     mov     [byte mock_contender_visible], 1
-    call    Mock_Load_Record_By_Index
-    jc      @@NoCard
-    mov     [byte mock_id_state], MCK_ID_CMD
-    mov     [byte mock_state_dirty], 1
-    call    Mock_Commit_Loaded_Record
     ret
 @@NoCard:
     mov     [byte mock_contender_visible], 0
@@ -2118,8 +2238,6 @@ ENDP Nic_IdPort_Eeprom_Delay
 
 PROC Nic_Init_Id_Port NEAR
     push    ax
-    push    cx
-    push    di
 
     call    Load_State
     mov     [byte mock_selected_valid], 0
@@ -2129,24 +2247,16 @@ PROC Nic_Init_Id_Port NEAR
     mov     [byte mock_loaded_index], 0FFh
     mov     [byte mock_state_dirty], 0
 
-    xor     ax, ax
-    mov     cl, [byte mock_record_count]
-    xor     ch, ch
-@@ResetTags:
-    or      cx, cx
-    jz      @@FindAny
-    push    ax
-    call    Mock_Get_Record_Ptr
-    pop     ax
-    cmp     [BYTE di + MCK3R_PRESENT], 0
-    je      @@Next
-    mov     [BYTE di + MCK3R_TAG], 0
-@@Next:
-    inc     al
-    dec     cx
-    jmp     @@ResetTags
-
-@@FindAny:
+    ; Loading the MCK v3 powered-device image is side-effect free.  In
+    ; particular, it does not clear tags or alter ID state merely because a
+    ; DOS process opened the backend.  Any such transition must instead be
+    ; caused by the modeled ID-port sequence/commands.
+    call    Nic_IdPort_Send_Full_Sequence
+    mov     al, ID_CMD_SET_TAG
+    call    Nic_IdPort_Write_Command
+    call    Nic_IdPort_Send_Short_Sequence
+    mov     al, ID_CMD_SET_TAG
+    call    Nic_IdPort_Write_Command
     call    Mock_Find_First_Untagged_Record
     jc      @@NoCard
     mov     [byte mock_contender_index], al
@@ -2156,8 +2266,6 @@ PROC Nic_Init_Id_Port NEAR
     mov     [byte mock_contender_visible], 0
     mov     [byte mock_contender_index], 0FFh
 @@Done:
-    pop     di
-    pop     cx
     pop     ax
     ret
 ENDP Nic_Init_Id_Port
@@ -2180,4 +2288,3 @@ PROC Nic_IdPort_Read_Bit NEAR
 @@Done:
     ret
 ENDP Nic_IdPort_Read_Bit
-

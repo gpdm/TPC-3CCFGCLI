@@ -50,6 +50,20 @@ Changelog 0.7.0:
       from any 3CCFGCLI code path, so they are not yet covered by TEST.MK;
       this is intentional scope discipline for this pass (see TODO.TXT).
       Full smoke + hardware-limit suite re-verified with no regressions.
+- Corrected mock reset and byte-I/O protocol behavior:
+  - Command-register Global Reset now fully returns the addressed adapter to
+    its configuration-facing power-on-reset state, including removal of its
+    active ISA decode.
+  - Start Coaxial Transceiver now records only coax-start state and does not
+    incorrectly assert Command-In-Progress.
+  - Replaced command-only byte pairing with generic low-byte/high-byte,
+    same-register, same-window, same-direction pairing; intervening
+    same-adapter access invalidates an incomplete pair.
+  - Removed init-time direct tag clearing.  ID initialization now performs
+    the established ID-port sequence/commands, while activation and ID Global
+    Reset operate from adapters currently in ID_CMD rather than host-side
+    selected-tag state.
+
 
 Changelog 0.6.9:
   - Fixed a control-flow bug in the CONFIGURE VERBOSE reporting path where
