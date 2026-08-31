@@ -157,6 +157,11 @@ Required follow-up:
 
   Determine whether FULLDUPLEX belongs to another documented register/EEPROM field, is utility-specific behaviour requiring another authoritative source, or should be removed from the 3C509B configuration model.
 
+  Also note:
+    FULLDUPLEX can't be enabled if Transceiver (TR) is AUTO|COAX|AUI
+
+    the function must have a gate.
+
 * Rework CONFIGURE /MODEM.
 
   The documented modem-related hardware field is only EEPROM word 0Dh bits 13:8, Maximum Interrupt Disable Time.
@@ -206,6 +211,12 @@ Required follow-up:
   ```
 
   AUTO SELECT should operate from the hardware-reported connector capabilities.
+
+  Also note:
+    FULLDUPLEX can't be enabled if Transceiver (TR) is AUTO|COAX|AUI
+
+    the function must have a gate.
+
 
 * Revisit Product ID 9850h.
 
