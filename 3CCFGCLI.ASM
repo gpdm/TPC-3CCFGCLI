@@ -426,7 +426,9 @@ msg_fullduplex_label DB "Full Duplex = ", '$'
 msg_link_status_label DB "Link Status = ", '$'
 msg_optimize_reserved DB "Reserved", '$'
 msg_optimize_dos DB "DOS", '$'
-msg_optimize_windows DB "Windows or OS/2", '$'
+msg_optimize_windows DB "Windows", '$'
+msg_optimize_os2 DB "OS/2", '$'
+msg_optimize_windows_or_os2 DB "Windows or OS/2", '$'
 msg_optimize_server DB "Server", '$'
 msg_warn_label  DB  ", warning level ", '$'
 
@@ -2659,7 +2661,7 @@ PROC Cfg_Handle_OPTIMIZE NEAR
     jne     @@Invalid
     cmp     [BYTE si+2], 'S'
     jne     @@Invalid
-    mov     al, 0
+    mov     al, 1
     jmp     @@Accept
 @@Windows:
     cmp     [BYTE si], 'W'
@@ -2676,7 +2678,7 @@ PROC Cfg_Handle_OPTIMIZE NEAR
     jne     @@Invalid
     cmp     [BYTE si+6], 'S'
     jne     @@Invalid
-    mov     al, 1
+    mov     al, 2
     jmp     @@Accept
 @@Os2:
     cmp     [BYTE si], 'O'
@@ -2702,7 +2704,7 @@ PROC Cfg_Handle_OPTIMIZE NEAR
     jne     @@Invalid
     cmp     [BYTE si+5], 'R'
     jne     @@Invalid
-    mov     al, 4
+    mov     al, 3
 @@Accept:
     mov     [cfg_optimize_value], al
     or      [cfg_parse_flags], CFG_PARSE_OPTIMIZE
@@ -4546,6 +4548,8 @@ PROC Cfg_Txn_Read_Current NEAR
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jnz     @@ReadWord0D
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@ReadWord0D
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@NoWord0D
 @@ReadWord0D:
     mov     si, [cfg_selected_ptr]
@@ -4559,17 +4563,12 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_word0d], 0
 @@Word0DDone:
 
-    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
-    jz      @@NoWord0F
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Read
     jc      @@ReadOptimizeFail
     mov     [cfg_txn_old_word0f], ax
-    jmp     @@Word0FDone
-@@NoWord0F:
-    mov     [cfg_txn_old_word0f], 0
 @@Word0FDone:
 
     ; Both live words are required because original ISA reactivation restores
@@ -4751,15 +4750,14 @@ PROC Cfg_Prepare_PNP NEAR
     ret
 ENDP Cfg_Prepare_PNP
 
-; Merge only the staged MODEM field into the prospective persistent image.
-; EEPROM word 0Dh bits 15 and 14 are FULLDUPLEX and LINKBEAT_DISABLE.
-; Only bits 13:0 are owned by the modem speed field. Always use RMW.
+; Merge only the Maximum Interrupt Disable Time field (bits 13:8) into the
+; prospective Software Information word.  Always use RMW.
 PROC Cfg_Prepare_MODEM NEAR
     push    ax
 
     mov     ax, [cfg_txn_new_word0d]
-    and     ax, 0C000h              ; preserve FULLDUPLEX and LINKBEAT_DISABLE
-    or      ax, [cfg_modem_value]   ; modem value is constrained to bits 13:0
+    and     ax, 0C0FFh              ; preserve bits 15:14 and 7:0
+    or      ax, [cfg_modem_value]   ; modem value is constrained to bits 13:8
     mov     [cfg_txn_new_word0d], ax
 
     pop     ax
@@ -4783,17 +4781,23 @@ PROC Cfg_Prepare_FULLDUPLEX NEAR
     ret
 ENDP Cfg_Prepare_FULLDUPLEX
 
-; Merge only the staged OPTIMIZE field into the prospective persistent image.
-; EEPROM word 0Fh high byte stores the optimization mode.  The low byte is
-; checksum-owned and is filled in later by Cfg_Txn_Write_EEPROM.
+; Merge only the documented Software Optimization field into EEPROM word 0Dh.
 PROC Cfg_Prepare_OPTIMIZE NEAR
     push    ax
+    push    cx
 
-    mov     ax, [cfg_txn_new_word0f]
-    and     ax, 00FFh
-    mov     ah, [cfg_optimize_value]
-    mov     [cfg_txn_new_word0f], ax
+    mov     ax, [cfg_txn_new_word0d]
+    and     ax, 0FFCFh
+    xor     cx, cx
+    mov     cl, [cfg_optimize_value]
+    shl     cx, 1
+    shl     cx, 1
+    shl     cx, 1
+    shl     cx, 1
+    or      ax, cx
+    mov     [cfg_txn_new_word0d], ax
 
+    pop     cx
     pop     ax
     ret
 ENDP Cfg_Prepare_OPTIMIZE
@@ -4984,10 +4988,10 @@ PROC Cfg_Txn_Detect_Changes NEAR
 @@Optimize:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@Done
-    mov     ax, [cfg_txn_old_word0f]
-    cmp     ax, [cfg_txn_new_word0f]
+    mov     ax, [cfg_txn_old_word0d]
+    cmp     ax, [cfg_txn_new_word0d]
     je      @@Done
-    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0F
+    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
 
 @@Done:
     pop     ax
@@ -5279,6 +5283,8 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     jc      @@Write0DFail
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
     jz      @@Word13
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jnz     @@Word0DPrint
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jnz     @@Word0DWrittenFD
     mov     dx, OFFSET msg_cfg_modem_word_written
@@ -5373,7 +5379,12 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@Write0DFail:
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
+    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jnz     @@OptimizeWriteFail
     mov     [cfg_last_error], CFG_ERR_MODEM_EEPROM_WRITE
+    jmp     @@Fail
+@@OptimizeWriteFail:
+    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_EEPROM_WRITE
     jmp     @@Fail
 @@Write13Fail:
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
@@ -5383,7 +5394,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@ChecksumWriteFail:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@ChecksumFail
-    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0F
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jz      @@ChecksumFail
     mov     [cfg_last_error], CFG_ERR_OPTIMIZE_EEPROM_WRITE
     jmp     @@Fail
@@ -5696,14 +5707,14 @@ PROC Cfg_Txn_Verify NEAR
 @@OptimizePersistent:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@BootRomPersistent
-    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0F
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jz      @@BootRomPersistent
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_CHECKSUM
+    mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
     jc      @@OptimizeVerifyFail
-    cmp     ax, [cfg_txn_new_word0f]
+    cmp     ax, [cfg_txn_new_word0d]
     jne     @@OptimizeVerifyFail
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
     jz      @@BootRomPersistent
@@ -5825,6 +5836,7 @@ ENDP Cfg_Txn_Verify
 ; Verbose snapshot and prospective image reporting.  Normal mode remains concise.
 PROC Cfg_Txn_Report_Current NEAR
     push    ax
+    push    cx
     push    dx
 
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
@@ -5932,23 +5944,27 @@ PROC Cfg_Txn_Report_Current NEAR
 @@Optimize:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@Done
-    mov     dx, OFFSET msg_cfg_current_word0f
+    mov     dx, OFFSET msg_cfg_current_word0d
     mov     ah, 09h
     int     21h
-    mov     ax, [cfg_txn_old_word0f]
-    mov     al, ah
-    call    Print_Optimize_Code
+    mov     ax, [cfg_txn_old_word0d]
+    mov     cl, 4
+    shr     ax, cl
+    and     al, 03h
+    call    Print_Optimize_Read_Code
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
 @@Done:
     pop     dx
+    pop     cx
     pop     ax
     ret
 ENDP Cfg_Txn_Report_Current
 
 PROC Cfg_Txn_Report_Prospective NEAR
     push    ax
+    push    cx
     push    dx
 
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
@@ -6022,17 +6038,20 @@ PROC Cfg_Txn_Report_Prospective NEAR
 @@Optimize:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@Done
-    mov     dx, OFFSET msg_cfg_new_word0f
+    mov     dx, OFFSET msg_cfg_new_word0d
     mov     ah, 09h
     int     21h
-    mov     ax, [cfg_txn_new_word0f]
-    mov     al, ah
-    call    Print_Optimize_Code
+    mov     ax, [cfg_txn_new_word0d]
+    mov     cl, 4
+    shr     ax, cl
+    and     al, 03h
+    call    Print_Optimize_Read_Code
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
 @@Done:
     pop     dx
+    pop     cx
     pop     ax
     ret
 ENDP Cfg_Txn_Report_Prospective
@@ -6559,7 +6578,7 @@ PROC Cfg_Txn_Execute NEAR
 @@CheckOPTIMIZEUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@CheckFDUnchanged
-    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0F
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jnz     @@CheckFDUnchanged
     mov     dx, OFFSET msg_cfg_optimize_unchanged
     mov     ah, 09h
@@ -7117,6 +7136,40 @@ PROC Print_Optimize_Code NEAR
     push    dx
 
     cmp     al, 0
+    je      @@Dos
+    cmp     al, 1
+    je      @@Windows
+    cmp     al, 2
+    je      @@Os2
+    cmp     al, 4
+    je      @@Server
+    mov     dx, OFFSET msg_unknown_value
+    jmp     @@Print
+@@Dos:
+    mov     dx, OFFSET msg_optimize_dos
+    jmp     @@Print
+@@Windows:
+    mov     dx, OFFSET msg_optimize_windows
+    jmp     @@Print
+@@Os2:
+    mov     dx, OFFSET msg_optimize_os2
+    jmp     @@Print
+@@Server:
+    mov     dx, OFFSET msg_optimize_server
+@@Print:
+    mov     ah, 09h
+    int     21h
+    pop     dx
+    pop     ax
+    ret
+ENDP Print_Optimize_Code
+
+; Input AL = documented EEPROM_SOFTWARE_INFO Software Optimization value.
+PROC Print_Optimize_Read_Code NEAR
+    push    ax
+    push    dx
+
+    cmp     al, 0
     je      @@Reserved
     cmp     al, 1
     je      @@Dos
@@ -7133,7 +7186,7 @@ PROC Print_Optimize_Code NEAR
     mov     dx, OFFSET msg_optimize_dos
     jmp     @@Print
 @@Windows:
-    mov     dx, OFFSET msg_optimize_windows
+    mov     dx, OFFSET msg_optimize_windows_or_os2
     jmp     @@Print
 @@Server:
     mov     dx, OFFSET msg_optimize_server
@@ -7143,7 +7196,7 @@ PROC Print_Optimize_Code NEAR
     pop     dx
     pop     ax
     ret
-ENDP Print_Optimize_Code
+ENDP Print_Optimize_Read_Code
 
 PROC Print_Optimize_Value NEAR
     push    ax
@@ -7155,7 +7208,7 @@ PROC Print_Optimize_Value NEAR
     mov     cl, 4
     shr     ax, cl
     and     al, 03h
-    call    Print_Optimize_Code
+    call    Print_Optimize_Read_Code
     jmp     @@Done
 @@Unavailable:
     mov     dx, OFFSET msg_unavailable
@@ -7176,6 +7229,7 @@ PROC Decode_Modem_Value NEAR
     push    dx
     push    cx
 
+    and     ax, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
     or      ax, ax
     jz      @@None
     cmp     ax, EEPROM_MODEM_NONE
@@ -7191,10 +7245,6 @@ PROC Decode_Modem_Value NEAR
     cmp     ax, EEPROM_MODEM_38400
     je      @@Named38400
 
-    mov     dx, ax
-    and     dx, 00FFh
-    cmp     dx, 0020h
-    jne     @@Unknown
     mov     cl, 8
     shr     ax, cl
     inc     ax

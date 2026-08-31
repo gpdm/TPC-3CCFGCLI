@@ -70,14 +70,6 @@
 
   Need to figure out, how this works exactly.
 
-  ----
-  Optimization verb:
-
-  Apparently, the readout is not correct. We're always getting "DOS" optimization,
-  even if a different value was set using 3C5X9CFG utility.
-
-
-  ----
   SAVECONFIG verb
 
   While the implementation for SAVECONFIG is semantically correct and prints the intended
@@ -166,30 +158,8 @@ Required follow-up:
 
   The documented modem-related hardware field is only EEPROM word 0Dh bits 13:8, Maximum Interrupt Disable Time.
 
-  Existing raw values such as 1320h combine this field with other independent Software Information fields and must not be treated as one monolithic modem value.
-
-* Rework CONFIGURE /OPTIMIZE.
-
-  Software Optimization is documented in EEPROM word 0Dh bits 5:4, not EEPROM word 0Fh high byte.
-
-  EEPROM word 0Fh is entirely checksum data.
-
-  Documented optimization encodings are:
-
-  ```
-  00b = Reserved
-  01b = DOS client
-  10b = Windows client
-  11b = Server
-  ```
-
-  Note that the MEWEL Text UI shows "Windows or OS/2" as combined value.
-  The 3C5X9CFG however accepts those as individual arguments.
-
-  I assume this is in fact them same optimization level value in the EEPROM, and just a symbolic alias.
-
-  Note 2: Card always defaults to `DOS` as a default.
-
+  The current implementation now preserves the independent fields in word 0Dh;
+  retain this item only for any further compatibility investigation.
 
 * Rework Plug and Play capability detection.
 

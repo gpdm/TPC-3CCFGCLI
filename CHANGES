@@ -1,6 +1,6 @@
 Changelog 0.7.0:
-  - Corrected LIST and SAVECONFIG Software Optimization readout to use EEPROM
-    word 0Dh bits 5:4; CONFIGURE write behavior remains unchanged.
+  - Corrected CONFIGURE, LIST, and SAVECONFIG Software Optimization handling
+    to use EEPROM word 0Dh bits 5:4; Windows and OS/2 share its 10b value.
   - Reworked the mock backend toward a register-accurate 3C509B device model.
     MCK v3 separates persistent EEPROM from live register and activation state.
   - Implemented EEPROM Busy polling, command/data sequencing, write enable,

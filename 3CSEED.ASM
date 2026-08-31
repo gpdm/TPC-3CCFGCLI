@@ -1143,7 +1143,7 @@ PROC Seed_NoLinkBeat NEAR
     call    Seed_Init
     jc      @@Fail
     mov     si, EEPROM_SOFTWARE_INFO
-    mov     ax, EEPROM_SOFTWARE_INFO_LINKBEAT_DISABLE
+    mov     ax, EEPROM_SOFTWARE_INFO_LINKBEAT_DISABLE OR EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
     call    EEPROM_Write_SI
     call    Build_Checksum
     call    Write_State_File
@@ -1266,7 +1266,7 @@ PROC Build_Record_Current NEAR
     call    EEPROM_Write_SI
 
     mov     si, EEPROM_SOFTWARE_INFO
-    mov     ax, 0000h
+    mov     ax, EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
     call    EEPROM_Write_SI
     mov     si, EEPROM_COMPATIBILITY
     mov     ax, 0000h
