@@ -1,3 +1,54 @@
+Changelog 0.6.9:
+  - Fixed a control-flow bug in the CONFIGURE VERBOSE reporting path where
+    the OPTIMIZE-unchanged check (@@CheckOPTIMIZEUnchanged) was unreachable:
+    @@CheckMODEMUnchanged always fell through to @@CheckFDUnchanged instead,
+    so "Optimize mode is already configured to the requested value." could
+    never be printed. The MODEM branch now correctly falls through to the
+    OPTIMIZE check.
+  - Fixed missing duplicate-property detection for /TR and /XCVR.
+    CFG_SEEN_TR was defined but never wired into the CONFIGURE duplicate
+    tracking chain, unlike every other supported property. Repeated /TR,
+    repeated /XCVR, and mixed /TR + /XCVR now correctly report
+    "Duplicate CONFIGURE property."
+  - Confirmed (via 3C509DEF.INC and CHANGES 0.5.3) that EEPROM word 0Fh is
+    the only documented checksum word; word 17h has no documented meaning.
+    Removed the dead Cfg_Checksum_0F_High, Cfg_Checksum_17_Low and
+    Cfg_Checksum_17_High routines in 3CCFGCLI.ASM, and the equivalent dead
+    high-checksum loop (chk_high) in 3CSEED.ASM's Build_Checksum, which left
+    behind an earlier, incorrect two-checksum hypothesis and had no effect
+    on the generated mock state.
+  - Removed the unreachable legacy 3Com command-issue procedure family in
+    3CCFGCLI.ASM (Cfg_Issue_Command, Cfg_Read_Product_Revision,
+    Cfg_Is_Original_3C509, Cfg_Is_Later_3C509B, Cfg_Wait_Command_Ready,
+    Wait_Command_Ready), superseded by the current EEPROM transaction flow.
+  - Removed unreferenced hardware-interface wrapper procedures from both
+    backends (3CHWIF.ASM, 3CMOCKIF.ASM): Nic_Reg_Write_Byte (and its
+    Cfg_Reg_Write_Byte helper), Nic_EEPROM_Wait_Ready,
+    Nic_Scan_Active_Base_Ports, Nic_Read_Id_Contender_Data,
+    Nic_Find_Duplicate_Id_Record, Nic_Read_EepromWord, Nic_Write_EepromWord.
+  - Removed the unreachable 3C508 description branch and its msg_a0ac string
+    from Select_Nic_Description in 3CCFGCLI.ASM; the current build only
+    supports the 3C509 (9050h) product family and 3C508 is out of scope.
+  - Removed 23 unreferenced diagnostic strings left over from the
+    per-property INT/IOBASE/OPTIMIZE/TR echo paths that were superseded by
+    the centralized transaction reporting, plus the unused EISA/MCA
+    description strings (msg_a02d, msg_a02e).
+  - Removed 7 write-only discovery/state variables that were never read
+    after being set (id_mfr, id_factory0, id_factory1, id_factory2,
+    id_sw_info, cfg_selected_index, save_revision). For id_factory0-2 and
+    id_sw_info in the ID-port contention path, only the now-unused stores
+    were removed; the underlying EEPROM reads were kept since they are part
+    of the contention sequence. Removing save_revision also eliminates an
+    unnecessary EEPROM read per exported adapter in SAVECONFIG.
+  - Removed unused REALHW_BACKEND/MOCKHW_BACKEND EQU markers in 3CHWIF.ASM
+    and 3CMOCKIF.ASM. MCKR_RSVD0 and the MCK_CFGF_* mock record-format
+    constants are intentionally kept as documentation of the .MCK binary
+    layout even though most are not yet consumed by code.
+  - Added TEST.MK cases t086 (OPTIMIZE-unchanged VERBOSE message), t087
+    (duplicate /TR is rejected) and t088 (mixed /TR + /XCVR duplicate is
+    rejected) covering the two bug fixes above.
+
+
 Changelog 0.6.8:
   - Fixed a LIST readout gap: the persistent full duplex setting was never
     displayed. LIST now emits a "Full Duplex = enabled|disabled" line,

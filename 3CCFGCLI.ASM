@@ -243,30 +243,22 @@ msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or
 msg_cfg_int_ok DB "INT parameter accepted. Requested IRQ: ", '$'
 msg_cfg_pnp_ok DB "PNP parameter accepted. Requested Plug and Play mode: ", '$'
 msg_cfg_modem_ok DB "MODEM parameter accepted. Requested setting: ", '$'
-msg_cfg_optimize_ok DB "OPTIMIZE parameter accepted. Requested setting: ", '$'
 msg_cfg_crlf DB 0Dh, 0Ah, '$'
 msg_cfg_adapter_prefix DB "Adapter ", '$'
 msg_cfg_adapter_suffix DB " selected.", 0Dh, 0Ah, '$'
-msg_cfg_read_irq DB 0Dh, 0Ah, "Reading current IRQ configuration...", 0Dh, 0Ah, '$'
 msg_cfg_current_irq DB "Current IRQ: ", '$'
 msg_cfg_current_word09 DB "Current EEPROM word 09h: ", '$'
 msg_cfg_current_word0d DB "Current EEPROM word 0Dh: ", '$'
 msg_cfg_current_word0f DB "Current EEPROM word 0Fh: ", '$'
-msg_cfg_prepare_irq DB 0Dh, 0Ah, "Preparing IRQ change...", 0Dh, 0Ah, '$'
 msg_cfg_new_word09 DB "New EEPROM word 09h: ", '$'
 msg_cfg_new_word0d DB "New EEPROM word 0Dh: ", '$'
 msg_cfg_new_word0f DB "New EEPROM word 0Fh: ", '$'
 msg_cfg_prepare_active DB 0Dh, 0Ah, "Preparing adapter using original ISA activation sequence...", 0Dh, 0Ah, '$'
-msg_cfg_active_prepared DB "Adapter reactivated and live IRQ staged.", 0Dh, 0Ah, '$'
 msg_cfg_irq_unchanged DB 0Dh, 0Ah, "IRQ is already configured to the requested value.", 0Dh, 0Ah
                       DB "No hardware changes required.", 0Dh, 0Ah, '$'
-msg_cfg_write_irq DB 0Dh, 0Ah, "Writing IRQ configuration to EEPROM...", 0Dh, 0Ah, '$'
 msg_cfg_irq_word_written DB "IRQ configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_update_checksum DB 0Dh, 0Ah, "Updating EEPROM checksum...", 0Dh, 0Ah, '$'
 msg_cfg_checksum_updated DB "EEPROM checksum updated.", 0Dh, 0Ah, '$'
-msg_cfg_update_live DB 0Dh, 0Ah, "Updating live IRQ configuration...", 0Dh, 0Ah, '$'
-msg_cfg_live_updated DB "Live IRQ configuration updated.", 0Dh, 0Ah, '$'
-msg_cfg_verifying DB 0Dh, 0Ah, "Verifying configuration...", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_verified DB "EEPROM IRQ verified: ", '$'
 msg_cfg_live_verified DB "Live IRQ verified: ", '$'
 msg_cfg_completed DB 0Dh, 0Ah, "IRQ configuration completed successfully.", 0Dh, 0Ah, '$'
@@ -293,13 +285,11 @@ msg_cfg_iobase_live_fail DB "Live I/O configuration access or update failed.", 0
 msg_cfg_iobase_verify_fail DB "I/O base configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_activate_fail DB "Adapter did not become reachable at the requested I/O base.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_ok DB "IOBASE parameter accepted. Requested I/O base: ", '$'
-msg_cfg_read_iobase DB 0Dh, 0Ah, "Reading current I/O configuration...", 0Dh, 0Ah, '$'
 msg_cfg_current_iobase DB "Current persistent I/O base: ", '$'
 msg_cfg_current_live_iobase DB "Current live I/O base: ", '$'
 msg_cfg_current_word08 DB "Current EEPROM word 08h: ", '$'
 msg_cfg_current_live06 DB "Current live Address Configuration: ", '$'
 msg_cfg_current_live08 DB "Current live Resource Configuration: ", '$'
-msg_cfg_prepare_iobase DB 0Dh, 0Ah, "Preparing I/O base change...", 0Dh, 0Ah, '$'
 msg_cfg_new_word08 DB "New EEPROM word 08h: ", '$'
 msg_cfg_new_live06 DB "New live Address Configuration: ", '$'
 msg_cfg_new_live08 DB "New live Resource Configuration: ", '$'
@@ -307,13 +297,8 @@ msg_cfg_iobase_unchanged DB 0Dh, 0Ah, "I/O base is already configured to the req
                          DB "No I/O base hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_deactivate_iobase DB 0Dh, 0Ah, "Deactivating selected adapter at old I/O base...", 0Dh, 0Ah, '$'
 msg_cfg_reactivate_iobase DB "Reactivating adapter at requested I/O base...", 0Dh, 0Ah, '$'
-msg_cfg_iobase_reactivated DB "Adapter reactivated and live I/O configuration staged.", 0Dh, 0Ah, '$'
 msg_cfg_write_iobase DB 0Dh, 0Ah, "Writing I/O configuration to EEPROM...", 0Dh, 0Ah, '$'
 msg_cfg_iobase_word_written DB "I/O configuration word written.", 0Dh, 0Ah, '$'
-msg_cfg_combined_irq_word_written DB "IRQ configuration word written in combined transaction.", 0Dh, 0Ah, '$'
-msg_cfg_update_live_iobase DB 0Dh, 0Ah, "Updating live I/O configuration...", 0Dh, 0Ah, '$'
-msg_cfg_live_iobase_updated DB "Live I/O configuration updated.", 0Dh, 0Ah, '$'
-msg_cfg_verifying_iobase DB 0Dh, 0Ah, "Verifying I/O configuration...", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_iobase_verified DB "EEPROM I/O base verified: ", '$'
 msg_cfg_live_iobase_verified DB "Live I/O base verified: ", '$'
 msg_cfg_iobase_completed DB 0Dh, 0Ah, "I/O base configuration completed successfully.", 0Dh, 0Ah, '$'
@@ -336,12 +321,10 @@ msg_cfg_modem_verify_fail DB "Modem speed configuration verification failed.", 0
 msg_cfg_modem_completed DB 0Dh, 0Ah, "Modem speed configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_unchanged DB 0Dh, 0Ah, "Optimize mode is already configured to the requested value.", 0Dh, 0Ah
                       DB "No hardware changes required.", 0Dh, 0Ah, '$'
-msg_cfg_optimize_word_written DB "Optimize mode configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_eeprom_read_fail DB "EEPROM read timed out while reading optimize configuration.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_eeprom_write_fail DB "EEPROM write timed out while writing optimize configuration.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_verified DB "EEPROM optimize mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_verify_fail DB "Optimize mode configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_optimize_completed DB 0Dh, 0Ah, "Optimize mode configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_not_capable DB "This adapter does not support Plug and Play configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bad_fullduplex DB "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_fullduplex_ok DB "FULLDUPLEX parameter accepted. Requested mode: ", '$'
@@ -388,12 +371,9 @@ msg_cfg_tr_not_capable DB "This adapter does not support the requested transceiv
 msg_cfg_tr_ok DB "TR parameter accepted. Requested transceiver: ", '$'
 msg_cfg_tr_unchanged DB 0Dh, 0Ah, "Transceiver type is already configured to the requested value.", 0Dh, 0Ah
                DB "No hardware changes required.", 0Dh, 0Ah, '$'
-msg_cfg_tr_word_written DB "Transceiver configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_tr_eeprom_read_fail DB "EEPROM read timed out while reading transceiver configuration.", 0Dh, 0Ah, '$'
 msg_cfg_tr_eeprom_write_fail DB "EEPROM write timed out while writing transceiver configuration.", 0Dh, 0Ah, '$'
-msg_cfg_tr_verified DB "EEPROM transceiver type verified.", 0Dh, 0Ah, '$'
 msg_cfg_tr_verify_fail DB "Transceiver configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_tr_completed DB 0Dh, 0Ah, "Transceiver configuration completed successfully.", 0Dh, 0Ah, '$'
 
 ; Symbolic transceiver names used for /TR echo output.
 msg_tr_tp   DB "TP", '$'
@@ -419,9 +399,6 @@ msg_list_hdr    DB  "NIC                            NIC", 0Dh, 0Ah
 ; Original generic NIC description resources.
 ; Only the ISA 3C509 family selector is reachable in this reduced build.
 msg_a02c        DB  "EtherLink III 16-bit ISA NIC", '$'
-msg_a02d        DB  "EtherLink III 32-bit EISA NIC", '$'
-msg_a02e        DB  "EtherLink III 32-bit MCA NIC", '$'
-msg_a0ac        DB  "3Com 3C508 16-bit ISA NIC", '$'
 
 msg_3com_prefix DB  "3Com ", '$'
 msg_3c509       DB  "3C509", '$'
@@ -478,17 +455,12 @@ nic_table       DB  (MAX_CARDS * NIC_RECORD_SIZE) DUP(0)
 ; Discovery state.
 id_short_mode   DB  1
 id_next_tag     DB  1
-id_mfr          DW  0
 id_product      DW  0
-id_factory0     DW  0
-id_factory1     DW  0
-id_factory2     DW  0
 id_oem0         DW  0
 id_oem1         DW  0
 id_oem2         DW  0
 id_addr_cfg     DW  0
 id_resource_cfg DW  0
-id_sw_info      DW  0
 
 ; Temporary live EEPROM values used only by the LIST output.
 ; These are deliberately separate from nic_table so the known good 16 byte
@@ -516,7 +488,6 @@ cfg_seen_flags        DW 0
 cfg_property_count    DB 0
 cfg_last_error        DB CFG_ERR_NONE
 cfg_timeout_latched   DB 0
-cfg_selected_index    DW 0FFFFh
 cfg_selected_ptr      DW 0
 cfg_options_ptr       DW 0
 
@@ -629,7 +600,6 @@ save_word09     DW  0
 save_word0d     DW  0
 save_word0f     DW  0
 save_word13     DW  0
-save_revision   DW  0
 save_configure_suffix DB ' CONFIGURE', 0
 save_adapternum DB  ' /ADAPTERNUM:', 0
 save_int        DB  ' /INT:', 0
@@ -995,9 +965,6 @@ PROC Cmd_SaveConfig NEAR
     mov     al, EEPROM_CONFIG_CONTROL
     call    EEPROM_Read
     mov     [save_word13], ax
-    mov     al, EEPROM_REVISION_INFO
-    call    EEPROM_Read
-    mov     [save_revision], ax
 
     mov     ax, [current_card]
     inc     ax
@@ -1386,7 +1353,6 @@ PROC Cmd_Configure NEAR
     mov     [cfg_property_count], 0
     mov     [cfg_last_error], CFG_ERR_NONE
     mov     [cfg_timeout_latched], 0
-    mov     [cfg_selected_index], 0FFFFh
     mov     [cfg_selected_ptr], 0
     mov     [cfg_options_ptr], si
 
@@ -1617,8 +1583,15 @@ PROC Cfg_Parse_Options NEAR
     jmp     @@CountProperty
 @@CheckSeenOptimize:
     cmp     al, CFG_OPT_OPTIMIZE
-    jne     @@CountProperty
+    jne     @@CheckSeenTR
     mov     ax, CFG_SEEN_OPTIMIZE
+    call    Cfg_Mark_Seen
+    jc      @@DuplicateProperty
+    jmp     @@CountProperty
+@@CheckSeenTR:
+    cmp     al, CFG_OPT_TR
+    jne     @@CountProperty
+    mov     ax, CFG_SEEN_TR
     call    Cfg_Mark_Seen
     jc      @@DuplicateProperty
 @@CountProperty:
@@ -1832,7 +1805,7 @@ ENDP Cfg_Parse_Adapter_Number
 
 ; Resolve the selector against the exact nic_table order produced by LIST.
 ; Original behavior: one NIC defaults to adapter 1, multiple NICs require an
-; explicit selector.  cfg_selected_index is zero based, matching sub_535.
+; explicit selector.
 PROC Cfg_Resolve_Adapter NEAR
     push    ax
     push    bx
@@ -1856,7 +1829,6 @@ PROC Cfg_Resolve_Adapter NEAR
     ja      @@Bad
 
     dec     ax
-    mov     [cfg_selected_index], ax
     mov     bx, NIC_RECORD_SIZE
     mul     bx
     add     ax, OFFSET nic_table
@@ -3465,15 +3437,12 @@ PROC Read_Id_Contender_Data NEAR
 
     mov     al, EEPROM_NODE_0
     call    IdPort_Read_Word
-    mov     [id_factory0], ax
 
     mov     al, EEPROM_NODE_1
     call    IdPort_Read_Word
-    mov     [id_factory1], ax
 
     mov     al, EEPROM_NODE_2
     call    IdPort_Read_Word
-    mov     [id_factory2], ax
 
     mov     al, EEPROM_ADDR_CFG
     call    IdPort_Read_Word
@@ -3498,7 +3467,6 @@ PROC Read_Id_Contender_Data NEAR
 
     mov     al, EEPROM_SOFTWARE_INFO
     call    IdPort_Read_Word
-    mov     [id_sw_info], ax
 
     pop     ax
     ret
@@ -3695,7 +3663,6 @@ PROC Discover_Id_Port_Cards NEAR
     ; The original presence test is manufacturer word 7, not node word 0.
     mov     al, EEPROM_MFG_ID
     call    IdPort_Read_Word
-    mov     [id_mfr], ax
     cmp     ax, 06D50h
     je      @@ManufacturerGood
 
@@ -3793,12 +3760,6 @@ PROC Get_Current_Window NEAR
     ret
 ENDP Get_Current_Window
 
-; Input DX = base.  Carry clear when command busy has cleared.
-PROC Wait_Command_Ready NEAR
-    call    Nic_Wait_Command_Ready
-    ret
-ENDP Wait_Command_Ready
-
 ; Verify a live 3C509 register image.
 ; Input DX = candidate base.
 ; Output CF clear on success, AX = normalized product ID, BL = ASIC revision.
@@ -3846,19 +3807,6 @@ PROC Build_Record_From_Active NEAR
     mov     al, EEPROM_RESOURCE_CFG
     call    EEPROM_Read
     mov     [id_resource_cfg], ax
-
-    mov     dx, si
-    mov     al, EEPROM_NODE_0
-    call    EEPROM_Read
-    mov     [id_factory0], ax
-    mov     dx, si
-    mov     al, EEPROM_NODE_1
-    call    EEPROM_Read
-    mov     [id_factory1], ax
-    mov     dx, si
-    mov     al, EEPROM_NODE_2
-    call    EEPROM_Read
-    mov     [id_factory2], ax
 
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_0
@@ -4104,35 +4052,6 @@ PROC Cfg_Wait_Expired NEAR
     ret
 ENDP Cfg_Wait_Expired
 
-; Original sub_310 waits for command IDs 5, 8 and 0Bh by polling status bit
-; 1000h until clear or until elapsed time is greater than one second.
-; Input DX = adapter base.  Output carry set on timeout.
-PROC Cfg_Wait_Command_Ready NEAR
-    push    ax
-    push    bx
-
-    call    Cfg_Start_Wait_Timer
-@@Loop:
-    mov     bx, EL3_STATUS
-    call    Cfg_Reg_Read_Word
-    test    ax, STATUS_CMD_BUSY
-    jz      @@Ready
-    call    Cfg_Wait_Expired
-    jnc     @@Loop
-
-    mov     [cfg_timeout_latched], 1
-    mov     [cfg_last_error], CFG_ERR_COMMAND_TIMEOUT
-    pop     bx
-    pop     ax
-    stc
-    ret
-@@Ready:
-    pop     bx
-    pop     ax
-    clc
-    ret
-ENDP Cfg_Wait_Command_Ready
-
 ; Test the exact product family used by the original ISA CONFIGURE helpers.
 ; Input AX = product ID.  Carry clear means F0FFh masked value is 9050h.
 PROC Cfg_Is_Supported_Product NEAR
@@ -4149,116 +4068,6 @@ PROC Cfg_Is_Supported_Product NEAR
     ret
 ENDP Cfg_Is_Supported_Product
 
-; Original sub_313 hardware test.  Input AX = exact product ID, BL = ASIC
-; revision.  Carry clear means original early 3C509 behavior, revision below 2
-; and product family 9050h.  No 3C508 classification is present.
-PROC Cfg_Is_Original_3C509 NEAR
-    push    ax
-    call    Cfg_Is_Supported_Product
-    jc      @@No
-    cmp     bl, 2
-    jae     @@No
-    pop     ax
-    clc
-    ret
-@@No:
-    pop     ax
-    stc
-    ret
-ENDP Cfg_Is_Original_3C509
-
-; Later 3C509B class for future restrictions.  Input AX product, BL revision.
-PROC Cfg_Is_Later_3C509B NEAR
-    push    ax
-    call    Cfg_Is_Supported_Product
-    jc      @@No
-    cmp     bl, 2
-    jb      @@No
-    pop     ax
-    clc
-    ret
-@@No:
-    pop     ax
-    stc
-    ret
-ENDP Cfg_Is_Later_3C509B
-
-; Read live product and ASIC revision while restoring the caller's window.
-; This maps the useful part of original sub_313 to the existing verified
-; Check_3Com_Signature routine.  Input DX = adapter base.
-; Output AX = product ID, BL = ASIC revision, carry clear on success.
-PROC Cfg_Read_Product_Revision NEAR
-    call    Check_3Com_Signature
-    ret
-ENDP Cfg_Read_Product_Revision
-
-; Original sub_310 command issue helper.  Input DX = base, AX = command ID,
-; BX = argument.  Command zero uses the original early 3C509 byte write to
-; offset 0Fh.  Other commands encode command ID in bits 15 to 11.
-PROC Cfg_Issue_Command NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    dx
-    push    si
-    push    di
-
-    mov     si, ax                 ; SI = command ID.
-    mov     di, bx                 ; DI = argument.
-    or      si, si
-    jnz     @@Normal
-
-    ; The original sub_310 operates on the already selected global base.
-    ; Here DX is that explicit base, so no record lookup is required.
-    or      dx, dx
-    jz      @@Normal
-    call    Cfg_Read_Product_Revision
-    jc      @@Normal
-    call    Cfg_Is_Original_3C509
-    jc      @@Normal
-
-    xor     al, al
-    mov     bx, 0Fh
-    call    Cfg_Reg_Write_Byte
-    jmp     @@MaybeWait
-
-@@Normal:
-    mov     ax, si
-    mov     cl, 11
-    shl     ax, cl
-    or      ax, di
-    mov     bx, EL3_COMMAND
-    call    Cfg_Reg_Write_Word
-
-@@MaybeWait:
-    cmp     si, 5
-    je      @@Wait
-    cmp     si, 8
-    je      @@Wait
-    cmp     si, 0Bh
-    jne     @@Done
-@@Wait:
-    call    Cfg_Wait_Command_Ready
-    jc      @@Timeout
-@@Done:
-    pop     di
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    pop     ax
-    clc
-    ret
-@@Timeout:
-    pop     di
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    pop     ax
-    stc
-    ret
-ENDP Cfg_Issue_Command
 
 ; EEPROM busy wait shared by original sub_314 and sub_315.
 ; Input DX = adapter base.  Carry set on timeout.
@@ -4416,48 +4225,6 @@ PROC Cfg_Checksum_Xor_Word NEAR
     xor     bl, ah
     ret
 ENDP Cfg_Checksum_Xor_Word
-
-; Original sub_316, destination EEPROM word 0Fh high byte.
-; Domain: words 00h through 0Eh, excluding 08h, 09h and 0Dh.
-; Input DX = base.  Output AL = checksum, carry set on EEPROM timeout.
-PROC Cfg_Checksum_0F_High NEAR
-    push    bx
-    push    cx
-    push    dx
-    push    si
-
-    xor     bx, bx
-    xor     si, si
-@@Loop:
-    cmp     si, 8
-    je      @@Next
-    cmp     si, 9
-    je      @@Next
-    cmp     si, 0Dh
-    je      @@Next
-    mov     ax, si
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
-    call    Cfg_Checksum_Xor_Word
-@@Next:
-    inc     si
-    cmp     si, 0Eh
-    jbe     @@Loop
-    mov     al, bl
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    clc
-    ret
-@@Fail:
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    stc
-    ret
-ENDP Cfg_Checksum_0F_High
 
 ; Original sub_317, destination EEPROM word 0Fh low byte.
 ; Domain: words 08h through 0Dh, excluding 0Ah through 0Ch.
@@ -6756,9 +6523,9 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
 @@CheckMODEMUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@CheckFDUnchanged
+    jz      @@CheckOPTIMIZEUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-    jnz     @@CheckFDUnchanged
+    jnz     @@CheckOPTIMIZEUnchanged
     mov     dx, OFFSET msg_cfg_modem_unchanged
     mov     ah, 09h
     int     21h
@@ -6848,85 +6615,6 @@ PROC Cfg_Txn_Execute NEAR
     pop     ax
     ret
 ENDP Cfg_Txn_Execute
-
-; Original sub_318, destination EEPROM word 17h high byte.
-; Domains: words 10h through 12h and words 18h through 3Fh.
-PROC Cfg_Checksum_17_High NEAR
-    push    bx
-    push    cx
-    push    dx
-    push    si
-
-    xor     bx, bx
-    mov     si, 10h
-@@First:
-    mov     ax, si
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
-    call    Cfg_Checksum_Xor_Word
-    inc     si
-    cmp     si, 12h
-    jbe     @@First
-
-    mov     si, 18h
-@@Second:
-    mov     ax, si
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
-    call    Cfg_Checksum_Xor_Word
-    inc     si
-    cmp     si, 3Fh
-    jbe     @@Second
-
-    mov     al, bl
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    clc
-    ret
-@@Fail:
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    stc
-    ret
-ENDP Cfg_Checksum_17_High
-
-; Original sub_319, destination EEPROM word 17h low byte.
-; Domain: words 13h through 16h.
-PROC Cfg_Checksum_17_Low NEAR
-    push    bx
-    push    cx
-    push    dx
-    push    si
-
-    xor     bx, bx
-    mov     si, 13h
-@@Loop:
-    mov     ax, si
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
-    call    Cfg_Checksum_Xor_Word
-    inc     si
-    cmp     si, 16h
-    jbe     @@Loop
-    mov     al, bl
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    clc
-    ret
-@@Fail:
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    stc
-    ret
-ENDP Cfg_Checksum_17_Low
 
 ; Revalidate the logical record selected from nic_table against live hardware.
 ; Active records use the existing proven register signature path and then the
@@ -7155,26 +6843,11 @@ ENDP Cfg_Id_Activate_Selected
 
 ; Select the original generic NIC description resource by product family.
 ; Input AX = product ID.  Output DX = DOS string address.
-; The current executable accepts only the 9050h family.  The 8050h branch is
-; retained so the original ISA resource mapping is explicit, but it is not
-; reachable without adding a real 3C508 detector.  EISA and MCA strings have
-; no executable selection branch.
+; The current executable accepts only the 9050h family; EISA, MCA and 3C508
+; resources have been removed, since none of them have a reachable selection
+; branch (see CHANGES for details).
 PROC Select_Nic_Description NEAR
-    push    ax
-    and     ax, 0F0FFh
-    cmp     ax, 08050h
-    je      @@Isa508
-    cmp     ax, 09050h
-    je      @@Isa509
     mov     dx, OFFSET msg_a02c
-    jmp     @@Done
-@@Isa508:
-    mov     dx, OFFSET msg_a0ac
-    jmp     @@Done
-@@Isa509:
-    mov     dx, OFFSET msg_a02c
-@@Done:
-    pop     ax
     ret
 ENDP Select_Nic_Description
 

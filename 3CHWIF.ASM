@@ -3,8 +3,6 @@
 ; Real hardware backend primitives for 3CCFGCLI.
 ; ---------------------------------------------------------------------------
 
-REALHW_BACKEND EQU 1
-
 PROC Nic_IdPort_Write_Command NEAR
     push    dx
     mov     dx, ID_PORT
@@ -208,19 +206,6 @@ PROC Nic_Reg_Write_Word NEAR
     ret
 ENDP Nic_Reg_Write_Word
 
-PROC Cfg_Reg_Write_Byte NEAR
-    push    dx
-    add     dx, bx
-    out     dx, al
-    pop     dx
-    ret
-ENDP Cfg_Reg_Write_Byte
-
-PROC Nic_Reg_Write_Byte NEAR
-    call    Cfg_Reg_Write_Byte
-    ret
-ENDP Nic_Reg_Write_Byte
-
 PROC Nic_EEPROM_Read NEAR
     push    bx
     push    cx
@@ -257,11 +242,6 @@ PROC Nic_EEPROM_Read NEAR
     pop     bx
     ret
 ENDP Nic_EEPROM_Read
-
-PROC Nic_EEPROM_Wait_Ready NEAR
-    call    Cfg_Eeprom_Wait_Ready
-    ret
-ENDP Nic_EEPROM_Wait_Ready
 
 PROC Nic_Check_3Com_Signature NEAR
     push    cx
@@ -412,27 +392,3 @@ PROC Nic_Activate_Tagged_Cards NEAR
     ret
 ENDP Nic_Activate_Tagged_Cards
 
-PROC Nic_Scan_Active_Base_Ports NEAR
-    call    Scan_Active_Base_Ports
-    ret
-ENDP Nic_Scan_Active_Base_Ports
-
-PROC Nic_Read_Id_Contender_Data NEAR
-    call    Read_Id_Contender_Data
-    ret
-ENDP Nic_Read_Id_Contender_Data
-
-PROC Nic_Find_Duplicate_Id_Record NEAR
-    call    Find_Duplicate_Id_Record
-    ret
-ENDP Nic_Find_Duplicate_Id_Record
-
-PROC Nic_Read_EepromWord NEAR
-    call    Nic_EEPROM_Read
-    ret
-ENDP Nic_Read_EepromWord
-
-PROC Nic_Write_EepromWord NEAR
-    call    Cfg_Eeprom_Write
-    ret
-ENDP Nic_Write_EepromWord

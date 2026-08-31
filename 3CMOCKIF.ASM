@@ -21,7 +21,6 @@
 ;     equivalence for that case.
 ; ---------------------------------------------------------------------------
 
-MOCKHW_BACKEND EQU 1
 MOCK_STATE_SIZE EQU 256
 
 DATASEG
@@ -734,22 +733,6 @@ PROC Nic_Reg_Write_Word NEAR
     ret
 ENDP Nic_Reg_Write_Word
 
-PROC Cfg_Reg_Write_Byte NEAR
-    push    bx
-
-    call    Mock_Ensure_Record_By_Base
-    jc      @@Done
-    mov     [byte mock_state + bx], al
-    mov     [byte mock_state_dirty], 1
-@@Done:
-    pop     bx
-    ret
-ENDP Cfg_Reg_Write_Byte
-
-PROC Nic_Reg_Write_Byte NEAR
-    call    Cfg_Reg_Write_Byte
-    ret
-ENDP Nic_Reg_Write_Byte
 
 PROC Nic_EEPROM_Read NEAR
     push    bx
@@ -769,10 +752,6 @@ PROC Nic_EEPROM_Read NEAR
     ret
 ENDP Nic_EEPROM_Read
 
-PROC Nic_EEPROM_Wait_Ready NEAR
-    clc
-    ret
-ENDP Nic_EEPROM_Wait_Ready
 
 PROC Nic_Activate_Tagged_Cards NEAR
     push    ax
@@ -808,9 +787,6 @@ PROC Nic_Activate_Tagged_Cards NEAR
     ret
 ENDP Nic_Activate_Tagged_Cards
 
-PROC Nic_Scan_Active_Base_Ports NEAR
-    ret
-ENDP Nic_Scan_Active_Base_Ports
 
 PROC Nic_Check_3Com_Signature NEAR
     push    cx
@@ -1093,21 +1069,3 @@ PROC Nic_IdPort_Read_Word NEAR
     ret
 ENDP Nic_IdPort_Read_Word
 
-PROC Nic_Read_Id_Contender_Data NEAR
-    ret
-ENDP Nic_Read_Id_Contender_Data
-
-PROC Nic_Find_Duplicate_Id_Record NEAR
-    call    Find_Duplicate_Id_Record
-    ret
-ENDP Nic_Find_Duplicate_Id_Record
-
-PROC Nic_Read_EepromWord NEAR
-    call    Nic_EEPROM_Read
-    ret
-ENDP Nic_Read_EepromWord
-
-PROC Nic_Write_EepromWord NEAR
-    call    Nic_Reg_Write_Word
-    ret
-ENDP Nic_Write_EepromWord

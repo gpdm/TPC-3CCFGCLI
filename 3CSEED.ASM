@@ -87,7 +87,6 @@ seed_media   DB 0
 factory_mac  DB 6 DUP (0)
 oem_mac      DB 6 DUP (0)
 
-chk_high     DB 0
 rand_seed    DW 0A5A5h
 
 product_table DW PRODUCT_3C509
@@ -1378,24 +1377,6 @@ PROC Build_Checksum NEAR
     push    si
 
     xor     bx, bx
-    xor     si, si
-@@HighLoop:
-    cmp     si, 8
-    je      @@HighNext
-    cmp     si, 9
-    je      @@HighNext
-    cmp     si, 0Dh
-    je      @@HighNext
-    call    EEPROM_Read_SI
-    xor     bl, al
-    xor     bl, ah
-@@HighNext:
-    inc     si
-    cmp     si, 0Eh
-    jbe     @@HighLoop
-    mov     [chk_high], bl
-
-    xor     bx, bx
     mov     si, 8
 @@LowLoop:
     cmp     si, 0Ah
@@ -1437,21 +1418,6 @@ PROC EEPROM_Write_SI NEAR
     pop     bx
     ret
 ENDP EEPROM_Write_SI
-
-PROC EEPROM_Read NEAR
-    ; Input AL = EEPROM word index, output AX = value.
-    push    bx
-    push    di
-    mov     di, [state_record_offset]
-    xor     bh, bh
-    mov     bl, al
-    and     bl, 03Fh
-    shl     bx, 1
-    mov     ax, [WORD state_blob + di + MCKR_EEPROM + bx]
-    pop     di
-    pop     bx
-    ret
-ENDP EEPROM_Read
 
 PROC EEPROM_Read_SI NEAR
     ; Input SI = EEPROM word index, output AX = value.
