@@ -38,9 +38,19 @@
   first place, which tells us, that also the EEPROM writes should technically be correct,
   because the registers are the same for either operation.
 
+  This is actually implemented already since 0.6.5, but I saw another issue here:
+
+  The original implementation, which largely was pushed forward from the mock interface
+  shows some limitations.
+  I thought I could get away with a simple map of the EEPROM and register values,
+  but found that I need to really mimic the exact EEPROM and registers, like the real thing.
+
+  Hence I'll refactor that first, bevore continuing with the HWC part.
+
+
 
 - Bugs:
-
+  ----
   Boot ROM Activation:
 
   Boot ROM (/BADDRESS & /BSIZE) seem to probe if a ROM is actually socketed.
@@ -48,9 +58,26 @@
 
   Need to figure out, how this works exactly.
 
-
-
+  ----
   Optimization verb:
 
   Apparently, the readout is not correct. We're always getting "DOS" optimization,
   even if a different value was set using 3C5X9CFG utility.
+
+
+  ----
+  SAVECONFIG verb
+
+  While the implementation for SAVECONFIG is semantically correct and prints the intended
+  command line for either `3C5X9CFG` or `3CCFGCLI`to the given "restore" batch file,
+  it will result in a DOS runtime error.
+
+  Reason is that the command line exceeds the maximum length command buffer of 256 bytes,
+  because all the cumulated argument names are simply longer than the command buffer.
+
+  The main problem is this: Especially when invoking the original 3C5X9CFG binary, the command line
+  arguments must use the exact same verbs as the original implementation. No shortcuts,
+  no shorthand aliases.
+  This means, the existing function must be adapted to split the command line into two
+  chunks of not more than 256 bytes (actually, preferrably around 128 byes +/- 20 bytes).
+
