@@ -199,7 +199,7 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    Configure ISA adapter properties. Options:", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    /ADAPTERNUM:N                  Select adapter N (from LIST).", 0Dh, 0Ah
                 DB  "    /INT:N                         Set IRQ (3,5,7,9,10,11,12,15).", 0Dh, 0Ah
-                DB  "    /IOBASE:NNN                    Set ISA I/O base address (hex).", 0Dh, 0Ah
+                DB  "    /IOBASE:NNN                    Set ISA IOBASE address (hex).", 0Dh, 0Ah
                 DB  "    /PNP:ENABLED|DISABLED          Plug and Play mode.", 0Dh, 0Ah
                 DB  "    /FULLDUPLEX:ENABLED|DISABLED   Full duplex mode.", 0Dh, 0Ah
                 DB  "    /TR:TP|AUI|COAX|AUTO           Transceiver type.", 0Dh, 0Ah
@@ -218,7 +218,7 @@ msg_save_missing DB "SAVECONFIG requires an output filename.", 0Dh, 0Ah, '$'
 msg_save_bad_name DB "Invalid SAVECONFIG output filename.", 0Dh, 0Ah, '$'
 msg_save_bad_option DB "Invalid SAVECONFIG option.", 0Dh, 0Ah, '$'
 msg_save_bad_execfile DB "Invalid SAVECONFIG /EXECFILE value.", 0Dh, 0Ah, '$'
-msg_save_no_active DB "SAVECONFIG found no adapters with an active I/O base.", 0Dh, 0Ah, '$'
+msg_save_no_active DB "SAVECONFIG found no adapters with an active IOBASE.", 0Dh, 0Ah, '$'
 msg_save_read_fail DB "Unable to read adapter EEPROM for SAVECONFIG.", 0Dh, 0Ah, '$'
 msg_save_write_fail DB "Unable to write SAVECONFIG output file.", 0Dh, 0Ah, '$'
 msg_save_ok DB "Configuration restore batch file created: ", '$'
@@ -267,42 +267,42 @@ msg_cfg_eeprom_write_fail DB "EEPROM write timed out while writing IRQ configura
 msg_cfg_checksum_fail DB "EEPROM checksum update failed.", 0Dh, 0Ah, '$'
 msg_cfg_live_fail DB "Live IRQ configuration update failed.", 0Dh, 0Ah, '$'
 msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_int_inactive DB "Selected adapter has no active I/O base for /INT configuration.", 0Dh, 0Ah, '$'
-msg_cfg_pnp_inactive DB "Selected adapter has no active I/O base for /PNP configuration.", 0Dh, 0Ah, '$'
-msg_cfg_modem_inactive DB "Selected adapter has no active I/O base for /MODEM configuration.", 0Dh, 0Ah, '$'
-msg_cfg_optimize_inactive DB "Selected adapter has no active I/O base for /OPTIMIZE configuration.", 0Dh, 0Ah, '$'
-msg_cfg_fd_inactive DB "Selected adapter has no active I/O base for /FULLDUPLEX configuration.", 0Dh, 0Ah, '$'
+msg_cfg_int_inactive DB "Selected adapter has no active IOBASE for /INT configuration.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_inactive DB "Selected adapter has no active IOBASE for /PNP configuration.", 0Dh, 0Ah, '$'
+msg_cfg_modem_inactive DB "Selected adapter has no active IOBASE for /MODEM configuration.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_inactive DB "Selected adapter has no active IOBASE for /OPTIMIZE configuration.", 0Dh, 0Ah, '$'
+msg_cfg_fd_inactive DB "Selected adapter has no active IOBASE for /FULLDUPLEX configuration.", 0Dh, 0Ah, '$'
 
 ; /IOBASE diagnostics.
 msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_inactive DB "Selected adapter has no active I/O base for /IOBASE configuration.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_conflict DB "Requested I/O base is already used by another discovered adapter.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_deactivate_fail DB "Selected adapter deactivation failed before I/O base migration.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_reactivate_fail DB "Adapter reactivation at the requested I/O base failed.", 0Dh, 0Ah, '$'
+msg_cfg_iobase_inactive DB "Selected adapter has no active IOBASE for /IOBASE configuration.", 0Dh, 0Ah, '$'
+msg_cfg_iobase_conflict DB "Requested IOBASE is already used by another discovered adapter.", 0Dh, 0Ah, '$'
+msg_cfg_iobase_deactivate_fail DB "Selected adapter deactivation failed before IOBASE migration.", 0Dh, 0Ah, '$'
+msg_cfg_iobase_reactivate_fail DB "Adapter reactivation at the requested IOBASE failed.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_eeprom_read_fail DB "EEPROM read timed out while reading I/O configuration.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_eeprom_write_fail DB "EEPROM write timed out while writing I/O configuration.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_live_fail DB "Live I/O configuration access or update failed.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_verify_fail DB "I/O base configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_activate_fail DB "Adapter did not become reachable at the requested I/O base.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_ok DB "IOBASE parameter accepted. Requested I/O base: ", '$'
-msg_cfg_current_iobase DB "Current persistent I/O base: ", '$'
-msg_cfg_current_live_iobase DB "Current live I/O base: ", '$'
+msg_cfg_iobase_verify_fail DB "IOBASE configuration verification failed.", 0Dh, 0Ah, '$'
+msg_cfg_iobase_activate_fail DB "Adapter did not become reachable at the requested IOBASE.", 0Dh, 0Ah, '$'
+msg_cfg_iobase_ok DB "IOBASE parameter accepted. Requested IOBASE: ", '$'
+msg_cfg_current_iobase DB "Current persistent IOBASE: ", '$'
+msg_cfg_current_live_iobase DB "Current live IOBASE: ", '$'
 msg_cfg_current_word08 DB "Current EEPROM word 08h: ", '$'
 msg_cfg_current_live06 DB "Current live Address Configuration: ", '$'
 msg_cfg_current_live08 DB "Current live Resource Configuration: ", '$'
 msg_cfg_new_word08 DB "New EEPROM word 08h: ", '$'
 msg_cfg_new_live06 DB "New live Address Configuration: ", '$'
 msg_cfg_new_live08 DB "New live Resource Configuration: ", '$'
-msg_cfg_iobase_unchanged DB 0Dh, 0Ah, "I/O base is already configured to the requested value.", 0Dh, 0Ah
-                         DB "No I/O base hardware changes required.", 0Dh, 0Ah, '$'
-msg_cfg_deactivate_iobase DB 0Dh, 0Ah, "Deactivating selected adapter at old I/O base...", 0Dh, 0Ah, '$'
-msg_cfg_reactivate_iobase DB "Reactivating adapter at requested I/O base...", 0Dh, 0Ah, '$'
+msg_cfg_iobase_unchanged DB 0Dh, 0Ah, "IOBASE is already configured to the requested value.", 0Dh, 0Ah
+                         DB "No IOBASE hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_deactivate_iobase DB 0Dh, 0Ah, "Deactivating selected adapter at old IOBASE...", 0Dh, 0Ah, '$'
+msg_cfg_reactivate_iobase DB "Reactivating adapter at requested IOBASE...", 0Dh, 0Ah, '$'
 msg_cfg_write_iobase DB 0Dh, 0Ah, "Writing I/O configuration to EEPROM...", 0Dh, 0Ah, '$'
 msg_cfg_iobase_word_written DB "I/O configuration word written.", 0Dh, 0Ah, '$'
-msg_cfg_eeprom_iobase_verified DB "EEPROM I/O base verified: ", '$'
-msg_cfg_live_iobase_verified DB "Live I/O base verified: ", '$'
-msg_cfg_iobase_completed DB 0Dh, 0Ah, "I/O base configuration completed successfully.", 0Dh, 0Ah, '$'
-msg_cfg_combined_completed DB 0Dh, 0Ah, "I/O base and IRQ configuration completed successfully.", 0Dh, 0Ah, '$'
+msg_cfg_eeprom_iobase_verified DB "EEPROM IOBASE verified: ", '$'
+msg_cfg_live_iobase_verified DB "Live IOBASE verified: ", '$'
+msg_cfg_iobase_completed DB 0Dh, 0Ah, "IOBASE configuration completed successfully.", 0Dh, 0Ah, '$'
+msg_cfg_combined_completed DB 0Dh, 0Ah, "IOBASE and IRQ configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_unchanged DB 0Dh, 0Ah, "Plug and Play mode is already configured to the requested value.", 0Dh, 0Ah
                       DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_word_written DB "Plug and Play configuration word written.", 0Dh, 0Ah, '$'
@@ -345,8 +345,8 @@ msg_cfg_bad_bsize DB "Invalid /BSIZE parameter. Use 8, 16, 32, or DISABLED.", 0D
 msg_cfg_bootrom_incomplete DB "/BADDRESS and /BSIZE must be specified together (or use /BSIZE:DISABLED alone to disable).", 0Dh, 0Ah, '$'
 msg_cfg_baddress_ok DB "BADDRESS parameter accepted. Requested base address: ", '$'
 msg_cfg_bsize_ok DB "BSIZE parameter accepted. Requested size: ", '$'
-msg_cfg_baddress_inactive DB "Selected adapter has no active I/O base for /BADDRESS configuration.", 0Dh, 0Ah, '$'
-msg_cfg_bsize_inactive DB "Selected adapter has no active I/O base for /BSIZE configuration.", 0Dh, 0Ah, '$'
+msg_cfg_baddress_inactive DB "Selected adapter has no active IOBASE for /BADDRESS configuration.", 0Dh, 0Ah, '$'
+msg_cfg_bsize_inactive DB "Selected adapter has no active IOBASE for /BSIZE configuration.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_unchanged DB 0Dh, 0Ah, "Boot ROM base address is already configured to the requested value.", 0Dh, 0Ah
                            DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_unchanged DB 0Dh, 0Ah, "Boot ROM size is already configured to the requested value.", 0Dh, 0Ah
@@ -366,7 +366,7 @@ msg_cfg_bsize_not_capable DB "This adapter does not support Boot ROM configurati
 ; /TR (/XCVR) diagnostics.  Transceiver selection shares EEPROM word 08h
 ; bits 15:14 (and bit 7 for AUTO) with /IOBASE, /BADDRESS, and /BSIZE.
 msg_cfg_bad_tr DB "Invalid /TR parameter. Use TP, AUI, COAX, or AUTO.", 0Dh, 0Ah, '$'
-msg_cfg_tr_inactive DB "Selected adapter has no active I/O base for /TR configuration.", 0Dh, 0Ah, '$'
+msg_cfg_tr_inactive DB "Selected adapter has no active IOBASE for /TR configuration.", 0Dh, 0Ah, '$'
 msg_cfg_tr_not_capable DB "This adapter does not support the requested transceiver type.", 0Dh, 0Ah, '$'
 msg_cfg_tr_ok DB "TR parameter accepted. Requested transceiver: ", '$'
 msg_cfg_tr_unchanged DB 0Dh, 0Ah, "Transceiver type is already configured to the requested value.", 0Dh, 0Ah
@@ -387,10 +387,10 @@ msg_cfg_txn_no_changes DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_txn_write DB 0Dh, 0Ah, "Writing changed EEPROM configuration...", 0Dh, 0Ah, '$'
 msg_cfg_txn_live DB 0Dh, 0Ah, "Synchronizing live configuration...", 0Dh, 0Ah, '$'
 msg_cfg_txn_verify DB 0Dh, 0Ah, "Verifying requested configuration...", 0Dh, 0Ah, '$'
-msg_cfg_txn_current_active_base DB "Current active I/O base: ", '$'
+msg_cfg_txn_current_active_base DB "Current active IOBASE: ", '$'
 msg_cfg_txn_current_live_irq DB "Current live IRQ: ", '$'
-msg_cfg_txn_new_base DB "Prospective active I/O base: ", '$'
-msg_cfg_txn_reachable DB "Adapter reachable at active I/O base: ", '$'
+msg_cfg_txn_new_base DB "Prospective active IOBASE: ", '$'
+msg_cfg_txn_reachable DB "Adapter reachable at active IOBASE: ", '$'
 
 msg_list_hdr    DB  "NIC                            NIC", 0Dh, 0Ah
                 DB  "Number                       Description", 0Dh, 0Ah
@@ -643,6 +643,32 @@ IFNDEF MOCKHW
     include '3CHWIF.ASM'
 ENDIF
 ENDIF
+
+; Hardware-independent ID-port EEPROM transfer.  The backend only supplies
+; one contention bit for each input cycle; assembly remains identical on a
+; physical adapter and the device model.
+PROC Nic_IdPort_Read_Word NEAR
+    push    cx
+    push    si
+
+    and     al, 3Fh
+    or      al, 80h
+    call    Nic_IdPort_Write_Command
+    call    Nic_IdPort_Eeprom_Delay
+    xor     si, si
+    mov     cx, 16
+@@BitLoop:
+    shl     si, 1
+    call    Nic_IdPort_Read_Bit
+    xor     ah, ah
+    or      si, ax
+    loop    @@BitLoop
+    mov     ax, si
+
+    pop     si
+    pop     cx
+    ret
+ENDP Nic_IdPort_Read_Word
 
 ; ----------------------------------------------------------------------------
 ; Program entry
@@ -3638,7 +3664,7 @@ PROC Discover_Id_Port_Cards NEAR
     ; ISA ID-port discovery for 3C509/3C509B.
     ; Classic 3Com contention sequence on ID_PORT (0110h): send the 255-byte
     ; or short LFSR stream, probe the EEPROM manufacturer/product words, then
-    ; tag and activate the adapter at its runtime I/O base.
+    ; tag and activate the adapter at its runtime IOBASE.
     push    ax
     push    bx
     push    dx

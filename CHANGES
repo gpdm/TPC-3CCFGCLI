@@ -1,3 +1,17 @@
+Changelog 0.7.0:
+  - Reworked the mock backend toward a register-accurate 3C509B device model.
+    MCK v3 separates persistent EEPROM from live register and activation state.
+  - Implemented EEPROM Busy polling, command/data sequencing, write enable,
+    erase-before-write behavior, zero-only programming, and reset-driven
+    automatic configuration reload.
+  - Added Window 4 masks, ASIC revision 2 readout, physical active-IOBASE
+    word-I/O dispatch, and conservative duplicate-active-IOBASE handling.
+  - Reworked ISA ID-port discovery with full LFSR recognition, serial EEPROM
+    reads, persisted ID states, tag selection, and deterministic wired-AND
+    contention for untagged adapters.
+  - Updated 3CSEED to create 3C509B-capable EEPROM images with live state and
+    checksum data suitable for the hardware model.
+
 Changelog 0.6.9:
   - Fixed a control-flow bug in the CONFIGURE VERBOSE reporting path where
     the OPTIMIZE-unchanged check (@@CheckOPTIMIZEUnchanged) was unreachable:

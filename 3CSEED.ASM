@@ -54,8 +54,8 @@ msg_ok_add   DB 'Seed file updated (ADD).', 0Dh, 0Ah, '$'
 msg_fail_io  DB 'File I/O error.', 0Dh, 0Ah, '$'
 msg_bad_arg  DB 'Invalid command argument.', 0Dh, 0Ah, '$'
 msg_add_too_many DB 'Too many mock NIC records.', 0Dh, 0Ah, '$'
-msg_no_free_iobase DB 'No free default I/O base remains.', 0Dh, 0Ah, '$'
-msg_bad_iobase DB 'Invalid I/O base argument.', 0Dh, 0Ah, '$'
+msg_no_free_iobase DB 'No free default IOBASE remains.', 0Dh, 0Ah, '$'
+msg_bad_iobase DB 'Invalid IOBASE argument.', 0Dh, 0Ah, '$'
 msg_bad_irq  DB 'Invalid IRQ argument.', 0Dh, 0Ah, '$'
 
 kw_init      DB 'INIT', 0
@@ -759,7 +759,7 @@ PROC Is_Base_In_Use NEAR
     mov     di, [state_record_offset]
     cmp     [BYTE state_blob + di + MCKR_PRESENT], 0
     je      @@Next
-    cmp     [WORD state_blob + di + MCKR_ACTIVE_BASE], bx
+    cmp     [WORD state_blob + di + MCK3R_ACTIVE_BASE], bx
     je      @@Used
 @@Next:
     inc     al
@@ -1112,7 +1112,6 @@ PROC Seed_NoPNP NEAR
     mov     si, EEPROM_REVISION_INFO
     mov     ax, 0000h
     call    EEPROM_Write_SI
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_CFG_PNP], 0
     call    Build_Checksum
     call    Write_State_File
     ret
@@ -1161,7 +1160,7 @@ PROC Seed_LinkUp NEAR
     ; seed exists for test clarity and as the counterpart to LINKDOWN.
     call    Seed_Init
     jc      @@Fail
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W4_MEDIA_STATUS], 0800h
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W4_MEDIA_INPUT], 2800h
     call    Write_State_File
     ret
 @@Fail:
@@ -1174,7 +1173,7 @@ PROC Seed_LinkDown NEAR
     ; mirror cleared, so LIST reports "not connected".
     call    Seed_Init
     jc      @@Fail
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCKR_LIVE_W4_MEDIA_STATUS], 0000h
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W4_MEDIA_INPUT], 2000h
     call    Write_State_File
     ret
 @@Fail:
@@ -1192,48 +1191,17 @@ PROC Build_Record_Current NEAR
  
     mov     di, [state_record_offset]
 
-    mov     [BYTE state_blob + di + MCKR_PRESENT], 1
-    mov     [BYTE state_blob + di + MCKR_ACTIVE], 1
-    mov     al, [byte state_record_count]
-    inc     al
-    mov     [BYTE state_blob + di + MCKR_TAG], al
-    mov     [BYTE state_blob + di + MCKR_ID_MODE], 1
-    mov     [BYTE state_blob + di + MCKR_CURRENT_WINDOW], 0
-    mov     al, [seed_asic]
-    mov     [BYTE state_blob + di + MCKR_ASIC_REV], al
-    mov     al, [seed_irq]
-    mov     [BYTE state_blob + di + MCKR_IRQ], al
+    mov     [BYTE state_blob + di + MCK3R_PRESENT], 1
+    mov     [BYTE state_blob + di + MCK3R_ID_STATE], MCK_ID_WAIT
+    mov     [BYTE state_blob + di + MCK3R_TAG], 0
+    mov     [BYTE state_blob + di + MCK3R_FLAGS], MCKRF_ACTIVE
+    mov     [BYTE state_blob + di + MCK3R_CURRENT_WINDOW], 0
     mov     ax, [seed_base]
-    mov     [WORD state_blob + di + MCKR_ACTIVE_BASE], ax
-    mov     ax, [seed_product]
-    mov     [WORD state_blob + di + MCKR_PRODUCT_ID], ax
+    mov     [WORD state_blob + di + MCK3R_ACTIVE_BASE], ax
  
-    mov     ax, MCK_CFGF_ALL
-    mov     [WORD state_blob + di + MCKR_CFG_FLAGS], ax
- 
-    xor     ah, ah
-    mov     al, [seed_irq]
-    mov     [WORD state_blob + di + MCKR_CFG_INT], ax
-    mov     ax, [seed_base]
-    mov     [WORD state_blob + di + MCKR_CFG_IOBASE], ax
-    mov     [WORD state_blob + di + MCKR_CFG_PORT], ax
-    mov     [WORD state_blob + di + MCKR_CFG_BADDRESS], 0
-    mov     [WORD state_blob + di + MCKR_CFG_BSIZE], 0
- 
-    xor     ah, ah
-    mov     al, [seed_media]
-    mov     [WORD state_blob + di + MCKR_CFG_TR], ax
-    mov     [WORD state_blob + di + MCKR_CFG_XCVR], ax
-    mov     [WORD state_blob + di + MCKR_CFG_MODEM], 0
-    mov     [WORD state_blob + di + MCKR_CFG_OPTIMIZE], 0
-    mov     [WORD state_blob + di + MCKR_CFG_PNP], 1
-    mov     [WORD state_blob + di + MCKR_CFG_FULLDUPLEX], 0
- 
-    ; Live link status default: a freshly seeded card is assumed to be
-    ; connected (Media Type and Status register bit 11 set), consistent
-    ; with the "nominal by default" convention used elsewhere (e.g. PNP,
-    ; FULLDUPLEX capability).  Use SEED LINKDOWN for the negative case.
-    mov     [WORD state_blob + di + MCKR_LIVE_W4_MEDIA_STATUS], 0800h
+    ; The deterministic diagnostic input supplies the read-only reserved-one
+    ; and valid-link-beat bits.  Driver-controlled media bits start clear.
+    mov     [WORD state_blob + di + MCK3R_W4_MEDIA_INPUT], 2800h
  
     mov     si, EEPROM_MFG_ID
     mov     ax, 06D50h
@@ -1303,7 +1271,7 @@ PROC Build_Record_Current NEAR
     mov     ax, 0000h
     call    EEPROM_Write_SI
     mov     si, EEPROM_CAPABILITY
-    mov     ax, 0001h
+    mov     ax, 2083h
     call    EEPROM_Write_SI
     mov     si, EEPROM_CONFIG_CONTROL
     mov     ax, 0000h
@@ -1314,41 +1282,22 @@ PROC Build_Record_Current NEAR
 
     ; Preserve the documented default optimization mode (DOS) in the high byte
     ; of EEPROM word 0Fh before the checksum pass fills in the low byte.
-    mov     bx, [state_record_offset]
-    mov     ah, [BYTE state_blob + bx + MCKR_CFG_OPTIMIZE]
-    xor     al, al
+    xor     ax, ax
     mov     si, EEPROM_CHECKSUM
     call    EEPROM_Write_SI
  
     call    Build_Checksum
  
     mov     di, [state_record_offset]
-    mov     [WORD state_blob + di + MCKR_LIVE_W0_MFG], 06D50h
     mov     ax, [seed_product]
-    mov     [WORD state_blob + di + MCKR_LIVE_W0_PRODUCT], ax
+    mov     [WORD state_blob + di + MCK3R_W0_PRODUCT], ax
+    mov     [WORD state_blob + di + MCK3R_W0_CONFIG_CONTROL], 4E01h
     mov     si, EEPROM_ADDR_CFG
     call    EEPROM_Read_SI
-    mov     [WORD state_blob + di + MCKR_LIVE_W0_ADDR_CFG], ax
+    mov     [WORD state_blob + di + MCK3R_W0_ADDRESS_CFG], ax
     mov     si, EEPROM_RESOURCE_CFG
     call    EEPROM_Read_SI
-    mov     [WORD state_blob + di + MCKR_LIVE_W0_RES_CFG], ax
- 
-    xor     ah, ah
-    mov     al, [seed_asic]
-    shl     ax, 1
-    mov     [WORD state_blob + di + MCKR_LIVE_W4_NETDIAG], ax
- 
-    lea     si, [factory_mac]
-    mov     di, [state_record_offset]
-    add     di, OFFSET state_blob + MCKR_FACTORY_MAC
-    mov     cx, 6
-    rep     movsb
- 
-    lea     si, [oem_mac]
-    mov     di, [state_record_offset]
-    add     di, OFFSET state_blob + MCKR_OEM_MAC
-    mov     cx, 6
-    rep     movsb
+    mov     [WORD state_blob + di + MCK3R_W0_RESOURCE_CFG], ax
 
     pop     di
     pop     si
@@ -1376,25 +1325,74 @@ PROC Build_Checksum NEAR
     push    dx
     push    si
 
+    ; Preserve the verified project encoding: word 0Fh high byte is the
+    ; optimization policy, while the low byte is the configurable checksum.
+    ; The high-domain XOR is retained for fixture diagnostics but is not
+    ; stored because it conflicts with observed 3C5X9CFG output.
     xor     bx, bx
-    mov     si, 8
-@@LowLoop:
-    cmp     si, 0Ah
-    jb      @@LowRead
-    cmp     si, 0Ch
-    jbe     @@LowNext
-@@LowRead:
+    xor     si, si
+@@PrimaryHigh:
+    cmp     si, 0Fh
+    jae     @@PrimaryLowStart
+    cmp     si, EEPROM_ADDR_CFG
+    je      @@PrimaryHighNext
+    cmp     si, EEPROM_RESOURCE_CFG
+    je      @@PrimaryHighNext
+    cmp     si, EEPROM_SOFTWARE_INFO
+    je      @@PrimaryHighNext
     call    EEPROM_Read_SI
     xor     bl, al
     xor     bl, ah
-@@LowNext:
+@@PrimaryHighNext:
     inc     si
-    cmp     si, 0Dh
-    jbe     @@LowLoop
+    jmp     @@PrimaryHigh
 
+@@PrimaryLowStart:
+    xor     bh, bh
+    mov     si, EEPROM_ADDR_CFG
+@@PrimaryLow:
+    call    EEPROM_Read_SI
+    xor     bh, al
+    xor     bh, ah
+    inc     si
+    cmp     si, EEPROM_SOFTWARE_INFO
+    jbe     @@PrimaryLow
     mov     si, EEPROM_CHECKSUM
     call    EEPROM_Read_SI
-    mov     al, bl
+    mov     al, bh
+    call    EEPROM_Write_SI
+
+    ; Secondary high checksum: words 10h-12h and 20h-3Fh.
+    xor     bx, bx
+    mov     si, EEPROM_CAPABILITY
+@@SecondaryHighA:
+    call    EEPROM_Read_SI
+    xor     bl, al
+    xor     bl, ah
+    inc     si
+    cmp     si, 13h
+    jb      @@SecondaryHighA
+    mov     si, 20h
+@@SecondaryHighB:
+    call    EEPROM_Read_SI
+    xor     bl, al
+    xor     bl, ah
+    inc     si
+    cmp     si, 40h
+    jb      @@SecondaryHighB
+
+    xor     bh, bh
+    mov     si, 13h
+@@SecondaryLow:
+    call    EEPROM_Read_SI
+    xor     bh, al
+    xor     bh, ah
+    inc     si
+    cmp     si, 17h
+    jb      @@SecondaryLow
+    mov     si, EEPROM_SECONDARY_CHECKSUM
+    mov     ax, bx
+    xchg    al, ah
     call    EEPROM_Write_SI
 
     pop     si
@@ -1413,7 +1411,7 @@ PROC EEPROM_Write_SI NEAR
     mov     bx, si
     and     bx, 003Fh
     shl     bx, 1
-    mov     [WORD state_blob + di + MCKR_EEPROM + bx], ax
+    mov     [WORD state_blob + di + MCK3R_EEPROM + bx], ax
     pop     di
     pop     bx
     ret
@@ -1427,7 +1425,7 @@ PROC EEPROM_Read_SI NEAR
     mov     bx, si
     and     bx, 003Fh
     shl     bx, 1
-    mov     ax, [WORD state_blob + di + MCKR_EEPROM + bx]
+    mov     ax, [WORD state_blob + di + MCK3R_EEPROM + bx]
     pop     di
     pop     bx
     ret

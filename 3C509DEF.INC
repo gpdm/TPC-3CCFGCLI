@@ -132,19 +132,34 @@ EEPROM_CHECKSUM         EQU 0Fh
 EEPROM_CAPABILITY       EQU 10h
 EEPROM_CONFIG_CONTROL   EQU 13h
 EEPROM_REVISION_INFO    EQU 14h
+EEPROM_SECONDARY_CHECKSUM EQU 17h
+
+EEPROM_CMD_READ         EQU 0080h
+EEPROM_CMD_WRITE        EQU 0040h
+EEPROM_CMD_ERASE        EQU 00C0h
+EEPROM_CMD_WRITE_ENABLE EQU 0030h
+EEPROM_CMD_WRITE_DISABLE EQU 0000h
 
 ID_CMD_SET_TAG          EQU 0D0h
 ID_CMD_SELECT_TAG       EQU 0D8h
 ID_CMD_ACTIVATE         EQU 0E0h
+ID_CMD_GLOBAL_RESET     EQU 0C0h
+ID_CMD_ACTIVATE_CONFIGURED EQU 0FFh
 
 EL3_COMMAND             EQU 0Eh
 EL3_STATUS              EQU 0Eh
 EL3_W0_MFG_ID           EQU 00h
 EL3_W0_PRODUCT_ID       EQU 02h
+EL3_W0_CONFIG_CONTROL   EQU 04h
 EL3_W0_ADDRESS_CFG      EQU 06h
 EL3_W0_RESOURCE_CFG     EQU 08h
 EL3_W0_EEPROM_COMMAND   EQU 0Ah
 EL3_W0_EEPROM_DATA      EQU 0Ch
+EL3_W2_STATION_0        EQU 00h
+EL3_W2_STATION_1        EQU 02h
+EL3_W2_STATION_2        EQU 04h
+EL3_W3_INTERNAL_CONFIG_0 EQU 00h
+EL3_W3_INTERNAL_CONFIG_1 EQU 02h
 EL3_W4_NET_DIAG         EQU 06h
 ; Media Type and Status register.  Bit 11 = "Valid link beat detected"
 ; (TP, read only).  Bit 7 = "Link beat enabled" (writable, not used by
@@ -154,6 +169,26 @@ EL3_W4_MEDIA_STATUS     EQU 0Ah
 CMD_SELECT_WINDOW       EQU 0800h
 STATUS_CMD_BUSY         EQU 1000h
 EEPROM_BUSY             EQU 8000h
+STATUS_WINDOW_MASK      EQU 0E000h
+
+W0_CONFIG_CONTROL_WRITABLE EQU 0C05h
+W0_CONFIG_CONTROL_RST       EQU 0004h
+W0_CONFIG_CONTROL_ENA       EQU 0001h
+W0_ADDRESS_CFG_WRITABLE     EQU 0FFFFh
+W0_RESOURCE_CFG_WRITABLE    EQU 0FFFFh
+W4_NET_DIAG_WRITABLE        EQU 0F001h
+W4_NET_DIAG_ASIC_REV        EQU 0004h
+W4_MEDIA_STATUS_WRITABLE    EQU 00CCh
+W4_MEDIA_STATUS_RESERVED_ONE EQU 2000h
+
+MCK_ID_AUTOINIT        EQU 0
+MCK_ID_WAIT            EQU 1
+MCK_ID_CMD             EQU 2
+MCK_ID_ACTIVE          EQU 3
+MCKRF_ACTIVE           EQU 01h
+MCKRF_COAX_STARTED     EQU 02h
+MCKEF_WRITE_ENABLED    EQU 01h
+MCKEF_DATA_VALID       EQU 02h
 
 PRODUCT_3C509           EQU 09150h
 PRODUCT_3C509_TP        EQU 09050h
@@ -173,7 +208,8 @@ MCK_MAGIC_1             EQU 'C'
 MCK_MAGIC_2             EQU '5'
 MCK_MAGIC_3             EQU 'M'
 MCK_VERSION_V1          EQU 0001h
-MCK_VERSION             EQU 0002h
+MCK_VERSION_V2          EQU 0002h
+MCK_VERSION             EQU 0003h
 ; Multi-record mock state is designed to preserve the CLI-visible contract for
 ; normal distinct-base adapter discovery/configuration.  Same-active-IOBASE
 ; records remain a deliberate conflict-simulation case; see 3CMOCKIF.ASM.
@@ -241,3 +277,34 @@ MCK_CFGF_OPTIMIZE       EQU 0100h
 MCK_CFGF_PNP            EQU 0800h
 MCK_CFGF_FULLDUPLEX     EQU 2000h
 MCK_CFGF_ALL            EQU 29FFh
+
+; ---------------------------------------------------------------------------
+; 3C509B.MCK v3 device image.  The image represents powered hardware: live
+; state survives separate DOS processes and changes only through emulated I/O
+; or an explicit reset.  EEPROM is persistent storage, not a register mirror.
+; ---------------------------------------------------------------------------
+MCK3R_PRESENT            EQU 00h    ; DB
+MCK3R_ID_STATE           EQU 01h    ; DB
+MCK3R_TAG                EQU 02h    ; DB
+MCK3R_FLAGS              EQU 03h    ; DB
+MCK3R_ACTIVE_BASE        EQU 04h    ; DW
+MCK3R_CURRENT_WINDOW     EQU 06h    ; DB
+MCK3R_COMMAND_BUSY       EQU 07h    ; DB
+MCK3R_EEPROM_BUSY        EQU 08h    ; DB
+MCK3R_EEPROM_FLAGS       EQU 09h    ; DB
+MCK3R_ID_SEQUENCE_POS    EQU 0Ah    ; DW
+MCK3R_ID_SHIFT           EQU 0Ch    ; DW
+MCK3R_ID_BITS_LEFT       EQU 0Eh    ; DB
+MCK3R_EEPROM_PENDING     EQU 0Fh    ; DB
+MCK3R_W0_PRODUCT         EQU 10h    ; DW
+MCK3R_W0_CONFIG_CONTROL  EQU 12h    ; DW
+MCK3R_W0_ADDRESS_CFG     EQU 14h    ; DW
+MCK3R_W0_RESOURCE_CFG    EQU 16h    ; DW
+MCK3R_EEPROM_COMMAND     EQU 18h    ; DW
+MCK3R_EEPROM_DATA        EQU 1Ah    ; DW
+MCK3R_W2_STATION         EQU 1Ch    ; 6 bytes
+MCK3R_W3_INTERNAL_CONFIG EQU 22h    ; 4 bytes
+MCK3R_W4_NET_DIAG_WRITE  EQU 26h    ; DW
+MCK3R_W4_MEDIA_WRITE     EQU 28h    ; DW
+MCK3R_W4_MEDIA_INPUT     EQU 2Ah    ; DW
+MCK3R_EEPROM             EQU 2Ch    ; 64 words, 128 bytes

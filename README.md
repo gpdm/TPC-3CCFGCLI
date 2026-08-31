@@ -134,7 +134,7 @@ behavior, mock-state issues, or parser/transaction sequencing.
 ### SAVECONFIG command verb
 
 `SAVECONFIG [filename.bat] [/EXECFILE:program]` reads the persistent configuration
-of every installed adapter with an active I/O base and writes a batch file with
+of every installed adapter with an active IOBASE and writes a batch file with
 one `program CONFIGURE /ADAPTERNUM:N ...` restore line per adapter.
 
 `program` defaults to this executable; `/EXECFILE` overrides it with any literal text,

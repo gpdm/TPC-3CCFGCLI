@@ -91,40 +91,41 @@ PROC Nic_Init_Id_Port NEAR
     ret
 ENDP Nic_Init_Id_Port
 
-PROC Nic_IdPort_Read_Word NEAR
-    push    bx
-    push    cx
+PROC Nic_IdPort_Read_Bit NEAR
     push    dx
-    push    si
-
     mov     dx, ID_PORT
-    and     al, 3Fh
-    or      al, 80h
-    call    Nic_IdPort_Write_Command
-    call    Nic_IdPort_Eeprom_Delay
-
-    xor     si, si
-    mov     cx, 16
-@@BitLoop:
-    shl     si, 1
     in      al, dx
     and     al, 01h
-    xor     ah, ah
-    or      si, ax
-    loop    @@BitLoop
-
-    mov     ax, si
-    pop     si
     pop     dx
-    pop     cx
-    pop     bx
     ret
-ENDP Nic_IdPort_Read_Word
+ENDP Nic_IdPort_Read_Bit
+
+; Backend physical I/O primitives.  Shared hardware algorithms pass actual
+; ISA port addresses here; this backend performs the corresponding IN/OUT.
+PROC Nic_IO_Read_Byte NEAR
+    in      al, dx
+    ret
+ENDP Nic_IO_Read_Byte
+
+PROC Nic_IO_Read_Word NEAR
+    in      ax, dx
+    ret
+ENDP Nic_IO_Read_Word
+
+PROC Nic_IO_Write_Byte NEAR
+    out     dx, al
+    ret
+ENDP Nic_IO_Write_Byte
+
+PROC Nic_IO_Write_Word NEAR
+    out     dx, ax
+    ret
+ENDP Nic_IO_Write_Word
 
 PROC Nic_Read_Status NEAR
     push    dx
     add     dx, EL3_STATUS
-    in      ax, dx
+    call    Nic_IO_Read_Word
     pop     dx
     ret
 ENDP Nic_Read_Status
@@ -136,7 +137,7 @@ PROC Nic_Select_Window NEAR
     and     ax, 0007h
     or      ax, CMD_SELECT_WINDOW
     add     dx, EL3_COMMAND
-    out     dx, ax
+    call    Nic_IO_Write_Word
     pop     dx
     pop     ax
     ret
@@ -146,7 +147,7 @@ PROC Nic_Get_Current_Window NEAR
     push    cx
     push    dx
     add     dx, EL3_STATUS
-    in      ax, dx
+    call    Nic_IO_Read_Word
     mov     cl, 13
     shr     ax, cl
     and     ax, 0007h
@@ -183,7 +184,7 @@ ENDP Nic_Wait_Command_Ready
 PROC Cfg_Reg_Read_Word NEAR
     push    dx
     add     dx, bx
-    in      ax, dx
+    call    Nic_IO_Read_Word
     pop     dx
     ret
 ENDP Cfg_Reg_Read_Word
@@ -196,7 +197,7 @@ ENDP Nic_Reg_Read_Word
 PROC Cfg_Reg_Write_Word NEAR
     push    dx
     add     dx, bx
-    out     dx, ax
+    call    Nic_IO_Write_Word
     pop     dx
     ret
 ENDP Cfg_Reg_Write_Word
