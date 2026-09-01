@@ -33,7 +33,9 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  3C509B-TPC   Seed as 3C509B-TPC  (product 9850h, coax).', 0Dh, 0Ah
              DB '  NOPNP        Seed as non-PNP-capable card (gate test).', 0Dh, 0Ah
              DB '  PNPREV0      Seed as PNP-capable card with revision level 0.', 0Dh, 0Ah
-             DB '  NOFD         Seed as non-FULLDUPLEX-capable card (gate test).', 0Dh, 0Ah
+             DB '  NOFD         Seed as B-class card without TP capability.', 0Dh, 0Ah
+             DB '  TPAUI        Seed TP product with live TP+AUI capabilities.', 0Dh, 0Ah
+             DB '  TRI          Seed TP product with live TP+AUI+BNC capabilities.', 0Dh, 0Ah
              DB '  NOLINKBEAT   INIT profile with EEPROM Link Beat Disable set.', 0Dh, 0Ah
              DB '  LINKUP       INIT profile with live Link Status forced connected.', 0Dh, 0Ah
              DB '  LINKDOWN     INIT profile with live Link Status forced not connected.', 0Dh, 0Ah
@@ -49,6 +51,8 @@ msg_ok_tpc   DB 'Seed file created (3C509B-TPC).', 0Dh, 0Ah, '$'
 msg_ok_nopnp DB 'Seed file created (NOPNP).', 0Dh, 0Ah, '$'
 msg_ok_pnprev0 DB 'Seed file created (PNPREV0).', 0Dh, 0Ah, '$'
 msg_ok_nofd  DB 'Seed file created (NOFD).', 0Dh, 0Ah, '$'
+msg_ok_tpaui DB 'Seed file created (TPAUI).', 0Dh, 0Ah, '$'
+msg_ok_tri   DB 'Seed file created (TRI).', 0Dh, 0Ah, '$'
 msg_ok_nolinkbeat DB 'Seed file created (NOLINKBEAT).', 0Dh, 0Ah, '$'
 msg_ok_linkup   DB 'Seed file created (LINKUP).', 0Dh, 0Ah, '$'
 msg_ok_linkdown DB 'Seed file created (LINKDOWN).', 0Dh, 0Ah, '$'
@@ -72,6 +76,8 @@ kw_tpc       DB '3C509B-TPC', 0
 kw_nopnp     DB 'NOPNP', 0
 kw_pnprev0   DB 'PNPREV0', 0
 kw_nofd      DB 'NOFD', 0
+kw_tpaui     DB 'TPAUI', 0
+kw_tri       DB 'TRI', 0
 kw_nolinkbeat DB 'NOLINKBEAT', 0
 kw_linkup    DB 'LINKUP', 0
 kw_linkdown  DB 'LINKDOWN', 0
@@ -86,6 +92,7 @@ seed_base    DW 0300h
 seed_irq     DB 10
 seed_asic    DB 4
 seed_media   DB 0
+seed_config_control DW W0_CONFIG_CONTROL_3C509B_DEFAULT
 
 factory_mac  DB 6 DUP (0)
 oem_mac      DB 6 DUP (0)
@@ -214,6 +221,12 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_nofd
     call    Match_Token
     jnc     @@DoNoFD
+    mov     dx, OFFSET kw_tpaui
+    call    Match_Token
+    jnc     @@DoTpAui
+    mov     dx, OFFSET kw_tri
+    call    Match_Token
+    jnc     @@DoTri
     mov     dx, OFFSET kw_nolinkbeat
     call    Match_Token
     jnc     @@DoNoLinkBeat
@@ -334,6 +347,22 @@ PROC Parse_And_Run NEAR
     call    Seed_NoFD
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_nofd
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoTpAui:
+    call    Seed_TpAui
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_tpaui
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoTri:
+    call    Seed_Tri
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_tri
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -472,6 +501,7 @@ PROC Parse_Model_Token NEAR
 @@TP:
     mov     [seed_product], PRODUCT_3C509_TP
     mov     [seed_media], 0
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
     call    Consume_Token
     pop     dx
     clc
@@ -479,6 +509,7 @@ PROC Parse_Model_Token NEAR
 @@Combo:
     mov     [seed_product], PRODUCT_3C509
     mov     [seed_media], 1
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
     call    Consume_Token
     pop     dx
     clc
@@ -486,6 +517,7 @@ PROC Parse_Model_Token NEAR
 @@C:
     mov     [seed_product], PRODUCT_3C509_COMBO
     mov     [seed_media], 0
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
     call    Consume_Token
     pop     dx
     clc
@@ -493,6 +525,7 @@ PROC Parse_Model_Token NEAR
 @@TPO:
     mov     [seed_product], PRODUCT_3C509_TPO
     mov     [seed_media], 0
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
     call    Consume_Token
     pop     dx
     clc
@@ -500,6 +533,7 @@ PROC Parse_Model_Token NEAR
 @@TPC:
     mov     [seed_product], PRODUCT_3C509_TPC
     mov     [seed_media], 3
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_BNC_PRESENT
     call    Consume_Token
     pop     dx
     clc
@@ -1082,6 +1116,7 @@ PROC Seed_Model_TP NEAR
     ; 3C509B-TP: product 9050h, twisted-pair (media 0).
     mov     [seed_product], PRODUCT_3C509_TP
     mov     [seed_media], 0
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
     call    Seed_Init
     ret
 ENDP Seed_Model_TP
@@ -1090,6 +1125,7 @@ PROC Seed_Model_Combo NEAR
     ; 3C509B (Combo): product 9150h, AUI/external (media 1).
     mov     [seed_product], PRODUCT_3C509
     mov     [seed_media], 1
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
     call    Seed_Init
     ret
 ENDP Seed_Model_Combo
@@ -1098,6 +1134,7 @@ PROC Seed_Model_C NEAR
     ; 3C509B-C: product 9450h, twisted-pair (media 0).
     mov     [seed_product], PRODUCT_3C509_COMBO
     mov     [seed_media], 0
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
     call    Seed_Init
     ret
 ENDP Seed_Model_C
@@ -1106,6 +1143,7 @@ PROC Seed_Model_TPO NEAR
     ; 3C509B-TPO: product 9550h, twisted-pair (media 0).
     mov     [seed_product], PRODUCT_3C509_TPO
     mov     [seed_media], 0
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
     call    Seed_Init
     ret
 ENDP Seed_Model_TPO
@@ -1114,6 +1152,7 @@ PROC Seed_Model_TPC NEAR
     ; 3C509B-TPC: product 9850h, coax/BNC (media 3).
     mov     [seed_product], PRODUCT_3C509_TPC
     mov     [seed_media], 3
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_BNC_PRESENT
     call    Seed_Init
     ret
 ENDP Seed_Model_TPC
@@ -1150,21 +1189,44 @@ PROC Seed_PNPRev0 NEAR
 ENDP Seed_PNPRev0
 
 PROC Seed_NoFD NEAR
-    ; INIT profile, then clear EEPROM_CAPABILITY bit 0.
-    ; The EEPROM capability gate is sufficient to block FULLDUPLEX.
-    ; Product ID is left as a valid SKU so the card is enumerated normally.
+    ; Keep PNP and B-class revision valid, but remove the live TP capability.
     call    Seed_Init
     jc      @@Fail
-    mov     si, EEPROM_CAPABILITY
-    mov     ax, 0000h
-    call    EEPROM_Write_SI
-    call    Build_Checksum
+    mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT
+    and     ax, NOT W0_CONFIG_CONTROL_TP_PRESENT
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W0_CONFIG_CONTROL], ax
     call    Write_State_File
     ret
 @@Fail:
     stc
     ret
 ENDP Seed_NoFD
+
+; Product ID remains 3C509B-TP while live connector bits report TP+AUI.
+PROC Seed_TpAui NEAR
+    call    Seed_Init
+    jc      @@Fail
+    mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W0_CONFIG_CONTROL], ax
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_TpAui
+
+; Product ID remains 3C509B-TP while live connector bits report all three.
+PROC Seed_Tri NEAR
+    call    Seed_Init
+    jc      @@Fail
+    mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W0_CONFIG_CONTROL], ax
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_Tri
 
 PROC Seed_NoLinkBeat NEAR
     ; INIT profile, then set the persistent Link Beat Disable policy in
@@ -1322,7 +1384,8 @@ PROC Build_Record_Current NEAR
     mov     di, [state_record_offset]
     mov     ax, [seed_product]
     mov     [WORD state_blob + di + MCK3R_W0_PRODUCT], ax
-    mov     [WORD state_blob + di + MCK3R_W0_CONFIG_CONTROL], W0_CONFIG_CONTROL_3C509B_DEFAULT
+    mov     ax, [seed_config_control]
+    mov     [WORD state_blob + di + MCK3R_W0_CONFIG_CONTROL], ax
     mov     si, EEPROM_ADDR_CFG
     call    EEPROM_Read_SI
     mov     [WORD state_blob + di + MCK3R_W0_ADDRESS_CFG], ax

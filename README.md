@@ -265,7 +265,9 @@ profiles, capability overrides, and cleanup states.
 | `3C509B-TPC` | Product 9850h, media=coax. |
 | `NOPNP` | INIT + EEPROM Capability PNP bit clear; preserves the other capability bits. |
 | `PNPREV0` | INIT + `EEPROM_REVISION_INFO=0`; retains EEPROM PNP capability for independence tests. |
-| `NOFD` | INIT + `EEPROM_CAPABILITY=0` → FULLDUPLEX capability gate fails. |
+| `NOFD` | INIT + live TP connector capability clear; the B-class revision remains valid. |
+| `TPAUI` | TP product ID + live TP/AUI connector capabilities, for Product-ID mismatch tests. |
+| `TRI` | TP product ID + live TP/AUI/BNC connector capabilities. |
 | `NOLINKBEAT` | INIT + `EEPROM_SOFTWARE_INFO` bit 14 set for MODEM preservation tests. |
 
 

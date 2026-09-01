@@ -78,7 +78,7 @@ LINK_STATUS: t1001 t1002
 # Base: 1100
 BOOTROM_CHANGE: t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111
 # Base: 1200
-XCVR_CHANGE: t1201 t1202 t1203 t1204 t1205 t1206 t1207 t1208 t1209 t1210 t1211
+XCVR_CHANGE: t1201 t1202 t1203 t1204 t1205 t1206 t1207 t1208 t1209 t1210 t1211 t1212 t1213
 # Base: 1300
 CLI_PARSER: t1301 t1302 t1303 t1304
 # Base: 1400
@@ -364,17 +364,19 @@ t0707:
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0707.LOG
 
 t0801:
-	@echo [t0801] Testing PNP capability gate: NOPNP seed rejects /PNP:ENABLED... >> TEST.LOG
+	@echo [t0801] Testing PNP absence does not disable Full Duplex capability... >> TEST.LOG
 	BIN\3CSEED.EXE NOPNP > $(ARTIFACTS)\T0801.LOG
 	FIND "Seed file created (NOPNP)." $(ARTIFACTS)\T0801.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T0801.LOG
 	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\T0801.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED >> $(ARTIFACTS)\T0801.LOG
 	FIND "This adapter does not support Plug and Play configuration." $(ARTIFACTS)\T0801.LOG > NUL
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0801.LOG
+	FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0801.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0801.LOG
 
 t0802:
-	@echo [t0802] Testing FULLDUPLEX capability gate: NOFD seed rejects /FULLDUPLEX:ENABLED... >> TEST.LOG
+	@echo [t0802] Testing Full Duplex requires TP despite a supported product ID... >> TEST.LOG
 	BIN\3CSEED.EXE NOFD > $(ARTIFACTS)\T0802.LOG
 	FIND "Seed file created (NOFD)." $(ARTIFACTS)\T0802.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0802.LOG
@@ -382,11 +384,13 @@ t0802:
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0802.LOG
 
 t0803:
-	@echo [t0803] Testing PNP capability is independent of revision level... >> TEST.LOG
+	@echo [t0803] Testing PNP is independent of revision while Full Duplex is not... >> TEST.LOG
 	BIN\3CSEED.EXE PNPREV0 > $(ARTIFACTS)\T0803.LOG
 	FIND "Seed file created (PNPREV0)." $(ARTIFACTS)\T0803.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T0803.LOG
 	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T0803.LOG > NUL
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0803.LOG
+	FIND "This adapter does not support full duplex configuration." $(ARTIFACTS)\T0803.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED >> $(ARTIFACTS)\T0803.LOG
 	FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0803.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0803.LOG
@@ -595,10 +599,10 @@ t1208:
 
 
 t1209:
-	@echo [t1209] Testing CONFIGURE /TR:AUTO on 3C509B-TPC is rejected (no auto-select)... >> TEST.LOG
+	@echo [t1209] Testing CONFIGURE /TR:AUTO on TP+BNC capabilities succeeds... >> TEST.LOG
 	BIN\3CSEED.EXE 3C509B-TPC > $(ARTIFACTS)\T1209.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1209.LOG
-	FIND "This adapter does not support the requested transceiver type." $(ARTIFACTS)\T1209.LOG > NUL
+	FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1209.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T1209.LOG
 
 
@@ -617,6 +621,22 @@ t1211:
 	FIND "TR parameter accepted. Requested transceiver: TP" $(ARTIFACTS)\T1211.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T1211.LOG
 	FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1211.LOG > NUL
+
+t1212:
+	@echo [t1212] Testing live TP+AUI capabilities override TP product ID... >> TEST.LOG
+	BIN\3CSEED.EXE TPAUI > $(ARTIFACTS)\T1212.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T1212.LOG
+	FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1212.LOG > NUL
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1212.LOG
+	FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1212.LOG > NUL
+	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T1212.LOG
+
+t1213:
+	@echo [t1213] Testing CONFIGURE /TR:AUTO on three live connectors succeeds... >> TEST.LOG
+	BIN\3CSEED.EXE TRI > $(ARTIFACTS)\T1213.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1213.LOG
+	FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1213.LOG > NUL
+	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T1213.LOG
 
 t1301:
 	@echo [t1301] Testing HELP command prints CLI help screen... >> TEST.LOG

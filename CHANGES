@@ -4,6 +4,9 @@ Changelog 0.7.1:
     The NOPNP fixture now clears only the PNP capability bit.
   - Added shared physical NIC capability discovery.  PNP LIST and CONFIGURE
     now use EEPROM Capability bit 0 rather than the revision-level heuristic.
+  - Migrated transceiver and Full Duplex capability gates and LIST reporting
+    to shared live connector and derived Full Duplex capabilities.  AUTO now
+    requires at least two live connector capabilities.
   - SAVECONFIG now writes independently executable restore commands and keeps
     the required /BADDRESS + /BSIZE pair together on a second line.
 

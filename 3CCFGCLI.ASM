@@ -186,6 +186,8 @@ CFG_ERR_TR_EEPROM_READ      EQU 68
 CFG_ERR_TR_EEPROM_WRITE     EQU 69
 CFG_ERR_TR_VERIFY           EQU 70
 CFG_ERR_TR_NOT_CAPABLE      EQU 71
+CFG_ERR_TR_CAPABILITY_READ  EQU 72
+CFG_ERR_FD_CAPABILITY_READ  EQU 73
 
 DATASEG
 
@@ -348,6 +350,7 @@ msg_cfg_fd_verified DB "EEPROM full duplex mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_fd_verify_fail DB "Full duplex configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_fd_completed DB 0Dh, 0Ah, "Full duplex configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_fd_not_capable DB "This adapter does not support full duplex configuration.", 0Dh, 0Ah, '$'
+msg_cfg_fd_capability_read_fail DB "Hardware capability data is unavailable for full duplex configuration.", 0Dh, 0Ah, '$'
 
 ; /BADDRESS and /BSIZE diagnostics.  Both share EEPROM word 08h (bits 11:8
 ; and 13:12) with /IOBASE (bits 4:0); see Cfg_Prepare_BADDRESS/BSIZE.
@@ -379,6 +382,7 @@ msg_cfg_bsize_not_capable DB "This adapter does not support Boot ROM configurati
 msg_cfg_bad_tr DB "Invalid /TR parameter. Use TP, AUI, COAX, or AUTO.", 0Dh, 0Ah, '$'
 msg_cfg_tr_inactive DB "Selected adapter has no active IOBASE for /TR configuration.", 0Dh, 0Ah, '$'
 msg_cfg_tr_not_capable DB "This adapter does not support the requested transceiver type.", 0Dh, 0Ah, '$'
+msg_cfg_tr_capability_read_fail DB "Hardware connector capability data is unavailable for transceiver configuration.", 0Dh, 0Ah, '$'
 msg_cfg_tr_ok DB "TR parameter accepted. Requested transceiver: ", '$'
 msg_cfg_tr_unchanged DB 0Dh, 0Ah, "Transceiver type is already configured to the requested value.", 0Dh, 0Ah
                DB "No hardware changes required.", 0Dh, 0Ah, '$'
@@ -492,10 +496,6 @@ ext_link_status   DW 0FFFFh
 ; Raw EEPROM_SOFTWARE_INFO (word 0Dh); bits 13:0 are the MODEM field, masked
 ; with EEPROM_SOFTWARE_INFO_MODEM_MASK by Print_Modem_Value before display.
 ext_software_info DW 0FFFFh
-; Full duplex capability verdict; 0 = not supported, 1 = supported,
-; 0FFh = unavailable (adapter not active or EEPROM read timed out).
-ext_fd_capable    DB 0FFh
-
 ; CONFIGURE state.  nic_table itself is deliberately not extended.
 cfg_adapter_ordinal   DB 0
 cfg_parse_flags       DW 0
@@ -3251,8 +3251,18 @@ PROC Cfg_Report_Error NEAR
     jmp     @@Print
 @@E71:
     cmp     al, CFG_ERR_TR_NOT_CAPABLE
-    jne     @@Done
+    jne     @@E72
     mov     dx, OFFSET msg_cfg_tr_not_capable
+    jmp     @@Print
+@@E72:
+    cmp     al, CFG_ERR_TR_CAPABILITY_READ
+    jne     @@E73
+    mov     dx, OFFSET msg_cfg_tr_capability_read_fail
+    jmp     @@Print
+@@E73:
+    cmp     al, CFG_ERR_FD_CAPABILITY_READ
+    jne     @@Done
+    mov     dx, OFFSET msg_cfg_fd_capability_read_fail
 @@Print:
     mov     ah, 09h
     int     21h
@@ -6290,7 +6300,7 @@ PROC Cfg_Txn_Execute NEAR
 
 ; ----------------------------------------------------------------------------
 ; Capability gate phase.  All hardware/product capability checks for gated
-; CONFIGURE verbs (/PNP, /FULLDUPLEX, /BADDRESS, /BSIZE) run here, before any
+; CONFIGURE verbs (/PNP, /FULLDUPLEX, /BADDRESS, /BSIZE, /TR) run here, before any
 ; "parameter accepted" echo.  An adapter that cannot support a requested verb
 ; is rejected immediately, without ever being told its input was accepted.
 ; Moved out of the Prepare phase in 0.5.6; the Prepare phase below now only
@@ -6318,32 +6328,16 @@ PROC Cfg_Txn_Execute NEAR
 @@GateFULLDUPLEX:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@GateBootRom
-    ; Guard 1: product ID must be one of the five known ISA SKUs.
     mov     si, [cfg_selected_ptr]
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    cmp     ax, PRODUCT_3C509_TP
-    je      @@FDProductOk
-    cmp     ax, PRODUCT_3C509
-    je      @@FDProductOk
-    cmp     ax, PRODUCT_3C509_COMBO
-    je      @@FDProductOk
-    cmp     ax, PRODUCT_3C509_TPO
-    je      @@FDProductOk
-    cmp     ax, PRODUCT_3C509_TPC
-    je      @@FDProductOk
-    mov     [cfg_last_error], CFG_ERR_FD_NOT_CAPABLE
-    jmp     @@Done
-@@FDProductOk:
-    ; Guard 2: EEPROM_CAPABILITY (word 10h) bit 0 must be set.
     mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_CAPABILITY
-    call    Cfg_Eeprom_Read
-    jc      @@FDCapReadFail
-    test    ax, 0001h
+    call    Nic_Read_Capabilities
+    test    bx, NIC_CAP_VALID_FULLDUPLEX
+    jz      @@FDCapReadFail
+    test    ax, NIC_CAP_FULLDUPLEX
     jz      @@FDNotCapable
     jmp     @@GateBootRom
 @@FDCapReadFail:
-    mov     [cfg_last_error], CFG_ERR_FD_EEPROM_READ
+    mov     [cfg_last_error], CFG_ERR_FD_CAPABILITY_READ
     jmp     @@Done
 @@FDNotCapable:
     mov     [cfg_last_error], CFG_ERR_FD_NOT_CAPABLE
@@ -6393,65 +6387,43 @@ PROC Cfg_Txn_Execute NEAR
     mov     [cfg_last_error], CFG_ERR_BADDRESS_EEPROM_READ
     jmp     @@Done
 
-; Gate: /TR transceiver type must be valid for this specific product.
-; TP-only cards (3C509B-TP) reject AUI/COAX/AUTO.
-; Coax card (3C509B-TPC) rejects AUI and AUTO.
-; TPO (3C509B-TPO) rejects COAX and AUTO (no auto-select path on TPO).
-; Combo and C variants accept all four values.
-; Any unrecognised product ID is rejected.
 @@Requested:
 @@GateTR:
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@GateTR_Pass
     mov     si, [cfg_selected_ptr]
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    cmp     ax, PRODUCT_3C509_TP
-    je      @@GateTR_TP
-    cmp     ax, PRODUCT_3C509_TPC
-    je      @@GateTR_TPC
-    cmp     ax, PRODUCT_3C509_TPO
-    je      @@GateTR_TPO
-    cmp     ax, PRODUCT_3C509
-    je      @@GateTR_All
-    cmp     ax, PRODUCT_3C509_COMBO
-    je      @@GateTR_All
-    ; Unrecognised product.
-    mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
-    jmp     @@Done
-
-@@GateTR_TP:
-    ; 3C509B-TP: only TP (0) is valid.
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Nic_Read_Capabilities
+    test    bx, NIC_CAP_VALID_CONNECTORS
+    jz      @@TRCapabilityReadFail
     cmp     [cfg_tr_value], 0
-    je      @@GateTR_Pass
-    mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
-    jmp     @@Done
-
-@@GateTR_TPC:
-    ; 3C509B-TPC: TP (0) and COAX (3) only; no AUI (1) or AUTO (0FFh).
-    cmp     [cfg_tr_value], 0
-    je      @@GateTR_Pass
-    cmp     [cfg_tr_value], 3
-    je      @@GateTR_Pass
-    mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
-    jmp     @@Done
-
-@@GateTR_TPO:
-    ; 3C509B-TPO: TP (0) and AUI (1) only; no COAX (3) or AUTO (0FFh).
-    cmp     [cfg_tr_value], 0
-    je      @@GateTR_Pass
+    jne     @@GateTR_Aui
+    test    ax, NIC_CAP_TP
+    jnz     @@GateTR_Pass
+    jmp     @@TRNotCapable
+@@GateTR_Aui:
     cmp     [cfg_tr_value], 1
-    je      @@GateTR_Pass
+    jne     @@GateTR_Coax
+    test    ax, NIC_CAP_AUI
+    jnz     @@GateTR_Pass
+    jmp     @@TRNotCapable
+@@GateTR_Coax:
+    cmp     [cfg_tr_value], 3
+    jne     @@GateTR_Auto
+    test    ax, NIC_CAP_BNC
+    jnz     @@GateTR_Pass
+    jmp     @@TRNotCapable
+@@GateTR_Auto:
+    and     ax, NIC_CAP_TP + NIC_CAP_AUI + NIC_CAP_BNC
+    mov     bx, ax
+    dec     ax
+    and     ax, bx
+    jnz     @@GateTR_Pass
+@@TRNotCapable:
     mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
     jmp     @@Done
-
-@@GateTR_All:
-    ; 3C509B-Combo / 3C509B-C: TP, AUI, COAX, AUTO all valid.
-    ; Reject COAX (3) for non-TPC cards that reach this path.
-    cmp     [cfg_tr_value], 3
-    je      @@GateTR_NoCoax
-    jmp     @@GateTR_Pass
-@@GateTR_NoCoax:
-    mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
+@@TRCapabilityReadFail:
+    mov     [cfg_last_error], CFG_ERR_TR_CAPABILITY_READ
     jmp     @@Done
 
 @@GateTR_Pass:
@@ -7056,7 +7028,6 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_optimize], 0FFFFh
     mov     [ext_link_status], 0FFFFh
     mov     [ext_software_info], 0FFFFh
-    mov     [ext_fd_capable], 0FFh
     mov     [ext_nic_capabilities], 0FFFFh
     mov     [ext_nic_capability_valid], 0
 
@@ -7084,35 +7055,6 @@ PROC Read_Extended_Nic_Info NEAR
     call    EEPROM_Read
     mov     [ext_software_info], ax
     mov     [ext_optimize], ax
-
-    ; Full duplex capability, mirroring the CONFIGURE /FULLDUPLEX gate: a
-    ; known ISA product ID plus EEPROM_CAPABILITY (word 10h) bit 0.  Read
-    ; here unconditionally because that gate does not depend on the later
-    ; card revision layout guarding the ext_capability read further below.
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    cmp     ax, PRODUCT_3C509_TP
-    je      @@FdProductOk
-    cmp     ax, PRODUCT_3C509
-    je      @@FdProductOk
-    cmp     ax, PRODUCT_3C509_COMBO
-    je      @@FdProductOk
-    cmp     ax, PRODUCT_3C509_TPO
-    je      @@FdProductOk
-    cmp     ax, PRODUCT_3C509_TPC
-    je      @@FdProductOk
-    mov     [ext_fd_capable], 0
-    jmp     @@FdCapDone
-@@FdProductOk:
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_CAPABILITY
-    call    EEPROM_Read
-    cmp     ax, 0FFFFh
-    je      @@FdCapDone
-    mov     [ext_fd_capable], 0
-    test    ax, 0001h
-    jz      @@FdCapDone
-    mov     [ext_fd_capable], 1
-@@FdCapDone:
 
     ; Read the live Media Type and Status register (Window 4/Port 0Ah) to
     ; surface the dynamic "Valid link beat detected" bit (bit 11) in LIST.
@@ -7189,16 +7131,16 @@ PROC Print_Transceiver_Value NEAR
     cmp     ax, 0FFFFh
     je      @@Unavailable
 
-    call    Extended_Is_Later_Card
-    or      al, al
-    jz      @@ConfiguredMedia
-
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    cmp     ax, PRODUCT_3C509_TPO
-    je      @@ConfiguredMedia
-
     mov     ax, [ext_addr_cfg]
     test    ax, 0080h
+    jz      @@ConfiguredMedia
+    test    [ext_nic_capability_valid], NIC_CAP_VALID_CONNECTORS
+    jz      @@Unavailable
+    mov     ax, [ext_nic_capabilities]
+    and     ax, NIC_CAP_TP + NIC_CAP_AUI + NIC_CAP_BNC
+    mov     cx, ax
+    dec     ax
+    and     ax, cx
     jz      @@ConfiguredMedia
     mov     dx, OFFSET msg_auto_select
     jmp     @@Print
@@ -7467,16 +7409,15 @@ PROC Print_Modem_Value NEAR
 ENDP Print_Modem_Value
 
 ; Prints the persistent full duplex setting from EEPROM_SOFTWARE_INFO
-; (word 0Dh) bit 15, gated by the capability verdict computed in
-; Read_Extended_Nic_Info.
+; (word 0Dh) bit 15 when shared hardware capability discovery supports it.
 PROC Print_Full_Duplex_Value NEAR
     push    ax
     push    dx
 
-    mov     al, [ext_fd_capable]
-    cmp     al, 0FFh
+    test    [ext_nic_capability_valid], NIC_CAP_VALID_FULLDUPLEX
     je      @@Unavailable
-    or      al, al
+    mov     ax, [ext_nic_capabilities]
+    test    ax, NIC_CAP_FULLDUPLEX
     jz      @@NotSupported
 
     mov     ax, [ext_software_info]
