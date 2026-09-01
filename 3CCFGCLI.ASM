@@ -267,10 +267,8 @@ msg_cfg_adapter_suffix DB " selected.", 0Dh, 0Ah, '$'
 msg_cfg_current_irq DB "Current IRQ: ", '$'
 msg_cfg_current_word09 DB "Current EEPROM word 09h: ", '$'
 msg_cfg_current_word0d DB "Current EEPROM word 0Dh: ", '$'
-msg_cfg_current_word0f DB "Current EEPROM word 0Fh: ", '$'
 msg_cfg_new_word09 DB "New EEPROM word 09h: ", '$'
 msg_cfg_new_word0d DB "New EEPROM word 0Dh: ", '$'
-msg_cfg_new_word0f DB "New EEPROM word 0Fh: ", '$'
 msg_cfg_prepare_active DB 0Dh, 0Ah, "Preparing adapter using original ISA activation sequence...", 0Dh, 0Ah, '$'
 msg_cfg_irq_unchanged DB 0Dh, 0Ah, "IRQ is already configured to the requested value.", 0Dh, 0Ah
                       DB "No hardware changes required.", 0Dh, 0Ah, '$'
@@ -315,7 +313,6 @@ msg_cfg_iobase_unchanged DB 0Dh, 0Ah, "IOBASE is already configured to the reque
                          DB "No IOBASE hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_deactivate_iobase DB 0Dh, 0Ah, "Deactivating selected adapter at old IOBASE...", 0Dh, 0Ah, '$'
 msg_cfg_reactivate_iobase DB "Reactivating adapter at requested IOBASE...", 0Dh, 0Ah, '$'
-msg_cfg_write_iobase DB 0Dh, 0Ah, "Writing I/O configuration to EEPROM...", 0Dh, 0Ah, '$'
 msg_cfg_iobase_word_written DB "I/O configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_iobase_verified DB "EEPROM IOBASE verified: ", '$'
 msg_cfg_live_iobase_verified DB "Live IOBASE verified: ", '$'
@@ -453,8 +450,6 @@ msg_fullduplex_label DB "Full Duplex = ", '$'
 msg_link_status_label DB "Link Status = ", '$'
 msg_optimize_reserved DB "Reserved", '$'
 msg_optimize_dos DB "DOS", '$'
-msg_optimize_windows DB "Windows", '$'
-msg_optimize_os2 DB "OS/2", '$'
 msg_optimize_windows_or_os2 DB "Windows or OS/2", '$'
 msg_optimize_server DB "Server", '$'
 msg_warn_label  DB  ", warning level ", '$'
@@ -542,7 +537,7 @@ cfg_tr_value          DB 0
 
 ; Central CONFIGURE transaction state.  Current state is snapshotted before any
 ; hardware modification.  Prospective state starts as an exact copy and is then
-; modified only by Cfg_Prepare_INT, Cfg_Prepare_IOBASE and Cfg_Prepare_PNP.
+; modified only by Cfg_Prepare_*** routines.
 cfg_txn_old_base          DW 0
 cfg_txn_new_base          DW 0
 cfg_txn_old_word08        DW 0
@@ -671,10 +666,8 @@ save_disabled   DB  'DISABLED', 0
 SAVE_LEN_DISABLED EQU 8
 save_dos        DB  'DOS', 0
 SAVE_LEN_DOS EQU 3
-save_windows    DB  'WINDOWS', 0
-SAVE_LEN_WINDOWS EQU 7
-save_os2        DB  'OS/2', 0
-SAVE_LEN_OS2 EQU 4
+save_windows_os2        DB  'Windows or OS/2', 0
+SAVE_LEN_WINDOWS_OS2 EQU 15
 save_server     DB  'SERVER', 0
 SAVE_LEN_SERVER EQU 6
 save_tp         DB  'TP', 0
@@ -1599,7 +1592,7 @@ PROC Save_Build_Command NEAR
     cmp     al, 1
     je      @@OptDosLength
     cmp     al, 2
-    je      @@OptOs2Length
+    je      @@OptWindowsOs2Length
     cmp     al, 3
     je      @@OptServerLength
     ; 00b is reserved; use a parser-valid, conservative restore fallback.
@@ -1608,11 +1601,12 @@ PROC Save_Build_Command NEAR
 @@OptDosLength:
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_DOS
     jmp     @@OptLengthDone
-@@OptOs2Length:
-    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_OS2
+@@OptWindowsOs2Length:
+    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_WINDOWS_OS2
     jmp     @@OptLengthDone
 @@OptServerLength:
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_SERVER
+    jmp     @@OptLengthDone
 @@OptLengthDone:
     call    Save_Ensure_Option_Length
     jc      @@Fail
@@ -1626,7 +1620,7 @@ PROC Save_Build_Command NEAR
     cmp     al, 1
     je      @@OptDos
     cmp     al, 2
-    je      @@OptOs2
+    je      @@OptWindowsOS2
     cmp     al, 3
     je      @@OptServer
     mov     si, OFFSET save_dos
@@ -1634,13 +1628,14 @@ PROC Save_Build_Command NEAR
 @@OptDos:
     mov     si, OFFSET save_dos
     jmp     @@OptDone
-@@OptOs2:
-    ; Value 10b is Windows client, but the original UI combines it with OS/2.
-    ; Retain the established OS/2 restore keyword rather than add an alias.
-    mov     si, OFFSET save_os2
+@@OptWindowsOS2:
+    ; Value 10b is Windows and OS/2 client, as in the original UI,
+    ; which also combines both display values.
+    mov     si, OFFSET save_windows_os2
     jmp     @@OptDone
 @@OptServer:
     mov     si, OFFSET save_server
+    jmp     @@OptDone
 @@OptDone:
     call    Save_Append_String
     mov     ax, [save_word08]
@@ -1787,8 +1782,7 @@ ENDP Save_Build_Command
 ;
 ; This reduced parser keeps those semantics without importing the original
 ; argv framework.  Start already uppercases ASCII input, so matching remains
-; case insensitive.  /INT is staged during property dispatch and applied once
-; after the complete dispatch succeeds.  Every other property remains a stub.
+; case insensitive.
 PROC Cmd_Configure NEAR
     push    ax
     push    bx
@@ -2481,7 +2475,7 @@ ENDP Cfg_Dispatch_Property
 ; Property handler entry points receive SI = value pointer and CX = value length.
 ; /INT preserves the hardware tested validation body and only stages its final
 ; accepted value.  /IOBASE and /PNP likewise parse and stage only.  No handler
-; performs hardware access directly.  Remaining property handlers are stubs.
+; performs hardware access directly.
 ; Input SI = /INT value pointer, CX = value length.
 ; Accepted canonical decimal forms are exactly:
 ;   3, 5, 7, 9, 10, 11, 12, 15
@@ -6576,7 +6570,7 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     cl, 4
     shr     ax, cl
     and     al, 03h
-    call    Print_Optimize_Read_Code
+    call    Decode_Optimize_Value
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
@@ -6670,7 +6664,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     mov     cl, 4
     shr     ax, cl
     and     al, 03h
-    call    Print_Optimize_Read_Code
+    call    Decode_Optimize_Value
     mov     dx, OFFSET msg_cfg_crlf
     mov     ah, 09h
     int     21h
@@ -7788,41 +7782,9 @@ PROC Print_Full_Duplex_Capability NEAR
     ret
 ENDP Print_Full_Duplex_Capability
 
-PROC Print_Optimize_Code NEAR
-    push    ax
-    push    dx
-
-    cmp     al, 0
-    je      @@Dos
-    cmp     al, 1
-    je      @@Windows
-    cmp     al, 2
-    je      @@Os2
-    cmp     al, 4
-    je      @@Server
-    mov     dx, OFFSET msg_unknown_value
-    jmp     @@Print
-@@Dos:
-    mov     dx, OFFSET msg_optimize_dos
-    jmp     @@Print
-@@Windows:
-    mov     dx, OFFSET msg_optimize_windows
-    jmp     @@Print
-@@Os2:
-    mov     dx, OFFSET msg_optimize_os2
-    jmp     @@Print
-@@Server:
-    mov     dx, OFFSET msg_optimize_server
-@@Print:
-    mov     ah, 09h
-    int     21h
-    pop     dx
-    pop     ax
-    ret
-ENDP Print_Optimize_Code
 
 ; Input AL = documented EEPROM_SOFTWARE_INFO Software Optimization value.
-PROC Print_Optimize_Read_Code NEAR
+PROC Decode_Optimize_Value NEAR
     push    ax
     push    dx
 
@@ -7831,7 +7793,7 @@ PROC Print_Optimize_Read_Code NEAR
     cmp     al, 1
     je      @@Dos
     cmp     al, 2
-    je      @@Windows
+    je      @@Windows_OS2
     cmp     al, 3
     je      @@Server
     mov     dx, OFFSET msg_unknown_value
@@ -7842,7 +7804,7 @@ PROC Print_Optimize_Read_Code NEAR
 @@Dos:
     mov     dx, OFFSET msg_optimize_dos
     jmp     @@Print
-@@Windows:
+@@Windows_OS2:
     mov     dx, OFFSET msg_optimize_windows_or_os2
     jmp     @@Print
 @@Server:
@@ -7853,7 +7815,7 @@ PROC Print_Optimize_Read_Code NEAR
     pop     dx
     pop     ax
     ret
-ENDP Print_Optimize_Read_Code
+ENDP Decode_Optimize_Value
 
 PROC Print_Optimize_Value NEAR
     push    ax
@@ -7865,7 +7827,7 @@ PROC Print_Optimize_Value NEAR
     mov     cl, 4
     shr     ax, cl
     and     al, 03h
-    call    Print_Optimize_Read_Code
+    call    Decode_Optimize_Value
     jmp     @@Done
 @@Unavailable:
     mov     dx, OFFSET msg_unavailable
