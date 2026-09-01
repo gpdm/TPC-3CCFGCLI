@@ -28,25 +28,6 @@
 
 - Hardware Compliance Tests  
 
-  Sketch: have 3ccfgcli extended to dump EEPROM values to a batch file using
-  a new /SAVECONFIG verb.
-
-  Then go into new TESTHWC.MK, reconfigure the actual NIC using the original 3c5x9cfg.exe binary,
-  and cross-check with 3ccfgcli if we can read back correctly.
-
-  We're bootstrapping ourselves here, but this way we can fully very EEPROM reads in the
-  first place, which tells us, that also the EEPROM writes should technically be correct,
-  because the registers are the same for either operation.
-
-  This is actually implemented already since 0.6.5, but I saw another issue here:
-
-  The original implementation, which largely was pushed forward from the mock interface
-  shows some limitations.
-  I thought I could get away with a simple map of the EEPROM and register values,
-  but found that I need to really mimic the exact EEPROM and registers, like the real thing.
-
-  Hence I'll refactor that first, bevore continuing with the HWC part.
-
   t1505 duplicate active IOBASE conflict:
 
   The hardware-faithful mock currently rejects a targeted IOBASE migration
