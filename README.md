@@ -6,9 +6,8 @@
 |  EXPERIMENTAL RELEASE — LIMITED HARDWARE TESTING                                  |
 |                                                                                   |
 |  This release has only undergone limited testing on physical hardware.            |
-|  It has been developed and primarily verified using the software mock backend.    |
-|                                                                                   |
 |  Bugs and unexpected behaviors may be present.                                    |
+|  GENERALLY CONSIDERED UNSAFE ARE /BADDR and /BSIZE OPERATIONS, REST SHOULD WORK   |
 |  USE ENTIRELY AT YOUR OWN RISK.                                                   |
 |                                                                                   |
 +-----------------------------------------------------------------------------------+
