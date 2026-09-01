@@ -1,31 +1,6 @@
 3CCFG TODO
 ==========
 
-- Reevaluate CONFIGURE /SYNCREADY:
-	- Version 3.2 lists it in CLI help but does not branch into implementation.
-	- Version 3.0 has the same behavior.
-	- Version 2.1 has no /SYNCREADY parser entry or handler.
-	- Version 1.2 contains no SYNCREADY text, help entry, parser branch, or
-		identifiable EEPROM handler. Its Sourcer output lacks the configuration
-		data tables needed to confirm or rule out the suspected EEPROM bit.
-	- Consult the 3Com technical reference for any "Synchronous Ready" EEPROM
-		bit (pages 7-20 and 7-26) and determine whether it was an intended
-		persistent configuration setting.
-	- Reassess whether it belongs in scoped CLI parity after its hardware
-		mapping and persistence semantics are confirmed.
-
-  Also, the 3Com Technical Reference clearly says, it's an EEPROM bit:
-
-  Resource Configuration Register (3C509, 3C579, 3C509B, 3C589,3C589B) (Read/Write - Offset 8)
-
-  ISA (3C509B)
-  Bit 6 Synchronous Ready. Normal I/O cycles if clear. If set, the adapter will assert
-  I/OCHRDY on every I/O access. This may allow the board to work in a
-  noncompliant bus that would otherwise not be supported (for example, an
-  ISA bus running faster than spec). This bit defaults to 0 on power-up, but is
-  overwritten from the EEPROM
-
-
 - Hardware Compliance Tests  
 
   t1505 duplicate active IOBASE conflict:
@@ -41,18 +16,28 @@
   confirmed, retain the conservative failure expectation in t1505.
 
 
-
-- Bugs:
-  ----
-  Boot ROM Activation:
+- Boot ROM Activation:
 
   Boot ROM (/BADDRESS & /BSIZE) seem to probe if a ROM is actually socketed.
-  The original utility prevents configuration if it doesn't find a Boot ROM installed.
+  The original utility prevents configuration via the CLI if it doesn't find
+  a Boot ROM installed.
+  The MEWEL Text-UI on the other hand offers to option to configure anyway.
 
-  Need to figure out, how this works exactly.
+  Though I suspect this would lead to a reboot / POST init loop of some sorts,
+  and I shouldn't enforce activation of the Boot ROM if none is equipped.
 
+  In general, this should be tested as well with real hardware and ROMs
+  equipped, to fully validate the proper functionality.
 
+  Secondly, a gate must be implemented, which prevents enabling it if
+  the probing fails.
 
+  Thirdly: Figure out, how the probing fails.
+  To my current understanding, the original utility probes the ROM window,
+  if it finds a valid signature.
+
+  So apparently, also the MOCKIF would need to be extended to mimic the
+  signature in an identical way how the actual hardware does it.
 
 
 

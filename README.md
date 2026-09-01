@@ -94,25 +94,28 @@ The following list of features and functionalities were deliberately skipped in 
 ### /LINKBEAT configuration verb
 
 `CONFIGURE /LINKBEAT` was investigated across the available reference utility
-versions. Version 3.2 still lists both `/LINKBEAT` and `/SYNCREADY` in its HELP
-text, but neither command branches to an implementation. Version 3.0 has the
-same behavior. Version 2.1 contains an active `/LINKBEAT` parser branch.
+versions. Version 3.2 still lists both `/LINKBEAT in its HELP text, but doesn't branch into actual code. Version 3.0 has the same behavior.
+Version 2.1 contains an active `/LINKBEAT` parser branch.
 
-The 3C509B technical reference identifies Link Beat Disable as bit 14 of the
-EEPROM Software Information word (offset 0Dh). This persistent setting directs
-the network driver to set or clear bit 7 of the Media Type and Status register
-(Window 4, port 0Ah) when it initializes the adapter. The register value is
-live; the EEPROM policy that directs the driver is retained across power cycles.
+It's now documented how in [3C509DEF.INC](3C509DEV.INC) how LINKBEAT, which
+essentially is considered a driver-policy, would be implemented.
 
-`CONFIGURE /LINKBEAT` is not yet implemented in `3CCFGCLI`. The `LIST` command
-retains its `Link Status` ("Link Beat") display, as described below.
+However, as necessity of the Hardware Compliance Testing implementation,
+I implemented the `SAVECONFIG` verb, which creates a config restore file.
+
+Since the latest `3C5X9CFG` 3.2 is the latest version available,
+I targeted compatibility with this specific release.
+Consequentally, as it doesn't support the `/LINKBEAT` word, I decided
+to not implement it at all.
+
 
 ### /SYNCREADY configuration verb
 
-Version 3.x and 2.1 of `3C5X9CFG.EXE` advertise also a `/SYNCREADY` configuration verb
-in its HELP text, although it doesn't branch into actual code.
+Version 3.x and 2.1 of `3C5X9CFG.EXE` advertise also a `/SYNCREADY` configuration verb in its HELP text. Like the `/LINKBEAT` verb it doesn't branch into actual code.
 
-This is still under analysis, see also [TODO.TXT](TODO.TXT).
+For the sake of the same compatibility requirements to the latest `3C5X9CFG` 3.2,
+I decided to not implement this feature.
+
 
 ### /CONFIGPORT configuration verb
 
