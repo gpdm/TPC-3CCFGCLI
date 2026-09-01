@@ -60,7 +60,6 @@ SPEC ALIGNMENT FOLLOW-UP
 
 The current implementation still contains several configuration semantics inherited from reverse engineering of the original 3Com utility that do not match the documented 3C509B hardware layout in the 3Com Technical Reference.
 
-These issues are intentionally deferred until after the current hardware-faithful mock refactor is complete.
 
 Required follow-up:
 
@@ -84,39 +83,6 @@ Required follow-up:
 
     the function must have a gate.
 
-* Rework CONFIGURE /MODEM.
-
-  The documented modem-related hardware field is only EEPROM word 0Dh bits 13:8, Maximum Interrupt Disable Time.
-
-  The current implementation now preserves the independent fields in word 0Dh;
-  retain this item only for any further compatibility investigation.
-
-* Rework Plug and Play capability detection.
-
-  ISA Plug and Play capability is documented in EEPROM word 10h bit 0.
-
-  EEPROM word 14h bits 3:0 identify the adapter revision class, with value 1 identifying 3C509B-class hardware, and must not be used as a substitute PnP capability bit.
-
-* Revisit transceiver capability handling.
-
-  The documented connector availability should ultimately come from the live Window 0 Configuration Control register capability bits rather than only from a hard-coded Product ID matrix.
-
-  Documented 3C509B connector variants include:
-
-  ```
-  TPO     10BASE-T
-  TP      10BASE-T + AUI
-  Coax    AUI + BNC
-  COMBO   10BASE-T + AUI + BNC
-  ```
-
-  AUTO SELECT should operate from the hardware-reported connector capabilities.
-
-  Also note:
-    FULLDUPLEX can't be enabled if Transceiver (TR) is AUTO|COAX|AUI
-
-    the function must have a gate.
-
 
 * Revisit Product ID 9850h.
 
@@ -124,8 +90,3 @@ Required follow-up:
 
   Keep it only if another authoritative source confirms its meaning.
 
-* Correct documentation and constants after the behavioural changes are implemented.
-
-Do not add new mock behaviour or regression tests that further depend on the current FULLDUPLEX, MODEM, OPTIMIZE, PNP-capability, or transceiver-capability interpretations unless specifically required for preserving existing behaviour during the refactor.
-
-The current mock refactor may continue independently, because these issues concern configuration-field interpretation rather than the low-level register, EEPROM-controller, ID-port, activation, and I/O-dispatch architecture.

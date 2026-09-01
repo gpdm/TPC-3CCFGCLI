@@ -36,6 +36,7 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  NOFD         Seed as B-class card without TP capability.', 0Dh, 0Ah
              DB '  TPAUI        Seed TP product with live TP+AUI capabilities.', 0Dh, 0Ah
              DB '  TRI          Seed TP product with live TP+AUI+BNC capabilities.', 0Dh, 0Ah
+             DB '  MODEMFIELDS  Seed non-MODEM word 0Dh fields for preservation tests.', 0Dh, 0Ah
              DB '  NOLINKBEAT   INIT profile with EEPROM Link Beat Disable set.', 0Dh, 0Ah
              DB '  LINKUP       INIT profile with live Link Status forced connected.', 0Dh, 0Ah
              DB '  LINKDOWN     INIT profile with live Link Status forced not connected.', 0Dh, 0Ah
@@ -53,6 +54,7 @@ msg_ok_pnprev0 DB 'Seed file created (PNPREV0).', 0Dh, 0Ah, '$'
 msg_ok_nofd  DB 'Seed file created (NOFD).', 0Dh, 0Ah, '$'
 msg_ok_tpaui DB 'Seed file created (TPAUI).', 0Dh, 0Ah, '$'
 msg_ok_tri   DB 'Seed file created (TRI).', 0Dh, 0Ah, '$'
+msg_ok_modemfields DB 'Seed file created (MODEMFIELDS).', 0Dh, 0Ah, '$'
 msg_ok_nolinkbeat DB 'Seed file created (NOLINKBEAT).', 0Dh, 0Ah, '$'
 msg_ok_linkup   DB 'Seed file created (LINKUP).', 0Dh, 0Ah, '$'
 msg_ok_linkdown DB 'Seed file created (LINKDOWN).', 0Dh, 0Ah, '$'
@@ -78,6 +80,7 @@ kw_pnprev0   DB 'PNPREV0', 0
 kw_nofd      DB 'NOFD', 0
 kw_tpaui     DB 'TPAUI', 0
 kw_tri       DB 'TRI', 0
+kw_modemfields DB 'MODEMFIELDS', 0
 kw_nolinkbeat DB 'NOLINKBEAT', 0
 kw_linkup    DB 'LINKUP', 0
 kw_linkdown  DB 'LINKDOWN', 0
@@ -227,6 +230,9 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_tri
     call    Match_Token
     jnc     @@DoTri
+    mov     dx, OFFSET kw_modemfields
+    call    Match_Token
+    jnc     @@DoModemFields
     mov     dx, OFFSET kw_nolinkbeat
     call    Match_Token
     jnc     @@DoNoLinkBeat
@@ -363,6 +369,14 @@ PROC Parse_And_Run NEAR
     call    Seed_Tri
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_tri
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoModemFields:
+    call    Seed_ModemFields
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_modemfields
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -1227,6 +1241,25 @@ PROC Seed_Tri NEAR
     stc
     ret
 ENDP Seed_Tri
+
+; Set every non-MODEM word 0Dh field while retaining a named MODEM encoding.
+PROC Seed_ModemFields NEAR
+    call    Seed_Init
+    jc      @@Fail
+    mov     si, EEPROM_SOFTWARE_INFO
+    mov     ax, EEPROM_MODEM_1200
+    or      ax, EEPROM_SOFTWARE_INFO_LINKBEAT_DISABLE
+    or      ax, EEPROM_SOFTWARE_INFO_RESERVED_MASK
+    or      ax, EEPROM_SOFTWARE_INFO_OPTIMIZE_MASK
+    or      ax, EEPROM_SOFTWARE_INFO_BOOT_PROTOCOL_MASK
+    call    EEPROM_Write_SI
+    call    Build_Checksum
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_ModemFields
 
 PROC Seed_NoLinkBeat NEAR
     ; INIT profile, then set the persistent Link Beat Disable policy in

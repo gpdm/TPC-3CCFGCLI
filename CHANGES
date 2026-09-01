@@ -9,6 +9,8 @@ Changelog 0.7.1:
     requires at least two live connector capabilities.
   - Reorganized LIST output into hardware/capability/status and configuration
     sections, including explicit connector, Full Duplex, and PNP capabilities.
+  - Corrected /MODEM custom Maximum Interrupt Disable Time encodings to modify
+    only EEPROM Software Information bits 13:8.
   - SAVECONFIG now writes independently executable restore commands and keeps
     the required /BADDRESS + /BSIZE pair together on a second line.
 

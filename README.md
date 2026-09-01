@@ -272,6 +272,7 @@ profiles, capability overrides, and cleanup states.
 | `NOFD` | INIT + live TP connector capability clear; the B-class revision remains valid. |
 | `TPAUI` | TP product ID + live TP/AUI connector capabilities, for Product-ID mismatch tests. |
 | `TRI` | TP product ID + live TP/AUI/BNC connector capabilities. |
+| `MODEMFIELDS` | INIT + non-MODEM Software Information fields set for preservation tests. |
 | `NOLINKBEAT` | INIT + `EEPROM_SOFTWARE_INFO` bit 14 set for MODEM preservation tests. |
 
 

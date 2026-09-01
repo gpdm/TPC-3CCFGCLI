@@ -500,8 +500,8 @@ ext_optimize      DW 0FFFFh
 ; Live link status (Window 4/Port 0Ah bit 11); 0 = not connected,
 ; 1 = connected, 0FFFFh = unavailable (adapter not active).
 ext_link_status   DW 0FFFFh
-; Raw EEPROM_SOFTWARE_INFO (word 0Dh); bits 13:0 are the MODEM field, masked
-; with EEPROM_SOFTWARE_INFO_MODEM_MASK by Print_Modem_Value before display.
+; Raw EEPROM_SOFTWARE_INFO (word 0Dh).  /MODEM uses only its Maximum Interrupt
+; Disable Time field, bits 13:8.
 ext_software_info DW 0FFFFh
 ; CONFIGURE state.  nic_table itself is deliberately not extended.
 cfg_adapter_ordinal   DB 0
@@ -1300,7 +1300,6 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_modem
     call    Save_Append_String
     mov     ax, [save_word0d]
-    and     ax, EEPROM_SOFTWARE_INFO_MODEM_MASK
     call    Decode_Modem_Value
     jc      @@ModemNone
     cmp     ax, 0FFFFh
@@ -2673,11 +2672,10 @@ PROC Cfg_Handle_MODEM NEAR
     div     bx
     or      dx, dx
     jnz     @@Invalid
-    ; AX = step count (1-64); raw = ((count-1) << 8) | 20h.
+    ; AX = step count (1-64); raw Maximum Interrupt Disable Time = (count-1) << 8.
     dec     ax
     mov     cl, 8
     shl     ax, cl
-    or      ax, 0020h
     jmp     @@Accept
 
 @@Named1200:
@@ -4888,12 +4886,16 @@ ENDP Cfg_Prepare_PNP
 ; prospective Software Information word.  Always use RMW.
 PROC Cfg_Prepare_MODEM NEAR
     push    ax
+    push    dx
 
     mov     ax, [cfg_txn_new_word0d]
-    and     ax, 0C0FFh              ; preserve bits 15:14 and 7:0
-    or      ax, [cfg_modem_value]   ; modem value is constrained to bits 13:8
+    and     ax, NOT EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
+    mov     dx, [cfg_modem_value]
+    and     dx, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
+    or      ax, dx
     mov     [cfg_txn_new_word0d], ax
 
+    pop     dx
     pop     ax
     ret
 ENDP Cfg_Prepare_MODEM
@@ -7373,11 +7375,10 @@ PROC Print_Optimize_Value NEAR
     ret
 ENDP Print_Optimize_Value
 
-; Decodes a raw EEPROM_SOFTWARE_INFO MODEM field (bits 13:0, already masked
-; with EEPROM_SOFTWARE_INFO_MODEM_MASK).  Returns CF=1 for "no custom modem
-; tuning" (zero, or the measured EEPROM_MODEM_NONE constant); otherwise CF=0
-; and AX = the friendly value to display: a named baud rate, the equivalent
-; custom step value (25-1600), or 0FFFFh if the encoding is unrecognised.
+; Decodes EEPROM word 0Dh Maximum Interrupt Disable Time (bits 13:8).
+; Returns CF=1 for the CLI compatibility value NONE (zero or
+; EEPROM_MODEM_NONE); otherwise CF=0 and AX = a named baud rate, the equivalent
+; custom step value (25-1600), or 0FFFFh for an unrecognised encoding.
 PROC Decode_Modem_Value NEAR
     push    dx
     push    cx
@@ -7447,7 +7448,6 @@ PROC Print_Modem_Value NEAR
     mov     ax, [ext_software_info]
     cmp     ax, 0FFFFh
     je      @@Unavailable
-    and     ax, EEPROM_SOFTWARE_INFO_MODEM_MASK
     call    Decode_Modem_Value
     jc      @@None
     cmp     ax, 0FFFFh
