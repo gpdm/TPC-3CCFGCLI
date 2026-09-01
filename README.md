@@ -263,7 +263,8 @@ profiles, capability overrides, and cleanup states.
 | `3C509B-C` | Product 9450h, media=TP. |
 | `3C509B-TPO` | Product 9550h, media=TP. |
 | `3C509B-TPC` | Product 9850h, media=coax. |
-| `NOPNP` | INIT + `EEPROM_REVISION_INFO=0` → PNP capability gate fails. |
+| `NOPNP` | INIT + EEPROM Capability PNP bit clear; preserves the other capability bits. |
+| `PNPREV0` | INIT + `EEPROM_REVISION_INFO=0`; retains EEPROM PNP capability for independence tests. |
 | `NOFD` | INIT + `EEPROM_CAPABILITY=0` → FULLDUPLEX capability gate fails. |
 | `NOLINKBEAT` | INIT + `EEPROM_SOFTWARE_INFO` bit 14 set for MODEM preservation tests. |
 

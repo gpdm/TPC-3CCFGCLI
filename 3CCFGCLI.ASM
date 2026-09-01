@@ -102,6 +102,17 @@ CFG_TXN_LIVE06_MASK      EQU 14h
 CFG_TXN_COMMIT_MASK      EQU 03F1h
 CFG_TXN_INT_MIGRATE_MASK EQU 50h
 
+; Normalized physical NIC capabilities.  These bits are a shared software
+; contract, not aliases for EEPROM or register bit positions.
+NIC_CAP_PNP              EQU 01h
+NIC_CAP_TP               EQU 02h
+NIC_CAP_AUI              EQU 04h
+NIC_CAP_BNC              EQU 08h
+NIC_CAP_FULLDUPLEX       EQU 10h
+NIC_CAP_VALID_PNP        EQU 01h
+NIC_CAP_VALID_CONNECTORS EQU 02h
+NIC_CAP_VALID_FULLDUPLEX EQU 04h
+
 ; Common CONFIGURE result codes.
 CFG_ERR_NONE                EQU 0
 CFG_ERR_NO_NIC              EQU 1
@@ -471,6 +482,8 @@ ext_addr_cfg      DW 0FFFFh
 ext_compatibility DW 0FFFFh
 ext_capability    DW 0FFFFh
 ext_config_ctrl   DW 0FFFFh
+ext_nic_capabilities DW 0FFFFh
+ext_nic_capability_valid DW 0
 ext_revision_info DW 0FFFFh
 ext_optimize      DW 0FFFFh
 ; Live link status (Window 4/Port 0Ah bit 11); 0 = not connected,
@@ -3863,6 +3876,84 @@ PROC EEPROM_Read NEAR
     ret
 ENDP EEPROM_Read
 
+; Read hardware capability sources independently.
+; Input DX = active I/O base.  Output AX = NIC_CAP_* values, BX =
+; NIC_CAP_VALID_* source-validity flags, CF always clear.  The current window
+; is restored.  A clear validity bit means that capability group is unavailable.
+PROC Nic_Read_Capabilities NEAR
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    mov     si, dx
+    call    Get_Current_Window
+    mov     di, ax
+    xor     bx, bx                  ; validity result
+    xor     cx, cx                  ; normalized capability result
+
+    mov     dx, si
+    xor     al, al
+    call    Select_Window
+    mov     bx, EL3_W0_CONFIG_CONTROL
+    call    Nic_Reg_Read_Word
+    xor     bx, bx                  ; discard register offset; rebuild validity
+    cmp     ax, 0FFFFh
+    je      @@ReadPnp
+    or      bx, NIC_CAP_VALID_CONNECTORS
+    test    ax, W0_CONFIG_CONTROL_TP_PRESENT
+    jz      @@NoTp
+    or      cx, NIC_CAP_TP
+@@NoTp:
+    test    ax, W0_CONFIG_CONTROL_AUI_PRESENT
+    jz      @@NoAui
+    or      cx, NIC_CAP_AUI
+@@NoAui:
+    test    ax, W0_CONFIG_CONTROL_BNC_PRESENT
+    jz      @@ReadPnp
+    or      cx, NIC_CAP_BNC
+
+@@ReadPnp:
+    mov     dx, si
+    mov     al, EEPROM_CAPABILITY
+    call    EEPROM_Read
+    cmp     ax, 0FFFFh
+    je      @@ReadRevision
+    or      bx, NIC_CAP_VALID_PNP
+    test    ax, EEPROM_CAPABILITY_PNP
+    jz      @@ReadRevision
+    or      cx, NIC_CAP_PNP
+
+@@ReadRevision:
+    test    bx, NIC_CAP_VALID_CONNECTORS
+    jz      @@Restore
+    mov     dx, si
+    mov     al, EEPROM_REVISION_INFO
+    call    EEPROM_Read
+    cmp     ax, 0FFFFh
+    je      @@Restore
+    or      bx, NIC_CAP_VALID_FULLDUPLEX
+    test    cx, NIC_CAP_TP
+    jz      @@Restore
+    and     ax, 00FFh
+    cmp     ax, EEPROM_REVISION_3C509B
+    jb      @@Restore
+    or      cx, NIC_CAP_FULLDUPLEX
+
+@@Restore:
+    mov     ax, di
+    mov     dx, si
+    call    Select_Window
+    mov     ax, cx
+    clc
+@@Exit:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    ret
+ENDP Nic_Read_Capabilities
+
 ; Build a record from an adapter that is already active at DX.
 ; Input DX = base, DI = destination record, AX = product ID, BL = ASIC rev.
 PROC Build_Record_From_Active NEAR
@@ -6208,17 +6299,14 @@ PROC Cfg_Txn_Execute NEAR
 @@GatePNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@GateFULLDUPLEX
-    ; Guard: EEPROM word 14h (EEPROM_REVISION_INFO) low byte must be >= 1.
-    ; This is how the original utility determines whether the adapter supports
-    ; Plug and Play configuration at all.
+    ; EEPROM_CAPABILITY bit 0 is the authoritative PNP capability source.
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_REVISION_INFO
-    call    Cfg_Eeprom_Read
-    jc      @@PNPCapReadFail
-    and     ax, 00FFh
-    cmp     ax, 1
-    jb      @@PNPNotCapable
+    call    Nic_Read_Capabilities
+    test    bx, NIC_CAP_VALID_PNP
+    jz      @@PNPCapReadFail
+    test    ax, NIC_CAP_PNP
+    jz      @@PNPNotCapable
     jmp     @@GateFULLDUPLEX
 @@PNPCapReadFail:
     mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_READ
@@ -6969,12 +7057,18 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_link_status], 0FFFFh
     mov     [ext_software_info], 0FFFFh
     mov     [ext_fd_capable], 0FFh
+    mov     [ext_nic_capabilities], 0FFFFh
+    mov     [ext_nic_capability_valid], 0
 
     mov     dx, [WORD si + NIC_IO_BASE]
     or      dx, dx
     jz      @@Done
     test    [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
     jz      @@Done
+
+    call    Nic_Read_Capabilities
+    mov     [ext_nic_capabilities], ax
+    mov     [ext_nic_capability_valid], bx
 
     mov     al, EEPROM_ADDR_CFG
     call    EEPROM_Read
@@ -7042,6 +7136,11 @@ PROC Read_Extended_Nic_Info NEAR
     call    Nic_Select_Window
 
     mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_CONFIG_CONTROL
+    call    EEPROM_Read
+    mov     [ext_config_ctrl], ax
+
+    mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_REVISION_INFO
     call    EEPROM_Read
     mov     [ext_revision_info], ax
@@ -7057,11 +7156,6 @@ PROC Read_Extended_Nic_Info NEAR
     mov     al, EEPROM_CAPABILITY
     call    EEPROM_Read
     mov     [ext_capability], ax
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_CONFIG_CONTROL
-    call    EEPROM_Read
-    mov     [ext_config_ctrl], ax
 
 @@Done:
     pop     dx
@@ -7150,15 +7244,13 @@ PROC Print_Pnp_Capability_Value NEAR
     push    ax
     push    dx
 
-    call    Extended_Is_Later_Card
-    or      al, al
-    jz      @@NotSupported
-
-    mov     ax, [ext_capability]
+    mov     ax, [ext_nic_capabilities]
     cmp     ax, 0FFFFh
     je      @@Unavailable
-    test    ax, 0001h
-    jz      @@Disabled
+    test    [ext_nic_capability_valid], NIC_CAP_VALID_PNP
+    jz      @@Unavailable
+    test    ax, NIC_CAP_PNP
+    jz      @@NotSupported
 
     mov     ax, [ext_config_ctrl]
     cmp     ax, 0FFFFh

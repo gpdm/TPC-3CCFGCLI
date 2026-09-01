@@ -70,7 +70,7 @@ MODEM_CHANGE: t0601 t0602 t0603 t0604 t0605 t0606 t0607
 # Base: 0700
 FD_CHANGE: t0701 t0702 t0703 t0704 t0705 t0706 t0707
 # Base: 0800
-CAPABILITY_GATES: t0801 t0802
+CAPABILITY_GATES: t0801 t0802 t0803
 # Base: 0900
 OPTIMIZE_CHANGE: t0901 t0902 t0903 t0904
 # Base: 1000
@@ -367,6 +367,8 @@ t0801:
 	@echo [t0801] Testing PNP capability gate: NOPNP seed rejects /PNP:ENABLED... >> TEST.LOG
 	BIN\3CSEED.EXE NOPNP > $(ARTIFACTS)\T0801.LOG
 	FIND "Seed file created (NOPNP)." $(ARTIFACTS)\T0801.LOG > NUL
+	$(BINAPP) LIST >> $(ARTIFACTS)\T0801.LOG
+	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\T0801.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED >> $(ARTIFACTS)\T0801.LOG
 	FIND "This adapter does not support Plug and Play configuration." $(ARTIFACTS)\T0801.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0801.LOG
@@ -378,6 +380,16 @@ t0802:
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0802.LOG
 	FIND "This adapter does not support full duplex configuration." $(ARTIFACTS)\T0802.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0802.LOG
+
+t0803:
+	@echo [t0803] Testing PNP capability is independent of revision level... >> TEST.LOG
+	BIN\3CSEED.EXE PNPREV0 > $(ARTIFACTS)\T0803.LOG
+	FIND "Seed file created (PNPREV0)." $(ARTIFACTS)\T0803.LOG > NUL
+	$(BINAPP) LIST >> $(ARTIFACTS)\T0803.LOG
+	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T0803.LOG > NUL
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED >> $(ARTIFACTS)\T0803.LOG
+	FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0803.LOG > NUL
+	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0803.LOG
 
 t0901:
 	@echo [t0901] Testing mock CONFIGURE /OPTIMIZE transition to OS/2... >> TEST.LOG
