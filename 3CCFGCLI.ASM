@@ -433,6 +433,9 @@ msg_no_io       DB  "unassigned", '$'
 msg_asic_label  DB  "ASIC Revision = ", '$'
 msg_xcvr_label  DB  "Transceiver = ", '$'
 msg_pnp_label   DB  "Plug and Play Capability = ", '$'
+msg_pnp_state_label DB "Plug and Play = ", '$'
+msg_connectors_label DB "Connectors = ", '$'
+msg_fd_capability_label DB "Full Duplex Capability = ", '$'
 msg_boot_label  DB  "Boot ROM = ", '$'
 msg_compat_label DB "Software Compatibility = failure level ", '$'
 msg_optimize_label DB "Optimization = ", '$'
@@ -449,6 +452,8 @@ msg_warn_label  DB  ", warning level ", '$'
 
 msg_enabled     DB  "enabled", '$'
 msg_disabled    DB  "disabled", '$'
+msg_yes         DB  "yes", '$'
+msg_no          DB  "no", '$'
 msg_none        DB  "none", '$'
 msg_not_supported DB "not supported", '$'
 msg_unavailable DB  "unavailable", '$'
@@ -464,6 +469,8 @@ msg_at          DB  "K at ", '$'
 msg_hex_suffix  DB  "H", '$'
 msg_kilobytes_suffix DB "K", '$'
 msg_crlf        DB  0Dh, 0Ah, '$'
+msg_separator   DB  "       ---", 0Dh, 0Ah, '$'
+msg_connector_separator DB ", ", '$'
 
 card_count      DW  0
 current_card    DW  0
@@ -3392,34 +3399,6 @@ PROC Cmd_List NEAR
     call    Select_Nic_Description
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
-
-    ; I/O and IRQ line.
-    mov     dx, OFFSET msg_indent
-    mov     ah, 09h
-    int     21h
-    mov     dx, OFFSET msg_iobase
-    mov     ah, 09h
-    int     21h
-    mov     ax, [WORD si + NIC_IO_BASE]
-    or      ax, ax
-    jz      @@PrintNoIo
-    call    Print_HexWord
-    jmp     @@PrintIrq
-@@PrintNoIo:
-    mov     dx, OFFSET msg_no_io
-    mov     ah, 09h
-    int     21h
-
-@@PrintIrq:
-    mov     dx, OFFSET msg_irq
-    mov     ah, 09h
-    int     21h
-    xor     ax, ax
-    mov     al, [BYTE si + NIC_IRQ_VAL]
-    call    Print_DecByte
     mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
@@ -7192,22 +7171,11 @@ PROC Print_Pnp_Capability_Value NEAR
     test    [ext_nic_capability_valid], NIC_CAP_VALID_PNP
     jz      @@Unavailable
     test    ax, NIC_CAP_PNP
-    jz      @@NotSupported
-
-    mov     ax, [ext_config_ctrl]
-    cmp     ax, 0FFFFh
-    je      @@Unavailable
-    and     ax, 000Ch
-    cmp     ax, 0004h
-    je      @@Disabled
-
-    mov     dx, OFFSET msg_enabled
+    jz      @@No
+    mov     dx, OFFSET msg_yes
     jmp     @@Print
-@@Disabled:
-    mov     dx, OFFSET msg_disabled
-    jmp     @@Print
-@@NotSupported:
-    mov     dx, OFFSET msg_not_supported
+@@No:
+    mov     dx, OFFSET msg_no
     jmp     @@Print
 @@Unavailable:
     mov     dx, OFFSET msg_unavailable
@@ -7218,6 +7186,103 @@ PROC Print_Pnp_Capability_Value NEAR
     pop     ax
     ret
 ENDP Print_Pnp_Capability_Value
+
+PROC Print_Pnp_State_Value NEAR
+    push    ax
+    push    dx
+
+    mov     ax, [ext_config_ctrl]
+    cmp     ax, 0FFFFh
+    je      @@Unavailable
+    and     ax, 000Ch
+    cmp     ax, 0004h
+    je      @@Disabled
+    mov     dx, OFFSET msg_enabled
+    jmp     @@Print
+@@Disabled:
+    mov     dx, OFFSET msg_disabled
+    jmp     @@Print
+@@Unavailable:
+    mov     dx, OFFSET msg_unavailable
+@@Print:
+    mov     ah, 09h
+    int     21h
+    pop     dx
+    pop     ax
+    ret
+ENDP Print_Pnp_State_Value
+
+PROC Print_Connector_Capabilities NEAR
+    push    ax
+    push    dx
+
+    test    [ext_nic_capability_valid], NIC_CAP_VALID_CONNECTORS
+    jz      @@Unavailable
+    mov     ax, [ext_nic_capabilities]
+    and     ax, NIC_CAP_TP + NIC_CAP_AUI + NIC_CAP_BNC
+    jz      @@None
+    test    ax, NIC_CAP_TP
+    jz      @@Aui
+    mov     dx, OFFSET msg_tr_tp
+    call    Print_String
+@@Aui:
+    test    ax, NIC_CAP_AUI
+    jz      @@Bnc
+    test    ax, NIC_CAP_TP
+    jz      @@PrintAui
+    mov     dx, OFFSET msg_connector_separator
+    call    Print_String
+@@PrintAui:
+    mov     dx, OFFSET msg_tr_aui
+    call    Print_String
+@@Bnc:
+    test    ax, NIC_CAP_BNC
+    jz      @@Done
+    mov     dx, OFFSET msg_connector_separator
+    test    ax, NIC_CAP_TP + NIC_CAP_AUI
+    jnz     @@PrintBncSeparator
+    jmp     @@PrintBnc
+@@PrintBncSeparator:
+    call    Print_String
+@@PrintBnc:
+    mov     dx, OFFSET msg_tr_coax
+    call    Print_String
+    jmp     @@Done
+@@None:
+    mov     dx, OFFSET msg_none
+    jmp     @@Print
+@@Unavailable:
+    mov     dx, OFFSET msg_unavailable
+@@Print:
+    call    Print_String
+@@Done:
+    pop     dx
+    pop     ax
+    ret
+ENDP Print_Connector_Capabilities
+
+PROC Print_Full_Duplex_Capability NEAR
+    push    ax
+    push    dx
+
+    test    [ext_nic_capability_valid], NIC_CAP_VALID_FULLDUPLEX
+    jz      @@Unavailable
+    mov     ax, [ext_nic_capabilities]
+    test    ax, NIC_CAP_FULLDUPLEX
+    jz      @@No
+    mov     dx, OFFSET msg_yes
+    jmp     @@Print
+@@No:
+    mov     dx, OFFSET msg_no
+    jmp     @@Print
+@@Unavailable:
+    mov     dx, OFFSET msg_unavailable
+@@Print:
+    call    Print_String
+    pop     dx
+    pop     ax
+    ret
+ENDP Print_Full_Duplex_Capability
 
 PROC Print_Optimize_Code NEAR
     push    ax
@@ -7616,39 +7681,6 @@ PROC Print_Extended_Nic_Info NEAR
     mov     dx, OFFSET msg_indent
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_xcvr_label
-    mov     ah, 09h
-    int     21h
-    call    Print_Transceiver_Value
-    mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
-
-    mov     dx, OFFSET msg_indent
-    mov     ah, 09h
-    int     21h
-    mov     dx, OFFSET msg_pnp_label
-    mov     ah, 09h
-    int     21h
-    call    Print_Pnp_Capability_Value
-    mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
-
-    mov     dx, OFFSET msg_indent
-    mov     ah, 09h
-    int     21h
-    mov     dx, OFFSET msg_boot_label
-    mov     ah, 09h
-    int     21h
-    call    Print_Boot_Rom_Value
-    mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
-
-    mov     dx, OFFSET msg_indent
-    mov     ah, 09h
-    int     21h
     mov     dx, OFFSET msg_compat_label
     mov     ah, 09h
     int     21h
@@ -7674,53 +7706,113 @@ PROC Print_Extended_Nic_Info NEAR
     mov     ah, 09h
     int     21h
 
-mov     dx, OFFSET msg_indent
-mov     ah, 09h
-int     21h
-mov     dx, OFFSET msg_optimize_label
-mov     ah, 09h
-int     21h
-call    Print_Optimize_Value
-mov     dx, OFFSET msg_crlf
-mov     ah, 09h
-int     21h
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_connectors_label
+   call    Print_String
+   call    Print_Connector_Capabilities
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
 
-    mov     dx, OFFSET msg_indent
-    mov     ah, 09h
-    int     21h
-    mov     dx, OFFSET msg_modem_label
-    mov     ah, 09h
-    int     21h
-    call    Print_Modem_Value
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_fd_capability_label
+   call    Print_String
+   call    Print_Full_Duplex_Capability
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
+
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_pnp_label
+   call    Print_String
+   call    Print_Pnp_Capability_Value
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
+
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_link_status_label
+   call    Print_String
+   call    Print_Link_Status_Value
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+   call    Print_String
 
-    mov     dx, OFFSET msg_indent
-    mov     ah, 09h
-    int     21h
-    mov     dx, OFFSET msg_fullduplex_label
-    mov     ah, 09h
-    int     21h
-    call    Print_Full_Duplex_Value
-    mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+   mov     dx, OFFSET msg_separator
+   call    Print_String
 
-    mov     dx, OFFSET msg_indent
-    mov     ah, 09h
-    int     21h
-    mov     dx, OFFSET msg_link_status_label
-    mov     ah, 09h
-    int     21h
-    call    Print_Link_Status_Value
-    mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_iobase
+   call    Print_String
+   mov     ax, [WORD si + NIC_IO_BASE]
+   or      ax, ax
+   jz      @@PrintNoIo
+   call    Print_HexWord
+   jmp     @@PrintIrq
+@@PrintNoIo:
+   mov     dx, OFFSET msg_no_io
+   call    Print_String
+@@PrintIrq:
+   mov     dx, OFFSET msg_irq
+   call    Print_String
+   xor     ax, ax
+   mov     al, [BYTE si + NIC_IRQ_VAL]
+   call    Print_DecByte
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
 
-pop     dx
-pop     ax
-ret
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_xcvr_label
+   call    Print_String
+   call    Print_Transceiver_Value
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
+
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_pnp_state_label
+   call    Print_String
+   call    Print_Pnp_State_Value
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
+
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_boot_label
+   call    Print_String
+   call    Print_Boot_Rom_Value
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
+
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_optimize_label
+   call    Print_String
+   call    Print_Optimize_Value
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
+
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_modem_label
+   call    Print_String
+   call    Print_Modem_Value
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
+
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_fullduplex_label
+   call    Print_String
+   call    Print_Full_Duplex_Value
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
+
+   pop     dx
+   pop     ax
+   ret
 ENDP Print_Extended_Nic_Info
 
 ; ============================================================================
@@ -7738,6 +7830,15 @@ PROC Print_HexNibble NEAR
     int     21h
     ret
 ENDP Print_HexNibble
+
+; Input DX = '$'-terminated string.
+PROC Print_String NEAR
+    push    ax
+    mov     ah, 09h
+    int     21h
+    pop     ax
+    ret
+ENDP Print_String
 
 PROC Print_HexByte NEAR
     push    ax

@@ -104,6 +104,10 @@ t0102:
 	$(BINAPP) LIST > $(ARTIFACTS)\T0102.LOG
 	FIND "NIC                            NIC" $(ARTIFACTS)\T0102.LOG > NUL
 	FIND "Number                       Description" $(ARTIFACTS)\T0102.LOG > NUL
+	FIND "Connectors = TP" $(ARTIFACTS)\T0102.LOG > NUL
+	FIND "Full Duplex Capability = yes" $(ARTIFACTS)\T0102.LOG > NUL
+	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0102.LOG > NUL
+	FIND "Plug and Play = enabled" $(ARTIFACTS)\T0102.LOG > NUL
 
 t0201:
 	@echo [t0201] Testing mock CONFIGURE /INT invalid out-of-range value... >> TEST.LOG
@@ -229,7 +233,8 @@ t0501:
 	FIND "PNP parameter accepted. Requested Plug and Play mode: disabled" $(ARTIFACTS)\T0501.LOG > NUL
 	FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0501.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T0501.LOG
-	FIND "Plug and Play Capability = disabled" $(ARTIFACTS)\T0501.LOG > NUL
+	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0501.LOG > NUL
+	FIND "Plug and Play = disabled" $(ARTIFACTS)\T0501.LOG > NUL
 
 t0502:
 	@echo [t0502] Testing mock CONFIGURE /PNP transition back to enabled... >> TEST.LOG
@@ -237,28 +242,29 @@ t0502:
 	FIND "PNP parameter accepted. Requested Plug and Play mode: enabled" $(ARTIFACTS)\T0502.LOG > NUL
 	FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0502.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T0502.LOG
-	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T0502.LOG > NUL
+	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0502.LOG > NUL
+	FIND "Plug and Play = enabled" $(ARTIFACTS)\T0502.LOG > NUL
 
 t0503:
 	@echo [t0503] Testing mock CONFIGURE /PNP rejects legacy numeric value... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:1 > $(ARTIFACTS)\T0503.LOG
 	FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0503.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T0503.LOG
-	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T0503.LOG > NUL
+	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0503.LOG > NUL
 
 t0504:
 	@echo [t0504] Testing mock CONFIGURE /PNP symbolic false value... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:FALSE > $(ARTIFACTS)\T0504.LOG
 	FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0504.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T0504.LOG
-	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T0504.LOG > NUL
+	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0504.LOG > NUL
 
 t0505:
 	@echo [t0505] Testing mock CONFIGURE /PNP arbitrary invalid input... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:OTHERINVALIDINPUT > $(ARTIFACTS)\T0505.LOG
 	FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0505.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T0505.LOG
-	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T0505.LOG > NUL
+	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0505.LOG > NUL
 
 t0601:
 	@echo [t0601] Testing mock CONFIGURE /MODEM transition to 1200... >> TEST.LOG
@@ -360,6 +366,7 @@ t0707:
 	@echo [t0707] Testing LIST Full Duplex readout on a non-capable adapter... >> TEST.LOG
 	BIN\3CSEED.EXE NOFD > $(ARTIFACTS)\T0707.LOG
 	$(BINAPP) LIST >> $(ARTIFACTS)\T0707.LOG
+	FIND "Full Duplex Capability = no" $(ARTIFACTS)\T0707.LOG > NUL
 	FIND "Full Duplex = not supported" $(ARTIFACTS)\T0707.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0707.LOG
 
@@ -368,7 +375,7 @@ t0801:
 	BIN\3CSEED.EXE NOPNP > $(ARTIFACTS)\T0801.LOG
 	FIND "Seed file created (NOPNP)." $(ARTIFACTS)\T0801.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T0801.LOG
-	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\T0801.LOG > NUL
+	FIND "Plug and Play Capability = no" $(ARTIFACTS)\T0801.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED >> $(ARTIFACTS)\T0801.LOG
 	FIND "This adapter does not support Plug and Play configuration." $(ARTIFACTS)\T0801.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0801.LOG
@@ -388,7 +395,7 @@ t0803:
 	BIN\3CSEED.EXE PNPREV0 > $(ARTIFACTS)\T0803.LOG
 	FIND "Seed file created (PNPREV0)." $(ARTIFACTS)\T0803.LOG > NUL
 	$(BINAPP) LIST >> $(ARTIFACTS)\T0803.LOG
-	FIND "Plug and Play Capability = enabled" $(ARTIFACTS)\T0803.LOG > NUL
+	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0803.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0803.LOG
 	FIND "This adapter does not support full duplex configuration." $(ARTIFACTS)\T0803.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED >> $(ARTIFACTS)\T0803.LOG
@@ -625,6 +632,8 @@ t1211:
 t1212:
 	@echo [t1212] Testing live TP+AUI capabilities override TP product ID... >> TEST.LOG
 	BIN\3CSEED.EXE TPAUI > $(ARTIFACTS)\T1212.LOG
+	$(BINAPP) LIST >> $(ARTIFACTS)\T1212.LOG
+	FIND "Connectors = TP, AUI" $(ARTIFACTS)\T1212.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T1212.LOG
 	FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1212.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1212.LOG
@@ -634,6 +643,8 @@ t1212:
 t1213:
 	@echo [t1213] Testing CONFIGURE /TR:AUTO on three live connectors succeeds... >> TEST.LOG
 	BIN\3CSEED.EXE TRI > $(ARTIFACTS)\T1213.LOG
+	$(BINAPP) LIST >> $(ARTIFACTS)\T1213.LOG
+	FIND "Connectors = TP, AUI, COAX" $(ARTIFACTS)\T1213.LOG > NUL
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1213.LOG
 	FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1213.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T1213.LOG

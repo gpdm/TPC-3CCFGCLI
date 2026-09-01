@@ -7,6 +7,8 @@ Changelog 0.7.1:
   - Migrated transceiver and Full Duplex capability gates and LIST reporting
     to shared live connector and derived Full Duplex capabilities.  AUTO now
     requires at least two live connector capabilities.
+  - Reorganized LIST output into hardware/capability/status and configuration
+    sections, including explicit connector, Full Duplex, and PNP capabilities.
   - SAVECONFIG now writes independently executable restore commands and keeps
     the required /BADDRESS + /BSIZE pair together on a second line.
 
