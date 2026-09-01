@@ -298,7 +298,7 @@ PROC Nic_Check_3Com_Signature NEAR
     call    Nic_Select_Window
 
     mov     dx, si
-    mov     bx, EL3_W4_NET_DIAG
+    mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
     call    Nic_Reg_Read_Word
     cmp     bh, 0
     je      @@NetDiagOrderGood
@@ -392,4 +392,3 @@ PROC Nic_Activate_Tagged_Cards NEAR
     pop     ax
     ret
 ENDP Nic_Activate_Tagged_Cards
-

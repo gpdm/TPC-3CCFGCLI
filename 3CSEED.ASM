@@ -36,6 +36,8 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  NOFD         Seed as B-class card without TP capability.', 0Dh, 0Ah
              DB '  TPAUI        Seed TP product with live TP+AUI capabilities.', 0Dh, 0Ah
              DB '  TRI          Seed TP product with live TP+AUI+BNC capabilities.', 0Dh, 0Ah
+             DB '  FDSTALEON    Seed enabled FD policy with live FD_ENABLE clear.', 0Dh, 0Ah
+             DB '  FDSTALEOFF   Seed disabled FD policy with live FD_ENABLE set.', 0Dh, 0Ah
              DB '  MODEMFIELDS  Seed non-MODEM word 0Dh fields for preservation tests.', 0Dh, 0Ah
              DB '  NOLINKBEAT   INIT profile with EEPROM Link Beat Disable set.', 0Dh, 0Ah
              DB '  LINKUP       INIT profile with live Link Status forced connected.', 0Dh, 0Ah
@@ -54,6 +56,8 @@ msg_ok_pnprev0 DB 'Seed file created (PNPREV0).', 0Dh, 0Ah, '$'
 msg_ok_nofd  DB 'Seed file created (NOFD).', 0Dh, 0Ah, '$'
 msg_ok_tpaui DB 'Seed file created (TPAUI).', 0Dh, 0Ah, '$'
 msg_ok_tri   DB 'Seed file created (TRI).', 0Dh, 0Ah, '$'
+msg_ok_fdstaleon DB 'Seed file created (FDSTALEON).', 0Dh, 0Ah, '$'
+msg_ok_fdstaleoff DB 'Seed file created (FDSTALEOFF).', 0Dh, 0Ah, '$'
 msg_ok_modemfields DB 'Seed file created (MODEMFIELDS).', 0Dh, 0Ah, '$'
 msg_ok_nolinkbeat DB 'Seed file created (NOLINKBEAT).', 0Dh, 0Ah, '$'
 msg_ok_linkup   DB 'Seed file created (LINKUP).', 0Dh, 0Ah, '$'
@@ -80,6 +84,8 @@ kw_pnprev0   DB 'PNPREV0', 0
 kw_nofd      DB 'NOFD', 0
 kw_tpaui     DB 'TPAUI', 0
 kw_tri       DB 'TRI', 0
+kw_fdstaleon DB 'FDSTALEON', 0
+kw_fdstaleoff DB 'FDSTALEOFF', 0
 kw_modemfields DB 'MODEMFIELDS', 0
 kw_nolinkbeat DB 'NOLINKBEAT', 0
 kw_linkup    DB 'LINKUP', 0
@@ -230,6 +236,12 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_tri
     call    Match_Token
     jnc     @@DoTri
+    mov     dx, OFFSET kw_fdstaleon
+    call    Match_Token
+    jnc     @@DoFDStaleOn
+    mov     dx, OFFSET kw_fdstaleoff
+    call    Match_Token
+    jnc     @@DoFDStaleOff
     mov     dx, OFFSET kw_modemfields
     call    Match_Token
     jnc     @@DoModemFields
@@ -369,6 +381,22 @@ PROC Parse_And_Run NEAR
     call    Seed_Tri
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_tri
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoFDStaleOn:
+    call    Seed_FDStaleOn
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_fdstaleon
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoFDStaleOff:
+    call    Seed_FDStaleOff
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_fdstaleoff
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -1241,6 +1269,33 @@ PROC Seed_Tri NEAR
     stc
     ret
 ENDP Seed_Tri
+
+; Persistent policy and live W4 state are intentionally initialized differently.
+PROC Seed_FDStaleOn NEAR
+    call    Seed_Init
+    jc      @@Fail
+    mov     si, EEPROM_SOFTWARE_INFO
+    mov     ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    call    EEPROM_Write_SI
+    call    Build_Checksum
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W4_NET_DIAG_WRITE], 0
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_FDStaleOn
+
+PROC Seed_FDStaleOff NEAR
+    call    Seed_Init
+    jc      @@Fail
+    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W4_NET_DIAG_WRITE], W4_NET_DIAG_FD_ENABLE
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_FDStaleOff
 
 ; Set every non-MODEM word 0Dh field while retaining a named MODEM encoding.
 PROC Seed_ModemFields NEAR

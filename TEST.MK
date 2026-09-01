@@ -68,7 +68,7 @@ PNP_CHANGE: t0501 t0502 t0503 t0504 t0505
 # Base: 0600
 MODEM_CHANGE: t0601 t0602 t0603 t0604 t0605 t0606 t0607 t0608 t0609
 # Base: 0700
-FD_CHANGE: t0701 t0702 t0703 t0704 t0705 t0706 t0707
+FD_CHANGE: t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0709 t0710 t0711 t0712 t0713
 # Base: 0800
 CAPABILITY_GATES: t0801 t0802 t0803
 # Base: 0900
@@ -340,21 +340,24 @@ t0609:
 
 t0701:
 	@echo [t0701] Testing mock CONFIGURE /FULLDUPLEX transition to enabled... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED > $(ARTIFACTS)\T0701.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE > $(ARTIFACTS)\T0701.LOG
 	FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T0701.LOG > NUL
 	FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0701.LOG > NUL
+	FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0701.LOG > NUL
 
 t0702:
 	@echo [t0702] Testing mock CONFIGURE /FULLDUPLEX unchanged transition at enabled... >> TEST.LOG
 	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE > $(ARTIFACTS)\T0702.LOG
 	FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T0702.LOG > NUL
 	FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0702.LOG > NUL
+	FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0702.LOG > NUL
 
 t0703:
 	@echo [t0703] Testing mock CONFIGURE /FULLDUPLEX transition to disabled... >> TEST.LOG
-	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED > $(ARTIFACTS)\T0703.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED /VERBOSE > $(ARTIFACTS)\T0703.LOG
 	FIND "FULLDUPLEX parameter accepted. Requested mode: disabled" $(ARTIFACTS)\T0703.LOG > NUL
 	FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0703.LOG > NUL
+	FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0703.LOG > NUL
 
 t0704:
 	@echo [t0704] Testing mock CONFIGURE /FULLDUPLEX rejects legacy numeric value... >> TEST.LOG
@@ -387,6 +390,66 @@ t0707:
 	FIND "Full Duplex Capability = no" $(ARTIFACTS)\T0707.LOG > NUL
 	FIND "Full Duplex = not supported" $(ARTIFACTS)\T0707.LOG > NUL
 	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0707.LOG
+
+t0708:
+	@echo [t0708] Testing Full Duplex enable rejects effective AUI and permits disable... >> TEST.LOG
+	BIN\3CSEED.EXE TPAUI > $(ARTIFACTS)\T0708.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T0708.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0708.LOG
+	FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0708.LOG > NUL
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0708.LOG
+	FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0708.LOG > NUL
+	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0708.LOG
+
+t0709:
+	@echo [t0709] Testing Full Duplex enable rejects effective COAX... >> TEST.LOG
+	BIN\3CSEED.EXE TRI > $(ARTIFACTS)\T0709.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX >> $(ARTIFACTS)\T0709.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0709.LOG
+	FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0709.LOG > NUL
+	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0709.LOG
+
+t0710:
+	@echo [t0710] Testing Full Duplex enable rejects effective AUTO... >> TEST.LOG
+	BIN\3CSEED.EXE TPAUI > $(ARTIFACTS)\T0710.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T0710.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0710.LOG
+	FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0710.LOG > NUL
+	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0710.LOG
+
+t0711:
+	@echo [t0711] Testing combined prospective transceiver Full Duplex gate... >> TEST.LOG
+	BIN\3CSEED.EXE TRI > $(ARTIFACTS)\T0711.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T0711.LOG
+	FIND "Configuration completed successfully." $(ARTIFACTS)\T0711.LOG > NUL
+	FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0711.LOG > NUL
+	BIN\3CSEED.EXE TPAUI >> $(ARTIFACTS)\T0711.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0711.LOG
+	FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0711.LOG > NUL
+	$(BINAPP) LIST >> $(ARTIFACTS)\T0711.LOG
+	FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0711.LOG > NUL
+	FIND "Full Duplex = disabled" $(ARTIFACTS)\T0711.LOG > NUL
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0711.LOG
+	FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0711.LOG > NUL
+	$(BINAPP) LIST >> $(ARTIFACTS)\T0711.LOG
+	FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0711.LOG > NUL
+	FIND "Full Duplex = disabled" $(ARTIFACTS)\T0711.LOG > NUL
+
+t0712:
+	@echo [t0712] Testing stale enabled Full Duplex policy synchronizes live state... >> TEST.LOG
+	BIN\3CSEED.EXE FDSTALEON > $(ARTIFACTS)\T0712.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T0712.LOG
+	FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0712.LOG > NUL
+	FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0712.LOG > NUL
+	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0712.LOG
+
+t0713:
+	@echo [t0713] Testing stale disabled Full Duplex policy synchronizes live state... >> TEST.LOG
+	BIN\3CSEED.EXE FDSTALEOFF > $(ARTIFACTS)\T0713.LOG
+	$(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED /VERBOSE >> $(ARTIFACTS)\T0713.LOG
+	FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0713.LOG > NUL
+	FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0713.LOG > NUL
+	BIN\3CSEED.EXE INIT >> $(ARTIFACTS)\T0713.LOG
 
 t0801:
 	@echo [t0801] Testing PNP absence does not disable Full Duplex capability... >> TEST.LOG

@@ -188,6 +188,9 @@ CFG_ERR_TR_VERIFY           EQU 70
 CFG_ERR_TR_NOT_CAPABLE      EQU 71
 CFG_ERR_TR_CAPABILITY_READ  EQU 72
 CFG_ERR_FD_CAPABILITY_READ  EQU 73
+CFG_ERR_FD_TRANSCEIVER      EQU 74
+CFG_ERR_FD_LIVE_UPDATE      EQU 75
+CFG_ERR_FD_LIVE_VERIFY      EQU 76
 
 DATASEG
 
@@ -347,10 +350,14 @@ msg_cfg_fd_word_written DB "Full duplex configuration word written.", 0Dh, 0Ah, 
 msg_cfg_fd_eeprom_read_fail DB "EEPROM read timed out while reading full duplex configuration.", 0Dh, 0Ah, '$'
 msg_cfg_fd_eeprom_write_fail DB "EEPROM write timed out while writing full duplex configuration.", 0Dh, 0Ah, '$'
 msg_cfg_fd_verified DB "EEPROM full duplex mode verified.", 0Dh, 0Ah, '$'
+msg_cfg_fd_live_verified DB "Live Network Diagnostic full duplex mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_fd_verify_fail DB "Full duplex configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_fd_completed DB 0Dh, 0Ah, "Full duplex configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_fd_not_capable DB "This adapter does not support full duplex configuration.", 0Dh, 0Ah, '$'
 msg_cfg_fd_capability_read_fail DB "Hardware capability data is unavailable for full duplex configuration.", 0Dh, 0Ah, '$'
+msg_cfg_fd_transceiver DB "Full duplex can only be enabled with the TP transceiver.", 0Dh, 0Ah, '$'
+msg_cfg_fd_live_update_fail DB "Live full duplex hardware update failed.", 0Dh, 0Ah, '$'
+msg_cfg_fd_live_verify_fail DB "Live full duplex hardware verification failed.", 0Dh, 0Ah, '$'
 
 ; /BADDRESS and /BSIZE diagnostics.  Both share EEPROM word 08h (bits 11:8
 ; and 13:12) with /IOBASE (bits 4:0); see Cfg_Prepare_BADDRESS/BSIZE.
@@ -3266,8 +3273,23 @@ PROC Cfg_Report_Error NEAR
     jmp     @@Print
 @@E73:
     cmp     al, CFG_ERR_FD_CAPABILITY_READ
-    jne     @@Done
+    jne     @@E74
     mov     dx, OFFSET msg_cfg_fd_capability_read_fail
+    jmp     @@Print
+@@E74:
+    cmp     al, CFG_ERR_FD_TRANSCEIVER
+    jne     @@E75
+    mov     dx, OFFSET msg_cfg_fd_transceiver
+    jmp     @@Print
+@@E75:
+    cmp     al, CFG_ERR_FD_LIVE_UPDATE
+    jne     @@E76
+    mov     dx, OFFSET msg_cfg_fd_live_update_fail
+    jmp     @@Print
+@@E76:
+    cmp     al, CFG_ERR_FD_LIVE_VERIFY
+    jne     @@Done
+    mov     dx, OFFSET msg_cfg_fd_live_verify_fail
 @@Print:
     mov     ah, 09h
     int     21h
@@ -4640,6 +4662,10 @@ PROC Cfg_Txn_Read_Current NEAR
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jnz     @@ReadWord08
     test    [cfg_parse_flags], CFG_PARSE_TR
+    jnz     @@ReadWord08
+    ; FULLDUPLEX validation decodes the currently persistent transceiver when
+    ; no prospective /TR was supplied.
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@NoWord08
 @@ReadWord08:
     mov     al, EEPROM_ADDR_CFG
@@ -5030,6 +5056,42 @@ PROC Cfg_Prepare_TR NEAR
     pop     ax
     ret
 ENDP Cfg_Prepare_TR
+
+; FULLDUPLEX:ENABLED requires effective TP selection.  A staged /TR takes
+; precedence; otherwise decode the transaction's current Address Configuration.
+PROC Cfg_Validate_FD_Transceiver NEAR
+    push    ax
+    push    bx
+    push    cx
+
+    cmp     [cfg_fullduplex_value], 0
+    je      @@Success
+    test    [cfg_parse_flags], CFG_PARSE_TR
+    jz      @@Current
+    cmp     [cfg_tr_value], 0
+    je      @@Success
+    jmp     @@Conflict
+@@Current:
+    mov     ax, [cfg_txn_old_word08]
+    test    ax, W0_ADDRESS_CFG_AUTO_SELECT
+    jnz     @@Conflict
+    and     ax, W0_ADDRESS_CFG_XCVR_MASK
+    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
+    shr     ax, cl
+    or      ax, ax
+    jz      @@Success
+@@Conflict:
+    mov     [cfg_last_error], CFG_ERR_FD_TRANSCEIVER
+    stc
+    jmp     @@Done
+@@Success:
+    clc
+@@Done:
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Validate_FD_Transceiver
 
 ; Compare current and prospective states once after all properties are prepared.
 ; INT keeps release 0.3.3 unchanged semantics: its persistent EEPROM field is
@@ -5828,7 +5890,7 @@ PROC Cfg_Txn_Verify NEAR
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
     jc      @@FDVerifyFail
-    ; Verify only bit 15 since MODEM may have set the same flag already.
+    ; Verify the undocumented persistent Full Duplex policy bit only.
     and     ax, 8000h
     mov     bx, [cfg_txn_new_word0d]
     and     bx, 8000h
@@ -5968,6 +6030,92 @@ PROC Cfg_Txn_Verify NEAR
     stc
     ret
 ENDP Cfg_Txn_Verify
+
+; Enforce the requested persistent Full Duplex policy in the live Network
+; Diagnostic register only after Cfg_Txn_Verify has confirmed the EEPROM
+; transaction.  This also repairs a stale live state when the policy was
+; already correct and therefore needed no EEPROM write.
+PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
+    push    ax
+    push    bx
+    push    dx
+    push    si
+    push    di
+
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jz      @@Success
+
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Get_Current_Window
+    mov     di, ax
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, 4
+    call    Select_Window
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
+    call    Cfg_Reg_Read_Word
+    cmp     ax, 0FFFFh
+    je      @@UpdateFail
+
+    test    ax, W4_NET_DIAG_FD_ENABLE
+    jz      @@LiveDisabled
+    test    [cfg_txn_new_word0d], EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jnz     @@Verified
+    and     ax, NOT W4_NET_DIAG_FD_ENABLE
+    jmp     @@Write
+@@LiveDisabled:
+    test    [cfg_txn_new_word0d], EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jz      @@Verified
+    or      ax, W4_NET_DIAG_FD_ENABLE
+@@Write:
+    mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
+    call    Cfg_Reg_Write_Word
+    mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
+    call    Cfg_Reg_Read_Word
+    cmp     ax, 0FFFFh
+    je      @@VerifyFail
+    test    ax, W4_NET_DIAG_FD_ENABLE
+    jz      @@VerifyDisabled
+    test    [cfg_txn_new_word0d], EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jz      @@VerifyFail
+    jmp     @@Verified
+@@VerifyDisabled:
+    test    [cfg_txn_new_word0d], EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jnz     @@VerifyFail
+@@Verified:
+    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    jz      @@RestoreSuccess
+    mov     dx, OFFSET msg_cfg_fd_live_verified
+    mov     ah, 09h
+    int     21h
+    jmp     @@RestoreSuccess
+
+@@UpdateFail:
+    mov     [cfg_last_error], CFG_ERR_FD_LIVE_UPDATE
+    jmp     @@RestoreFail
+@@VerifyFail:
+    mov     [cfg_last_error], CFG_ERR_FD_LIVE_VERIFY
+@@RestoreFail:
+    mov     ax, di
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Select_Window
+    stc
+    jmp     @@Done
+@@RestoreSuccess:
+    mov     ax, di
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Select_Window
+@@Success:
+    clc
+@@Done:
+    pop     di
+    pop     si
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Txn_Sync_Live_FullDuplex
 
 ; Verbose snapshot and prospective image reporting.  Normal mode remains concise.
 PROC Cfg_Txn_Report_Current NEAR
@@ -6634,6 +6782,11 @@ PROC Cfg_Txn_Execute NEAR
     jz      @@Detect
     call    Cfg_Prepare_TR
 @@Detect:
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jz      @@DetectChanges
+    call    Cfg_Validate_FD_Transceiver
+    jc      @@Done
+@@DetectChanges:
     call    Cfg_Txn_Detect_Changes
     call    Cfg_Txn_Report_Prospective
 
@@ -6720,11 +6873,17 @@ PROC Cfg_Txn_Execute NEAR
     mov     ax, [cfg_txn_change_flags]
     and     ax, CFG_TXN_COMMIT_MASK
     jnz     @@Preflight
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@SyncUnchangedFD
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_txn_no_changes
     mov     ah, 09h
     int     21h
+    jmp     @@Success
+@@SyncUnchangedFD:
+    call    Cfg_Txn_Sync_Live_FullDuplex
+    jc      @@Done
     jmp     @@Success
 
 @@Preflight:
@@ -6737,6 +6896,8 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Txn_Write_Live
     jc      @@Done
     call    Cfg_Txn_Verify
+    jc      @@Done
+    call    Cfg_Txn_Sync_Live_FullDuplex
     jc      @@Done
 
 @@Success:

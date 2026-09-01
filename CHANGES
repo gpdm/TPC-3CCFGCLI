@@ -11,6 +11,12 @@ Changelog 0.7.1:
     sections, including explicit connector, Full Duplex, and PNP capabilities.
   - Corrected /MODEM custom Maximum Interrupt Disable Time encodings to modify
     only EEPROM Software Information bits 13:8.
+  - Added TP-only effective-transceiver validation for
+    /FULLDUPLEX:ENABLED.  The undocumented EEPROM Software Information bit 15
+    remains the persistent policy, while successful changes now synchronize
+    and verify Window 4 Network Diagnostic bit 15 as the live hardware state.
+    Synchronization also corrects a stale live state when the persistent policy
+    already matches the request.
   - SAVECONFIG now writes independently executable restore commands and keeps
     the required /BADDRESS + /BSIZE pair together on a second line.
 

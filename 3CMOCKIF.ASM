@@ -941,7 +941,7 @@ PROC Mock_Reg_Read_Word NEAR
     je      @@Window3
     jmp     @@Default
 @@Window4:
-    cmp     bx, EL3_W4_NET_DIAG
+    cmp     bx, EL3_W4_NETWORK_DIAGNOSTIC
     je      @@NetDiag
     cmp     bx, EL3_W4_MEDIA_STATUS
     jne     @@Default
@@ -1166,7 +1166,7 @@ PROC Mock_Reg_Write_Word NEAR
     je      @@Window3
     jmp     @@Done
 @@Window4:
-    cmp     bx, EL3_W4_NET_DIAG
+    cmp     bx, EL3_W4_NETWORK_DIAGNOSTIC
     jne     @@MediaStatus
     and     ax, W4_NET_DIAG_WRITABLE
     mov     [word mock_w4_netdiag], ax
@@ -1601,7 +1601,7 @@ PROC Nic_Check_3Com_Signature NEAR
     call    Nic_Select_Window
 
     mov     dx, si
-    mov     bx, EL3_W4_NET_DIAG
+    mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
     call    Nic_Reg_Read_Word
     cmp     bh, 0
     je      @@NetDiagOrderGood

@@ -190,6 +190,18 @@ The code is split into several assembly modules. The CLI logic stays in one plac
 A mock-state seeder utility is supplied to mimic the hardware EEPROM and live registers
 for smoke testing.
 
+### Full Duplex model
+
+Full Duplex capability is derived by the shared capability layer and remains
+separate from configuration.  For compatibility with original 3Com software,
+EEPROM Software Information word `0Dh` bit 15 is retained as an undocumented
+persistent Full Duplex policy; the Technical Reference documents that bit as
+reserved.  The live hardware enable is Window 4 Network Diagnostic bit 15.
+`/FULLDUPLEX:ENABLED` requires the effective configured transceiver to be TP;
+`DISABLED` remains valid for every Full-Duplex-capable adapter.  Every
+successful `/FULLDUPLEX` request also enforces the requested live enable state,
+even when the persistent policy was already correct.
+
 | File | Explanation |
 | --- | --- |
 | [3CCFGCLI.ASM](3CCFGCLI.ASM) | Reduced-scope CLI reimplementation. |

@@ -579,6 +579,10 @@ EEPROM_OEM_NODE_0       EQU 0Ah
 EEPROM_OEM_NODE_1       EQU 0Bh
 EEPROM_OEM_NODE_2       EQU 0Ch
 EEPROM_SOFTWARE_INFO    EQU 0Dh
+; Bit 15 is documented as zero/reserved in the Technical Reference.  The
+; original 3Com configuration utility and historical 3c509 driver use it as
+; an undocumented persistent Full Duplex policy.  Live Full Duplex hardware
+; control is W4 Network Diagnostic bit W4_NET_DIAG_FD_ENABLE.
 EEPROM_SOFTWARE_INFO_FULLDUPLEX        EQU 8000h
 ; Persistent driver policy. When set, the driver clears bit 7 of the live
 ; Window 4 Media Type and Status register during adapter initialization.
@@ -650,7 +654,7 @@ EL3_W2_STATION_1        EQU 02h
 EL3_W2_STATION_2        EQU 04h
 EL3_W3_INTERNAL_CONFIG_0 EQU 00h
 EL3_W3_INTERNAL_CONFIG_1 EQU 02h
-EL3_W4_NET_DIAG         EQU 06h
+EL3_W4_NETWORK_DIAGNOSTIC EQU 06h
 ; Media Type and Status register.  Bit 11 = "Valid link beat detected"
 ; (TP, read only).  Bit 7 = "Link beat enabled" (writable, not used by
 ; this build).  See 3c5x9b.pdf Figure 6-12.
@@ -681,11 +685,13 @@ W0_ADDRESS_CFG_WRITABLE     EQU 0FFFFh
 W0_ADDRESS_CFG_XCVR_MASK    EQU 0C000h
 W0_ADDRESS_CFG_XCVR_SHIFT   EQU 14
 W0_ADDRESS_CFG_XCVR_VALUE_MASK EQU 0003h
+W0_ADDRESS_CFG_AUTO_SELECT  EQU 0080h
 W0_ADDRESS_CFG_IOBASE_MASK  EQU 001Fh
 W0_ADDRESS_CFG_IOBASE_SHIFT EQU 4
 W0_RESOURCE_CFG_WRITABLE    EQU 0FFFFh
 W0_RESOURCE_CFG_IRQ_MASK    EQU 0F000h
 W0_RESOURCE_CFG_IRQ_SHIFT   EQU 12
+W4_NET_DIAG_FD_ENABLE       EQU 8000h
 W4_NET_DIAG_WRITABLE        EQU 0F001h
 W4_NET_DIAG_ASIC_REV        EQU 0004h
 W4_MEDIA_STATUS_WRITABLE    EQU 00CCh
