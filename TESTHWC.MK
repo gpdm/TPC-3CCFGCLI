@@ -105,7 +105,9 @@ restore-config:
 # Symbolic Test Groups
 # ####################
 
-HWC_CONFIGURATION: hwc001 hwc002 hwc003 hwc004 hwc005 hwc006 hwc007 hwc008 hwc009
+# intentionally skipping hwc009, which requires a physical ROM to test, and is deferred to a later stage
+#
+HWC_CONFIGURATION: hwc001 hwc002 hwc003 hwc004 hwc005 hwc006 hwc007 hwc008 
 
 
 # Test Case Definitions
@@ -159,8 +161,11 @@ hwc008:
 	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC009.LOG
 	FIND "Transceiver = $(TEST_TR_RESULT_STR)" $(ARTIFACTS)\HWC009.LOG > NUL
 
-hwc009:
-	@echo [hwc007] Original /BADDRESS+/BSIZE writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:$(TEST_BADDRESS) /BSIZE:$(TEST_BSIZE) > $(ARTIFACTS)\HWC007.LOG
-	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC007.LOG
-	FIND "Boot ROM = $(TEST_BSIZE)K at $(TEST_BADDRESS)H" $(ARTIFACTS)\HWC007.LOG > NUL
+#
+# INTENTIONALLY DISABLED: Can't test without physical ROM. Deferred to a later stage.
+#
+#hwc009:
+#	@echo [hwc007] Original /BADDRESS+/BSIZE writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
+#	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:$(TEST_BADDRESS) /BSIZE:$(TEST_BSIZE) > $(ARTIFACTS)\HWC007.LOG
+#	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC007.LOG
+#	FIND "Boot ROM = $(TEST_BSIZE)K at $(TEST_BADDRESS)H" $(ARTIFACTS)\HWC007.LOG > NUL
