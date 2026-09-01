@@ -6,3 +6,5 @@ TEST.LOG
 WINDOWS
 # Ignore the macOS creep
 .DS_Store
+# ignore VSCode artifacts
+.vscode

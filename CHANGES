@@ -17,8 +17,9 @@ Changelog 0.7.1:
     and verify Window 4 Network Diagnostic bit 15 as the live hardware state.
     Synchronization also corrects a stale live state when the persistent policy
     already matches the request.
-  - SAVECONFIG now writes independently executable restore commands and keeps
-    the required /BADDRESS + /BSIZE pair together on a second line.
+  - SAVECONFIG now splits restore commands dynamically against a 128-byte
+    practical DOS batch-line budget, keeps /BADDRESS + /BSIZE atomic, and
+    validates /EXECFILE as default, exact %1, or an existing literal path.
 
 
 Changelog 0.7.0:

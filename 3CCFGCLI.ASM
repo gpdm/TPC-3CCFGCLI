@@ -234,6 +234,8 @@ msg_save_missing DB "SAVECONFIG requires an output filename.", 0Dh, 0Ah, '$'
 msg_save_bad_name DB "Invalid SAVECONFIG output filename.", 0Dh, 0Ah, '$'
 msg_save_bad_option DB "Invalid SAVECONFIG option.", 0Dh, 0Ah, '$'
 msg_save_bad_execfile DB "Invalid SAVECONFIG /EXECFILE value.", 0Dh, 0Ah, '$'
+msg_save_execfile_not_found DB "SAVECONFIG /EXECFILE file not found.", 0Dh, 0Ah, '$'
+msg_save_line_too_long DB "SAVECONFIG restore command line would exceed DOS batch line limit.", 0Dh, 0Ah, '$'
 msg_save_no_active DB "SAVECONFIG found no adapters with an active IOBASE.", 0Dh, 0Ah, '$'
 msg_save_read_fail DB "Unable to read adapter EEPROM for SAVECONFIG.", 0Dh, 0Ah, '$'
 msg_save_write_fail DB "Unable to write SAVECONFIG output file.", 0Dh, 0Ah, '$'
@@ -606,6 +608,12 @@ cfg_property_ids DB CFG_OPT_INT
                  DB CFG_OPT_PNP
                  DB CFG_OPT_FULLDUPLEX
 
+SAVE_MAX_BATCH_LINE EQU 128
+SAVE_EXECFILE_RUNTIME_RESERVE EQU 64
+SAVE_ERR_NONE EQU 0
+SAVE_ERR_WRITE EQU 1
+SAVE_ERR_LINE_TOO_LONG EQU 2
+
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
 ; Index 31 means no assigned base, therefore 03F0h is not a valid selection.
@@ -617,11 +625,17 @@ io_scan_table   DW  0300h, 0310h, 0320h, 0330h, 0340h, 0350h, 0360h, 0370h
 
 cmd_buffer      DB  128 DUP(0)
 save_filename   DB  128 DUP(0)
-save_execname   DB  64 DUP(0)
+save_execname   DB  65 DUP(0)
 save_execname_default DB '3CCFGCLI.EXE', 0
 save_execfile_kw DB 'EXECFILE:', 0
 save_buffer     DB  1024 DUP(0)
 save_length     DW  0
+save_argument_length DW 0
+save_max_argument_length DW 0
+save_execname_length DW 0
+save_execfile_supplied DB 0
+save_execfile_placeholder DB 0
+save_error      DB  0
 save_handle     DW  0
 save_file_open  DB  0
 save_adapter_num DW 0
@@ -632,25 +646,45 @@ save_word13     DW  0
 save_configure_suffix DB ' CONFIGURE', 0
 save_adapternum DB  ' /ADAPTERNUM:', 0
 save_int        DB  ' /INT:', 0
+SAVE_LEN_INT EQU 6
 save_iobase     DB  ' /IOBASE:', 0
+SAVE_LEN_IOBASE EQU 9
 save_pnp        DB  ' /PNP:', 0
+SAVE_LEN_PNP EQU 6
 save_fd         DB  ' /FULLDUPLEX:', 0
+SAVE_LEN_FD EQU 13
 save_modem      DB  ' /MODEM:', 0
+SAVE_LEN_MODEM EQU 8
 save_optimize   DB  ' /OPTIMIZE:', 0
+SAVE_LEN_OPTIMIZE EQU 11
 save_baddress   DB  ' /BADDRESS:', 0
+SAVE_LEN_BADDRESS EQU 11
 save_bsize      DB  ' /BSIZE:', 0
+SAVE_LEN_BSIZE EQU 8
 save_tr         DB  ' /TR:', 0
+SAVE_LEN_TR EQU 5
 save_none       DB  'NONE', 0
+SAVE_LEN_NONE EQU 4
 save_enabled    DB  'ENABLED', 0
+SAVE_LEN_ENABLED EQU 7
 save_disabled   DB  'DISABLED', 0
+SAVE_LEN_DISABLED EQU 8
 save_dos        DB  'DOS', 0
+SAVE_LEN_DOS EQU 3
 save_windows    DB  'WINDOWS', 0
+SAVE_LEN_WINDOWS EQU 7
 save_os2        DB  'OS/2', 0
+SAVE_LEN_OS2 EQU 4
 save_server     DB  'SERVER', 0
+SAVE_LEN_SERVER EQU 6
 save_tp         DB  'TP', 0
+SAVE_LEN_TP EQU 2
 save_aui        DB  'AUI', 0
+SAVE_LEN_AUI EQU 3
 save_coax       DB  'COAX', 0
+SAVE_LEN_COAX EQU 4
 save_auto       DB  'AUTO', 0
+SAVE_LEN_AUTO EQU 4
 
 CODESEG
 
@@ -942,6 +976,9 @@ PROC Cmd_SaveConfig NEAR
     or      al, al
     jnz     @@CopyDefaultExec
     pop     si
+    mov     [save_execfile_supplied], 0
+    mov     [save_execfile_placeholder], 0
+    mov     [save_error], SAVE_ERR_NONE
 
 @@SkipWhite2:
     mov     al, [si]
@@ -974,7 +1011,7 @@ PROC Cmd_SaveConfig NEAR
     jmp     @@MatchExec
 @@ExecMatched:
     mov     di, OFFSET save_execname
-    mov     cx, 63
+    mov     cx, 64
 @@CopyExec:
     mov     al, [si]
     or      al, al
@@ -991,13 +1028,17 @@ PROC Cmd_SaveConfig NEAR
 @@ExecCopied:
     xor     al, al
     mov     [BYTE di], al
+    mov     [save_execfile_supplied], 1
 
 @@ScanCards:
+    call    Save_Prepare_Execfile
+    jc      @@PrepareFail
     call    Scan_All_3Com_Cards
     cmp     [card_count], 0
     je      @@NoCards
 
     mov     [save_length], 0
+    mov     [save_argument_length], 0
     mov     [save_file_open], 0
     mov     [current_card], 0
     mov     si, OFFSET nic_table
@@ -1023,7 +1064,7 @@ PROC Cmd_SaveConfig NEAR
     inc     ax
     mov     [save_adapter_num], ax
     call    Save_Build_Command
-    jc      @@WriteFail
+    jc      @@SaveFail
 
 @@SkipAdapter:
     add     si, NIC_RECORD_SIZE
@@ -1048,6 +1089,16 @@ PROC Cmd_SaveConfig NEAR
     mov     ah, 09h
     int     21h
     jmp     @@Done
+@@PrepareFail:
+    cmp     al, SAVE_ERR_WRITE
+    je      @@ExecNotFound
+    cmp     al, SAVE_ERR_LINE_TOO_LONG
+    je      @@LineTooLong
+    jmp     @@BadExecFile
+@@SaveFail:
+    cmp     [save_error], SAVE_ERR_LINE_TOO_LONG
+    je      @@LineTooLong
+    jmp     @@WriteFail
 @@WriteFail:
     mov     dx, OFFSET msg_save_write_fail
     jmp     @@Print
@@ -1068,6 +1119,12 @@ PROC Cmd_SaveConfig NEAR
     jmp     @@Print
 @@BadExecFile:
     mov     dx, OFFSET msg_save_bad_execfile
+    jmp     @@Print
+@@ExecNotFound:
+    mov     dx, OFFSET msg_save_execfile_not_found
+    jmp     @@Print
+@@LineTooLong:
+    mov     dx, OFFSET msg_save_line_too_long
     jmp     @@Print
 @@BadName:
     mov     dx, OFFSET msg_save_bad_name
@@ -1123,6 +1180,160 @@ PROC Save_Append_String NEAR
     pop     ax
     ret
 ENDP Save_Append_String
+
+PROC Save_String_Length NEAR
+    push    ax
+    push    si
+    xor     cx, cx
+@@Loop:
+    lodsb
+    or      al, al
+    jz      @@Done
+    inc     cx
+    jmp     @@Loop
+@@Done:
+    pop     si
+    pop     ax
+    ret
+ENDP Save_String_Length
+
+PROC Save_Dec_Word_Length NEAR
+    push    ax
+    push    bx
+    push    dx
+    xor     cx, cx
+    mov     bx, 10
+@@Loop:
+    xor     dx, dx
+    div     bx
+    inc     cx
+    or      ax, ax
+    jnz     @@Loop
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Save_Dec_Word_Length
+
+PROC Save_Prepare_Execfile NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    cmp     [save_execfile_supplied], 0
+    je      @@Lengths
+    mov     si, OFFSET save_execname
+    cmp     [BYTE si], 0
+    je      @@BadValue
+    cmp     [BYTE si], '%'
+    jne     @@LiteralScan
+    cmp     [BYTE si+1], '1'
+    jne     @@BadValue
+    cmp     [BYTE si+2], 0
+    jne     @@BadValue
+    mov     [save_execfile_placeholder], 1
+    jmp     @@Lengths
+
+@@LiteralScan:
+    mov     [save_execfile_placeholder], 0
+@@PercentLoop:
+    mov     al, [BYTE si]
+    or      al, al
+    jz      @@CheckExists
+    cmp     al, '%'
+    je      @@BadValue
+    inc     si
+    jmp     @@PercentLoop
+
+@@CheckExists:
+    mov     dx, OFFSET save_execname
+    mov     ax, 3D00h
+    int     21h
+    jc      @@NotFound
+    mov     bx, ax
+    mov     ah, 3Eh
+    int     21h
+    jc      @@NotFound
+
+@@Lengths:
+    mov     si, OFFSET save_execname
+    call    Save_String_Length
+    mov     [save_execname_length], cx
+    cmp     [save_execfile_placeholder], 0
+    je      @@UseActual
+    mov     cx, SAVE_EXECFILE_RUNTIME_RESERVE
+@@UseActual:
+    mov     ax, SAVE_MAX_BATCH_LINE
+    sub     ax, cx
+    jc      @@TooLong
+    dec     ax
+    mov     [save_max_argument_length], ax
+    mov     al, SAVE_ERR_NONE
+    clc
+    jmp     @@Done
+@@BadValue:
+    stc
+    jmp     @@Done
+@@NotFound:
+    mov     al, SAVE_ERR_WRITE
+    stc
+    jmp     @@Done
+@@TooLong:
+    mov     al, SAVE_ERR_LINE_TOO_LONG
+    stc
+@@Done:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    ret
+ENDP Save_Prepare_Execfile
+
+PROC Save_Ensure_Option_Length NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    mov     ax, [save_argument_length]
+    add     ax, cx
+    jc      @@NeedNewLine
+    cmp     ax, [save_max_argument_length]
+    jbe     @@Ok
+@@NeedNewLine:
+    call    Save_Flush_Command
+    jc      @@WriteFail
+    call    Save_Begin_Command
+    jc      @@Fail
+    mov     ax, [save_argument_length]
+    add     ax, cx
+    jc      @@LineTooLong
+    cmp     ax, [save_max_argument_length]
+    jbe     @@Ok
+@@LineTooLong:
+    mov     [save_error], SAVE_ERR_LINE_TOO_LONG
+    jmp     @@Fail
+@@WriteFail:
+    mov     [save_error], SAVE_ERR_WRITE
+@@Fail:
+    stc
+    jmp     @@Done
+@@Ok:
+    clc
+@@Done:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Save_Ensure_Option_Length
+
+PROC Save_Commit_Option_Length NEAR
+    add     [save_argument_length], cx
+    ret
+ENDP Save_Commit_Option_Length
 
 PROC Save_Append_Hex_Nibble NEAR
     and     al, 0Fh
@@ -1187,9 +1398,10 @@ PROC Save_Append_Dec_Word NEAR
     ret
 ENDP Save_Append_Dec_Word
 
-; Start one independently executable CONFIGURE command line.  The DOS PSP
-; command tail excludes the executable name, so /EXECFILE does not reduce its
-; 127-byte limit.
+; Start one independently executable CONFIGURE command line.  Although DOS
+; stores only the argument tail in the child PSP, batch execution first has to
+; pass the complete text line.  SAVECONFIG therefore limits:
+;   emitted executable reservation + one separator + CONFIGURE arguments <= 128.
 PROC Save_Begin_Command NEAR
     call    Save_Open_File
     jc      @@Fail
@@ -1202,6 +1414,15 @@ PROC Save_Begin_Command NEAR
     call    Save_Append_String
     mov     ax, [save_adapter_num]
     call    Save_Append_Dec_Word
+    mov     ax, [save_length]
+    sub     ax, [save_execname_length]
+    dec     ax
+    mov     [save_argument_length], ax
+    cmp     ax, [save_max_argument_length]
+    jbe     @@Ready
+    mov     [save_error], SAVE_ERR_LINE_TOO_LONG
+    jmp     @@Fail
+@@Ready:
     clc
     ret
 @@Fail:
@@ -1267,12 +1488,26 @@ PROC Save_Build_Command NEAR
     push    si
     call    Save_Begin_Command
     jc      @@Fail
+
+    mov     ax, [save_word09]
+    mov     cl, 12
+    shr     ax, cl
+    call    Save_Dec_Word_Length
+    add     cx, SAVE_LEN_INT
+    call    Save_Ensure_Option_Length
+    jc      @@Fail
+    call    Save_Commit_Option_Length
     mov     si, OFFSET save_int
     call    Save_Append_String
     mov     ax, [save_word09]
     mov     cl, 12
     shr     ax, cl
     call    Save_Append_Dec_Word
+
+    mov     cx, SAVE_LEN_IOBASE + 4
+    call    Save_Ensure_Option_Length
+    jc      @@Fail
+    call    Save_Commit_Option_Length
     mov     si, OFFSET save_iobase
     call    Save_Append_String
     mov     ax, [save_word08]
@@ -1281,6 +1516,19 @@ PROC Save_Build_Command NEAR
     shl     ax, cl
     add     ax, 0200h
     call    Save_Append_Hex_Word
+
+    mov     ax, [save_word13]
+    and     ax, 000Ch
+    cmp     ax, 0004h
+    jne     @@PnpOnLength
+    mov     cx, SAVE_LEN_PNP + SAVE_LEN_DISABLED
+    jmp     @@PnpLengthDone
+@@PnpOnLength:
+    mov     cx, SAVE_LEN_PNP + SAVE_LEN_ENABLED
+@@PnpLengthDone:
+    call    Save_Ensure_Option_Length
+    jc      @@Fail
+    call    Save_Commit_Option_Length
     mov     si, OFFSET save_pnp
     call    Save_Append_String
     mov     ax, [save_word13]
@@ -1293,6 +1541,18 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_enabled
 @@PnpDone:
     call    Save_Append_String
+
+    mov     ax, [save_word0d]
+    test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jz      @@FdOffLength
+    mov     cx, SAVE_LEN_FD + SAVE_LEN_ENABLED
+    jmp     @@FdLengthDone
+@@FdOffLength:
+    mov     cx, SAVE_LEN_FD + SAVE_LEN_DISABLED
+@@FdLengthDone:
+    call    Save_Ensure_Option_Length
+    jc      @@Fail
+    call    Save_Commit_Option_Length
     mov     si, OFFSET save_fd
     call    Save_Append_String
     mov     ax, [save_word0d]
@@ -1304,20 +1564,59 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_disabled
 @@FdDone:
     call    Save_Append_String
-    mov     si, OFFSET save_modem
-    call    Save_Append_String
+
     mov     ax, [save_word0d]
     call    Decode_Modem_Value
     jc      @@ModemNone
     cmp     ax, 0FFFFh
     je      @@ModemNone         ; Unrecognised encoding: fall back to NONE,
                                  ; a value our own parser is guaranteed to accept.
+    call    Save_Dec_Word_Length
+    add     cx, SAVE_LEN_MODEM
+    call    Save_Ensure_Option_Length
+    jc      @@Fail
+    call    Save_Commit_Option_Length
+    mov     si, OFFSET save_modem
+    call    Save_Append_String
+    mov     ax, [save_word0d]
+    call    Decode_Modem_Value
     call    Save_Append_Dec_Word
     jmp     @@Optimize
 @@ModemNone:
+    mov     cx, SAVE_LEN_MODEM + SAVE_LEN_NONE
+    call    Save_Ensure_Option_Length
+    jc      @@Fail
+    call    Save_Commit_Option_Length
+    mov     si, OFFSET save_modem
+    call    Save_Append_String
     mov     si, OFFSET save_none
     call    Save_Append_String
 @@Optimize:
+    mov     ax, [save_word0d]
+    mov     cl, 4
+    shr     ax, cl
+    and     ax, 0003h
+    cmp     al, 1
+    je      @@OptDosLength
+    cmp     al, 2
+    je      @@OptOs2Length
+    cmp     al, 3
+    je      @@OptServerLength
+    ; 00b is reserved; use a parser-valid, conservative restore fallback.
+    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_DOS
+    jmp     @@OptLengthDone
+@@OptDosLength:
+    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_DOS
+    jmp     @@OptLengthDone
+@@OptOs2Length:
+    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_OS2
+    jmp     @@OptLengthDone
+@@OptServerLength:
+    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_SERVER
+@@OptLengthDone:
+    call    Save_Ensure_Option_Length
+    jc      @@Fail
+    call    Save_Commit_Option_Length
     mov     si, OFFSET save_optimize
     call    Save_Append_String
     mov     ax, [save_word0d]
@@ -1330,7 +1629,6 @@ PROC Save_Build_Command NEAR
     je      @@OptOs2
     cmp     al, 3
     je      @@OptServer
-    ; 00b is reserved; use a parser-valid, conservative restore fallback.
     mov     si, OFFSET save_dos
     jmp     @@OptDone
 @@OptDos:
@@ -1348,11 +1646,27 @@ PROC Save_Build_Command NEAR
     mov     ax, [save_word08]
     and     ax, 3F00h              ; Base (bits 11:8) and size (bits 13:12).
     jz      @@NoRom
-    ; Keep the required /BADDRESS+/BSIZE pair together on its own line.
-    call    Save_Flush_Command
+    mov     ax, [save_word08]
+    and     ax, 3000h
+    mov     cl, 12
+    shr     ax, cl
+    or      ax, ax
+    jz      @@Size8Length
+    cmp     ax, 1
+    je      @@Size16Length
+    mov     ax, 32
+    jmp     @@SizeLengthDone
+@@Size8Length:
+    mov     ax, 8
+    jmp     @@SizeLengthDone
+@@Size16Length:
+    mov     ax, 16
+@@SizeLengthDone:
+    call    Save_Dec_Word_Length
+    add     cx, SAVE_LEN_BADDRESS + 5 + SAVE_LEN_BSIZE
+    call    Save_Ensure_Option_Length
     jc      @@Fail
-    call    Save_Begin_Command
-    jc      @@Fail
+    call    Save_Commit_Option_Length
     mov     si, OFFSET save_baddress
     call    Save_Append_String
     mov     ax, [save_word08]
@@ -1392,11 +1706,38 @@ PROC Save_Build_Command NEAR
 @@NoRom:
     ; The original utility does not accept /BADDRESS:NONE; disabling the
     ; Boot ROM is expressed with /BSIZE:DISABLED alone.
+    mov     cx, SAVE_LEN_BSIZE + SAVE_LEN_DISABLED
+    call    Save_Ensure_Option_Length
+    jc      @@Fail
+    call    Save_Commit_Option_Length
     mov     si, OFFSET save_bsize
     call    Save_Append_String
     mov     si, OFFSET save_disabled
     call    Save_Append_String
 @@Tr:
+    mov     ax, [save_word08]
+    test    ax, 0080h
+    jnz     @@TrAutoLength
+    mov     cl, 14
+    shr     ax, cl
+    cmp     al, 1
+    je      @@TrAuiLength
+    cmp     al, 3
+    je      @@TrCoaxLength
+    mov     cx, SAVE_LEN_TR + SAVE_LEN_TP
+    jmp     @@TrLengthDone
+@@TrAutoLength:
+    mov     cx, SAVE_LEN_TR + SAVE_LEN_AUTO
+    jmp     @@TrLengthDone
+@@TrAuiLength:
+    mov     cx, SAVE_LEN_TR + SAVE_LEN_AUI
+    jmp     @@TrLengthDone
+@@TrCoaxLength:
+    mov     cx, SAVE_LEN_TR + SAVE_LEN_COAX
+@@TrLengthDone:
+    call    Save_Ensure_Option_Length
+    jc      @@Fail
+    call    Save_Commit_Option_Length
     mov     si, OFFSET save_tr
     call    Save_Append_String
     mov     ax, [save_word08]

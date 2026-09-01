@@ -140,9 +140,17 @@ behavior, mock-state issues, or parser/transaction sequencing.
 of every installed adapter with an active IOBASE and writes a batch file with
 one `program CONFIGURE /ADAPTERNUM:N ...` restore line per adapter.
 
-`program` defaults to this executable; `/EXECFILE` overrides it with any literal text,
-including a DOS batch parameter placeholder like `%1`, so a restore batch can
-instead replay through the original 3Com utility.
+`program` defaults to `3CCFGCLI.EXE`. `/EXECFILE:%1` is the only supported
+batch placeholder form and is emitted literally. Other `/EXECFILE` values are
+literal executable paths; percent expansion is not supported, and the referenced
+file must exist before the restore batch is created.
+
+Restore lines are split dynamically before they exceed the practical 128-byte
+DOS batch command-line limit. The budget is the reserved executable length,
+plus one separating space, plus the emitted `CONFIGURE ...` argument text. The
+default executable reserves its actual length; `%1` reserves 64 bytes because
+the caller supplies the runtime executable path later; literal paths reserve the
+actual supplied path length.
 It exports the implemented persistent settings only and does not modify any
 adapter. This is handy for storing your last configuration, but is mainly used
 internally for the standalone hardware conformance tests.
