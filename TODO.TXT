@@ -73,42 +73,6 @@
 
 
 
-STAGE 1 LOW-LEVEL HARDWARE MODEL: STATUS AND REMAINING GAP
-
-The mock backend's low-level protocol model (Window 3 Internal Configuration,
-ID-port FFh activation, ID-port Global Reset broadcast scope, a central
-Command Register decoder with Command-In-Progress polling, byte-wide I/O,
-and Command Register byte-pair completion) is now implemented in
-3CMOCKIF.ASM, alongside a minimal Window 2 station-address register and a
-documented per-adapter/shared-bus/host-scratch classification of the
-existing ID-port scratch variables.
-
-None of the following are presently reachable from any 3CCFGCLI code path,
-by design of this pass (see AGENTS-provided scope: finish the low-level
-model first, do not redesign configuration verbs in this pass):
-
-  - Window 2 / Window 3 register access
-  - ID-port FFh (Activate at preconfigured base)
-  - the Command Register opcodes Global Reset and Start Coaxial
-    Transceiver
-  - Nic_IO_Read_Byte / Nic_IO_Write_Byte
-  - Command Register bytewise low/high completion
-
-Because TEST.MK can only drive the mock through 3CCFGCLI.EXE/3CHWMOCK.EXE
-(3CSEED.EXE writes the .MCK file directly and does not link 3CMOCKIF.ASM,
-so it cannot exercise register-level I/O either), these code paths cannot
-yet be covered by black-box CLI tests without adding new CLI-reachable
-surface, which this pass intentionally avoids.  The ID-port Global Reset
-scope fix IS reachable today (via CONFIGURE's existing deactivate/
-reconfigure flows) and is covered by the existing regression suite, which
-was re-verified to pass with no changes in observable behavior.
-
-When a future pass wires a CONFIGURE verb (or other 3CCFGCLI path) to one
-of the still-unreachable items above -- most likely Window 3's ISA
-ACTIVATION SELECT field for CONFIGURE /PNP, per the SPEC ALIGNMENT
-FOLLOW-UP section below -- add the corresponding TEST.MK negative tests at
-that time, alongside the CLI change that makes them reachable.
-
 
 
 SPEC ALIGNMENT FOLLOW-UP
