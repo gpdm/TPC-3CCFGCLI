@@ -330,6 +330,7 @@ In this case, use an explicit override as shown below:
 ## References
 
 - [Project context and upstream ideas](https://github.com/hackerb9/3C509B-nestor)
+- Wikipedia: [3Com Etherlink III](https://en.wikipedia.org/wiki/3Com_3c509)
 - [3Com EtherLink III User's Guide](https://archive.org/details/09-1310-000)
 - [3Com EtherLink III technical reference](https://www.janwagemakers.be/PIC18F452_3COM_3C509B_Ethernet/3c5x9b.pdf)
 - Original [3Com 3C509 configuration utilities](3C5X9CFG)

@@ -69,9 +69,3 @@ Required follow-up:
     the function must have a gate.
 
 
-* Revisit Product ID 9850h.
-
-  The currently used 9850h value is not identified as a 3C509B Product ID in the Technical Reference used for the hardware model.
-
-  Keep it only if another authoritative source confirms its meaning.
-
