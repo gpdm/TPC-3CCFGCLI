@@ -43,29 +43,35 @@
 
 SPEC ALIGNMENT FOLLOW-UP
 
-The current implementation still contains several configuration semantics inherited from reverse engineering of the original 3Com utility that do not match the documented 3C509B hardware layout in the 3Com Technical Reference.
+The current implementation still contains several configuration semantics inherited from
+reverse engineering of the original 3Com utility that do not match the documented
+3C509B hardware layout in the 3Com Technical Reference.
 
 
 Required follow-up:
 
-* Rework EEPROM Software Information word 0Dh according to the documented 3C509B layout.
+* Remove the remaining incorrect FULLDUPLEX interpretation from EEPROM
+  Software Information word 0Dh.
 
-  * Bit 15 is documented as zero and must not be treated as FULLDUPLEX.
-  * Bit 14 is Link Beat Disable.
-  * Bits 13:8 are Maximum Interrupt Disable Time.
-  * Bits 7:6 are zero/reserved.
-  * Bits 5:4 are Software Optimization.
-  * Bits 3:0 are Select Boot Protocol.
+  Bit 15 is documented as zero/reserved and must no longer be defined,
+  read, written, verified, displayed, or saved as Full Duplex state.
 
-* Revisit CONFIGURE /FULLDUPLEX.
+* Determine and implement the actual 3C509B Full Duplex state/control
+  mechanism from authoritative 3Com documentation and/or the original
+  configuration utility.
 
-  The current implementation treats EEPROM word 0Dh bit 15 as a Full Duplex flag, but this is not supported by the 3C509B Technical Reference.
+  Full Duplex capability detection is already correct and must remain
+  based on the shared capability layer.
 
-  Determine whether FULLDUPLEX belongs to another documented register/EEPROM field, is utility-specific behaviour requiring another authoritative source, or should be removed from the 3C509B configuration model.
+* Enforce the Full Duplex/transceiver constraint.
 
-  Also note:
-    FULLDUPLEX can't be enabled if Transceiver (TR) is AUTO|COAX|AUI
+  FULLDUPLEX:ENABLED is valid only when the effective transceiver
+  selection is TP.
 
-    the function must have a gate.
+  It must be rejected for AUTO, AUI, or COAX, including combined
+  /TR + /FULLDUPLEX transactions.
+
+* Update LIST, SAVECONFIG, transaction/verification logic, mock behaviour,
+  fixtures, and regression tests to match the corrected Full Duplex model.
 
 
