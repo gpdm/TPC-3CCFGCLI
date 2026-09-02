@@ -1,0 +1,11 @@
+# Files consumed directly by DOS tooling inside DOSBox-X must be checked out
+# with DOS (CRLF) line endings, regardless of host platform.
+*.BAT   text eol=crlf
+*.MK    text eol=crlf
+MAKEFILE text eol=crlf
+
+# Everything else keeps LF in the working tree.
+*.ASM   text eol=lf
+*.INC   text eol=lf
+*.sh    text eol=lf
+*.md    text eol=lf
