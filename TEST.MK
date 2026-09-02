@@ -768,7 +768,7 @@ t1301:
    @echo [t1301] Testing HELP command prints CLI help screen... >> TEST.LOG
    $(BINAPP) HELP > $(ARTIFACTS)\T1301.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1301.LOG > NUL
-   FIND "    /VERBOSE                       Show verbose transaction details." $(ARTIFACTS)\T1301.LOG > NUL
+   FIND "Display this help screen" $(ARTIFACTS)\T1301.LOG > NUL
 
 t1302:
    @echo [t1302] Testing CONFIGURE parser accepts '-' switch introducers... >> TEST.LOG
