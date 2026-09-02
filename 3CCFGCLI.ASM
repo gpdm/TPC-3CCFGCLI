@@ -5,7 +5,11 @@
 ; ============================================================================
 ; - Supported CONFIGURE verbs in this build:
 ;    /ADAPTERNUM, /BADDRESS, /BSIZE, /FULLDUPLEX, /INT, /IOBASE, /MODEM,
-;    /OPTIMIZE, /PNP, /TR (/XCVR alias), /VERBOSE.
+;    /OPTIMIZE, /PNP, /TR (/XCVR alias).
+;
+; - Supported global CLI options, owned by the common command parser and
+;   valid with any command verb:
+;    /VERBOSE.
 ;
 ; - See CHANGES for the complete release history.
 ; ============================================================================
@@ -54,9 +58,15 @@ CFG_OPT_FULLDUPLEX      EQU 12
 CFG_MAX_PROPERTY_REQUESTS EQU 9
 CFG_PROPERTY_REQUEST_SIZE EQU 5    ; ID DB, value pointer DW, value length DW
 
+; Global CLI options.  These belong to the common command parser and are not
+; owned by any individual command verb.
+CLI_FLAG_VERBOSE        EQU 01h
+
+; Maximum number of verb specific argument tokens the common parser records.
+CLI_MAX_ARGS            EQU 16
+
 CFG_PARSE_ADAPTER       EQU 01h
 CFG_PARSE_INT           EQU 02h
-CFG_PARSE_VERBOSE       EQU 04h
 CFG_PARSE_IOBASE        EQU 08h
 CFG_PARSE_PNP           EQU 10h
 CFG_PARSE_MODEM         EQU 20h
@@ -70,7 +80,6 @@ CFG_PARSE_TR            EQU 0400h
 CFG_SEEN_ADAPTER        EQU 01h
 CFG_SEEN_INT            EQU 02h
 CFG_SEEN_IOBASE         EQU 04h
-CFG_SEEN_VERBOSE        EQU 08h
 CFG_SEEN_PNP            EQU 10h
 CFG_SEEN_MODEM          EQU 20h
 CFG_SEEN_FULLDUPLEX     EQU 40h
@@ -211,8 +220,9 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    Display this help screen.", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "  LIST", 0Dh, 0Ah
                 DB  "    Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah, 0Dh, 0Ah
-                DB  "  SAVECONFIG file [/EXECFILE:program]", 0Dh, 0Ah
+                DB  "  SAVECONFIG [/OUTPUTFILE:file] [/EXECFILE:program]", 0Dh, 0Ah
                 DB  "    Export all adapter configurations to a restore batch file.", 0Dh, 0Ah
+                DB  "    /OUTPUTFILE overrides the output batch file (default: RESTORE.BAT).", 0Dh, 0Ah
                 DB  "    /EXECFILE overrides the embedded program name (default: self).", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "  CONFIGURE [options]", 0Dh, 0Ah
                 DB  "    Configure ISA adapter properties. Options:", 0Dh, 0Ah, 0Dh, 0Ah
@@ -230,12 +240,18 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "                                   2000h steps); requires /BSIZE.", 0Dh, 0Ah
                 DB  "    /BSIZE:8|16|32|DISABLED       Boot ROM size in KB, or DISABLED;", 0Dh, 0Ah
                 DB  "                                   a size requires /BADDRESS.", 0Dh, 0Ah
-                DB  "  /VERBOSE                         Show verbose transaction details.", 0Dh, 0Ah, '$'
+                DB  0Dh, 0Ah
+                DB  "Global options (valid with any command):", 0Dh, 0Ah
+                DB  "  /VERBOSE                       Show verbose transaction details.", 0Dh, 0Ah, '$'
+
+msg_cli_dup_verbose DB "Duplicate /VERBOSE option.", 0Dh, 0Ah, '$'
+msg_cli_too_many_args DB "Too many command line arguments.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
-msg_save_missing DB "SAVECONFIG requires an output filename.", 0Dh, 0Ah, '$'
+msg_save_missing DB "SAVECONFIG /OUTPUTFILE requires a value.", 0Dh, 0Ah, '$'
 msg_save_bad_name DB "Invalid SAVECONFIG output filename.", 0Dh, 0Ah, '$'
 msg_save_bad_option DB "Invalid SAVECONFIG option.", 0Dh, 0Ah, '$'
+msg_save_dup_option DB "Duplicate SAVECONFIG option.", 0Dh, 0Ah, '$'
 msg_save_bad_execfile DB "Invalid SAVECONFIG /EXECFILE value.", 0Dh, 0Ah, '$'
 msg_save_execfile_not_found DB "SAVECONFIG /EXECFILE file not found.", 0Dh, 0Ah, '$'
 msg_save_line_too_long DB "SAVECONFIG restore command line would exceed DOS batch line limit.", 0Dh, 0Ah, '$'
@@ -509,6 +525,15 @@ ext_link_status   DW 0FFFFh
 ; Raw EEPROM_SOFTWARE_INFO (word 0Dh).  /MODEM uses only its Maximum Interrupt
 ; Disable Time field, bits 13:8.
 ext_software_info DW 0FFFFh
+; Global CLI parser state.  cli_arg_ptrs holds pointers into cmd_buffer for
+; the verb specific argument tokens that remain after global options have
+; been consumed.  Argument text is never copied; each token is delimited in
+; place by whitespace or the terminating NUL.
+cli_flags             DW 0
+cli_arg_ptrs          DW CLI_MAX_ARGS DUP(0)
+cli_arg_count         DW 0
+cli_arg_index         DW 0
+
 ; CONFIGURE state.  nic_table itself is deliberately not extended.
 cfg_adapter_ordinal   DB 0
 cfg_parse_flags       DW 0
@@ -613,6 +638,7 @@ SAVE_EXECFILE_RUNTIME_RESERVE EQU 64
 SAVE_ERR_NONE EQU 0
 SAVE_ERR_WRITE EQU 1
 SAVE_ERR_LINE_TOO_LONG EQU 2
+SAVE_ERR_BAD_EXECFILE EQU 3
 
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
@@ -627,6 +653,9 @@ cmd_buffer      DB  128 DUP(0)
 save_filename   DB  128 DUP(0)
 save_execname   DB  65 DUP(0)
 save_execname_default DB '3CCFGCLI.EXE', 0
+save_filename_default DB 'RESTORE.BAT', 0
+save_outputfile_kw DB 'OUTPUTFILE:', 0
+cli_kw_verbose  DB 'VERBOSE', 0
 save_execfile_kw DB 'EXECFILE:', 0
 save_buffer     DB  1024 DUP(0)
 save_length     DW  0
@@ -634,6 +663,7 @@ save_argument_length DW 0
 save_max_argument_length DW 0
 save_execname_length DW 0
 save_execfile_supplied DB 0
+save_outputfile_supplied DB 0
 save_execfile_placeholder DB 0
 save_error      DB  0
 save_handle     DW  0
@@ -859,12 +889,16 @@ PROC Parse_And_Execute NEAR
     cmp     [BYTE si+9], 'G'
     jne     @@TryConfig
     mov     al, [si+10]
+    or      al, al
+    jz      @@SaveConfig
     cmp     al, ' '
     je      @@SaveConfig
     cmp     al, 09h
     jne     @@TryConfig
 @@SaveConfig:
     add     si, 10
+    call    Cli_Collect_Args
+    jc      @@Done
     call    Cmd_SaveConfig
     ret
 
@@ -897,6 +931,8 @@ PROC Parse_And_Execute NEAR
 
 @@Configure:
     add     si, 9
+    call    Cli_Collect_Args
+    jc      @@Done
     call    Cmd_Configure
     ret
 
@@ -909,6 +945,12 @@ PROC Parse_And_Execute NEAR
     jmp     @@Help
 
 @@List:
+    add     si, 4
+    call    Cli_Collect_Args
+    jc      @@Done
+    ; LIST owns no arguments of its own, so any residual token is invalid.
+    cmp     [cli_arg_count], 0
+    jne     @@Help
     call    Cmd_List
     ret
 
@@ -916,8 +958,160 @@ PROC Parse_And_Execute NEAR
     mov     dx, OFFSET msg_help
     mov     ah, 09h
     int     21h
+@@Done:
     ret
 ENDP Parse_And_Execute
+
+; ---------------------------------------------------------------------------
+; Global CLI option layer.
+;
+; Cli_Collect_Args tokenizes the command tail that follows the command verb.
+; Genuinely global options are consumed here and never reach a verb specific
+; parser; currently the only global option is /VERBOSE.  Everything else is
+; recorded as a pointer into cmd_buffer so the selected verb parser can
+; validate it inside its own namespace.  No argument text is copied.
+;
+; Input   SI points immediately after the recognized command verb.
+; Output  CF clear on success, CF set after printing a diagnostic.
+; ---------------------------------------------------------------------------
+PROC Cli_Collect_Args NEAR
+    push    ax
+    push    bx
+    push    dx
+
+    mov     [cli_arg_count], 0
+    mov     [cli_arg_index], 0
+
+@@NextToken:
+    mov     al, [si]
+    cmp     al, ' '
+    je      @@SkipWhite
+    cmp     al, 09h
+    jne     @@TokenStart
+@@SkipWhite:
+    inc     si
+    jmp     @@NextToken
+
+@@TokenStart:
+    or      al, al
+    jz      @@Success
+
+    cmp     al, '/'
+    je      @@Introducer
+    cmp     al, '-'
+    jne     @@RecordArg
+@@Introducer:
+    ; Global options are matched on the switch body only.  A non-global
+    ; switch is left intact for the verb specific parser.
+    inc     si
+    mov     bx, OFFSET cli_kw_verbose
+    call    Cli_Match_Global
+    dec     si
+    jc      @@RecordArg
+
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jnz     @@DupVerbose
+    or      [cli_flags], CLI_FLAG_VERBOSE
+    add     si, 8                   ; Skip the introducer and VERBOSE.
+    jmp     @@NextToken
+
+@@RecordArg:
+    mov     bx, [cli_arg_count]
+    cmp     bx, CLI_MAX_ARGS
+    jae     @@TooMany
+    shl     bx, 1
+    add     bx, OFFSET cli_arg_ptrs
+    mov     [bx], si
+    inc     [cli_arg_count]
+
+@@SkipToken:
+    mov     al, [si]
+    or      al, al
+    jz      @@Success
+    cmp     al, ' '
+    je      @@NextToken
+    cmp     al, 09h
+    je      @@NextToken
+    inc     si
+    jmp     @@SkipToken
+
+@@Success:
+    clc
+    jmp     @@Done
+@@DupVerbose:
+    mov     dx, OFFSET msg_cli_dup_verbose
+    jmp     @@Fail
+@@TooMany:
+    mov     dx, OFFSET msg_cli_too_many_args
+@@Fail:
+    mov     ah, 09h
+    int     21h
+    stc
+@@Done:
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cli_Collect_Args
+
+; Matches the NUL terminated global keyword at DS:BX against the switch body
+; at DS:SI.  A match requires a whitespace or NUL delimiter directly after
+; the keyword, so /VERBOSE:X is not mistaken for the valueless global option.
+; SI is preserved.  CF clear on match.
+PROC Cli_Match_Global NEAR
+    push    ax
+    push    bx
+    push    si
+@@Loop:
+    mov     al, [BYTE bx]
+    or      al, al
+    jz      @@AtDelimiter
+    cmp     al, [BYTE si]
+    jne     @@NoMatch
+    inc     bx
+    inc     si
+    jmp     @@Loop
+@@AtDelimiter:
+    mov     al, [BYTE si]
+    or      al, al
+    jz      @@Match
+    cmp     al, ' '
+    je      @@Match
+    cmp     al, 09h
+    jne     @@NoMatch
+@@Match:
+    pop     si
+    pop     bx
+    pop     ax
+    clc
+    ret
+@@NoMatch:
+    pop     si
+    pop     bx
+    pop     ax
+    stc
+    ret
+ENDP Cli_Match_Global
+
+; Returns the next verb specific argument token in SI, or CF set when the
+; filtered argument view is exhausted.
+PROC Cli_Next_Arg NEAR
+    push    bx
+    mov     bx, [cli_arg_index]
+    cmp     bx, [cli_arg_count]
+    jae     @@None
+    inc     [cli_arg_index]
+    shl     bx, 1
+    add     bx, OFFSET cli_arg_ptrs
+    mov     si, [bx]
+    pop     bx
+    clc
+    ret
+@@None:
+    pop     bx
+    stc
+    ret
+ENDP Cli_Next_Arg
 
 ; ==========================================================================
 ; SAVECONFIG command. Exports the recognized persistent configuration of one
@@ -931,102 +1125,64 @@ PROC Cmd_SaveConfig NEAR
     push    si
     push    di
 
-@@SkipWhite:
-    mov     al, [si]
-    cmp     al, ' '
-    je      @@Advance
-    cmp     al, 09h
-    jne     @@Name
-@@Advance:
-    inc     si
-    jmp     @@SkipWhite
-@@Name:
-    or      al, al
-    jz      @@Missing
+    ; Establish the SAVECONFIG defaults before any option text is examined.
+    ; The output batch file defaults to RESTORE.BAT and the program name
+    ; embedded in each restore line defaults to this build, unless the
+    ; matching option overrides it.
     mov     di, OFFSET save_filename
-    mov     cx, 127
-@@Copy:
-    mov     al, [si]
-    or      al, al
-    jz      @@Copied
-    cmp     al, ' '
-    je      @@Copied
-    cmp     al, 09h
-    je      @@Copied
-    mov     [BYTE di], al
-    inc     di
-    inc     si
-    loop    @@Copy
-    jmp     @@BadName
-@@Copied:
-    xor     al, al
-    mov     [BYTE di], al
-
-    ; Default program name embedded in each restore line is this build,
-    ; unless /EXECFILE overrides it.
-    push    si
+    mov     si, OFFSET save_filename_default
+    call    Save_Copy_Default
     mov     di, OFFSET save_execname
     mov     si, OFFSET save_execname_default
-@@CopyDefaultExec:
-    lodsb
-    mov     [BYTE di], al
-    inc     di
-    or      al, al
-    jnz     @@CopyDefaultExec
-    pop     si
+    call    Save_Copy_Default
+    mov     [save_outputfile_supplied], 0
     mov     [save_execfile_supplied], 0
     mov     [save_execfile_placeholder], 0
     mov     [save_error], SAVE_ERR_NONE
 
-@@SkipWhite2:
-    mov     al, [si]
-    cmp     al, ' '
-    je      @@Advance2
-    cmp     al, 09h
-    jne     @@CheckOption
-@@Advance2:
-    inc     si
-    jmp     @@SkipWhite2
+    ; Single pass over the SAVECONFIG argument view established by the common
+    ; parser.  Only SAVECONFIG owned options are accepted here; global options
+    ; were already consumed and CONFIGURE properties are not in scope.
+@@NextOption:
+    call    Cli_Next_Arg
+    jc      @@ScanCards
 
-@@CheckOption:
-    or      al, al
-    jz      @@ScanCards
+    mov     al, [si]
     cmp     al, '/'
-    je      @@ExecSlash
+    je      @@HaveIntroducer
     cmp     al, '-'
     jne     @@BadOption
-@@ExecSlash:
+@@HaveIntroducer:
     inc     si
+
+    mov     di, OFFSET save_outputfile_kw
+    call    Save_Match_Keyword
+    jc      @@TryExecFile
+    cmp     [save_outputfile_supplied], 0
+    jne     @@DupOption
+    mov     di, OFFSET save_filename
+    mov     cx, 127
+    call    Save_Copy_Value
+    jc      @@BadName
+    or      ax, ax
+    jz      @@Missing
+    mov     [save_outputfile_supplied], 1
+    jmp     @@NextOption
+
+@@TryExecFile:
     mov     di, OFFSET save_execfile_kw
-@@MatchExec:
-    mov     al, [BYTE di]
-    or      al, al
-    jz      @@ExecMatched
-    cmp     al, [BYTE si]
-    jne     @@BadOption
-    inc     di
-    inc     si
-    jmp     @@MatchExec
-@@ExecMatched:
+    call    Save_Match_Keyword
+    jc      @@BadOption
+    cmp     [save_execfile_supplied], 0
+    jne     @@DupOption
     mov     di, OFFSET save_execname
     mov     cx, 64
-@@CopyExec:
-    mov     al, [si]
-    or      al, al
-    jz      @@ExecCopied
-    cmp     al, ' '
-    je      @@ExecCopied
-    cmp     al, 09h
-    je      @@ExecCopied
-    mov     [BYTE di], al
-    inc     di
-    inc     si
-    loop    @@CopyExec
-    jmp     @@BadExecFile
-@@ExecCopied:
-    xor     al, al
-    mov     [BYTE di], al
+    call    Save_Copy_Value
+    jc      @@BadExecFile
+    or      ax, ax
+    jz      @@BadExecFile
     mov     [save_execfile_supplied], 1
+    jmp     @@NextOption
 
 @@ScanCards:
     call    Save_Prepare_Execfile
@@ -1115,6 +1271,9 @@ PROC Cmd_SaveConfig NEAR
 @@BadOption:
     mov     dx, OFFSET msg_save_bad_option
     jmp     @@Print
+@@DupOption:
+    mov     dx, OFFSET msg_save_dup_option
+    jmp     @@Print
 @@BadExecFile:
     mov     dx, OFFSET msg_save_bad_execfile
     jmp     @@Print
@@ -1138,6 +1297,88 @@ PROC Cmd_SaveConfig NEAR
     pop     ax
     ret
 ENDP Cmd_SaveConfig
+
+; Copies the NUL terminated default string at DS:SI into DS:DI.
+PROC Save_Copy_Default NEAR
+    push    ax
+@@Loop:
+    lodsb
+    mov     [BYTE di], al
+    inc     di
+    or      al, al
+    jnz     @@Loop
+    pop     ax
+    ret
+ENDP Save_Copy_Default
+
+; Compares the NUL terminated keyword at DS:DI against the option text at
+; DS:SI.  On a match SI advances past the keyword and CF is clear; otherwise
+; SI is unchanged and CF is set.
+PROC Save_Match_Keyword NEAR
+    push    ax
+    push    di
+    push    si
+@@Loop:
+    mov     al, [BYTE di]
+    or      al, al
+    jz      @@Matched
+    cmp     al, [BYTE si]
+    jne     @@NoMatch
+    inc     di
+    inc     si
+    jmp     @@Loop
+@@Matched:
+    pop     ax                      ; discard saved SI, keep advanced SI
+    pop     di
+    pop     ax
+    clc
+    ret
+@@NoMatch:
+    pop     si
+    pop     di
+    pop     ax
+    stc
+    ret
+ENDP Save_Match_Keyword
+
+; Copies the whitespace delimited option value at DS:SI into the CX byte
+; bounded buffer at DS:DI and NUL terminates it.  Returns the copied length
+; in AX with CF clear, or CF set when the value exceeds the buffer.
+PROC Save_Copy_Value NEAR
+    push    cx
+    push    di
+    xor     ax, ax
+@@Loop:
+    jcxz    @@Overflow
+    push    ax
+    mov     al, [BYTE si]
+    or      al, al
+    jz      @@EndValue
+    cmp     al, ' '
+    je      @@EndValue
+    cmp     al, 09h
+    je      @@EndValue
+    mov     [BYTE di], al
+    pop     ax
+    inc     di
+    inc     si
+    inc     ax
+    dec     cx
+    jmp     @@Loop
+@@EndValue:
+    pop     ax
+    xor     cl, cl
+    mov     [BYTE di], cl
+    pop     di
+    pop     cx
+    clc
+    ret
+@@Overflow:
+    pop     di
+    pop     cx
+    stc
+    ret
+ENDP Save_Copy_Value
 
 PROC Save_Print_Filename NEAR
     push    ax
@@ -1271,6 +1512,7 @@ PROC Save_Prepare_Execfile NEAR
     clc
     jmp     @@Done
 @@BadValue:
+    mov     al, SAVE_ERR_BAD_EXECFILE
     stc
     jmp     @@Done
 @@NotFound:
@@ -1852,28 +2094,22 @@ PROC Cmd_Configure NEAR
 ENDP Cmd_Configure
 
 ; Parse all tokens so a later invalid switch is not hidden by an earlier stub.
-; Input SI points immediately after CONFIGURE.
+; Input is the filtered CONFIGURE argument view established by the common
+; parser; global options such as /VERBOSE never appear here.
 ; Output CF clear on syntactically valid options, CF set with cfg_last_error.
 PROC Cfg_Parse_Options NEAR
     push    ax
     push    bx
     push    cx
     push    dx
+    push    si
     push    di
 
 @@NextToken:
-    mov     al, [si]
-    cmp     al, ' '
-    je      @@SkipWhite
-    cmp     al, 09h
-    jne     @@TokenStart
-@@SkipWhite:
-    inc     si
-    jmp     @@NextToken
+    call    Cli_Next_Arg
+    jc      @@Success
 
-@@TokenStart:
-    or      al, al
-    jz      @@Success
+    mov     al, [si]
     cmp     al, '/'
     je      @@HaveIntroducer
     cmp     al, '-'
@@ -1882,38 +2118,6 @@ PROC Cfg_Parse_Options NEAR
 @@HaveIntroducer:
     inc     si
 
-    ; /VERBOSE is a global CONFIGURE diagnostic switch and takes no value.
-    ; It affects output only and never changes hardware transaction behavior.
-    cmp     [BYTE si], 'V'
-    jne     @@RegularOption
-    cmp     [BYTE si+1], 'E'
-    jne     @@RegularOption
-    cmp     [BYTE si+2], 'R'
-    jne     @@RegularOption
-    cmp     [BYTE si+3], 'B'
-    jne     @@RegularOption
-    cmp     [BYTE si+4], 'O'
-    jne     @@RegularOption
-    cmp     [BYTE si+5], 'S'
-    jne     @@RegularOption
-    cmp     [BYTE si+6], 'E'
-    jne     @@RegularOption
-    mov     al, [si+7]
-    or      al, al
-    jz      @@SetVerbose
-    cmp     al, ' '
-    je      @@SetVerbose
-    cmp     al, 09h
-    jne     @@RegularOption
-@@SetVerbose:
-    mov     ax, CFG_SEEN_VERBOSE
-    call    Cfg_Mark_Seen
-    jc      @@DuplicateProperty
-    or      [cfg_parse_flags], CFG_PARSE_VERBOSE
-    add     si, 7
-    jmp     @@NextToken
-
-@@RegularOption:
     mov     bx, si                  ; BX = option name start.
     xor     cx, cx                  ; CX = option name length.
 
@@ -2085,6 +2289,7 @@ PROC Cfg_Parse_Options NEAR
     mov     [cfg_last_error], CFG_ERR_BAD_ADAPTER
 @@Fail:
     pop     di
+    pop     si
     pop     dx
     pop     cx
     pop     bx
@@ -2093,6 +2298,7 @@ PROC Cfg_Parse_Options NEAR
     ret
 @@Success:
     pop     di
+    pop     si
     pop     dx
     pop     cx
     pop     bx
@@ -5508,7 +5714,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     jmp     @@Success
 
 @@Start:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Deactivate
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@VerboseINT
@@ -5551,7 +5757,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
 @@Retag:
     call    Cfg_Txn_Retag_Selected
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@MigrateRecord
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@MigrateRecord
@@ -5690,7 +5896,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     jmp     @@Success
 
 @@Start:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word08
     mov     dx, OFFSET msg_cfg_txn_write
     mov     ah, 09h
@@ -5705,7 +5911,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Write
     jc      @@Write08Fail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word09
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@Word08NoIOBaseNote
@@ -5731,7 +5937,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_RESOURCE_CFG
     call    Cfg_Eeprom_Write
     jc      @@Write09Fail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word0D
     mov     dx, OFFSET msg_cfg_irq_word_written
     mov     ah, 09h
@@ -5746,7 +5952,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Write
     jc      @@Write0DFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word13
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jnz     @@Word0DPrint
@@ -5769,14 +5975,14 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_CONFIG_CONTROL
     call    Cfg_Eeprom_Write
     jc      @@Write13Fail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Checksum
     mov     dx, OFFSET msg_cfg_pnp_word_written
     mov     ah, 09h
     int     21h
 
 @@Checksum:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@ChecksumCalc
     mov     dx, OFFSET msg_cfg_update_checksum
     mov     ah, 09h
@@ -5807,7 +6013,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     cmp     ax, [cfg_txn_new_word0f]
     jne     @@ChecksumFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_checksum_updated
     mov     ah, 09h
@@ -5892,7 +6098,7 @@ PROC Cfg_Txn_Write_Live NEAR
     test    [cfg_txn_change_flags], CFG_TXN_INT_CHANGED
     jz      @@Success
 @@Need:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Select
     mov     dx, OFFSET msg_cfg_txn_live
     mov     ah, 09h
@@ -5971,7 +6177,7 @@ PROC Cfg_Txn_Verify NEAR
     jmp     @@Success
 
 @@Start:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Reachable
     mov     dx, OFFSET msg_cfg_txn_verify
     mov     ah, 09h
@@ -5991,7 +6197,7 @@ PROC Cfg_Txn_Verify NEAR
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@ReachFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@IOPersistent
     mov     dx, OFFSET msg_cfg_txn_reachable
     mov     ah, 09h
@@ -6017,7 +6223,7 @@ PROC Cfg_Txn_Verify NEAR
     cmp     al, [cfg_txn_io_selector]
     jne     @@IOVerifyFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@IOLive
     mov     dx, OFFSET msg_cfg_eeprom_iobase_verified
     mov     ah, 09h
@@ -6039,7 +6245,7 @@ PROC Cfg_Txn_Verify NEAR
     cmp     al, [cfg_txn_io_selector]
     jne     @@IOVerifyFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@INTPersistent
     mov     dx, OFFSET msg_cfg_live_iobase_verified
     mov     ah, 09h
@@ -6077,7 +6283,7 @@ PROC Cfg_Txn_Verify NEAR
     cmp     bl, [cfg_int_value]
     jne     @@INTVerifyFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@INTLive
     mov     dx, OFFSET msg_cfg_eeprom_verified
     mov     ah, 09h
@@ -6102,7 +6308,7 @@ PROC Cfg_Txn_Verify NEAR
     cmp     bl, [cfg_int_value]
     jne     @@INTVerifyFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@PNPPersistent
     mov     dx, OFFSET msg_cfg_live_verified
     mov     ah, 09h
@@ -6125,7 +6331,7 @@ PROC Cfg_Txn_Verify NEAR
     jc      @@PNPVerifyFail
     cmp     ax, [cfg_txn_new_word13]
     jne     @@PNPVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@MODEMPersistent
     mov     dx, OFFSET msg_cfg_pnp_verified
     mov     ah, 09h
@@ -6143,7 +6349,7 @@ PROC Cfg_Txn_Verify NEAR
     jc      @@MODEMVerifyFail
     cmp     ax, [cfg_txn_new_word0d]
     jne     @@MODEMVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@FDPersistent
     mov     dx, OFFSET msg_cfg_modem_verified
     mov     ah, 09h
@@ -6165,7 +6371,7 @@ PROC Cfg_Txn_Verify NEAR
     and     bx, 8000h
     cmp     ax, bx
     jne     @@FDVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@OptimizePersistent
     mov     dx, OFFSET msg_cfg_fd_verified
     mov     ah, 09h
@@ -6183,7 +6389,7 @@ PROC Cfg_Txn_Verify NEAR
     jc      @@OptimizeVerifyFail
     cmp     ax, [cfg_txn_new_word0d]
     jne     @@OptimizeVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@BootRomPersistent
     mov     dx, OFFSET msg_cfg_optimize_verified
     mov     ah, 09h
@@ -6214,7 +6420,7 @@ PROC Cfg_Txn_Verify NEAR
     shr     ax, cl
     cmp     al, [cfg_baddress_value]
     jne     @@BootRomVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@BSizeVerify
     mov     dx, OFFSET msg_cfg_baddress_verified
     mov     ah, 09h
@@ -6229,7 +6435,7 @@ PROC Cfg_Txn_Verify NEAR
     shr     ax, cl
     cmp     al, [cfg_bsize_value]
     jne     @@BootRomVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_bsize_verified
     mov     ah, 09h
@@ -6353,7 +6559,7 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
     test    [cfg_txn_new_word0d], EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jnz     @@VerifyFail
 @@Verified:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@RestoreSuccess
     mov     dx, OFFSET msg_cfg_fd_live_verified
     mov     ah, 09h
@@ -6392,7 +6598,7 @@ PROC Cfg_Txn_Report_Current NEAR
     push    cx
     push    dx
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jnz     @@Start
     jmp     @@Done
 @@Start:
@@ -6520,7 +6726,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     push    cx
     push    dx
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jnz     @@Start
     jmp     @@Done
 @@Start:
@@ -6685,7 +6891,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     [cfg_timeout_latched], 0
 
     ; Adapter selection detail is global transaction output, not property output.
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@GatePNP
     mov     dx, OFFSET msg_cfg_adapter_prefix
     mov     ah, 09h
@@ -6999,7 +7205,7 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
 
 @@Read:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@ReadNow
     mov     dx, OFFSET msg_cfg_txn_read
     mov     ah, 09h
@@ -7059,7 +7265,7 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Txn_Detect_Changes
     call    Cfg_Txn_Report_Prospective
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@CheckAnyChange
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@CheckINTUnchanged
@@ -7144,7 +7350,7 @@ PROC Cfg_Txn_Execute NEAR
     jnz     @@Preflight
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jnz     @@SyncUnchangedFD
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_txn_no_changes
     mov     ah, 09h

@@ -56,7 +56,7 @@ The new implementation currently covers:
 - `HELP`
 - `LIST`
 - `CONFIGURE`
-- `SAVECONFIG file` (exports a restore batch file for all installed adapters)
+- `SAVECONFIG` (exports a restore batch file for all installed adapters)
 
 Supported `CONFIGURE` subverbs include:
 
@@ -71,6 +71,9 @@ Supported `CONFIGURE` subverbs include:
 - `/OPTIMIZE`
 - `/BADDRESS`
 - `/BSIZE`
+
+Supported global CLI options, valid with any command verb:
+
 - `/VERBOSE` (new enhancement)
 
 ## Where 3CCFGCLI differs
@@ -128,17 +131,52 @@ probing. It does not configure a persistent adapter setting.
 `CONFIGURE /CONFIGPORT` is not implemented in `3CCFGCLI` at this time.
 
 
-### /VERBOSE configuration verb
+### /VERBOSE global CLI option
+
+`/VERBOSE` is not a `CONFIGURE` subverb. It is a global CLI option owned by the
+common command parser, which recognizes and consumes it before dispatching to
+the selected command verb. It may therefore be given with any supported verb
+and at any position on the command line:
+
+```text
+LIST /VERBOSE
+CONFIGURE /VERBOSE /INT:5
+SAVECONFIG /VERBOSE
+SAVECONFIG /OUTPUTFILE:BACKUP.BAT /VERBOSE
+```
+
+It takes no value and may be given only once; a duplicate `/VERBOSE` is
+rejected.
 
 `/VERBOSE` is a diagnostic aid. It prints additional EEPROM and live-register
 read/write detail so transactions can be traced while debugging hardware
-behavior, mock-state issues, or parser/transaction sequencing.
+behavior, mock-state issues, or parser/transaction sequencing. Those
+diagnostics are currently implemented for `CONFIGURE`. `LIST` and `SAVECONFIG`
+accept the global flag but do not yet produce additional diagnostic detail.
 
 ### SAVECONFIG command verb
 
-`SAVECONFIG [filename.bat] [/EXECFILE:program]` reads the persistent configuration
-of every installed adapter with an active IOBASE and writes a batch file with
-one `program CONFIGURE /ADAPTERNUM:N ...` restore line per adapter.
+`SAVECONFIG [/OUTPUTFILE:file] [/EXECFILE:program]` reads the persistent
+configuration of every installed adapter with an active IOBASE and writes a
+batch file with one `program CONFIGURE /ADAPTERNUM:N ...` restore line per
+adapter.
+
+Both options are optional and may be given in any order. Each option may be
+supplied only once; duplicates and unknown options are rejected. The old
+positional filename form (`SAVECONFIG FILE.BAT`) is no longer accepted.
+
+`file` defaults to `RESTORE.BAT`. `/OUTPUTFILE:` requires a non-empty value;
+the default is used only when the option is omitted entirely.
+
+Examples:
+
+```text
+SAVECONFIG
+SAVECONFIG /OUTPUTFILE:BACKUP.BAT
+SAVECONFIG /EXECFILE:3CCFGCLI.EXE
+SAVECONFIG /OUTPUTFILE:BACKUP.BAT /EXECFILE:3CCFGCLI.EXE
+SAVECONFIG /EXECFILE:3CCFGCLI.EXE /OUTPUTFILE:BACKUP.BAT
+```
 
 `program` defaults to `3CCFGCLI.EXE`. `/EXECFILE:%1` is the only supported
 batch placeholder form and is emitted literally. Other `/EXECFILE` values are

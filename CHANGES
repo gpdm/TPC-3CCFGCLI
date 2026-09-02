@@ -1,4 +1,33 @@
 Changelog 0.7.2
+  - Fixed bare `SAVECONFIG` (NUL directly after the verb) not being
+    recognized by the top level command parser. It now matches the existing
+    CONFIGURE boundary handling and produces the default `RESTORE.BAT`.
+  - `/VERBOSE` is now a global CLI option owned by the common command parser
+    (`Cli_Collect_Args`), valid with any command verb and at any position.
+    It is validated, duplicate-checked and consumed exactly once, and is
+    never passed to a verb specific parser.
+  - Introduced a pointer based filtered argument view: the common parser
+    records pointers into `cmd_buffer` (`cli_arg_ptrs`/`cli_arg_count`) and
+    verbs iterate them via `Cli_Next_Arg()`. No argument text is copied.
+  - Replaced CONFIGURE-owned `CFG_PARSE_VERBOSE`/`CFG_SEEN_VERBOSE` with the
+    global `cli_flags`/`CLI_FLAG_VERBOSE`. `Cfg_Parse_Options()` no longer
+    recognizes VERBOSE at all; the hardware property request queue and
+    `Cfg_Dispatch_Parsed_Properties()` are unchanged.
+  - `LIST` now rejects stray arguments instead of ignoring them.
+  - Fixed `Save_Prepare_Execfile()` returning an undefined error code on the
+    invalid-`/EXECFILE`-value path, which misreported the diagnostic.
+  - Added tests t1617-t1622 (OUTPUTFILE-only matrix case, global VERBOSE
+    coverage, duplicate VERBOSE, verb namespace isolation) and hwc027.
+  - `SAVECONFIG` now uses a named `/OUTPUTFILE:file` option instead of the
+    former positional filename. Omitting it selects the default `RESTORE.BAT`.
+    The old positional form is no longer accepted.
+  - `SAVECONFIG` option text is now parsed exactly once by a single
+    SAVECONFIG-owned parser handling `/OUTPUTFILE` and `/EXECFILE` in any
+    order, rejecting duplicates and unknown options. `/EXECFILE` semantics
+    are unchanged. The obsolete positional-filename parser code was removed.
+  - Added `Save_Copy_Default()`, `Save_Match_Keyword()` and
+    `Save_Copy_Value()` helpers; new message `msg_save_dup_option`.
+  - Added tests t1612-t1616 and hwc020-hwc026 for the new SAVECONFIG syntax.
   - removed stale occurences of old string definitions in data segment
   - For NIC optimization, merged save_windows and save_os2 into combined
     save_windows_os2 token.
