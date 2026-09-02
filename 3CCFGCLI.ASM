@@ -261,7 +261,6 @@ msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or
 msg_cfg_int_ok DB "INT parameter accepted. Requested IRQ: ", '$'
 msg_cfg_pnp_ok DB "PNP parameter accepted. Requested Plug and Play mode: ", '$'
 msg_cfg_modem_ok DB "MODEM parameter accepted. Requested setting: ", '$'
-msg_cfg_crlf DB 0Dh, 0Ah, '$'
 msg_cfg_adapter_prefix DB "Adapter ", '$'
 msg_cfg_adapter_suffix DB " selected.", 0Dh, 0Ah, '$'
 msg_cfg_current_irq DB "Current IRQ: ", '$'
@@ -1078,7 +1077,7 @@ PROC Cmd_SaveConfig NEAR
     int     21h
     mov     si, OFFSET save_filename
     call    Save_Print_Filename
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -6066,7 +6065,7 @@ PROC Cfg_Txn_Verify NEAR
     int     21h
     mov     ax, [WORD si + NIC_IO_BASE]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6092,7 +6091,7 @@ PROC Cfg_Txn_Verify NEAR
     int     21h
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6114,7 +6113,7 @@ PROC Cfg_Txn_Verify NEAR
     int     21h
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6123,8 +6122,10 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@PNPPersistent
     ; Preserve the standalone 0.3.3 unchanged path.  Verify INT only when its
     ; persistent field changed, or when an IO migration forced live restoration.
+    ; An unchanged INT skips its own readback only; later requested properties
+    ; are still verified.
     test    [cfg_txn_change_flags], CFG_TXN_INT_MIGRATE_MASK
-    jz      @@Success
+    jz      @@PNPPersistent
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
@@ -6150,7 +6151,7 @@ PROC Cfg_Txn_Verify NEAR
     int     21h
     mov     al, bl
     call    Print_DecByte
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6169,13 +6170,13 @@ PROC Cfg_Txn_Verify NEAR
     jne     @@INTVerifyFail
 
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@Success
+    jz      @@PNPPersistent
     mov     dx, OFFSET msg_cfg_live_verified
     mov     ah, 09h
     int     21h
     mov     al, bl
     call    Print_DecByte
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6192,7 +6193,7 @@ PROC Cfg_Txn_Verify NEAR
     cmp     ax, [cfg_txn_new_word13]
     jne     @@PNPVerifyFail
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@Success
+    jz      @@MODEMPersistent
     mov     dx, OFFSET msg_cfg_pnp_verified
     mov     ah, 09h
     int     21h
@@ -6232,7 +6233,7 @@ PROC Cfg_Txn_Verify NEAR
     cmp     ax, bx
     jne     @@FDVerifyFail
     test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@Success
+    jz      @@OptimizePersistent
     mov     dx, OFFSET msg_cfg_fd_verified
     mov     ah, 09h
     int     21h
@@ -6467,7 +6468,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_base]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6479,7 +6480,7 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     al, [cfg_txn_old_io_selector]
     call    Cfg_IOBASE_Selector_To_Base
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6488,7 +6489,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_word08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6498,7 +6499,7 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     al, [cfg_txn_live_io_selector]
     call    Cfg_IOBASE_Selector_To_Base
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6508,7 +6509,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_live06]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6519,7 +6520,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     al, [cfg_txn_old_irq]
     call    Print_DecByte
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6528,7 +6529,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     al, [cfg_txn_live_irq]
     call    Print_DecByte
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6537,7 +6538,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_word09]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6547,7 +6548,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_live08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
     test    [cfg_parse_flags], CFG_PARSE_MODEM
@@ -6557,7 +6558,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_word0d]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 @@Optimize:
@@ -6571,7 +6572,7 @@ PROC Cfg_Txn_Report_Current NEAR
     shr     ax, cl
     and     al, 03h
     call    Decode_Optimize_Value
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 @@Done:
@@ -6599,7 +6600,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_base]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6610,7 +6611,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_word08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6620,7 +6621,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_live06]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6631,7 +6632,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_word09]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6641,7 +6642,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_live08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
     test    [cfg_parse_flags], CFG_PARSE_MODEM
@@ -6651,7 +6652,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_word0d]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 @@Optimize:
@@ -6665,7 +6666,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     shr     ax, cl
     and     al, 03h
     call    Decode_Optimize_Value
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 @@Done:
@@ -6900,7 +6901,7 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 @@RequestedINT:
@@ -6911,7 +6912,7 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
     mov     al, [cfg_int_value]
     call    Print_DecByte
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6930,7 +6931,7 @@ PROC Cfg_Txn_Execute NEAR
 @@PnpPrint:
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6957,7 +6958,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     ah, 09h
     int     21h
 @@AfterRequestedModem:
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6976,7 +6977,7 @@ PROC Cfg_Txn_Execute NEAR
 @@FDPrint:
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6995,7 +6996,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_hex_suffix
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -7031,7 +7032,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     ah, 09h
     int     21h
 @@AfterBSizeValue:
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -7060,7 +7061,7 @@ PROC Cfg_Txn_Execute NEAR
 @@PrintTR:
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 

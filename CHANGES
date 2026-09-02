@@ -1,3 +1,21 @@
+Changelog 0.7.2
+  - removed stale occurences of old string definitions in data segment
+  - For NIC optimization, merged save_windows and save_os2 into combined
+    save_windows_os2 token.
+  - removed obsolete Decode_Optimize_Value() function
+  - renamed Print_Optimize_Read_Code() to Decode_Optimize_Value()
+    which is semantically cleaner and follows the pattern of
+    Decode_Modem_Value() function
+  - Added new tests (17xx) to verify control flow of the input validation chain.
+    New test group target is: VERIFICATION_CONTROL_FLOW
+  - Added some inline documentation to `TEST.MK`
+  - Replaced static `BIN\3CSEED.EXE` by runtime var `SEEDAPP` in `TEST.MK`
+  - Extended `TEST.BAT` to support calling individual test targets of `TEST.MK`,
+      e.g. `TEST.BAT VERIFICATION_CONTROL_FLOW`
+      Without arguments, it defaults to the `smoke` target as before.
+  - Removed a duplicate definition of CRLF in `3CCFGCLI.ASM`
+
+
 Changelog 0.7.1:
   - Made shared NIC capability-source validity independent: unavailable
     connector or revision data no longer hides a successfully read PNP result.
