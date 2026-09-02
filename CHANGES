@@ -14,6 +14,12 @@ Changelog 0.7.2
       e.g. `TEST.BAT VERIFICATION_CONTROL_FLOW`
       Without arguments, it defaults to the `smoke` target as before.
   - Removed a duplicate definition of CRLF in `3CCFGCLI.ASM`
+  - Remove a code duplication in `Cfg_Dispatch_Parsed_Properties()`:
+    The parser reparses pre-processed verbs `/ADAPTERNUM` and `/VERBOSE` again,
+    only to skip them. While this was correct in behaviour, there's no
+    point in passing them down from Pass 1 parser to Pass 2 parser.
+    Instead I revised it to now only push pointers to applicable arguments
+    for the `CONFIGURE` verb down.
 
 
 Changelog 0.7.1:

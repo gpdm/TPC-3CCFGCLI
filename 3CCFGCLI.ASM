@@ -51,6 +51,9 @@ CFG_OPT_OPTIMIZE        EQU 7
 CFG_OPT_PNP             EQU 10
 CFG_OPT_FULLDUPLEX      EQU 12
 
+CFG_MAX_PROPERTY_REQUESTS EQU 9
+CFG_PROPERTY_REQUEST_SIZE EQU 5    ; ID DB, value pointer DW, value length DW
+
 CFG_PARSE_ADAPTER       EQU 01h
 CFG_PARSE_INT           EQU 02h
 CFG_PARSE_VERBOSE       EQU 04h
@@ -227,7 +230,7 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "                                   2000h steps); requires /BSIZE.", 0Dh, 0Ah
                 DB  "    /BSIZE:8|16|32|DISABLED       Boot ROM size in KB, or DISABLED;", 0Dh, 0Ah
                 DB  "                                   a size requires /BADDRESS.", 0Dh, 0Ah
-                DB  "    /VERBOSE                       Show verbose transaction details.", 0Dh, 0Ah, '$'
+                DB  "  /VERBOSE                         Show verbose transaction details.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
 msg_save_missing DB "SAVECONFIG requires an output filename.", 0Dh, 0Ah, '$'
@@ -514,7 +517,10 @@ cfg_property_count    DB 0
 cfg_last_error        DB CFG_ERR_NONE
 cfg_timeout_latched   DB 0
 cfg_selected_ptr      DW 0
-cfg_options_ptr       DW 0
+cfg_queue_property_id DB 0
+; Ordered CONFIGURE hardware-property requests.  Value spans point into the
+; original command tail, which remains unchanged until command completion.
+cfg_property_requests DB CFG_MAX_PROPERTY_REQUESTS * CFG_PROPERTY_REQUEST_SIZE DUP (0)
 
 ; Staged property requests.  Handlers write only these values and parse flags.
 cfg_int_value         DB 0
@@ -1797,7 +1803,6 @@ PROC Cmd_Configure NEAR
     mov     [cfg_last_error], CFG_ERR_NONE
     mov     [cfg_timeout_latched], 0
     mov     [cfg_selected_ptr], 0
-    mov     [cfg_options_ptr], si
 
     call    Cfg_Parse_Options
     jc      @@Report
@@ -1823,7 +1828,6 @@ PROC Cmd_Configure NEAR
     jmp     @@Report
 
 @@Dispatch:
-    mov     si, [cfg_options_ptr]
     call    Cfg_Dispatch_Parsed_Properties
     cmp     [cfg_last_error], CFG_ERR_NONE
     jne     @@Report
@@ -1974,6 +1978,7 @@ PROC Cfg_Parse_Options NEAR
     pop     dx
     pop     si
     jc      @@BadOption
+    mov     [cfg_queue_property_id], al
 
     ; Strict duplicate tracking applies to supported hardware properties.
     cmp     al, CFG_OPT_INT
@@ -2038,6 +2043,17 @@ PROC Cfg_Parse_Options NEAR
     call    Cfg_Mark_Seen
     jc      @@DuplicateProperty
 @@CountProperty:
+    xor     bx, bx
+    mov     bl, [cfg_property_count]
+    mov     ax, bx
+    shl     bx, 1
+    shl     bx, 1
+    add     bx, ax                 ; BX = request index times five.
+    add     bx, OFFSET cfg_property_requests
+    mov     al, [cfg_queue_property_id]
+    mov     [bx], al
+    mov     [bx+1], dx
+    mov     [bx+3], di
     inc     [cfg_property_count]
     jmp     @@NextToken
 
@@ -2292,11 +2308,9 @@ PROC Cfg_Resolve_Adapter NEAR
     ret
 ENDP Cfg_Resolve_Adapter
 
-; Rewalk the already validated option text after adapter selection and
-; revalidation.  This preserves original style sequential property dispatch
-; without storing a second request array.  A handler error stops later handlers,
-; matching the original sub_377 loop.  ADAPTERNUM is skipped because it has
-; already selected the logical adapter.
+; Dispatch ordered CONFIGURE hardware-property requests collected by
+; Cfg_Parse_Options after adapter selection and revalidation.  A handler error
+; stops later handlers, matching the original sub_377 loop.
 PROC Cfg_Dispatch_Parsed_Properties NEAR
     push    ax
     push    bx
@@ -2305,109 +2319,28 @@ PROC Cfg_Dispatch_Parsed_Properties NEAR
     push    di
     push    si
 
-@@NextToken:
-    mov     al, [si]
-    cmp     al, ' '
-    je      @@SkipWhite
-    cmp     al, 09h
-    jne     @@TokenStart
-@@SkipWhite:
-    inc     si
-    jmp     @@NextToken
+    mov     bx, OFFSET cfg_property_requests
+    xor     di, di                 ; Number of requests dispatched.
+@@NextRequest:
+    mov     al, [cfg_property_count]
+    xor     ah, ah
+    cmp     di, ax
+    jae     @@Done
 
-@@TokenStart:
-    or      al, al
-    jz      @@Done
-    inc     si                     ; Syntax was already validated in pass one.
-
-    ; /VERBOSE is global diagnostic state, not a hardware property.
-    cmp     [BYTE si], 'V'
-    jne     @@RegularProperty
-    cmp     [BYTE si+1], 'E'
-    jne     @@RegularProperty
-    cmp     [BYTE si+2], 'R'
-    jne     @@RegularProperty
-    cmp     [BYTE si+3], 'B'
-    jne     @@RegularProperty
-    cmp     [BYTE si+4], 'O'
-    jne     @@RegularProperty
-    cmp     [BYTE si+5], 'S'
-    jne     @@RegularProperty
-    cmp     [BYTE si+6], 'E'
-    jne     @@RegularProperty
-    mov     al, [si+7]
-    or      al, al
-    jz      @@SkipVerbose
-    cmp     al, ' '
-    je      @@SkipVerbose
-    cmp     al, 09h
-    jne     @@RegularProperty
-@@SkipVerbose:
-    add     si, 7
-    jmp     @@NextToken
-
-@@RegularProperty:
-    mov     bx, si
-    xor     cx, cx
-@@FindSeparator:
-    mov     al, [si]
-    cmp     al, ':'
-    je      @@HaveSeparator
-    cmp     al, '='
-    je      @@HaveSeparator
-    inc     si
-    inc     cx
-    jmp     @@FindSeparator
-
-@@HaveSeparator:
-    inc     si
-    mov     dx, si
-    xor     di, di
-@@FindValueEnd:
-    mov     al, [si]
-    or      al, al
-    jz      @@ValueReady
-    cmp     al, ' '
-    je      @@ValueReady
-    cmp     al, 09h
-    je      @@ValueReady
-    inc     si
-    inc     di
-    jmp     @@FindValueEnd
-
-@@ValueReady:
-    push    si
-    push    cx
+    mov     al, [bx]
+    mov     si, [bx+1]
+    mov     cx, [bx+3]
+    push    bx
     push    di
-    mov     si, bx
-    mov     di, OFFSET cfg_name_adapternum
-    call    Cfg_Match_Name_Prefix
-    pop     di
-    pop     cx
-    pop     si
-    jnc     @@NextToken
-
-    push    si
-    push    dx
-    push    cx
-    mov     si, bx
-    call    Cfg_Match_Property
-    pop     cx
-    pop     dx
-    pop     si
-    jc      @@InternalBadOption
-
-    push    si
-    mov     si, dx                 ; Handler value pointer.
-    mov     cx, di                 ; Handler value length.
     call    Cfg_Dispatch_Property
-    pop     si
+    pop     di
+    pop     bx
     cmp     [cfg_last_error], CFG_ERR_NONE
     jne     @@Done
-    jmp     @@NextToken
+    add     bx, CFG_PROPERTY_REQUEST_SIZE
+    inc     di
+    jmp     @@NextRequest
 
-@@InternalBadOption:
-    mov     [cfg_last_error], CFG_ERR_BAD_OPTION
 @@Done:
     pop     si
     pop     di
