@@ -634,6 +634,7 @@ cfg_property_ids DB CFG_OPT_INT
                  DB CFG_OPT_FULLDUPLEX
 
 SAVE_MAX_BATCH_LINE EQU 128
+SAVE_BUFFER_SIZE EQU SAVE_MAX_BATCH_LINE + 2 ; generated command text + CR + LF
 SAVE_EXECFILE_RUNTIME_RESERVE EQU 64
 SAVE_ERR_NONE EQU 0
 SAVE_ERR_WRITE EQU 1
@@ -657,7 +658,7 @@ save_filename_default DB 'RESTORE.BAT', 0
 save_outputfile_kw DB 'OUTPUTFILE:', 0
 cli_kw_verbose  DB 'VERBOSE', 0
 save_execfile_kw DB 'EXECFILE:', 0
-save_buffer     DB  1024 DUP(0)
+save_buffer     DB  SAVE_BUFFER_SIZE DUP(0)
 save_length     DW  0
 save_argument_length DW 0
 save_max_argument_length DW 0
@@ -1397,13 +1398,24 @@ PROC Save_Print_Filename NEAR
     ret
 ENDP Save_Print_Filename
 
+; Appends AL to save_buffer, guarding against overrun of SAVE_BUFFER_SIZE.
+; All upstream length accounting (Save_Ensure_Option_Length) is expected to
+; keep writes within bounds; this is a hard backstop against any programming
+; error letting save_length reach the buffer limit.
 PROC Save_Append_Char NEAR
     push    di
+    cmp     [save_length], SAVE_BUFFER_SIZE
+    jae     @@Overflow
     mov     di, OFFSET save_buffer
     add     di, [save_length]
     stosb
     inc     [save_length]
     pop     di
+    ret
+@@Overflow:
+    pop     di
+    mov     [save_error], SAVE_ERR_LINE_TOO_LONG
+    stc
     ret
 ENDP Save_Append_Char
 
@@ -1414,9 +1426,15 @@ PROC Save_Append_String NEAR
     or      al, al
     jz      @@Done
     call    Save_Append_Char
+    jc      @@Fail
     jmp     @@Loop
+@@Fail:
+    pop     ax
+    stc
+    ret
 @@Done:
     pop     ax
+    clc
     ret
 ENDP Save_Append_String
 
@@ -1594,10 +1612,12 @@ PROC Save_Append_Hex_Word NEAR
     shr     al, 1
     shr     al, 1
     call    Save_Append_Hex_Nibble
+    jc      @@Fail
     pop     ax
     push    ax
     mov     al, ah
     call    Save_Append_Hex_Nibble
+    jc      @@Fail
     pop     ax
     push    ax
     mov     al, al
@@ -1606,8 +1626,15 @@ PROC Save_Append_Hex_Word NEAR
     shr     al, 1
     shr     al, 1
     call    Save_Append_Hex_Nibble
+    jc      @@Fail
     pop     ax
     call    Save_Append_Hex_Nibble
+    jc      @@FailNoPop
+    ret
+@@Fail:
+    pop     ax
+@@FailNoPop:
+    stc
     ret
 ENDP Save_Append_Hex_Word
 
@@ -1630,11 +1657,28 @@ PROC Save_Append_Dec_Word NEAR
     mov     al, dl
     add     al, '0'
     call    Save_Append_Char
+    jc      @@Fail
     loop    @@Output
     pop     dx
     pop     cx
     pop     bx
     pop     ax
+    clc
+    ret
+@@Fail:
+    ; Unwind any digits still pushed for the pending output loop so the
+    ; stack stays balanced before returning failure to the caller.
+    dec     cx
+    jz      @@FailRestore
+@@FailUnwind:
+    pop     dx
+    loop    @@FailUnwind
+@@FailRestore:
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    stc
     ret
 ENDP Save_Append_Dec_Word
 
@@ -1648,12 +1692,16 @@ PROC Save_Begin_Command NEAR
     mov     [save_length], 0
     mov     si, OFFSET save_execname
     call    Save_Append_String
+    jc      @@Fail
     mov     si, OFFSET save_configure_suffix
     call    Save_Append_String
+    jc      @@Fail
     mov     si, OFFSET save_adapternum
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_adapter_num]
     call    Save_Append_Dec_Word
+    jc      @@Fail
     mov     ax, [save_length]
     sub     ax, [save_execname_length]
     dec     ax
@@ -1678,8 +1726,10 @@ PROC Save_Flush_Command NEAR
     push    dx
     mov     al, 0Dh
     call    Save_Append_Char
+    jc      @@Fail
     mov     al, 0Ah
     call    Save_Append_Char
+    jc      @@Fail
     mov     bx, [save_handle]
     mov     ah, 40h
     mov     cx, [save_length]
@@ -1739,10 +1789,12 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_int
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word09]
     mov     cl, 12
     shr     ax, cl
     call    Save_Append_Dec_Word
+    jc      @@Fail
 
     mov     cx, SAVE_LEN_IOBASE + 4
     call    Save_Ensure_Option_Length
@@ -1750,12 +1802,14 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_iobase
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word08]
     and     ax, 001Fh
     mov     cl, 4
     shl     ax, cl
     add     ax, 0200h
     call    Save_Append_Hex_Word
+    jc      @@Fail
 
     mov     ax, [save_word13]
     and     ax, 000Ch
@@ -1771,6 +1825,7 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_pnp
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word13]
     and     ax, 000Ch
     cmp     ax, 0004h
@@ -1781,6 +1836,7 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_enabled
 @@PnpDone:
     call    Save_Append_String
+    jc      @@Fail
 
     mov     ax, [save_word0d]
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
@@ -1795,6 +1851,7 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_fd
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word0d]
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jz      @@FdOff
@@ -1804,6 +1861,7 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_disabled
 @@FdDone:
     call    Save_Append_String
+    jc      @@Fail
 
     mov     ax, [save_word0d]
     call    Decode_Modem_Value
@@ -1818,9 +1876,11 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_modem
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word0d]
     call    Decode_Modem_Value
     call    Save_Append_Dec_Word
+    jc      @@Fail
     jmp     @@Optimize
 @@ModemNone:
     mov     cx, SAVE_LEN_MODEM + SAVE_LEN_NONE
@@ -1829,8 +1889,10 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_modem
     call    Save_Append_String
+    jc      @@Fail
     mov     si, OFFSET save_none
     call    Save_Append_String
+    jc      @@Fail
 @@Optimize:
     mov     ax, [save_word0d]
     mov     cl, 4
@@ -1860,6 +1922,7 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_optimize
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word0d]
     mov     cl, 4
     shr     ax, cl
@@ -1885,6 +1948,7 @@ PROC Save_Build_Command NEAR
     jmp     @@OptDone
 @@OptDone:
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word08]
     and     ax, 3F00h              ; Base (bits 11:8) and size (bits 13:12).
     jz      @@NoRom
@@ -1911,6 +1975,7 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_baddress
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word08]
     and     ax, 0F00h
     mov     cl, 8
@@ -1920,13 +1985,16 @@ PROC Save_Build_Command NEAR
     mov     dl, 0Ch
     mov     al, dl
     call    Save_Append_Hex_Nibble
+    jc      @@Fail
     mov     ax, [save_word08]
     and     ax, 0F00h
     mov     cl, 5
     shl     ax, cl
     call    Save_Append_Hex_Word
+    jc      @@Fail
     mov     si, OFFSET save_bsize
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word08]
     and     ax, 3000h
     mov     cl, 12
@@ -1944,6 +2012,7 @@ PROC Save_Build_Command NEAR
     mov     ax, 16
 @@SizeDone:
     call    Save_Append_Dec_Word
+    jc      @@Fail
     jmp     @@Tr
 @@NoRom:
     ; The original utility does not accept /BADDRESS:NONE; disabling the
@@ -1954,8 +2023,10 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_bsize
     call    Save_Append_String
+    jc      @@Fail
     mov     si, OFFSET save_disabled
     call    Save_Append_String
+    jc      @@Fail
 @@Tr:
     mov     ax, [save_word08]
     test    ax, 0080h
@@ -1982,6 +2053,7 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_tr
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word08]
     test    ax, 0080h
     jnz     @@TrAuto
@@ -2003,7 +2075,9 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_coax
 @@TrDone:
     call    Save_Append_String
+    jc      @@Fail
     call    Save_Flush_Command
+    jc      @@Fail
     jmp     @@Done
 @@Fail:
     stc

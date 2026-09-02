@@ -28,6 +28,7 @@ Changelog 0.7.2
   - Added `Save_Copy_Default()`, `Save_Match_Keyword()` and
     `Save_Copy_Value()` helpers; new message `msg_save_dup_option`.
   - Added tests t1612-t1616 and hwc020-hwc026 for the new SAVECONFIG syntax.
+  - SAVECONFIG: shrink save_buffer to 130 bytes and enforce write bounds with carry propagation
   - removed stale occurences of old string definitions in data segment
   - For NIC optimization, merged save_windows and save_os2 into combined
     save_windows_os2 token.
