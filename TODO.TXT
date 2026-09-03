@@ -32,6 +32,13 @@
     as only this one runs on MS-DOS 4.
 
 
+- Handle /VERBOSE flag for `SAVECONFIG` and `LIST` command
+
+  While these verbs accept the `/VERBOSE` flag, they don't produce extra diagnostics output.
+
+  Right now, I don't have a need for that, but maybe it's worthwile implementing it.
+
+
 
 - Boot ROM Activation:
 

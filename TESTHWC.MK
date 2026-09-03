@@ -59,7 +59,7 @@ TEST_TR = TP
 TEST_TR_RESULT_STR = on-board TP
 
 all: hwc
-hwc: clean prep save-config set-default HWC_CONFIGURATION restore-config complete
+hwc: clean prep save-config set-default HWC_CONFIGURATION HWC_SAVECONFIG restore-config complete
 
 # Runs the full conformance chain, restoring through 3CCFGCLI itself instead
 # of the original utility. Use once 3CCFGCLI's own EEPROM writes are trusted.
@@ -78,6 +78,7 @@ complete:
 clean:
 	@if exist $(LOGFILE) del $(LOGFILE)
 	@if exist $(ARTIFACTS)\HWC*.LOG del $(ARTIFACTS)\HWC*.LOG
+	@if exist $(ARTIFACTS)\HWC*.BAT del $(ARTIFACTS)\HWC*.BAT
 	@if exist $(ARTIFACTS)\$(RESTOREBAT) del $(ARTIFACTS)\$(RESTOREBAT)
 
 
@@ -92,7 +93,7 @@ set-default:
 
 save-config:
 	@echo Saving adapter configuration to $(RESTOREBAT) before any writes... >> $(LOGFILE)
-	$(OBSERVERAPP) SAVECONFIG $(ARTIFACTS)\$(RESTOREBAT) /EXECFILE:%1 > $(ARTIFACTS)\SAVECFG.LOG
+	$(OBSERVERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\$(RESTOREBAT) /EXECFILE:%1 > $(ARTIFACTS)\SAVECFG.LOG
 	FIND "Configuration restore batch file created:" $(ARTIFACTS)\SAVECFG.LOG > NUL
 
 # Restores through RESTOREAPP (default: the original 3Com utility, not this
@@ -135,7 +136,7 @@ hwc004:
 	@echo [hwc004] Original /MODEM writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(TEST_MODEM) > $(ARTIFACTS)\HWC004.LOG
 	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC004.LOG
-	FIND "Modem Speed = $(TEST_MODEM)" $(ARTIFACTS)\HWC004.LOG > NUL
+	FIND "MODEM Interrupt Disable Time = 1300 us (1200 bd)" $(ARTIFACTS)\HWC004.LOG > NUL
 
 hwc005:
 	@echo [hwc005] Original /FULLDUPLEX writer, 3CCFGCLI LIST observer... >> $(LOGFILE)

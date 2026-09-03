@@ -1,3 +1,83 @@
+Changelog 0.7.2
+  - restructrured TEST.MK to emit the test group "entrypoint" log line
+    correctly before the actual tests, and not after.
+  - Corrected EEPROM checksum domains: CONFIGURE updates word 0Fh low only for
+    words 08h/09h/0Dh, and word 17h low for PNP word 13h changes; both high
+    bytes are preserved. Seeder primary checksum now uses the same 08h/09h/0Dh domain.
+  - Corrected MODEM timing encoding: raw values 00h through 3Fh decode as 25
+    through 1600 microseconds, with NONE reserved only for raw 3Fh. Named baud
+    encodings remain preferred; SAVECONFIG intentionally normalizes raw 2Fh
+    (1200 us) to /MODEM:NONE because /MODEM:1200 is the named baud setting.
+  - Removed obsolete byte-swapped `506Dh` Manufacturer ID compatibility from
+    real and mock NIC signature checks; only documented `6D50h` is accepted.
+  - Replaced the linear `CMP`/`JNE` error dispatch in `Cfg_Report_Error()`
+    with a bounds-checked `cfg_error_messages` WORD pointer table indexed by
+    the `CFG_ERR_*` code. The procedure shrank from 759 to 30 bytes; the
+    154-byte table yields a net ~575-byte code reduction. All 77 `CFG_ERR_*`
+    numeric values, message wording and error semantics are unchanged;
+    `CFG_ERR_*` values are now stable table indices and must not be renumbered.
+  - Completed `Nic_*` backend abstraction migration: removed obsolete CLI
+    forwarding wrappers and duplicate `Cfg_Reg_*` aliases.
+  - Fixed bare `SAVECONFIG` (NUL directly after the verb) not being
+    recognized by the top level command parser. It now matches the existing
+    CONFIGURE boundary handling and produces the default `RESTORE.BAT`.
+  - `/VERBOSE` is now a global CLI option owned by the common command parser
+    (`Cli_Collect_Args`), valid with any command verb and at any position.
+    It is validated, duplicate-checked and consumed exactly once, and is
+    never passed to a verb specific parser.
+  - Introduced a pointer based filtered argument view: the common parser
+    records pointers into `cmd_buffer` (`cli_arg_ptrs`/`cli_arg_count`) and
+    verbs iterate them via `Cli_Next_Arg()`. No argument text is copied.
+  - Replaced CONFIGURE-owned `CFG_PARSE_VERBOSE`/`CFG_SEEN_VERBOSE` with the
+    global `cli_flags`/`CLI_FLAG_VERBOSE`. `Cfg_Parse_Options()` no longer
+    recognizes VERBOSE at all; the hardware property request queue and
+    `Cfg_Dispatch_Parsed_Properties()` are unchanged.
+  - `LIST` now rejects stray arguments instead of ignoring them.
+  - Fixed `Save_Prepare_Execfile()` returning an undefined error code on the
+    invalid-`/EXECFILE`-value path, which misreported the diagnostic.
+  - Added tests t1617-t1622 (OUTPUTFILE-only matrix case, global VERBOSE
+    coverage, duplicate VERBOSE, verb namespace isolation).
+  - `SAVECONFIG` now uses a named `/OUTPUTFILE:file` option instead of the
+    former positional filename. Omitting it selects the default `RESTORE.BAT`.
+    The old positional form is no longer accepted.
+  - `SAVECONFIG` option text is now parsed exactly once by a single
+    SAVECONFIG-owned parser handling `/OUTPUTFILE` and `/EXECFILE` in any
+    order, rejecting duplicates and unknown options. `/EXECFILE` semantics
+    are unchanged. The obsolete positional-filename parser code was removed.
+  - Added `Save_Copy_Default()`, `Save_Match_Keyword()` and
+    `Save_Copy_Value()` helpers; new message `msg_save_dup_option`.
+  - Added tests t1612-t1616 and hwc020-hwc026 for the new SAVECONFIG syntax.
+  - SAVECONFIG: shrink save_buffer to 130 bytes and enforce write bounds with carry propagation
+  - removed stale occurences of old string definitions in data segment
+  - For NIC optimization, merged save_windows and save_os2 into combined
+    save_windows_os2 token.
+  - removed obsolete Decode_Optimize_Value() function
+  - renamed Print_Optimize_Read_Code() to Decode_Optimize_Value()
+    which is semantically cleaner and follows the pattern of
+    Decode_Modem_Value() function
+  - Added new tests (17xx) to verify control flow of the input validation chain.
+    New test group target is: VERIFICATION_CONTROL_FLOW
+  - Added some inline documentation to `TEST.MK`
+  - Replaced static `BIN\3CSEED.EXE` by runtime var `SEEDAPP` in `TEST.MK`
+  - Extended `TEST.BAT` to support calling individual test targets of `TEST.MK`,
+      e.g. `TEST.BAT VERIFICATION_CONTROL_FLOW`
+      Without arguments, it defaults to the `smoke` target as before.
+  - Removed a duplicate definition of CRLF in `3CCFGCLI.ASM`
+  - Remove a code duplication in `Cfg_Dispatch_Parsed_Properties()`:
+    The parser reparses pre-processed verbs `/ADAPTERNUM` and `/VERBOSE` again,
+    only to skip them. While this was correct in behaviour, there's no
+    point in passing them down from Pass 1 parser to Pass 2 parser.
+    Instead I revised it to now only push pointers to applicable arguments
+    for the `CONFIGURE` verb down.
+  - `Nic_EEPROM_Read()` (real HW and mock backends) now reports timeout via
+    CF instead of `AX == FFFFh`, since FFFFh is also a legitimate data value.
+    All callers migrated; `SAVECONFIG` now aborts and reports a read failure
+    instead of silently exporting bogus config data.
+  - `SAVECONFIG` no longer leaves a partial/incomplete restore batch file
+    behind on a failure (EEPROM read failure, write failure, or line-too-long)
+    once output has started; the incomplete file is closed and deleted.
+
+
 Changelog 0.7.1:
   - Made shared NIC capability-source validity independent: unavailable
     connector or revision data no longer hides a successfully read PNP result.

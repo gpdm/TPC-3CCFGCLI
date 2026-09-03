@@ -5,7 +5,11 @@
 ; ============================================================================
 ; - Supported CONFIGURE verbs in this build:
 ;    /ADAPTERNUM, /BADDRESS, /BSIZE, /FULLDUPLEX, /INT, /IOBASE, /MODEM,
-;    /OPTIMIZE, /PNP, /TR (/XCVR alias), /VERBOSE.
+;    /OPTIMIZE, /PNP, /TR (/XCVR alias).
+;
+; - Supported global CLI options, owned by the common command parser and
+;   valid with any command verb:
+;    /VERBOSE.
 ;
 ; - See CHANGES for the complete release history.
 ; ============================================================================
@@ -51,9 +55,18 @@ CFG_OPT_OPTIMIZE        EQU 7
 CFG_OPT_PNP             EQU 10
 CFG_OPT_FULLDUPLEX      EQU 12
 
+CFG_MAX_PROPERTY_REQUESTS EQU 9
+CFG_PROPERTY_REQUEST_SIZE EQU 5    ; ID DB, value pointer DW, value length DW
+
+; Global CLI options.  These belong to the common command parser and are not
+; owned by any individual command verb.
+CLI_FLAG_VERBOSE        EQU 01h
+
+; Maximum number of verb specific argument tokens the common parser records.
+CLI_MAX_ARGS            EQU 16
+
 CFG_PARSE_ADAPTER       EQU 01h
 CFG_PARSE_INT           EQU 02h
-CFG_PARSE_VERBOSE       EQU 04h
 CFG_PARSE_IOBASE        EQU 08h
 CFG_PARSE_PNP           EQU 10h
 CFG_PARSE_MODEM         EQU 20h
@@ -67,7 +80,6 @@ CFG_PARSE_TR            EQU 0400h
 CFG_SEEN_ADAPTER        EQU 01h
 CFG_SEEN_INT            EQU 02h
 CFG_SEEN_IOBASE         EQU 04h
-CFG_SEEN_VERBOSE        EQU 08h
 CFG_SEEN_PNP            EQU 10h
 CFG_SEEN_MODEM          EQU 20h
 CFG_SEEN_FULLDUPLEX     EQU 40h
@@ -86,20 +98,22 @@ CFG_TXN_IOBASE_CHANGED   EQU 20h
 CFG_TXN_INT_CHANGED      EQU 40h
 CFG_TXN_CHG_WORD13       EQU 80h
 CFG_TXN_CHG_WORD0D       EQU 0100h
-CFG_TXN_CHG_WORD0F       EQU 0200h
 ; Widened to also require the hardware transaction pipeline for /BADDRESS,
 ; /BSIZE, and /TR (bits 0100h/0200h/0400h), which share EEPROM word 08h
 ; with /IOBASE.
 CFG_PARSE_HW_MASK        EQU 07FAh
 CFG_TXN_IO_DETECT_MASK   EQU 15h
 CFG_TXN_WORD09_INT_MASK  EQU 42h
-CFG_TXN_EEPROM_MASK      EQU 0383h
+; Persistent property changes only; derived checksum writes have no flags.
+CFG_TXN_EEPROM_MASK      EQU 0183h
 CFG_TXN_LIVE06_MASK      EQU 14h
+CFG_TXN_PRIMARY_CHECKSUM_MASK EQU 0103h ; WORD08, WORD09, WORD0D
+CFG_TXN_SECONDARY_CHECKSUM_MASK EQU 0080h ; WORD13
 ; WORD08 (bit 0) is included directly so a /BADDRESS or /BSIZE change (which
 ; has no IOBASE_CHANGED-style composite signal of its own) still triggers
-; the write/verify/success pipeline.  This mirrors how WORD0D/WORD13/WORD0F
-; are already included directly for MODEM/FULLDUPLEX/PNP/OPTIMIZE.
-CFG_TXN_COMMIT_MASK      EQU 03F1h
+; the write/verify/success pipeline. This mirrors how WORD0D and WORD13 are
+; included directly for MODEM/FULLDUPLEX/PNP/OPTIMIZE.
+CFG_TXN_COMMIT_MASK      EQU 01F1h
 CFG_TXN_INT_MIGRATE_MASK EQU 50h
 
 ; Normalized physical NIC capabilities.  These bits are a shared software
@@ -208,8 +222,9 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "    Display this help screen.", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "  LIST", 0Dh, 0Ah
                 DB  "    Detect and display 3C509 and 3C509B adapters.", 0Dh, 0Ah, 0Dh, 0Ah
-                DB  "  SAVECONFIG file [/EXECFILE:program]", 0Dh, 0Ah
+                DB  "  SAVECONFIG [/OUTPUTFILE:file] [/EXECFILE:program]", 0Dh, 0Ah
                 DB  "    Export all adapter configurations to a restore batch file.", 0Dh, 0Ah
+                DB  "    /OUTPUTFILE overrides the output batch file (default: RESTORE.BAT).", 0Dh, 0Ah
                 DB  "    /EXECFILE overrides the embedded program name (default: self).", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "  CONFIGURE [options]", 0Dh, 0Ah
                 DB  "    Configure ISA adapter properties. Options:", 0Dh, 0Ah, 0Dh, 0Ah
@@ -227,12 +242,18 @@ msg_help        DB  "Usage: 3CCFGCLI [COMMAND]", 0Dh, 0Ah, 0Dh, 0Ah
                 DB  "                                   2000h steps); requires /BSIZE.", 0Dh, 0Ah
                 DB  "    /BSIZE:8|16|32|DISABLED       Boot ROM size in KB, or DISABLED;", 0Dh, 0Ah
                 DB  "                                   a size requires /BADDRESS.", 0Dh, 0Ah
-                DB  "    /VERBOSE                       Show verbose transaction details.", 0Dh, 0Ah, '$'
+                DB  0Dh, 0Ah
+                DB  "Global options (valid with any command):", 0Dh, 0Ah
+                DB  "  /VERBOSE                       Show verbose transaction details.", 0Dh, 0Ah, '$'
+
+msg_cli_dup_verbose DB "Duplicate /VERBOSE option.", 0Dh, 0Ah, '$'
+msg_cli_too_many_args DB "Too many command line arguments.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
-msg_save_missing DB "SAVECONFIG requires an output filename.", 0Dh, 0Ah, '$'
+msg_save_missing DB "SAVECONFIG /OUTPUTFILE requires a value.", 0Dh, 0Ah, '$'
 msg_save_bad_name DB "Invalid SAVECONFIG output filename.", 0Dh, 0Ah, '$'
 msg_save_bad_option DB "Invalid SAVECONFIG option.", 0Dh, 0Ah, '$'
+msg_save_dup_option DB "Duplicate SAVECONFIG option.", 0Dh, 0Ah, '$'
 msg_save_bad_execfile DB "Invalid SAVECONFIG /EXECFILE value.", 0Dh, 0Ah, '$'
 msg_save_execfile_not_found DB "SAVECONFIG /EXECFILE file not found.", 0Dh, 0Ah, '$'
 msg_save_line_too_long DB "SAVECONFIG restore command line would exceed DOS batch line limit.", 0Dh, 0Ah, '$'
@@ -261,16 +282,13 @@ msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or
 msg_cfg_int_ok DB "INT parameter accepted. Requested IRQ: ", '$'
 msg_cfg_pnp_ok DB "PNP parameter accepted. Requested Plug and Play mode: ", '$'
 msg_cfg_modem_ok DB "MODEM parameter accepted. Requested setting: ", '$'
-msg_cfg_crlf DB 0Dh, 0Ah, '$'
 msg_cfg_adapter_prefix DB "Adapter ", '$'
 msg_cfg_adapter_suffix DB " selected.", 0Dh, 0Ah, '$'
 msg_cfg_current_irq DB "Current IRQ: ", '$'
 msg_cfg_current_word09 DB "Current EEPROM word 09h: ", '$'
 msg_cfg_current_word0d DB "Current EEPROM word 0Dh: ", '$'
-msg_cfg_current_word0f DB "Current EEPROM word 0Fh: ", '$'
 msg_cfg_new_word09 DB "New EEPROM word 09h: ", '$'
 msg_cfg_new_word0d DB "New EEPROM word 0Dh: ", '$'
-msg_cfg_new_word0f DB "New EEPROM word 0Fh: ", '$'
 msg_cfg_prepare_active DB 0Dh, 0Ah, "Preparing adapter using original ISA activation sequence...", 0Dh, 0Ah, '$'
 msg_cfg_irq_unchanged DB 0Dh, 0Ah, "IRQ is already configured to the requested value.", 0Dh, 0Ah
                       DB "No hardware changes required.", 0Dh, 0Ah, '$'
@@ -315,7 +333,6 @@ msg_cfg_iobase_unchanged DB 0Dh, 0Ah, "IOBASE is already configured to the reque
                          DB "No IOBASE hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_deactivate_iobase DB 0Dh, 0Ah, "Deactivating selected adapter at old IOBASE...", 0Dh, 0Ah, '$'
 msg_cfg_reactivate_iobase DB "Reactivating adapter at requested IOBASE...", 0Dh, 0Ah, '$'
-msg_cfg_write_iobase DB 0Dh, 0Ah, "Writing I/O configuration to EEPROM...", 0Dh, 0Ah, '$'
 msg_cfg_iobase_word_written DB "I/O configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_iobase_verified DB "EEPROM IOBASE verified: ", '$'
 msg_cfg_live_iobase_verified DB "Live IOBASE verified: ", '$'
@@ -448,13 +465,19 @@ msg_fd_capability_label DB "Full Duplex Capability = ", '$'
 msg_boot_label  DB  "Boot ROM = ", '$'
 msg_compat_label DB "Software Compatibility = failure level ", '$'
 msg_optimize_label DB "Optimization = ", '$'
-msg_modem_label DB "Modem Speed = ", '$'
+msg_modem_label DB "MODEM Interrupt Disable Time = ", '$'
+msg_modem_us DB " us", '$'
+msg_modem_38400 DB " (38400 bd)", '$'
+msg_modem_19200 DB " (19200 bd)", '$'
+msg_modem_9600 DB " (9600 bd)", '$'
+msg_modem_2400 DB " (2400 bd)", '$'
+msg_modem_1200 DB " (1200 bd)", '$'
+msg_modem_none DB " (NONE)", '$'
+msg_modem_not_representable DB " (not representable by CLI)", '$'
 msg_fullduplex_label DB "Full Duplex = ", '$'
 msg_link_status_label DB "Link Status = ", '$'
 msg_optimize_reserved DB "Reserved", '$'
 msg_optimize_dos DB "DOS", '$'
-msg_optimize_windows DB "Windows", '$'
-msg_optimize_os2 DB "OS/2", '$'
 msg_optimize_windows_or_os2 DB "Windows or OS/2", '$'
 msg_optimize_server DB "Server", '$'
 msg_warn_label  DB  ", warning level ", '$'
@@ -512,6 +535,15 @@ ext_link_status   DW 0FFFFh
 ; Raw EEPROM_SOFTWARE_INFO (word 0Dh).  /MODEM uses only its Maximum Interrupt
 ; Disable Time field, bits 13:8.
 ext_software_info DW 0FFFFh
+; Global CLI parser state.  cli_arg_ptrs holds pointers into cmd_buffer for
+; the verb specific argument tokens that remain after global options have
+; been consumed.  Argument text is never copied; each token is delimited in
+; place by whitespace or the terminating NUL.
+cli_flags             DW 0
+cli_arg_ptrs          DW CLI_MAX_ARGS DUP(0)
+cli_arg_count         DW 0
+cli_arg_index         DW 0
+
 ; CONFIGURE state.  nic_table itself is deliberately not extended.
 cfg_adapter_ordinal   DB 0
 cfg_parse_flags       DW 0
@@ -520,7 +552,10 @@ cfg_property_count    DB 0
 cfg_last_error        DB CFG_ERR_NONE
 cfg_timeout_latched   DB 0
 cfg_selected_ptr      DW 0
-cfg_options_ptr       DW 0
+cfg_queue_property_id DB 0
+; Ordered CONFIGURE hardware-property requests.  Value spans point into the
+; original command tail, which remains unchanged until command completion.
+cfg_property_requests DB CFG_MAX_PROPERTY_REQUESTS * CFG_PROPERTY_REQUEST_SIZE DUP (0)
 
 ; Staged property requests.  Handlers write only these values and parse flags.
 cfg_int_value         DB 0
@@ -542,7 +577,7 @@ cfg_tr_value          DB 0
 
 ; Central CONFIGURE transaction state.  Current state is snapshotted before any
 ; hardware modification.  Prospective state starts as an exact copy and is then
-; modified only by Cfg_Prepare_INT, Cfg_Prepare_IOBASE and Cfg_Prepare_PNP.
+; modified only by Cfg_Prepare_*** routines.
 cfg_txn_old_base          DW 0
 cfg_txn_new_base          DW 0
 cfg_txn_old_word08        DW 0
@@ -559,6 +594,7 @@ cfg_txn_old_live08        DW 0
 cfg_txn_new_live08        DW 0
 cfg_txn_old_word0f        DW 0
 cfg_txn_new_word0f        DW 0
+cfg_txn_checksum_word     DW 0
 cfg_txn_io_selector       DB 0
 cfg_txn_old_io_selector   DB 0
 cfg_txn_live_io_selector  DB 0
@@ -609,10 +645,12 @@ cfg_property_ids DB CFG_OPT_INT
                  DB CFG_OPT_FULLDUPLEX
 
 SAVE_MAX_BATCH_LINE EQU 128
+SAVE_BUFFER_SIZE EQU SAVE_MAX_BATCH_LINE + 2 ; generated command text + CR + LF
 SAVE_EXECFILE_RUNTIME_RESERVE EQU 64
 SAVE_ERR_NONE EQU 0
 SAVE_ERR_WRITE EQU 1
 SAVE_ERR_LINE_TOO_LONG EQU 2
+SAVE_ERR_BAD_EXECFILE EQU 3
 
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
@@ -627,13 +665,17 @@ cmd_buffer      DB  128 DUP(0)
 save_filename   DB  128 DUP(0)
 save_execname   DB  65 DUP(0)
 save_execname_default DB '3CCFGCLI.EXE', 0
+save_filename_default DB 'RESTORE.BAT', 0
+save_outputfile_kw DB 'OUTPUTFILE:', 0
+cli_kw_verbose  DB 'VERBOSE', 0
 save_execfile_kw DB 'EXECFILE:', 0
-save_buffer     DB  1024 DUP(0)
+save_buffer     DB  SAVE_BUFFER_SIZE DUP(0)
 save_length     DW  0
 save_argument_length DW 0
 save_max_argument_length DW 0
 save_execname_length DW 0
 save_execfile_supplied DB 0
+save_outputfile_supplied DB 0
 save_execfile_placeholder DB 0
 save_error      DB  0
 save_handle     DW  0
@@ -671,10 +713,8 @@ save_disabled   DB  'DISABLED', 0
 SAVE_LEN_DISABLED EQU 8
 save_dos        DB  'DOS', 0
 SAVE_LEN_DOS EQU 3
-save_windows    DB  'WINDOWS', 0
-SAVE_LEN_WINDOWS EQU 7
-save_os2        DB  'OS/2', 0
-SAVE_LEN_OS2 EQU 4
+save_windows_os2        DB  'Windows or OS/2', 0
+SAVE_LEN_WINDOWS_OS2 EQU 15
 save_server     DB  'SERVER', 0
 SAVE_LEN_SERVER EQU 6
 save_tp         DB  'TP', 0
@@ -685,6 +725,106 @@ save_coax       DB  'COAX', 0
 SAVE_LEN_COAX EQU 4
 save_auto       DB  'AUTO', 0
 SAVE_LEN_AUTO EQU 4
+
+; ---------------------------------------------------------------------------
+; CONFIGURE error message dispatch table.
+;
+; CFG_ERR_* values are stable indices into cfg_error_messages.
+; Do not renumber existing values.
+; Retired values keep a zero table entry.
+; A zero entry means "no message"; Cfg_Report_Error prints nothing for it.
+;
+; Example: if CFG_ERR_FOO EQU 50 is retired, table entry 50 becomes
+;              DW 0
+;          and entries 51 and above stay at their original indices.
+;          Never delete a slot, as that would shift every later entry and
+;          silently remap all following error codes to the wrong message.
+;
+; The valid index range is derived from the table itself via CFG_ERR_COUNT,
+; so appending or removing the last entry needs no other edit.
+; ---------------------------------------------------------------------------
+
+LABEL cfg_error_messages WORD
+    DW      0                                             ; 0 CFG_ERR_NONE
+    DW      OFFSET msg_no_cards                          ; 1 CFG_ERR_NO_NIC
+    DW      OFFSET msg_cfg_bad_adapter                   ; 2 CFG_ERR_BAD_ADAPTER
+    DW      OFFSET msg_cfg_revalidate                    ; 3 CFG_ERR_REVALIDATE
+    DW      OFFSET msg_cfg_unsupported_product           ; 4 CFG_ERR_UNSUPPORTED_PRODUCT
+    DW      OFFSET msg_cfg_unsupported_asic              ; 5 CFG_ERR_UNSUPPORTED_ASIC
+    DW      OFFSET msg_cfg_eeprom_timeout                ; 6 CFG_ERR_EEPROM_TIMEOUT
+    DW      OFFSET msg_cfg_command_timeout               ; 7 CFG_ERR_COMMAND_TIMEOUT
+    DW      OFFSET msg_cfg_bad_option                    ; 8 CFG_ERR_BAD_OPTION
+    DW      OFFSET msg_cfg_missing_value                 ; 9 CFG_ERR_MISSING_VALUE
+    DW      OFFSET msg_cfg_not_implemented               ; 10 CFG_ERR_NOT_IMPLEMENTED
+    DW      OFFSET msg_cfg_need_adapter                  ; 11 CFG_ERR_ADAPTER_REQUIRED
+    DW      OFFSET msg_cfg_dup_property                  ; 12 CFG_ERR_DUP_PROPERTY
+    DW      OFFSET msg_cfg_no_property                   ; 13 CFG_ERR_NO_PROPERTY
+    DW      OFFSET msg_cfg_bad_int                       ; 14 CFG_ERR_BAD_INT
+    DW      OFFSET msg_cfg_eeprom_read_fail              ; 15 CFG_ERR_EEPROM_READ
+    DW      OFFSET msg_cfg_eeprom_write_fail             ; 16 CFG_ERR_EEPROM_WRITE
+    DW      OFFSET msg_cfg_checksum_fail                 ; 17 CFG_ERR_CHECKSUM_UPDATE
+    DW      OFFSET msg_cfg_live_fail                     ; 18 CFG_ERR_LIVE_UPDATE
+    DW      OFFSET msg_cfg_verify_fail                   ; 19 CFG_ERR_VERIFY
+    DW      OFFSET msg_cfg_int_inactive                  ; 20 CFG_ERR_INT_INACTIVE
+    DW      OFFSET msg_cfg_bad_iobase                    ; 21 CFG_ERR_BAD_IOBASE
+    DW      OFFSET msg_cfg_iobase_inactive               ; 22 CFG_ERR_IOBASE_INACTIVE
+    DW      OFFSET msg_cfg_iobase_conflict               ; 23 CFG_ERR_IOBASE_CONFLICT
+    DW      OFFSET msg_cfg_iobase_deactivate_fail        ; 24 CFG_ERR_IOBASE_DEACTIVATE
+    DW      OFFSET msg_cfg_iobase_reactivate_fail        ; 25 CFG_ERR_IOBASE_REACTIVATE
+    DW      OFFSET msg_cfg_iobase_eeprom_read_fail       ; 26 CFG_ERR_IOBASE_EEPROM_READ
+    DW      OFFSET msg_cfg_iobase_eeprom_write_fail      ; 27 CFG_ERR_IOBASE_EEPROM_WRITE
+    DW      OFFSET msg_cfg_iobase_live_fail              ; 28 CFG_ERR_IOBASE_LIVE
+    DW      OFFSET msg_cfg_iobase_verify_fail            ; 29 CFG_ERR_IOBASE_VERIFY
+    DW      OFFSET msg_cfg_iobase_activate_fail          ; 30 CFG_ERR_IOBASE_ACTIVATE
+    DW      OFFSET msg_cfg_bad_pnp                       ; 31 CFG_ERR_BAD_PNP
+    DW      OFFSET msg_cfg_pnp_inactive                  ; 32 CFG_ERR_PNP_INACTIVE
+    DW      OFFSET msg_cfg_pnp_eeprom_read_fail          ; 33 CFG_ERR_PNP_EEPROM_READ
+    DW      OFFSET msg_cfg_pnp_eeprom_write_fail         ; 34 CFG_ERR_PNP_EEPROM_WRITE
+    DW      OFFSET msg_cfg_pnp_verify_fail               ; 35 CFG_ERR_PNP_VERIFY
+    DW      OFFSET msg_cfg_bad_modem                     ; 36 CFG_ERR_BAD_MODEM
+    DW      OFFSET msg_cfg_modem_inactive                ; 37 CFG_ERR_MODEM_INACTIVE
+    DW      OFFSET msg_cfg_modem_eeprom_read_fail        ; 38 CFG_ERR_MODEM_EEPROM_READ
+    DW      OFFSET msg_cfg_modem_eeprom_write_fail       ; 39 CFG_ERR_MODEM_EEPROM_WRITE
+    DW      OFFSET msg_cfg_modem_verify_fail             ; 40 CFG_ERR_MODEM_VERIFY
+    DW      OFFSET msg_cfg_pnp_not_capable               ; 41 CFG_ERR_PNP_NOT_CAPABLE
+    DW      OFFSET msg_cfg_bad_fullduplex                ; 42 CFG_ERR_BAD_FULLDUPLEX
+    DW      OFFSET msg_cfg_fd_inactive                   ; 43 CFG_ERR_FD_INACTIVE
+    DW      OFFSET msg_cfg_fd_eeprom_read_fail           ; 44 CFG_ERR_FD_EEPROM_READ
+    DW      OFFSET msg_cfg_fd_eeprom_write_fail          ; 45 CFG_ERR_FD_EEPROM_WRITE
+    DW      OFFSET msg_cfg_fd_verify_fail                ; 46 CFG_ERR_FD_VERIFY
+    DW      OFFSET msg_cfg_fd_not_capable                ; 47 CFG_ERR_FD_NOT_CAPABLE
+    DW      OFFSET msg_cfg_bad_optimize                  ; 48 CFG_ERR_BAD_OPTIMIZE
+    DW      OFFSET msg_cfg_optimize_inactive             ; 49 CFG_ERR_OPTIMIZE_INACTIVE
+    DW      OFFSET msg_cfg_optimize_eeprom_read_fail     ; 50 CFG_ERR_OPTIMIZE_EEPROM_READ
+    DW      OFFSET msg_cfg_optimize_eeprom_write_fail    ; 51 CFG_ERR_OPTIMIZE_EEPROM_WRITE
+    DW      OFFSET msg_cfg_optimize_verify_fail          ; 52 CFG_ERR_OPTIMIZE_VERIFY
+    DW      OFFSET msg_cfg_bad_baddress                  ; 53 CFG_ERR_BAD_BADDRESS
+    DW      OFFSET msg_cfg_baddress_inactive             ; 54 CFG_ERR_BADDRESS_INACTIVE
+    DW      OFFSET msg_cfg_baddress_eeprom_read_fail     ; 55 CFG_ERR_BADDRESS_EEPROM_READ
+    DW      OFFSET msg_cfg_baddress_eeprom_write_fail    ; 56 CFG_ERR_BADDRESS_EEPROM_WRITE
+    DW      OFFSET msg_cfg_baddress_verify_fail          ; 57 CFG_ERR_BADDRESS_VERIFY
+    DW      OFFSET msg_cfg_baddress_not_capable          ; 58 CFG_ERR_BADDRESS_NOT_CAPABLE
+    DW      OFFSET msg_cfg_bad_bsize                     ; 59 CFG_ERR_BAD_BSIZE
+    DW      OFFSET msg_cfg_bsize_inactive                ; 60 CFG_ERR_BSIZE_INACTIVE
+    DW      OFFSET msg_cfg_bsize_eeprom_read_fail        ; 61 CFG_ERR_BSIZE_EEPROM_READ
+    DW      OFFSET msg_cfg_bsize_eeprom_write_fail       ; 62 CFG_ERR_BSIZE_EEPROM_WRITE
+    DW      OFFSET msg_cfg_bsize_verify_fail             ; 63 CFG_ERR_BSIZE_VERIFY
+    DW      OFFSET msg_cfg_bsize_not_capable             ; 64 CFG_ERR_BSIZE_NOT_CAPABLE
+    DW      OFFSET msg_cfg_bootrom_incomplete            ; 65 CFG_ERR_BOOTROM_INCOMPLETE
+    DW      OFFSET msg_cfg_bad_tr                        ; 66 CFG_ERR_BAD_TR
+    DW      OFFSET msg_cfg_tr_inactive                   ; 67 CFG_ERR_TR_INACTIVE
+    DW      OFFSET msg_cfg_tr_eeprom_read_fail           ; 68 CFG_ERR_TR_EEPROM_READ
+    DW      OFFSET msg_cfg_tr_eeprom_write_fail          ; 69 CFG_ERR_TR_EEPROM_WRITE
+    DW      OFFSET msg_cfg_tr_verify_fail                ; 70 CFG_ERR_TR_VERIFY
+    DW      OFFSET msg_cfg_tr_not_capable                ; 71 CFG_ERR_TR_NOT_CAPABLE
+    DW      OFFSET msg_cfg_tr_capability_read_fail       ; 72 CFG_ERR_TR_CAPABILITY_READ
+    DW      OFFSET msg_cfg_fd_capability_read_fail       ; 73 CFG_ERR_FD_CAPABILITY_READ
+    DW      OFFSET msg_cfg_fd_transceiver                ; 74 CFG_ERR_FD_TRANSCEIVER
+    DW      OFFSET msg_cfg_fd_live_update_fail           ; 75 CFG_ERR_FD_LIVE_UPDATE
+    DW      OFFSET msg_cfg_fd_live_verify_fail           ; 76 CFG_ERR_FD_LIVE_VERIFY
+LABEL cfg_error_messages_end WORD
+
+CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2
 
 CODESEG
 
@@ -861,12 +1001,16 @@ PROC Parse_And_Execute NEAR
     cmp     [BYTE si+9], 'G'
     jne     @@TryConfig
     mov     al, [si+10]
+    or      al, al
+    jz      @@SaveConfig
     cmp     al, ' '
     je      @@SaveConfig
     cmp     al, 09h
     jne     @@TryConfig
 @@SaveConfig:
     add     si, 10
+    call    Cli_Collect_Args
+    jc      @@Done
     call    Cmd_SaveConfig
     ret
 
@@ -899,6 +1043,8 @@ PROC Parse_And_Execute NEAR
 
 @@Configure:
     add     si, 9
+    call    Cli_Collect_Args
+    jc      @@Done
     call    Cmd_Configure
     ret
 
@@ -911,6 +1057,12 @@ PROC Parse_And_Execute NEAR
     jmp     @@Help
 
 @@List:
+    add     si, 4
+    call    Cli_Collect_Args
+    jc      @@Done
+    ; LIST owns no arguments of its own, so any residual token is invalid.
+    cmp     [cli_arg_count], 0
+    jne     @@Help
     call    Cmd_List
     ret
 
@@ -918,8 +1070,160 @@ PROC Parse_And_Execute NEAR
     mov     dx, OFFSET msg_help
     mov     ah, 09h
     int     21h
+@@Done:
     ret
 ENDP Parse_And_Execute
+
+; ---------------------------------------------------------------------------
+; Global CLI option layer.
+;
+; Cli_Collect_Args tokenizes the command tail that follows the command verb.
+; Genuinely global options are consumed here and never reach a verb specific
+; parser; currently the only global option is /VERBOSE.  Everything else is
+; recorded as a pointer into cmd_buffer so the selected verb parser can
+; validate it inside its own namespace.  No argument text is copied.
+;
+; Input   SI points immediately after the recognized command verb.
+; Output  CF clear on success, CF set after printing a diagnostic.
+; ---------------------------------------------------------------------------
+PROC Cli_Collect_Args NEAR
+    push    ax
+    push    bx
+    push    dx
+
+    mov     [cli_arg_count], 0
+    mov     [cli_arg_index], 0
+
+@@NextToken:
+    mov     al, [si]
+    cmp     al, ' '
+    je      @@SkipWhite
+    cmp     al, 09h
+    jne     @@TokenStart
+@@SkipWhite:
+    inc     si
+    jmp     @@NextToken
+
+@@TokenStart:
+    or      al, al
+    jz      @@Success
+
+    cmp     al, '/'
+    je      @@Introducer
+    cmp     al, '-'
+    jne     @@RecordArg
+@@Introducer:
+    ; Global options are matched on the switch body only.  A non-global
+    ; switch is left intact for the verb specific parser.
+    inc     si
+    mov     bx, OFFSET cli_kw_verbose
+    call    Cli_Match_Global
+    dec     si
+    jc      @@RecordArg
+
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jnz     @@DupVerbose
+    or      [cli_flags], CLI_FLAG_VERBOSE
+    add     si, 8                   ; Skip the introducer and VERBOSE.
+    jmp     @@NextToken
+
+@@RecordArg:
+    mov     bx, [cli_arg_count]
+    cmp     bx, CLI_MAX_ARGS
+    jae     @@TooMany
+    shl     bx, 1
+    add     bx, OFFSET cli_arg_ptrs
+    mov     [bx], si
+    inc     [cli_arg_count]
+
+@@SkipToken:
+    mov     al, [si]
+    or      al, al
+    jz      @@Success
+    cmp     al, ' '
+    je      @@NextToken
+    cmp     al, 09h
+    je      @@NextToken
+    inc     si
+    jmp     @@SkipToken
+
+@@Success:
+    clc
+    jmp     @@Done
+@@DupVerbose:
+    mov     dx, OFFSET msg_cli_dup_verbose
+    jmp     @@Fail
+@@TooMany:
+    mov     dx, OFFSET msg_cli_too_many_args
+@@Fail:
+    mov     ah, 09h
+    int     21h
+    stc
+@@Done:
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cli_Collect_Args
+
+; Matches the NUL terminated global keyword at DS:BX against the switch body
+; at DS:SI.  A match requires a whitespace or NUL delimiter directly after
+; the keyword, so /VERBOSE:X is not mistaken for the valueless global option.
+; SI is preserved.  CF clear on match.
+PROC Cli_Match_Global NEAR
+    push    ax
+    push    bx
+    push    si
+@@Loop:
+    mov     al, [BYTE bx]
+    or      al, al
+    jz      @@AtDelimiter
+    cmp     al, [BYTE si]
+    jne     @@NoMatch
+    inc     bx
+    inc     si
+    jmp     @@Loop
+@@AtDelimiter:
+    mov     al, [BYTE si]
+    or      al, al
+    jz      @@Match
+    cmp     al, ' '
+    je      @@Match
+    cmp     al, 09h
+    jne     @@NoMatch
+@@Match:
+    pop     si
+    pop     bx
+    pop     ax
+    clc
+    ret
+@@NoMatch:
+    pop     si
+    pop     bx
+    pop     ax
+    stc
+    ret
+ENDP Cli_Match_Global
+
+; Returns the next verb specific argument token in SI, or CF set when the
+; filtered argument view is exhausted.
+PROC Cli_Next_Arg NEAR
+    push    bx
+    mov     bx, [cli_arg_index]
+    cmp     bx, [cli_arg_count]
+    jae     @@None
+    inc     [cli_arg_index]
+    shl     bx, 1
+    add     bx, OFFSET cli_arg_ptrs
+    mov     si, [bx]
+    pop     bx
+    clc
+    ret
+@@None:
+    pop     bx
+    stc
+    ret
+ENDP Cli_Next_Arg
 
 ; ==========================================================================
 ; SAVECONFIG command. Exports the recognized persistent configuration of one
@@ -933,102 +1237,64 @@ PROC Cmd_SaveConfig NEAR
     push    si
     push    di
 
-@@SkipWhite:
-    mov     al, [si]
-    cmp     al, ' '
-    je      @@Advance
-    cmp     al, 09h
-    jne     @@Name
-@@Advance:
-    inc     si
-    jmp     @@SkipWhite
-@@Name:
-    or      al, al
-    jz      @@Missing
+    ; Establish the SAVECONFIG defaults before any option text is examined.
+    ; The output batch file defaults to RESTORE.BAT and the program name
+    ; embedded in each restore line defaults to this build, unless the
+    ; matching option overrides it.
     mov     di, OFFSET save_filename
-    mov     cx, 127
-@@Copy:
-    mov     al, [si]
-    or      al, al
-    jz      @@Copied
-    cmp     al, ' '
-    je      @@Copied
-    cmp     al, 09h
-    je      @@Copied
-    mov     [BYTE di], al
-    inc     di
-    inc     si
-    loop    @@Copy
-    jmp     @@BadName
-@@Copied:
-    xor     al, al
-    mov     [BYTE di], al
-
-    ; Default program name embedded in each restore line is this build,
-    ; unless /EXECFILE overrides it.
-    push    si
+    mov     si, OFFSET save_filename_default
+    call    Save_Copy_Default
     mov     di, OFFSET save_execname
     mov     si, OFFSET save_execname_default
-@@CopyDefaultExec:
-    lodsb
-    mov     [BYTE di], al
-    inc     di
-    or      al, al
-    jnz     @@CopyDefaultExec
-    pop     si
+    call    Save_Copy_Default
+    mov     [save_outputfile_supplied], 0
     mov     [save_execfile_supplied], 0
     mov     [save_execfile_placeholder], 0
     mov     [save_error], SAVE_ERR_NONE
 
-@@SkipWhite2:
-    mov     al, [si]
-    cmp     al, ' '
-    je      @@Advance2
-    cmp     al, 09h
-    jne     @@CheckOption
-@@Advance2:
-    inc     si
-    jmp     @@SkipWhite2
+    ; Single pass over the SAVECONFIG argument view established by the common
+    ; parser.  Only SAVECONFIG owned options are accepted here; global options
+    ; were already consumed and CONFIGURE properties are not in scope.
+@@NextOption:
+    call    Cli_Next_Arg
+    jc      @@ScanCards
 
-@@CheckOption:
-    or      al, al
-    jz      @@ScanCards
+    mov     al, [si]
     cmp     al, '/'
-    je      @@ExecSlash
+    je      @@HaveIntroducer
     cmp     al, '-'
     jne     @@BadOption
-@@ExecSlash:
+@@HaveIntroducer:
     inc     si
+
+    mov     di, OFFSET save_outputfile_kw
+    call    Save_Match_Keyword
+    jc      @@TryExecFile
+    cmp     [save_outputfile_supplied], 0
+    jne     @@DupOption
+    mov     di, OFFSET save_filename
+    mov     cx, 127
+    call    Save_Copy_Value
+    jc      @@BadName
+    or      ax, ax
+    jz      @@Missing
+    mov     [save_outputfile_supplied], 1
+    jmp     @@NextOption
+
+@@TryExecFile:
     mov     di, OFFSET save_execfile_kw
-@@MatchExec:
-    mov     al, [BYTE di]
-    or      al, al
-    jz      @@ExecMatched
-    cmp     al, [BYTE si]
-    jne     @@BadOption
-    inc     di
-    inc     si
-    jmp     @@MatchExec
-@@ExecMatched:
+    call    Save_Match_Keyword
+    jc      @@BadOption
+    cmp     [save_execfile_supplied], 0
+    jne     @@DupOption
     mov     di, OFFSET save_execname
     mov     cx, 64
-@@CopyExec:
-    mov     al, [si]
-    or      al, al
-    jz      @@ExecCopied
-    cmp     al, ' '
-    je      @@ExecCopied
-    cmp     al, 09h
-    je      @@ExecCopied
-    mov     [BYTE di], al
-    inc     di
-    inc     si
-    loop    @@CopyExec
-    jmp     @@BadExecFile
-@@ExecCopied:
-    xor     al, al
-    mov     [BYTE di], al
+    call    Save_Copy_Value
+    jc      @@BadExecFile
+    or      ax, ax
+    jz      @@BadExecFile
     mov     [save_execfile_supplied], 1
+    jmp     @@NextOption
 
 @@ScanCards:
     call    Save_Prepare_Execfile
@@ -1048,16 +1314,20 @@ PROC Cmd_SaveConfig NEAR
     jz      @@SkipAdapter
 
     mov     al, EEPROM_ADDR_CFG
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jc      @@ReadFail
     mov     [save_word08], ax
     mov     al, EEPROM_RESOURCE_CFG
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jc      @@ReadFail
     mov     [save_word09], ax
     mov     al, EEPROM_SOFTWARE_INFO
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jc      @@ReadFail
     mov     [save_word0d], ax
     mov     al, EEPROM_CONFIG_CONTROL
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jc      @@ReadFail
     mov     [save_word13], ax
 
     mov     ax, [current_card]
@@ -1080,12 +1350,13 @@ PROC Cmd_SaveConfig NEAR
     mov     ah, 3Eh
     int     21h
     jc      @@WriteFail
+    mov     [save_file_open], 0
     mov     dx, OFFSET msg_save_ok
     mov     ah, 09h
     int     21h
     mov     si, OFFSET save_filename
     call    Save_Print_Filename
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -1100,9 +1371,11 @@ PROC Cmd_SaveConfig NEAR
     je      @@LineTooLong
     jmp     @@WriteFail
 @@WriteFail:
+    call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_write_fail
     jmp     @@Print
 @@ReadFail:
+    call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_read_fail
     jmp     @@Print
 @@NoActive:
@@ -1117,6 +1390,9 @@ PROC Cmd_SaveConfig NEAR
 @@BadOption:
     mov     dx, OFFSET msg_save_bad_option
     jmp     @@Print
+@@DupOption:
+    mov     dx, OFFSET msg_save_dup_option
+    jmp     @@Print
 @@BadExecFile:
     mov     dx, OFFSET msg_save_bad_execfile
     jmp     @@Print
@@ -1124,6 +1400,7 @@ PROC Cmd_SaveConfig NEAR
     mov     dx, OFFSET msg_save_execfile_not_found
     jmp     @@Print
 @@LineTooLong:
+    call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_line_too_long
     jmp     @@Print
 @@BadName:
@@ -1140,6 +1417,88 @@ PROC Cmd_SaveConfig NEAR
     pop     ax
     ret
 ENDP Cmd_SaveConfig
+
+; Copies the NUL terminated default string at DS:SI into DS:DI.
+PROC Save_Copy_Default NEAR
+    push    ax
+@@Loop:
+    lodsb
+    mov     [BYTE di], al
+    inc     di
+    or      al, al
+    jnz     @@Loop
+    pop     ax
+    ret
+ENDP Save_Copy_Default
+
+; Compares the NUL terminated keyword at DS:DI against the option text at
+; DS:SI.  On a match SI advances past the keyword and CF is clear; otherwise
+; SI is unchanged and CF is set.
+PROC Save_Match_Keyword NEAR
+    push    ax
+    push    di
+    push    si
+@@Loop:
+    mov     al, [BYTE di]
+    or      al, al
+    jz      @@Matched
+    cmp     al, [BYTE si]
+    jne     @@NoMatch
+    inc     di
+    inc     si
+    jmp     @@Loop
+@@Matched:
+    pop     ax                      ; discard saved SI, keep advanced SI
+    pop     di
+    pop     ax
+    clc
+    ret
+@@NoMatch:
+    pop     si
+    pop     di
+    pop     ax
+    stc
+    ret
+ENDP Save_Match_Keyword
+
+; Copies the whitespace delimited option value at DS:SI into the CX byte
+; bounded buffer at DS:DI and NUL terminates it.  Returns the copied length
+; in AX with CF clear, or CF set when the value exceeds the buffer.
+PROC Save_Copy_Value NEAR
+    push    cx
+    push    di
+    xor     ax, ax
+@@Loop:
+    jcxz    @@Overflow
+    push    ax
+    mov     al, [BYTE si]
+    or      al, al
+    jz      @@EndValue
+    cmp     al, ' '
+    je      @@EndValue
+    cmp     al, 09h
+    je      @@EndValue
+    mov     [BYTE di], al
+    pop     ax
+    inc     di
+    inc     si
+    inc     ax
+    dec     cx
+    jmp     @@Loop
+@@EndValue:
+    pop     ax
+    xor     cl, cl
+    mov     [BYTE di], cl
+    pop     di
+    pop     cx
+    clc
+    ret
+@@Overflow:
+    pop     di
+    pop     cx
+    stc
+    ret
+ENDP Save_Copy_Value
 
 PROC Save_Print_Filename NEAR
     push    ax
@@ -1158,13 +1517,24 @@ PROC Save_Print_Filename NEAR
     ret
 ENDP Save_Print_Filename
 
+; Appends AL to save_buffer, guarding against overrun of SAVE_BUFFER_SIZE.
+; All upstream length accounting (Save_Ensure_Option_Length) is expected to
+; keep writes within bounds; this is a hard backstop against any programming
+; error letting save_length reach the buffer limit.
 PROC Save_Append_Char NEAR
     push    di
+    cmp     [save_length], SAVE_BUFFER_SIZE
+    jae     @@Overflow
     mov     di, OFFSET save_buffer
     add     di, [save_length]
     stosb
     inc     [save_length]
     pop     di
+    ret
+@@Overflow:
+    pop     di
+    mov     [save_error], SAVE_ERR_LINE_TOO_LONG
+    stc
     ret
 ENDP Save_Append_Char
 
@@ -1175,9 +1545,15 @@ PROC Save_Append_String NEAR
     or      al, al
     jz      @@Done
     call    Save_Append_Char
+    jc      @@Fail
     jmp     @@Loop
+@@Fail:
+    pop     ax
+    stc
+    ret
 @@Done:
     pop     ax
+    clc
     ret
 ENDP Save_Append_String
 
@@ -1273,6 +1649,7 @@ PROC Save_Prepare_Execfile NEAR
     clc
     jmp     @@Done
 @@BadValue:
+    mov     al, SAVE_ERR_BAD_EXECFILE
     stc
     jmp     @@Done
 @@NotFound:
@@ -1354,10 +1731,12 @@ PROC Save_Append_Hex_Word NEAR
     shr     al, 1
     shr     al, 1
     call    Save_Append_Hex_Nibble
+    jc      @@Fail
     pop     ax
     push    ax
     mov     al, ah
     call    Save_Append_Hex_Nibble
+    jc      @@Fail
     pop     ax
     push    ax
     mov     al, al
@@ -1366,8 +1745,15 @@ PROC Save_Append_Hex_Word NEAR
     shr     al, 1
     shr     al, 1
     call    Save_Append_Hex_Nibble
+    jc      @@Fail
     pop     ax
     call    Save_Append_Hex_Nibble
+    jc      @@FailNoPop
+    ret
+@@Fail:
+    pop     ax
+@@FailNoPop:
+    stc
     ret
 ENDP Save_Append_Hex_Word
 
@@ -1390,11 +1776,28 @@ PROC Save_Append_Dec_Word NEAR
     mov     al, dl
     add     al, '0'
     call    Save_Append_Char
+    jc      @@Fail
     loop    @@Output
     pop     dx
     pop     cx
     pop     bx
     pop     ax
+    clc
+    ret
+@@Fail:
+    ; Unwind any digits still pushed for the pending output loop so the
+    ; stack stays balanced before returning failure to the caller.
+    dec     cx
+    jz      @@FailRestore
+@@FailUnwind:
+    pop     dx
+    loop    @@FailUnwind
+@@FailRestore:
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    stc
     ret
 ENDP Save_Append_Dec_Word
 
@@ -1408,12 +1811,16 @@ PROC Save_Begin_Command NEAR
     mov     [save_length], 0
     mov     si, OFFSET save_execname
     call    Save_Append_String
+    jc      @@Fail
     mov     si, OFFSET save_configure_suffix
     call    Save_Append_String
+    jc      @@Fail
     mov     si, OFFSET save_adapternum
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_adapter_num]
     call    Save_Append_Dec_Word
+    jc      @@Fail
     mov     ax, [save_length]
     sub     ax, [save_execname_length]
     dec     ax
@@ -1438,8 +1845,10 @@ PROC Save_Flush_Command NEAR
     push    dx
     mov     al, 0Dh
     call    Save_Append_Char
+    jc      @@Fail
     mov     al, 0Ah
     call    Save_Append_Char
+    jc      @@Fail
     mov     bx, [save_handle]
     mov     ah, 40h
     mov     cx, [save_length]
@@ -1480,6 +1889,31 @@ PROC Save_Open_File NEAR
     ret
 ENDP Save_Open_File
 
+; Discards an incomplete SAVECONFIG output file after a fatal error.  A no-op
+; if no file is currently open.  Closes save_handle and deletes save_filename
+; so a partial restore batch can never be mistaken for a complete one.  Any
+; close/delete failure here is ignored; the caller's original error condition
+; is what gets reported.
+PROC Save_Cleanup_Partial_File NEAR
+    push    ax
+    push    bx
+    push    dx
+    cmp     [save_file_open], 0
+    je      @@Done
+    mov     bx, [save_handle]
+    mov     ah, 3Eh
+    int     21h
+    mov     [save_file_open], 0
+    mov     ah, 41h
+    mov     dx, OFFSET save_filename
+    int     21h
+@@Done:
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Save_Cleanup_Partial_File
+
 PROC Save_Build_Command NEAR
     push    ax
     push    bx
@@ -1499,10 +1933,12 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_int
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word09]
     mov     cl, 12
     shr     ax, cl
     call    Save_Append_Dec_Word
+    jc      @@Fail
 
     mov     cx, SAVE_LEN_IOBASE + 4
     call    Save_Ensure_Option_Length
@@ -1510,12 +1946,14 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_iobase
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word08]
     and     ax, 001Fh
     mov     cl, 4
     shl     ax, cl
     add     ax, 0200h
     call    Save_Append_Hex_Word
+    jc      @@Fail
 
     mov     ax, [save_word13]
     and     ax, 000Ch
@@ -1531,6 +1969,7 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_pnp
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word13]
     and     ax, 000Ch
     cmp     ax, 0004h
@@ -1541,6 +1980,7 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_enabled
 @@PnpDone:
     call    Save_Append_String
+    jc      @@Fail
 
     mov     ax, [save_word0d]
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
@@ -1555,6 +1995,7 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_fd
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word0d]
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jz      @@FdOff
@@ -1564,13 +2005,21 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_disabled
 @@FdDone:
     call    Save_Append_String
+    jc      @@Fail
 
     mov     ax, [save_word0d]
+    and     ax, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
+    cmp     ax, EEPROM_MODEM_NONE
+    je      @@ModemNone
+    ; Raw 2Fh is valid 1200 us hardware data, but /MODEM:1200 is the named
+    ; baud setting.  Normalize this CLI-unrepresentable value to NONE.
+    cmp     ax, 2F00h
+    je      @@ModemNone
+    call    Decode_Modem_Baud_Alias
+    jnc     @@ModemValue
+    mov     ax, [save_word0d]
     call    Decode_Modem_Value
-    jc      @@ModemNone
-    cmp     ax, 0FFFFh
-    je      @@ModemNone         ; Unrecognised encoding: fall back to NONE,
-                                 ; a value our own parser is guaranteed to accept.
+@@ModemValue:
     call    Save_Dec_Word_Length
     add     cx, SAVE_LEN_MODEM
     call    Save_Ensure_Option_Length
@@ -1578,9 +2027,9 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_modem
     call    Save_Append_String
-    mov     ax, [save_word0d]
-    call    Decode_Modem_Value
+    jc      @@Fail
     call    Save_Append_Dec_Word
+    jc      @@Fail
     jmp     @@Optimize
 @@ModemNone:
     mov     cx, SAVE_LEN_MODEM + SAVE_LEN_NONE
@@ -1589,8 +2038,10 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_modem
     call    Save_Append_String
+    jc      @@Fail
     mov     si, OFFSET save_none
     call    Save_Append_String
+    jc      @@Fail
 @@Optimize:
     mov     ax, [save_word0d]
     mov     cl, 4
@@ -1599,7 +2050,7 @@ PROC Save_Build_Command NEAR
     cmp     al, 1
     je      @@OptDosLength
     cmp     al, 2
-    je      @@OptOs2Length
+    je      @@OptWindowsOs2Length
     cmp     al, 3
     je      @@OptServerLength
     ; 00b is reserved; use a parser-valid, conservative restore fallback.
@@ -1608,17 +2059,19 @@ PROC Save_Build_Command NEAR
 @@OptDosLength:
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_DOS
     jmp     @@OptLengthDone
-@@OptOs2Length:
-    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_OS2
+@@OptWindowsOs2Length:
+    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_WINDOWS_OS2
     jmp     @@OptLengthDone
 @@OptServerLength:
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_SERVER
+    jmp     @@OptLengthDone
 @@OptLengthDone:
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_optimize
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word0d]
     mov     cl, 4
     shr     ax, cl
@@ -1626,7 +2079,7 @@ PROC Save_Build_Command NEAR
     cmp     al, 1
     je      @@OptDos
     cmp     al, 2
-    je      @@OptOs2
+    je      @@OptWindowsOS2
     cmp     al, 3
     je      @@OptServer
     mov     si, OFFSET save_dos
@@ -1634,15 +2087,17 @@ PROC Save_Build_Command NEAR
 @@OptDos:
     mov     si, OFFSET save_dos
     jmp     @@OptDone
-@@OptOs2:
-    ; Value 10b is Windows client, but the original UI combines it with OS/2.
-    ; Retain the established OS/2 restore keyword rather than add an alias.
-    mov     si, OFFSET save_os2
+@@OptWindowsOS2:
+    ; Value 10b is Windows and OS/2 client, as in the original UI,
+    ; which also combines both display values.
+    mov     si, OFFSET save_windows_os2
     jmp     @@OptDone
 @@OptServer:
     mov     si, OFFSET save_server
+    jmp     @@OptDone
 @@OptDone:
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word08]
     and     ax, 3F00h              ; Base (bits 11:8) and size (bits 13:12).
     jz      @@NoRom
@@ -1669,6 +2124,7 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_baddress
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word08]
     and     ax, 0F00h
     mov     cl, 8
@@ -1678,13 +2134,16 @@ PROC Save_Build_Command NEAR
     mov     dl, 0Ch
     mov     al, dl
     call    Save_Append_Hex_Nibble
+    jc      @@Fail
     mov     ax, [save_word08]
     and     ax, 0F00h
     mov     cl, 5
     shl     ax, cl
     call    Save_Append_Hex_Word
+    jc      @@Fail
     mov     si, OFFSET save_bsize
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word08]
     and     ax, 3000h
     mov     cl, 12
@@ -1702,6 +2161,7 @@ PROC Save_Build_Command NEAR
     mov     ax, 16
 @@SizeDone:
     call    Save_Append_Dec_Word
+    jc      @@Fail
     jmp     @@Tr
 @@NoRom:
     ; The original utility does not accept /BADDRESS:NONE; disabling the
@@ -1712,8 +2172,10 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_bsize
     call    Save_Append_String
+    jc      @@Fail
     mov     si, OFFSET save_disabled
     call    Save_Append_String
+    jc      @@Fail
 @@Tr:
     mov     ax, [save_word08]
     test    ax, 0080h
@@ -1740,6 +2202,7 @@ PROC Save_Build_Command NEAR
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_tr
     call    Save_Append_String
+    jc      @@Fail
     mov     ax, [save_word08]
     test    ax, 0080h
     jnz     @@TrAuto
@@ -1761,7 +2224,9 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_coax
 @@TrDone:
     call    Save_Append_String
+    jc      @@Fail
     call    Save_Flush_Command
+    jc      @@Fail
     jmp     @@Done
 @@Fail:
     stc
@@ -1787,8 +2252,7 @@ ENDP Save_Build_Command
 ;
 ; This reduced parser keeps those semantics without importing the original
 ; argv framework.  Start already uppercases ASCII input, so matching remains
-; case insensitive.  /INT is staged during property dispatch and applied once
-; after the complete dispatch succeeds.  Every other property remains a stub.
+; case insensitive.
 PROC Cmd_Configure NEAR
     push    ax
     push    bx
@@ -1804,7 +2268,6 @@ PROC Cmd_Configure NEAR
     mov     [cfg_last_error], CFG_ERR_NONE
     mov     [cfg_timeout_latched], 0
     mov     [cfg_selected_ptr], 0
-    mov     [cfg_options_ptr], si
 
     call    Cfg_Parse_Options
     jc      @@Report
@@ -1830,7 +2293,6 @@ PROC Cmd_Configure NEAR
     jmp     @@Report
 
 @@Dispatch:
-    mov     si, [cfg_options_ptr]
     call    Cfg_Dispatch_Parsed_Properties
     cmp     [cfg_last_error], CFG_ERR_NONE
     jne     @@Report
@@ -1855,28 +2317,22 @@ PROC Cmd_Configure NEAR
 ENDP Cmd_Configure
 
 ; Parse all tokens so a later invalid switch is not hidden by an earlier stub.
-; Input SI points immediately after CONFIGURE.
+; Input is the filtered CONFIGURE argument view established by the common
+; parser; global options such as /VERBOSE never appear here.
 ; Output CF clear on syntactically valid options, CF set with cfg_last_error.
 PROC Cfg_Parse_Options NEAR
     push    ax
     push    bx
     push    cx
     push    dx
+    push    si
     push    di
 
 @@NextToken:
-    mov     al, [si]
-    cmp     al, ' '
-    je      @@SkipWhite
-    cmp     al, 09h
-    jne     @@TokenStart
-@@SkipWhite:
-    inc     si
-    jmp     @@NextToken
+    call    Cli_Next_Arg
+    jc      @@Success
 
-@@TokenStart:
-    or      al, al
-    jz      @@Success
+    mov     al, [si]
     cmp     al, '/'
     je      @@HaveIntroducer
     cmp     al, '-'
@@ -1885,38 +2341,6 @@ PROC Cfg_Parse_Options NEAR
 @@HaveIntroducer:
     inc     si
 
-    ; /VERBOSE is a global CONFIGURE diagnostic switch and takes no value.
-    ; It affects output only and never changes hardware transaction behavior.
-    cmp     [BYTE si], 'V'
-    jne     @@RegularOption
-    cmp     [BYTE si+1], 'E'
-    jne     @@RegularOption
-    cmp     [BYTE si+2], 'R'
-    jne     @@RegularOption
-    cmp     [BYTE si+3], 'B'
-    jne     @@RegularOption
-    cmp     [BYTE si+4], 'O'
-    jne     @@RegularOption
-    cmp     [BYTE si+5], 'S'
-    jne     @@RegularOption
-    cmp     [BYTE si+6], 'E'
-    jne     @@RegularOption
-    mov     al, [si+7]
-    or      al, al
-    jz      @@SetVerbose
-    cmp     al, ' '
-    je      @@SetVerbose
-    cmp     al, 09h
-    jne     @@RegularOption
-@@SetVerbose:
-    mov     ax, CFG_SEEN_VERBOSE
-    call    Cfg_Mark_Seen
-    jc      @@DuplicateProperty
-    or      [cfg_parse_flags], CFG_PARSE_VERBOSE
-    add     si, 7
-    jmp     @@NextToken
-
-@@RegularOption:
     mov     bx, si                  ; BX = option name start.
     xor     cx, cx                  ; CX = option name length.
 
@@ -1981,6 +2405,7 @@ PROC Cfg_Parse_Options NEAR
     pop     dx
     pop     si
     jc      @@BadOption
+    mov     [cfg_queue_property_id], al
 
     ; Strict duplicate tracking applies to supported hardware properties.
     cmp     al, CFG_OPT_INT
@@ -2045,6 +2470,17 @@ PROC Cfg_Parse_Options NEAR
     call    Cfg_Mark_Seen
     jc      @@DuplicateProperty
 @@CountProperty:
+    xor     bx, bx
+    mov     bl, [cfg_property_count]
+    mov     ax, bx
+    shl     bx, 1
+    shl     bx, 1
+    add     bx, ax                 ; BX = request index times five.
+    add     bx, OFFSET cfg_property_requests
+    mov     al, [cfg_queue_property_id]
+    mov     [bx], al
+    mov     [bx+1], dx
+    mov     [bx+3], di
     inc     [cfg_property_count]
     jmp     @@NextToken
 
@@ -2076,6 +2512,7 @@ PROC Cfg_Parse_Options NEAR
     mov     [cfg_last_error], CFG_ERR_BAD_ADAPTER
 @@Fail:
     pop     di
+    pop     si
     pop     dx
     pop     cx
     pop     bx
@@ -2084,6 +2521,7 @@ PROC Cfg_Parse_Options NEAR
     ret
 @@Success:
     pop     di
+    pop     si
     pop     dx
     pop     cx
     pop     bx
@@ -2299,11 +2737,9 @@ PROC Cfg_Resolve_Adapter NEAR
     ret
 ENDP Cfg_Resolve_Adapter
 
-; Rewalk the already validated option text after adapter selection and
-; revalidation.  This preserves original style sequential property dispatch
-; without storing a second request array.  A handler error stops later handlers,
-; matching the original sub_377 loop.  ADAPTERNUM is skipped because it has
-; already selected the logical adapter.
+; Dispatch ordered CONFIGURE hardware-property requests collected by
+; Cfg_Parse_Options after adapter selection and revalidation.  A handler error
+; stops later handlers, matching the original sub_377 loop.
 PROC Cfg_Dispatch_Parsed_Properties NEAR
     push    ax
     push    bx
@@ -2312,109 +2748,28 @@ PROC Cfg_Dispatch_Parsed_Properties NEAR
     push    di
     push    si
 
-@@NextToken:
-    mov     al, [si]
-    cmp     al, ' '
-    je      @@SkipWhite
-    cmp     al, 09h
-    jne     @@TokenStart
-@@SkipWhite:
-    inc     si
-    jmp     @@NextToken
+    mov     bx, OFFSET cfg_property_requests
+    xor     di, di                 ; Number of requests dispatched.
+@@NextRequest:
+    mov     al, [cfg_property_count]
+    xor     ah, ah
+    cmp     di, ax
+    jae     @@Done
 
-@@TokenStart:
-    or      al, al
-    jz      @@Done
-    inc     si                     ; Syntax was already validated in pass one.
-
-    ; /VERBOSE is global diagnostic state, not a hardware property.
-    cmp     [BYTE si], 'V'
-    jne     @@RegularProperty
-    cmp     [BYTE si+1], 'E'
-    jne     @@RegularProperty
-    cmp     [BYTE si+2], 'R'
-    jne     @@RegularProperty
-    cmp     [BYTE si+3], 'B'
-    jne     @@RegularProperty
-    cmp     [BYTE si+4], 'O'
-    jne     @@RegularProperty
-    cmp     [BYTE si+5], 'S'
-    jne     @@RegularProperty
-    cmp     [BYTE si+6], 'E'
-    jne     @@RegularProperty
-    mov     al, [si+7]
-    or      al, al
-    jz      @@SkipVerbose
-    cmp     al, ' '
-    je      @@SkipVerbose
-    cmp     al, 09h
-    jne     @@RegularProperty
-@@SkipVerbose:
-    add     si, 7
-    jmp     @@NextToken
-
-@@RegularProperty:
-    mov     bx, si
-    xor     cx, cx
-@@FindSeparator:
-    mov     al, [si]
-    cmp     al, ':'
-    je      @@HaveSeparator
-    cmp     al, '='
-    je      @@HaveSeparator
-    inc     si
-    inc     cx
-    jmp     @@FindSeparator
-
-@@HaveSeparator:
-    inc     si
-    mov     dx, si
-    xor     di, di
-@@FindValueEnd:
-    mov     al, [si]
-    or      al, al
-    jz      @@ValueReady
-    cmp     al, ' '
-    je      @@ValueReady
-    cmp     al, 09h
-    je      @@ValueReady
-    inc     si
-    inc     di
-    jmp     @@FindValueEnd
-
-@@ValueReady:
-    push    si
-    push    cx
+    mov     al, [bx]
+    mov     si, [bx+1]
+    mov     cx, [bx+3]
+    push    bx
     push    di
-    mov     si, bx
-    mov     di, OFFSET cfg_name_adapternum
-    call    Cfg_Match_Name_Prefix
-    pop     di
-    pop     cx
-    pop     si
-    jnc     @@NextToken
-
-    push    si
-    push    dx
-    push    cx
-    mov     si, bx
-    call    Cfg_Match_Property
-    pop     cx
-    pop     dx
-    pop     si
-    jc      @@InternalBadOption
-
-    push    si
-    mov     si, dx                 ; Handler value pointer.
-    mov     cx, di                 ; Handler value length.
     call    Cfg_Dispatch_Property
-    pop     si
+    pop     di
+    pop     bx
     cmp     [cfg_last_error], CFG_ERR_NONE
     jne     @@Done
-    jmp     @@NextToken
+    add     bx, CFG_PROPERTY_REQUEST_SIZE
+    inc     di
+    jmp     @@NextRequest
 
-@@InternalBadOption:
-    mov     [cfg_last_error], CFG_ERR_BAD_OPTION
 @@Done:
     pop     si
     pop     di
@@ -2481,7 +2836,7 @@ ENDP Cfg_Dispatch_Property
 ; Property handler entry points receive SI = value pointer and CX = value length.
 ; /INT preserves the hardware tested validation body and only stages its final
 ; accepted value.  /IOBASE and /PNP likewise parse and stage only.  No handler
-; performs hardware access directly.  Remaining property handlers are stubs.
+; performs hardware access directly.
 ; Input SI = /INT value pointer, CX = value length.
 ; Accepted canonical decimal forms are exactly:
 ;   3, 5, 7, 9, 10, 11, 12, 15
@@ -2953,8 +3308,8 @@ PROC Cfg_Handle_MODEM NEAR
     push    si
     push    cx
 
-    ; NONE disables the setting; the original utility encodes this as
-    ; EEPROM_MODEM_NONE, not zero (see 3C509DEF.INC).
+    ; NONE means no modem timing constraint and uses the maximum 1600 us
+    ; EEPROM_MODEM_NONE encoding, not zero (see 3C509DEF.INC).
     cmp     cx, 4
     jne     @@ParseNumber
     cmp     [BYTE si], 'N'
@@ -3248,394 +3603,25 @@ PROC Cfg_Handle_FULLDUPLEX NEAR
 ENDP Cfg_Handle_FULLDUPLEX
 
 PROC Cfg_Report_Error NEAR
+; Entry: AL = CFG_ERR_* code. Preserves all registers.
     push    ax
+    push    bx
     push    dx
 
-    or      al, al
+    xor     ah, ah
+    cmp     ax, CFG_ERR_COUNT
+    jae     @@Done
+    mov     bx, ax
+    shl     bx, 1
+    mov     dx, [cfg_error_messages+bx]
+    or      dx, dx
     jz      @@Done
-    cmp     al, CFG_ERR_NO_NIC
-    jne     @@E2
-    mov     dx, OFFSET msg_no_cards
-    jmp     @@Print
-@@E2:
-    cmp     al, CFG_ERR_BAD_ADAPTER
-    jne     @@E3
-    mov     dx, OFFSET msg_cfg_bad_adapter
-    jmp     @@Print
-@@E3:
-    cmp     al, CFG_ERR_REVALIDATE
-    jne     @@E4
-    mov     dx, OFFSET msg_cfg_revalidate
-    jmp     @@Print
-@@E4:
-    cmp     al, CFG_ERR_UNSUPPORTED_PRODUCT
-    jne     @@E5
-    mov     dx, OFFSET msg_cfg_unsupported_product
-    jmp     @@Print
-@@E5:
-    cmp     al, CFG_ERR_UNSUPPORTED_ASIC
-    jne     @@E6
-    mov     dx, OFFSET msg_cfg_unsupported_asic
-    jmp     @@Print
-@@E6:
-    cmp     al, CFG_ERR_EEPROM_TIMEOUT
-    jne     @@E7
-    mov     dx, OFFSET msg_cfg_eeprom_timeout
-    jmp     @@Print
-@@E7:
-    cmp     al, CFG_ERR_COMMAND_TIMEOUT
-    jne     @@E8
-    mov     dx, OFFSET msg_cfg_command_timeout
-    jmp     @@Print
-@@E8:
-    cmp     al, CFG_ERR_BAD_OPTION
-    jne     @@E9
-    mov     dx, OFFSET msg_cfg_bad_option
-    jmp     @@Print
-@@E9:
-    cmp     al, CFG_ERR_MISSING_VALUE
-    jne     @@E10
-    mov     dx, OFFSET msg_cfg_missing_value
-    jmp     @@Print
-@@E10:
-    cmp     al, CFG_ERR_NOT_IMPLEMENTED
-    jne     @@E11
-    mov     dx, OFFSET msg_cfg_not_implemented
-    jmp     @@Print
-@@E11:
-    cmp     al, CFG_ERR_ADAPTER_REQUIRED
-    jne     @@E12
-    mov     dx, OFFSET msg_cfg_need_adapter
-    jmp     @@Print
-@@E12:
-    cmp     al, CFG_ERR_DUP_PROPERTY
-    jne     @@E13
-    mov     dx, OFFSET msg_cfg_dup_property
-    jmp     @@Print
-@@E13:
-    cmp     al, CFG_ERR_NO_PROPERTY
-    jne     @@E14
-    mov     dx, OFFSET msg_cfg_no_property
-    jmp     @@Print
-@@E14:
-    cmp     al, CFG_ERR_BAD_INT
-    jne     @@E15
-    mov     dx, OFFSET msg_cfg_bad_int
-    jmp     @@Print
-@@E15:
-    cmp     al, CFG_ERR_EEPROM_READ
-    jne     @@E16
-    mov     dx, OFFSET msg_cfg_eeprom_read_fail
-    jmp     @@Print
-@@E16:
-    cmp     al, CFG_ERR_EEPROM_WRITE
-    jne     @@E17
-    mov     dx, OFFSET msg_cfg_eeprom_write_fail
-    jmp     @@Print
-@@E17:
-    cmp     al, CFG_ERR_CHECKSUM_UPDATE
-    jne     @@E18
-    mov     dx, OFFSET msg_cfg_checksum_fail
-    jmp     @@Print
-@@E18:
-    cmp     al, CFG_ERR_LIVE_UPDATE
-    jne     @@E19
-    mov     dx, OFFSET msg_cfg_live_fail
-    jmp     @@Print
-@@E19:
-    cmp     al, CFG_ERR_VERIFY
-    jne     @@E20
-    mov     dx, OFFSET msg_cfg_verify_fail
-    jmp     @@Print
-@@E20:
-    cmp     al, CFG_ERR_INT_INACTIVE
-    jne     @@E21
-    mov     dx, OFFSET msg_cfg_int_inactive
-    jmp     @@Print
-@@E21:
-    cmp     al, CFG_ERR_BAD_IOBASE
-    jne     @@E22
-    mov     dx, OFFSET msg_cfg_bad_iobase
-    jmp     @@Print
-@@E22:
-    cmp     al, CFG_ERR_IOBASE_INACTIVE
-    jne     @@E23
-    mov     dx, OFFSET msg_cfg_iobase_inactive
-    jmp     @@Print
-@@E23:
-    cmp     al, CFG_ERR_IOBASE_CONFLICT
-    jne     @@E24
-    mov     dx, OFFSET msg_cfg_iobase_conflict
-    jmp     @@Print
-@@E24:
-    cmp     al, CFG_ERR_IOBASE_DEACTIVATE
-    jne     @@E25
-    mov     dx, OFFSET msg_cfg_iobase_deactivate_fail
-    jmp     @@Print
-@@E25:
-    cmp     al, CFG_ERR_IOBASE_REACTIVATE
-    jne     @@E26
-    mov     dx, OFFSET msg_cfg_iobase_reactivate_fail
-    jmp     @@Print
-@@E26:
-    cmp     al, CFG_ERR_IOBASE_EEPROM_READ
-    jne     @@E27
-    mov     dx, OFFSET msg_cfg_iobase_eeprom_read_fail
-    jmp     @@Print
-@@E27:
-    cmp     al, CFG_ERR_IOBASE_EEPROM_WRITE
-    jne     @@E28
-    mov     dx, OFFSET msg_cfg_iobase_eeprom_write_fail
-    jmp     @@Print
-@@E28:
-    cmp     al, CFG_ERR_IOBASE_LIVE
-    jne     @@E29
-    mov     dx, OFFSET msg_cfg_iobase_live_fail
-    jmp     @@Print
-@@E29:
-    cmp     al, CFG_ERR_IOBASE_VERIFY
-    jne     @@E30
-    mov     dx, OFFSET msg_cfg_iobase_verify_fail
-    jmp     @@Print
-@@E30:
-    cmp     al, CFG_ERR_IOBASE_ACTIVATE
-    jne     @@E31
-    mov     dx, OFFSET msg_cfg_iobase_activate_fail
-    jmp     @@Print
-@@E31:
-    cmp     al, CFG_ERR_BAD_PNP
-    jne     @@E32
-    mov     dx, OFFSET msg_cfg_bad_pnp
-    jmp     @@Print
-@@E32:
-    cmp     al, CFG_ERR_PNP_INACTIVE
-    jne     @@E33
-    mov     dx, OFFSET msg_cfg_pnp_inactive
-    jmp     @@Print
-@@E33:
-    cmp     al, CFG_ERR_PNP_EEPROM_READ
-    jne     @@E34
-    mov     dx, OFFSET msg_cfg_pnp_eeprom_read_fail
-    jmp     @@Print
-@@E34:
-    cmp     al, CFG_ERR_PNP_EEPROM_WRITE
-    jne     @@E35
-    mov     dx, OFFSET msg_cfg_pnp_eeprom_write_fail
-    jmp     @@Print
-@@E35:
-    cmp     al, CFG_ERR_PNP_VERIFY
-    jne     @@E36
-    mov     dx, OFFSET msg_cfg_pnp_verify_fail
-    jmp     @@Print
-@@E36:
-    cmp     al, CFG_ERR_BAD_MODEM
-    jne     @@E37
-    mov     dx, OFFSET msg_cfg_bad_modem
-    jmp     @@Print
-@@E37:
-    cmp     al, CFG_ERR_MODEM_INACTIVE
-    jne     @@E38
-    mov     dx, OFFSET msg_cfg_modem_inactive
-    jmp     @@Print
-@@E38:
-    cmp     al, CFG_ERR_MODEM_EEPROM_READ
-    jne     @@E39
-    mov     dx, OFFSET msg_cfg_modem_eeprom_read_fail
-    jmp     @@Print
-@@E39:
-    cmp     al, CFG_ERR_MODEM_EEPROM_WRITE
-    jne     @@E40
-    mov     dx, OFFSET msg_cfg_modem_eeprom_write_fail
-    jmp     @@Print
-@@E40:
-    cmp     al, CFG_ERR_MODEM_VERIFY
-    jne     @@E41
-    mov     dx, OFFSET msg_cfg_modem_verify_fail
-    jmp     @@Print
-@@E41:
-    cmp     al, CFG_ERR_BAD_OPTIMIZE
-    jne     @@E42
-    mov     dx, OFFSET msg_cfg_bad_optimize
-    jmp     @@Print
-@@E42:
-    cmp     al, CFG_ERR_OPTIMIZE_INACTIVE
-    jne     @@E43
-    mov     dx, OFFSET msg_cfg_optimize_inactive
-    jmp     @@Print
-@@E43:
-    cmp     al, CFG_ERR_OPTIMIZE_EEPROM_READ
-    jne     @@E44
-    mov     dx, OFFSET msg_cfg_optimize_eeprom_read_fail
-    jmp     @@Print
-@@E44:
-    cmp     al, CFG_ERR_OPTIMIZE_EEPROM_WRITE
-    jne     @@E45
-    mov     dx, OFFSET msg_cfg_optimize_eeprom_write_fail
-    jmp     @@Print
-@@E45:
-    cmp     al, CFG_ERR_OPTIMIZE_VERIFY
-    jne     @@E46
-    mov     dx, OFFSET msg_cfg_optimize_verify_fail
-    jmp     @@Print
-@@E46:
-    cmp     al, CFG_ERR_PNP_NOT_CAPABLE
-    jne     @@E47
-    mov     dx, OFFSET msg_cfg_pnp_not_capable
-    jmp     @@Print
-@@E47:
-    cmp     al, CFG_ERR_BAD_FULLDUPLEX
-    jne     @@E48
-    mov     dx, OFFSET msg_cfg_bad_fullduplex
-    jmp     @@Print
-@@E48:
-    cmp     al, CFG_ERR_FD_INACTIVE
-    jne     @@E49
-    mov     dx, OFFSET msg_cfg_fd_inactive
-    jmp     @@Print
-@@E49:
-    cmp     al, CFG_ERR_FD_EEPROM_READ
-    jne     @@E50
-    mov     dx, OFFSET msg_cfg_fd_eeprom_read_fail
-    jmp     @@Print
-@@E50:
-    cmp     al, CFG_ERR_FD_EEPROM_WRITE
-    jne     @@E51
-    mov     dx, OFFSET msg_cfg_fd_eeprom_write_fail
-    jmp     @@Print
-@@E51:
-    cmp     al, CFG_ERR_FD_VERIFY
-    jne     @@E52
-    mov     dx, OFFSET msg_cfg_fd_verify_fail
-    jmp     @@Print
-@@E52:
-    cmp     al, CFG_ERR_FD_NOT_CAPABLE
-    jne     @@E53
-    mov     dx, OFFSET msg_cfg_fd_not_capable
-    jmp     @@Print
-@@E53:
-    cmp     al, CFG_ERR_BAD_BADDRESS
-    jne     @@E54
-    mov     dx, OFFSET msg_cfg_bad_baddress
-    jmp     @@Print
-@@E54:
-    cmp     al, CFG_ERR_BADDRESS_INACTIVE
-    jne     @@E55
-    mov     dx, OFFSET msg_cfg_baddress_inactive
-    jmp     @@Print
-@@E55:
-    cmp     al, CFG_ERR_BADDRESS_EEPROM_READ
-    jne     @@E56
-    mov     dx, OFFSET msg_cfg_baddress_eeprom_read_fail
-    jmp     @@Print
-@@E56:
-    cmp     al, CFG_ERR_BADDRESS_EEPROM_WRITE
-    jne     @@E57
-    mov     dx, OFFSET msg_cfg_baddress_eeprom_write_fail
-    jmp     @@Print
-@@E57:
-    cmp     al, CFG_ERR_BADDRESS_VERIFY
-    jne     @@E58
-    mov     dx, OFFSET msg_cfg_baddress_verify_fail
-    jmp     @@Print
-@@E58:
-    cmp     al, CFG_ERR_BADDRESS_NOT_CAPABLE
-    jne     @@E59
-    mov     dx, OFFSET msg_cfg_baddress_not_capable
-    jmp     @@Print
-@@E59:
-    cmp     al, CFG_ERR_BAD_BSIZE
-    jne     @@E60
-    mov     dx, OFFSET msg_cfg_bad_bsize
-    jmp     @@Print
-@@E60:
-    cmp     al, CFG_ERR_BSIZE_INACTIVE
-    jne     @@E61
-    mov     dx, OFFSET msg_cfg_bsize_inactive
-    jmp     @@Print
-@@E61:
-    cmp     al, CFG_ERR_BSIZE_EEPROM_READ
-    jne     @@E62
-    mov     dx, OFFSET msg_cfg_bsize_eeprom_read_fail
-    jmp     @@Print
-@@E62:
-    cmp     al, CFG_ERR_BSIZE_EEPROM_WRITE
-    jne     @@E63
-    mov     dx, OFFSET msg_cfg_bsize_eeprom_write_fail
-    jmp     @@Print
-@@E63:
-    cmp     al, CFG_ERR_BSIZE_VERIFY
-    jne     @@E64
-    mov     dx, OFFSET msg_cfg_bsize_verify_fail
-    jmp     @@Print
-@@E64:
-    cmp     al, CFG_ERR_BSIZE_NOT_CAPABLE
-    jne     @@E65
-    mov     dx, OFFSET msg_cfg_bsize_not_capable
-    jmp     @@Print
-@@E65:
-    cmp     al, CFG_ERR_BOOTROM_INCOMPLETE
-    jne     @@E66
-    mov     dx, OFFSET msg_cfg_bootrom_incomplete
-    jmp     @@Print
-@@E66:
-    cmp     al, CFG_ERR_BAD_TR
-    jne     @@E67
-    mov     dx, OFFSET msg_cfg_bad_tr
-    jmp     @@Print
-@@E67:
-    cmp     al, CFG_ERR_TR_INACTIVE
-    jne     @@E68
-    mov     dx, OFFSET msg_cfg_tr_inactive
-    jmp     @@Print
-@@E68:
-    cmp     al, CFG_ERR_TR_EEPROM_READ
-    jne     @@E69
-    mov     dx, OFFSET msg_cfg_tr_eeprom_read_fail
-    jmp     @@Print
-@@E69:
-    cmp     al, CFG_ERR_TR_EEPROM_WRITE
-    jne     @@E70
-    mov     dx, OFFSET msg_cfg_tr_eeprom_write_fail
-    jmp     @@Print
-@@E70:
-    cmp     al, CFG_ERR_TR_VERIFY
-    jne     @@E71
-    mov     dx, OFFSET msg_cfg_tr_verify_fail
-    jmp     @@Print
-@@E71:
-    cmp     al, CFG_ERR_TR_NOT_CAPABLE
-    jne     @@E72
-    mov     dx, OFFSET msg_cfg_tr_not_capable
-    jmp     @@Print
-@@E72:
-    cmp     al, CFG_ERR_TR_CAPABILITY_READ
-    jne     @@E73
-    mov     dx, OFFSET msg_cfg_tr_capability_read_fail
-    jmp     @@Print
-@@E73:
-    cmp     al, CFG_ERR_FD_CAPABILITY_READ
-    jne     @@E74
-    mov     dx, OFFSET msg_cfg_fd_capability_read_fail
-    jmp     @@Print
-@@E74:
-    cmp     al, CFG_ERR_FD_TRANSCEIVER
-    jne     @@E75
-    mov     dx, OFFSET msg_cfg_fd_transceiver
-    jmp     @@Print
-@@E75:
-    cmp     al, CFG_ERR_FD_LIVE_UPDATE
-    jne     @@E76
-    mov     dx, OFFSET msg_cfg_fd_live_update_fail
-    jmp     @@Print
-@@E76:
-    cmp     al, CFG_ERR_FD_LIVE_VERIFY
-    jne     @@Done
-    mov     dx, OFFSET msg_cfg_fd_live_verify_fail
-@@Print:
     mov     ah, 09h
     int     21h
+
 @@Done:
     pop     dx
+    pop     bx
     pop     ax
     ret
 ENDP Cfg_Report_Error
@@ -3803,7 +3789,7 @@ PROC Scan_All_3Com_Cards NEAR
     call    Discover_Id_Port_Cards
 
     ; The original program tags the contenders first and activates them later.
-    call    Activate_Tagged_Cards
+    call    Nic_Activate_Tagged_Cards
 
     ; Finally examine all valid active I O bases.  This also catches a board
     ; that was already active before the proprietary ID sequence was entered.
@@ -3818,41 +3804,6 @@ ENDP Scan_All_3Com_Cards
 ; ============================================================================
 ; ISA ID port discovery
 ; ============================================================================
-
-; Send the complete 255 byte LFSR sequence.
-; This matches original sub_328.
-PROC IdPort_Send_Full_Sequence NEAR
-    call    Nic_IdPort_Send_Full_Sequence
-    ret
-ENDP IdPort_Send_Full_Sequence
-
-; Send the first 8 bytes of the same LFSR stream.
-; This matches original sub_329.
-PROC IdPort_Send_Short_Sequence NEAR
-    call    Nic_IdPort_Send_Short_Sequence
-    ret
-ENDP IdPort_Send_Short_Sequence
-
-; Conservative delay after an ID port EEPROM read command.
-; The hardware minimum is about 162 microseconds.  The original utility uses
-; a calibrated delay routine.  This reduced build uses repeated ISA I O reads
-; so it remains valid on an 8086 and is intentionally longer than the minimum.
-PROC IdPort_Eeprom_Delay NEAR
-    call    Nic_IdPort_Eeprom_Delay
-    ret
-ENDP IdPort_Eeprom_Delay
-
-; Read one 16 bit EEPROM word through the ISA ID port.
-; Input: AL = EEPROM word index, without the 80h read opcode.
-; Output: AX = word, assembled MSB first.
-;
-; A separate SI accumulator is essential.  The failed reimplementation used
-; AL both as the port input byte and as the low byte of AX, destroying the
-; partially assembled word at every bit.
-PROC IdPort_Read_Word NEAR
-    call    Nic_IdPort_Read_Word
-    ret
-ENDP IdPort_Read_Word
 
 ; Return carry clear for a product in the 3C509 family.
 ; The original enumeration applies F0FFh and accepts 9050h family products.
@@ -3870,49 +3821,43 @@ PROC Is_3C509_Family NEAR
     ret
 ENDP Is_3C509_Family
 
-; Initialize both ID sequence modes exactly in the order used by sub_332.
-PROC IdPort_Initialize NEAR
-    call    Nic_Init_Id_Port
-    ret
-ENDP IdPort_Initialize
-
 ; Read the fields needed to construct one record while the current contender
 ; still owns the ID port.
 PROC Read_Id_Contender_Data NEAR
     push    ax
 
     mov     al, EEPROM_NODE_0
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
 
     mov     al, EEPROM_NODE_1
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
 
     mov     al, EEPROM_NODE_2
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
 
     mov     al, EEPROM_ADDR_CFG
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_addr_cfg], ax
 
     mov     al, EEPROM_RESOURCE_CFG
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_resource_cfg], ax
 
     ; Original sub_339 stores the OEM node address at words 0Ah through 0Ch.
     mov     al, EEPROM_OEM_NODE_0
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_oem0], ax
 
     mov     al, EEPROM_OEM_NODE_1
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_oem1], ax
 
     mov     al, EEPROM_OEM_NODE_2
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_oem2], ax
 
     mov     al, EEPROM_SOFTWARE_INFO
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
 
     pop     ax
     ret
@@ -4090,7 +4035,7 @@ PROC Discover_Id_Port_Cards NEAR
     push    dx
     push    di
 
-    call    IdPort_Initialize
+    call    Nic_Init_Id_Port
 
 @@ProbeAgain:
     mov     al, [id_next_tag]
@@ -4100,15 +4045,15 @@ PROC Discover_Id_Port_Cards NEAR
     cli
     cmp     [id_short_mode], 0
     je      @@UseFull
-    call    IdPort_Send_Short_Sequence
+    call    Nic_IdPort_Send_Short_Sequence
     jmp     @@SequenceReady
 @@UseFull:
-    call    IdPort_Send_Full_Sequence
+    call    Nic_IdPort_Send_Full_Sequence
 @@SequenceReady:
 
     ; The original presence test is manufacturer word 7, not node word 0.
     mov     al, EEPROM_MFG_ID
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ax, 06D50h
     je      @@ManufacturerGood
 
@@ -4120,7 +4065,7 @@ PROC Discover_Id_Port_Cards NEAR
 
 @@ManufacturerGood:
     mov     al, EEPROM_PRODUCT_ID
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_product], ax
     call    Is_3C509_Family
     jnc     @@ProductGood
@@ -4183,48 +4128,12 @@ PROC Discover_Id_Port_Cards NEAR
 ENDP Discover_Id_Port_Cards
 
 ; ============================================================================
-; Activation of tagged ISA adapters
-; ============================================================================
-PROC Activate_Tagged_Cards NEAR
-    call    Nic_Activate_Tagged_Cards
-    ret
-ENDP Activate_Tagged_Cards
-
-; ============================================================================
 ; Active register access and signature verification
 ; ============================================================================
-
-; Input DX = base, AL = window 0 through 7.
-PROC Select_Window NEAR
-    call    Nic_Select_Window
-    ret
-ENDP Select_Window
-
-; Input DX = base.  Output AX = current window number.
-PROC Get_Current_Window NEAR
-    call    Nic_Get_Current_Window
-    ret
-ENDP Get_Current_Window
-
-; Verify a live 3C509 register image.
-; Input DX = candidate base.
-; Output CF clear on success, AX = normalized product ID, BL = ASIC revision.
-; The normal x86 word order is 6D50h.  A byte swapped 506Dh read is accepted
-; defensively and the product ID is normalized in the same way.
-PROC Check_3Com_Signature NEAR
-    call    Nic_Check_3Com_Signature
-    ret
-ENDP Check_3Com_Signature
 
 ; ============================================================================
 ; Active EEPROM access
 ; ============================================================================
-; Input DX = base, AL = EEPROM word index.
-; Output AX = EEPROM word, FFFFh on timeout.
-PROC EEPROM_Read NEAR
-    call    Nic_EEPROM_Read
-    ret
-ENDP EEPROM_Read
 
 ; Read hardware capability sources independently.
 ; Input DX = active I/O base.  Output AX = NIC_CAP_* values, BX =
@@ -4237,14 +4146,14 @@ PROC Nic_Read_Capabilities NEAR
     push    di
 
     mov     si, dx
-    call    Get_Current_Window
+    call    Nic_Get_Current_Window
     mov     di, ax
     xor     bx, bx                  ; validity result
     xor     cx, cx                  ; normalized capability result
 
     mov     dx, si
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
     mov     bx, EL3_W0_CONFIG_CONTROL
     call    Nic_Reg_Read_Word
     xor     bx, bx                  ; discard register offset; rebuild validity
@@ -4266,9 +4175,8 @@ PROC Nic_Read_Capabilities NEAR
 @@ReadPnp:
     mov     dx, si
     mov     al, EEPROM_CAPABILITY
-    call    EEPROM_Read
-    cmp     ax, 0FFFFh
-    je      @@ReadRevision
+    call    Nic_EEPROM_Read
+    jc      @@ReadRevision
     or      bx, NIC_CAP_VALID_PNP
     test    ax, EEPROM_CAPABILITY_PNP
     jz      @@ReadRevision
@@ -4279,9 +4187,8 @@ PROC Nic_Read_Capabilities NEAR
     jz      @@Restore
     mov     dx, si
     mov     al, EEPROM_REVISION_INFO
-    call    EEPROM_Read
-    cmp     ax, 0FFFFh
-    je      @@Restore
+    call    Nic_EEPROM_Read
+    jc      @@Restore
     or      bx, NIC_CAP_VALID_FULLDUPLEX
     test    cx, NIC_CAP_TP
     jz      @@Restore
@@ -4293,7 +4200,7 @@ PROC Nic_Read_Capabilities NEAR
 @@Restore:
     mov     ax, di
     mov     dx, si
-    call    Select_Window
+    call    Nic_Select_Window
     mov     ax, cx
     clc
 @@Exit:
@@ -4324,25 +4231,40 @@ PROC Build_Record_From_Active NEAR
     mov     si, dx
 
     mov     al, EEPROM_ADDR_CFG
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jnc     @@AddrCfgOk
+    mov     ax, 0FFFFh
+@@AddrCfgOk:
     mov     [id_addr_cfg], ax
 
     mov     dx, si
     mov     al, EEPROM_RESOURCE_CFG
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jnc     @@ResourceCfgOk
+    mov     ax, 0FFFFh
+@@ResourceCfgOk:
     mov     [id_resource_cfg], ax
 
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_0
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jnc     @@Oem0Ok
+    mov     ax, 0FFFFh
+@@Oem0Ok:
     mov     [id_oem0], ax
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_1
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jnc     @@Oem1Ok
+    mov     ax, 0FFFFh
+@@Oem1Ok:
     mov     [id_oem1], ax
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_2
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jnc     @@Oem2Ok
+    mov     ax, 0FFFFh
+@@Oem2Ok:
     mov     [id_oem2], ax
 
     mov     ax, [id_resource_cfg]
@@ -4427,7 +4349,7 @@ PROC Scan_Active_Base_Ports NEAR
     jz      @@Done
     mov     dx, ax
 
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@PortLoop
 
     push    ax
@@ -4446,7 +4368,7 @@ PROC Scan_Active_Base_Ports NEAR
     add     di, ax
 
     mov     dx, [si-2]
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@PortLoop
     call    Build_Record_From_Active
     inc     [card_count]
@@ -4465,7 +4387,7 @@ PROC Scan_Active_Base_Ports NEAR
     loop    @@FindExisting
     jmp     @@PortLoop
 @@Refresh:
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@PortLoop
     mov     [WORD di + NIC_PRODUCT_ID], ax
     mov     [BYTE di + NIC_ASIC_REV], bl
@@ -4602,7 +4524,7 @@ PROC Cfg_Eeprom_Wait_Ready NEAR
     call    Cfg_Start_Wait_Timer
 @@Loop:
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     test    ax, EEPROM_BUSY
     jz      @@Ready
     call    Cfg_Wait_Expired
@@ -4642,16 +4564,16 @@ PROC Cfg_Eeprom_Read NEAR
     xor     ah, ah
     mov     si, ax
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
 
     mov     ax, si
     or      ax, 0080h
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
     mov     bx, EL3_W0_EEPROM_DATA
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     cmp     [cfg_timeout_latched], 0
     jne     @@Fail
 
@@ -4693,32 +4615,32 @@ PROC Cfg_Eeprom_Write NEAR
     mov     di, bx                 ; DI = data word.
 
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
 
     mov     ax, 0030h
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
     mov     ax, 00C0h
     or      ax, si
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
     mov     ax, di
     mov     bx, EL3_W0_EEPROM_DATA
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
 
     mov     ax, 0030h
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
     mov     ax, 0040h
     or      ax, si
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
     cmp     [cfg_timeout_latched], 0
@@ -4789,6 +4711,36 @@ PROC Cfg_Checksum_0F_Low NEAR
     stc
     ret
 ENDP Cfg_Checksum_0F_Low
+
+; Destination EEPROM word 17h low byte. Domain: words 13h through 16h.
+PROC Cfg_Checksum_17_Low NEAR
+    push    bx
+    push    dx
+    push    si
+
+    xor     bx, bx
+    mov     si, EEPROM_SECONDARY_CONFIG_START
+@@Loop:
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, EEPROM_SECONDARY_CONFIG_END
+    jb      @@Loop
+    mov     al, bl
+    pop     si
+    pop     dx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     si
+    pop     dx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Checksum_17_Low
 
 ; ============================================================================
 ; /IOBASE hardware transaction, release 0.3.4
@@ -4912,23 +4864,23 @@ PROC Cfg_Txn_Retag_Selected NEAR
     push    dx
     push    si
 
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
 
     mov     si, [cfg_selected_ptr]
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
-    call    IdPort_Send_Short_Sequence
+    call    Nic_IdPort_Send_Short_Sequence
     jmp     @@WriteTag
 @@Full:
-    call    IdPort_Send_Full_Sequence
+    call    Nic_IdPort_Send_Full_Sequence
 @@WriteTag:
     mov     dx, ID_PORT
     mov     al, ID_CMD_SET_TAG
@@ -5062,12 +5014,19 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_word0d], 0
 @@Word0DDone:
 
+    ; PNP-only transactions use the secondary checksum and do not depend on
+    ; EEPROM word 0Fh being readable.
+    test    [cfg_parse_flags], CFG_PARSE_INT + CFG_PARSE_IOBASE + CFG_PARSE_MODEM + CFG_PARSE_FULLDUPLEX + CFG_PARSE_OPTIMIZE + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_TR
+    jz      @@NoWord0F
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Read
     jc      @@ReadOptimizeFail
     mov     [cfg_txn_old_word0f], ax
+    jmp     @@Word0FDone
+@@NoWord0F:
+    mov     [cfg_txn_old_word0f], 0
 @@Word0FDone:
 
     ; Both live words are required because original ISA reactivation restores
@@ -5075,12 +5034,12 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     [cfg_txn_old_live06], ax
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     [cfg_txn_old_live08], ax
 
     mov     ax, [cfg_txn_old_word08]
@@ -5582,7 +5541,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     jmp     @@Success
 
 @@Start:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Deactivate
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@VerboseINT
@@ -5609,7 +5568,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     cmp     ax, 0FFFFh
     je      @@Retag
     mov     dx, bx
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@Retag
     mov     si, [cfg_selected_ptr]
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
@@ -5625,7 +5584,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
 @@Retag:
     call    Cfg_Txn_Retag_Selected
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@MigrateRecord
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@MigrateRecord
@@ -5649,19 +5608,19 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
     mov     ax, [cfg_txn_new_live06]
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     mov     ax, [cfg_txn_new_live08]
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
 
     ; Confirm that an EtherLink III register image is reachable.  At this stage
     ; keep the proven strict product and ASIC comparison before any EEPROM write.
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@ActivationFail
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@ActivationFail
@@ -5674,12 +5633,12 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
 
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@CheckIRQ
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     and     al, 01Fh
     cmp     al, [cfg_txn_io_selector]
     jne     @@ActivationLiveFail
@@ -5690,7 +5649,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     test    [cfg_txn_change_flags], CFG_TXN_INT_MIGRATE_MASK
     jz      @@Success
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     bx, ax
     mov     cl, 12
     shr     bx, cl
@@ -5704,7 +5663,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@Success
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     bx, ax
     mov     cl, 12
     shr     bx, cl
@@ -5750,9 +5709,8 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     ret
 ENDP Cfg_Txn_Activate_If_Needed
 
-; Write all changed persistent property words in original sub_342 order, then
-; update the shared low checksum byte once.  Each EEPROM word remains a separate
-; physical Cfg_Eeprom_Write operation inside one logical CONFIGURE transaction.
+; Write persistent property words in original sub_342 order, then update only
+; the checksum domains whose data words changed.
 PROC Cfg_Txn_Write_EEPROM NEAR
     push    ax
     push    bx
@@ -5764,7 +5722,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     jmp     @@Success
 
 @@Start:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word08
     mov     dx, OFFSET msg_cfg_txn_write
     mov     ah, 09h
@@ -5779,7 +5737,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Write
     jc      @@Write08Fail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word09
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@Word08NoIOBaseNote
@@ -5805,7 +5763,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_RESOURCE_CFG
     call    Cfg_Eeprom_Write
     jc      @@Write09Fail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word0D
     mov     dx, OFFSET msg_cfg_irq_word_written
     mov     ah, 09h
@@ -5820,7 +5778,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Write
     jc      @@Write0DFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word13
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jnz     @@Word0DPrint
@@ -5836,26 +5794,33 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 
 @@Word13:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
-    jz      @@Checksum
+    jz      @@Checksums
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     bx, [cfg_txn_new_word13]
     mov     al, EEPROM_CONFIG_CONTROL
     call    Cfg_Eeprom_Write
     jc      @@Write13Fail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@Checksum
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@Checksums
     mov     dx, OFFSET msg_cfg_pnp_word_written
     mov     ah, 09h
     int     21h
 
-@@Checksum:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@ChecksumCalc
+@@Checksums:
+    test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
+    jnz     @@ChecksumAnnounce
+    test    [cfg_txn_change_flags], CFG_TXN_SECONDARY_CHECKSUM_MASK
+    jz      @@ChecksumUpdated
+@@ChecksumAnnounce:
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@PrimaryChecksum
     mov     dx, OFFSET msg_cfg_update_checksum
     mov     ah, 09h
     int     21h
-@@ChecksumCalc:
+@@PrimaryChecksum:
+    test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
+    jz      @@SecondaryChecksum
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     call    Cfg_Checksum_0F_Low
@@ -5869,19 +5834,48 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     or      ax, bx
     mov     [cfg_txn_new_word0f], ax
     mov     bx, ax
-    mov     al, 0Fh
+    mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Write
     jc      @@ChecksumWriteFail
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, 0Fh
+    mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Read
     jc      @@ChecksumFail
     cmp     ax, [cfg_txn_new_word0f]
     jne     @@ChecksumFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+@@SecondaryChecksum:
+    test    [cfg_txn_change_flags], CFG_TXN_SECONDARY_CHECKSUM_MASK
+    jz      @@ChecksumUpdated
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_SECONDARY_CHECKSUM
+    call    Cfg_Eeprom_Read
+    jc      @@ChecksumFail
+    mov     [cfg_txn_checksum_word], ax
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Cfg_Checksum_17_Low
+    jc      @@ChecksumFail
+    and     [cfg_txn_checksum_word], 0FF00h
+    xor     bx, bx
+    mov     bl, al
+    or      [cfg_txn_checksum_word], bx
+    mov     bx, [cfg_txn_checksum_word]
+    mov     al, EEPROM_SECONDARY_CHECKSUM
+    call    Cfg_Eeprom_Write
+    jc      @@ChecksumWriteFail
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_SECONDARY_CHECKSUM
+    call    Cfg_Eeprom_Read
+    jc      @@ChecksumFail
+    cmp     ax, [cfg_txn_checksum_word]
+    jne     @@ChecksumFail
+@@ChecksumUpdated:
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_checksum_updated
     mov     ah, 09h
@@ -5931,12 +5925,6 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_WRITE
     jmp     @@Fail
 @@ChecksumWriteFail:
-    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
-    jz      @@ChecksumFail
-    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-    jz      @@ChecksumFail
-    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_EEPROM_WRITE
-    jmp     @@Fail
 @@ChecksumFail:
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
@@ -5966,7 +5954,7 @@ PROC Cfg_Txn_Write_Live NEAR
     test    [cfg_txn_change_flags], CFG_TXN_INT_CHANGED
     jz      @@Success
 @@Need:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Select
     mov     dx, OFFSET msg_cfg_txn_live
     mov     ah, 09h
@@ -5976,15 +5964,15 @@ PROC Cfg_Txn_Write_Live NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
 
     test    [cfg_txn_change_flags], CFG_TXN_LIVE06_MASK
     jz      @@INT
     mov     ax, [cfg_txn_new_live06]
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     and     al, 01Fh
     cmp     al, [cfg_txn_io_selector]
     jne     @@IOFail
@@ -5994,9 +5982,9 @@ PROC Cfg_Txn_Write_Live NEAR
     jz      @@Success
     mov     ax, [cfg_txn_new_live08]
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     bx, ax
     mov     cl, 12
     shr     bx, cl
@@ -6045,7 +6033,7 @@ PROC Cfg_Txn_Verify NEAR
     jmp     @@Success
 
 @@Start:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Reachable
     mov     dx, OFFSET msg_cfg_txn_verify
     mov     ah, 09h
@@ -6060,19 +6048,19 @@ PROC Cfg_Txn_Verify NEAR
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@ReachFail
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@ReachFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@IOPersistent
     mov     dx, OFFSET msg_cfg_txn_reachable
     mov     ah, 09h
     int     21h
     mov     ax, [WORD si + NIC_IO_BASE]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6091,14 +6079,14 @@ PROC Cfg_Txn_Verify NEAR
     cmp     al, [cfg_txn_io_selector]
     jne     @@IOVerifyFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@IOLive
     mov     dx, OFFSET msg_cfg_eeprom_iobase_verified
     mov     ah, 09h
     int     21h
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6106,21 +6094,21 @@ PROC Cfg_Txn_Verify NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     and     al, 01Fh
     cmp     al, [cfg_txn_io_selector]
     jne     @@IOVerifyFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@INTPersistent
     mov     dx, OFFSET msg_cfg_live_iobase_verified
     mov     ah, 09h
     int     21h
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6129,8 +6117,10 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@PNPPersistent
     ; Preserve the standalone 0.3.3 unchanged path.  Verify INT only when its
     ; persistent field changed, or when an IO migration forced live restoration.
+    ; An unchanged INT skips its own readback only; later requested properties
+    ; are still verified.
     test    [cfg_txn_change_flags], CFG_TXN_INT_MIGRATE_MASK
-    jz      @@Success
+    jz      @@PNPPersistent
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
@@ -6149,14 +6139,14 @@ PROC Cfg_Txn_Verify NEAR
     cmp     bl, [cfg_int_value]
     jne     @@INTVerifyFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@INTLive
     mov     dx, OFFSET msg_cfg_eeprom_verified
     mov     ah, 09h
     int     21h
     mov     al, bl
     call    Print_DecByte
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6164,9 +6154,9 @@ PROC Cfg_Txn_Verify NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     bx, ax
     mov     cl, 12
     shr     bx, cl
@@ -6174,14 +6164,14 @@ PROC Cfg_Txn_Verify NEAR
     cmp     bl, [cfg_int_value]
     jne     @@INTVerifyFail
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@Success
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@PNPPersistent
     mov     dx, OFFSET msg_cfg_live_verified
     mov     ah, 09h
     int     21h
     mov     al, bl
     call    Print_DecByte
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6197,8 +6187,8 @@ PROC Cfg_Txn_Verify NEAR
     jc      @@PNPVerifyFail
     cmp     ax, [cfg_txn_new_word13]
     jne     @@PNPVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@Success
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@MODEMPersistent
     mov     dx, OFFSET msg_cfg_pnp_verified
     mov     ah, 09h
     int     21h
@@ -6215,7 +6205,7 @@ PROC Cfg_Txn_Verify NEAR
     jc      @@MODEMVerifyFail
     cmp     ax, [cfg_txn_new_word0d]
     jne     @@MODEMVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@FDPersistent
     mov     dx, OFFSET msg_cfg_modem_verified
     mov     ah, 09h
@@ -6237,8 +6227,8 @@ PROC Cfg_Txn_Verify NEAR
     and     bx, 8000h
     cmp     ax, bx
     jne     @@FDVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
-    jz      @@Success
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@OptimizePersistent
     mov     dx, OFFSET msg_cfg_fd_verified
     mov     ah, 09h
     int     21h
@@ -6255,7 +6245,7 @@ PROC Cfg_Txn_Verify NEAR
     jc      @@OptimizeVerifyFail
     cmp     ax, [cfg_txn_new_word0d]
     jne     @@OptimizeVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@BootRomPersistent
     mov     dx, OFFSET msg_cfg_optimize_verified
     mov     ah, 09h
@@ -6286,7 +6276,7 @@ PROC Cfg_Txn_Verify NEAR
     shr     ax, cl
     cmp     al, [cfg_baddress_value]
     jne     @@BootRomVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@BSizeVerify
     mov     dx, OFFSET msg_cfg_baddress_verified
     mov     ah, 09h
@@ -6301,7 +6291,7 @@ PROC Cfg_Txn_Verify NEAR
     shr     ax, cl
     cmp     al, [cfg_bsize_value]
     jne     @@BootRomVerifyFail
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_bsize_verified
     mov     ah, 09h
@@ -6388,14 +6378,14 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Get_Current_Window
+    call    Nic_Get_Current_Window
     mov     di, ax
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, 4
-    call    Select_Window
+    call    Nic_Select_Window
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     cmp     ax, 0FFFFh
     je      @@UpdateFail
 
@@ -6411,9 +6401,9 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
     or      ax, W4_NET_DIAG_FD_ENABLE
 @@Write:
     mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     cmp     ax, 0FFFFh
     je      @@VerifyFail
     test    ax, W4_NET_DIAG_FD_ENABLE
@@ -6425,7 +6415,7 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
     test    [cfg_txn_new_word0d], EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jnz     @@VerifyFail
 @@Verified:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@RestoreSuccess
     mov     dx, OFFSET msg_cfg_fd_live_verified
     mov     ah, 09h
@@ -6440,13 +6430,13 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
 @@RestoreFail:
     mov     ax, di
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Select_Window
+    call    Nic_Select_Window
     stc
     jmp     @@Done
 @@RestoreSuccess:
     mov     ax, di
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Select_Window
+    call    Nic_Select_Window
 @@Success:
     clc
 @@Done:
@@ -6464,7 +6454,7 @@ PROC Cfg_Txn_Report_Current NEAR
     push    cx
     push    dx
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jnz     @@Start
     jmp     @@Done
 @@Start:
@@ -6473,7 +6463,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_base]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6485,7 +6475,7 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     al, [cfg_txn_old_io_selector]
     call    Cfg_IOBASE_Selector_To_Base
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6494,7 +6484,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_word08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6504,7 +6494,7 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     al, [cfg_txn_live_io_selector]
     call    Cfg_IOBASE_Selector_To_Base
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6514,7 +6504,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_live06]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6525,7 +6515,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     al, [cfg_txn_old_irq]
     call    Print_DecByte
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6534,7 +6524,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     al, [cfg_txn_live_irq]
     call    Print_DecByte
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6543,7 +6533,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_word09]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6553,7 +6543,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_live08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
     test    [cfg_parse_flags], CFG_PARSE_MODEM
@@ -6563,7 +6553,7 @@ PROC Cfg_Txn_Report_Current NEAR
     int     21h
     mov     ax, [cfg_txn_old_word0d]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 @@Optimize:
@@ -6576,8 +6566,8 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     cl, 4
     shr     ax, cl
     and     al, 03h
-    call    Print_Optimize_Read_Code
-    mov     dx, OFFSET msg_cfg_crlf
+    call    Decode_Optimize_Value
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 @@Done:
@@ -6592,7 +6582,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     push    cx
     push    dx
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jnz     @@Start
     jmp     @@Done
 @@Start:
@@ -6605,7 +6595,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_base]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6616,7 +6606,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_word08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6626,7 +6616,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_live06]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6637,7 +6627,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_word09]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6647,7 +6637,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_live08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
     test    [cfg_parse_flags], CFG_PARSE_MODEM
@@ -6657,7 +6647,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     int     21h
     mov     ax, [cfg_txn_new_word0d]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 @@Optimize:
@@ -6670,8 +6660,8 @@ PROC Cfg_Txn_Report_Prospective NEAR
     mov     cl, 4
     shr     ax, cl
     and     al, 03h
-    call    Print_Optimize_Read_Code
-    mov     dx, OFFSET msg_cfg_crlf
+    call    Decode_Optimize_Value
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 @@Done:
@@ -6757,7 +6747,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     [cfg_timeout_latched], 0
 
     ; Adapter selection detail is global transaction output, not property output.
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@GatePNP
     mov     dx, OFFSET msg_cfg_adapter_prefix
     mov     ah, 09h
@@ -6906,7 +6896,7 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 @@RequestedINT:
@@ -6917,7 +6907,7 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
     mov     al, [cfg_int_value]
     call    Print_DecByte
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6936,7 +6926,7 @@ PROC Cfg_Txn_Execute NEAR
 @@PnpPrint:
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6947,10 +6937,12 @@ PROC Cfg_Txn_Execute NEAR
     mov     ah, 09h
     int     21h
     mov     ax, [cfg_modem_value]
+    call    Decode_Modem_Baud_Alias
+    jnc     @@PrintModem
+    mov     ax, [cfg_modem_value]
     call    Decode_Modem_Value
     jc      @@PrintModemNone
-    cmp     ax, 0FFFFh
-    je      @@PrintModemUnknown
+@@PrintModem:
     call    Print_DecWord
     jmp     @@AfterRequestedModem
 @@PrintModemNone:
@@ -6958,12 +6950,8 @@ PROC Cfg_Txn_Execute NEAR
     mov     ah, 09h
     int     21h
     jmp     @@AfterRequestedModem
-@@PrintModemUnknown:
-    mov     dx, OFFSET msg_unknown_value
-    mov     ah, 09h
-    int     21h
 @@AfterRequestedModem:
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -6982,7 +6970,7 @@ PROC Cfg_Txn_Execute NEAR
 @@FDPrint:
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -7001,7 +6989,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_hex_suffix
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -7037,7 +7025,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     ah, 09h
     int     21h
 @@AfterBSizeValue:
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
@@ -7066,12 +7054,12 @@ PROC Cfg_Txn_Execute NEAR
 @@PrintTR:
     mov     ah, 09h
     int     21h
-    mov     dx, OFFSET msg_cfg_crlf
+    mov     dx, OFFSET msg_crlf
     mov     ah, 09h
     int     21h
 
 @@Read:
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@ReadNow
     mov     dx, OFFSET msg_cfg_txn_read
     mov     ah, 09h
@@ -7131,7 +7119,7 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Txn_Detect_Changes
     call    Cfg_Txn_Report_Prospective
 
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@CheckAnyChange
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@CheckINTUnchanged
@@ -7216,7 +7204,7 @@ PROC Cfg_Txn_Execute NEAR
     jnz     @@Preflight
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jnz     @@SyncUnchangedFD
-    test    [cfg_parse_flags], CFG_PARSE_VERBOSE
+    test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_txn_no_changes
     mov     ah, 09h
@@ -7276,7 +7264,7 @@ PROC Cfg_Revalidate_Selected NEAR
     or      dx, dx
     jz      @@ByTag
 
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@Mismatch
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@Mismatch
@@ -7287,7 +7275,7 @@ PROC Cfg_Revalidate_Selected NEAR
 
 @@Mac:
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Get_Current_Window
+    call    Nic_Get_Current_Window
     mov     ch, al
 
     mov     dx, [WORD si + NIC_IO_BASE]
@@ -7319,18 +7307,18 @@ PROC Cfg_Revalidate_Selected NEAR
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, ch
-    call    Select_Window
+    call    Nic_Select_Window
     jmp     @@Good
 
 @@RestoreReadError:
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, ch
-    call    Select_Window
+    call    Nic_Select_Window
     jmp     @@Fail
 @@RestoreMismatch:
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, ch
-    call    Select_Window
+    call    Nic_Select_Window
     jmp     @@Mismatch
 
 @@ByTag:
@@ -7345,10 +7333,10 @@ PROC Cfg_Revalidate_Selected NEAR
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@FullSequence
-    call    IdPort_Send_Short_Sequence
+    call    Nic_IdPort_Send_Short_Sequence
     jmp     @@SelectTag
 @@FullSequence:
-    call    IdPort_Send_Full_Sequence
+    call    Nic_IdPort_Send_Full_Sequence
 @@SelectTag:
     mov     dx, ID_PORT
     mov     al, ID_CMD_SELECT_TAG
@@ -7356,30 +7344,30 @@ PROC Cfg_Revalidate_Selected NEAR
     call    Nic_IdPort_Write_Command
 
     mov     al, EEPROM_MFG_ID
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ax, 06D50h
     jne     @@TagMismatch
     mov     al, EEPROM_PRODUCT_ID
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@TagMismatch
     call    Cfg_Is_Supported_Product
     jc      @@TagUnsupported
 
     mov     al, EEPROM_OEM_NODE_0
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ah, [BYTE si + NIC_MAC_ADDR]
     jne     @@TagMismatch
     cmp     al, [BYTE si + NIC_MAC_ADDR + 1]
     jne     @@TagMismatch
     mov     al, EEPROM_OEM_NODE_1
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ah, [BYTE si + NIC_MAC_ADDR + 2]
     jne     @@TagMismatch
     cmp     al, [BYTE si + NIC_MAC_ADDR + 3]
     jne     @@TagMismatch
     mov     al, EEPROM_OEM_NODE_2
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ah, [BYTE si + NIC_MAC_ADDR + 4]
     jne     @@TagMismatch
     cmp     al, [BYTE si + NIC_MAC_ADDR + 5]
@@ -7425,10 +7413,10 @@ PROC Cfg_Id_Deactivate_Selected NEAR
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
-    call    IdPort_Send_Short_Sequence
+    call    Nic_IdPort_Send_Short_Sequence
     jmp     @@Selected
 @@Full:
-    call    IdPort_Send_Full_Sequence
+    call    Nic_IdPort_Send_Full_Sequence
 @@Selected:
     mov     dx, ID_PORT
     mov     al, ID_CMD_SELECT_TAG
@@ -7454,10 +7442,10 @@ PROC Cfg_Id_Activate_Selected NEAR
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
-    call    IdPort_Send_Short_Sequence
+    call    Nic_IdPort_Send_Short_Sequence
     jmp     @@Select
 @@Full:
-    call    IdPort_Send_Full_Sequence
+    call    Nic_IdPort_Send_Full_Sequence
 @@Select:
     mov     dx, ID_PORT
     mov     al, ID_CMD_SELECT_TAG
@@ -7525,19 +7513,25 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_nic_capability_valid], bx
 
     mov     al, EEPROM_ADDR_CFG
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jc      @@SkipAddrCfg
     mov     [ext_addr_cfg], ax
+@@SkipAddrCfg:
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_COMPATIBILITY
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jc      @@SkipCompatibility
     mov     [ext_compatibility], ax
+@@SkipCompatibility:
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_SOFTWARE_INFO
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jc      @@SkipSoftwareInfo
     mov     [ext_software_info], ax
     mov     [ext_optimize], ax
+@@SkipSoftwareInfo:
 
     ; Read the live Media Type and Status register (Window 4/Port 0Ah) to
     ; surface the dynamic "Valid link beat detected" bit (bit 11) in LIST.
@@ -7562,12 +7556,15 @@ PROC Read_Extended_Nic_Info NEAR
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CONFIG_CONTROL
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jc      @@SkipConfigCtrl
     mov     [ext_config_ctrl], ax
+@@SkipConfigCtrl:
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_REVISION_INFO
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jc      @@Done
     mov     [ext_revision_info], ax
 
     mov     ax, [ext_revision_info]
@@ -7579,7 +7576,8 @@ PROC Read_Extended_Nic_Info NEAR
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CAPABILITY
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
+    jc      @@Done
     mov     [ext_capability], ax
 
 @@Done:
@@ -7788,41 +7786,9 @@ PROC Print_Full_Duplex_Capability NEAR
     ret
 ENDP Print_Full_Duplex_Capability
 
-PROC Print_Optimize_Code NEAR
-    push    ax
-    push    dx
-
-    cmp     al, 0
-    je      @@Dos
-    cmp     al, 1
-    je      @@Windows
-    cmp     al, 2
-    je      @@Os2
-    cmp     al, 4
-    je      @@Server
-    mov     dx, OFFSET msg_unknown_value
-    jmp     @@Print
-@@Dos:
-    mov     dx, OFFSET msg_optimize_dos
-    jmp     @@Print
-@@Windows:
-    mov     dx, OFFSET msg_optimize_windows
-    jmp     @@Print
-@@Os2:
-    mov     dx, OFFSET msg_optimize_os2
-    jmp     @@Print
-@@Server:
-    mov     dx, OFFSET msg_optimize_server
-@@Print:
-    mov     ah, 09h
-    int     21h
-    pop     dx
-    pop     ax
-    ret
-ENDP Print_Optimize_Code
 
 ; Input AL = documented EEPROM_SOFTWARE_INFO Software Optimization value.
-PROC Print_Optimize_Read_Code NEAR
+PROC Decode_Optimize_Value NEAR
     push    ax
     push    dx
 
@@ -7831,7 +7797,7 @@ PROC Print_Optimize_Read_Code NEAR
     cmp     al, 1
     je      @@Dos
     cmp     al, 2
-    je      @@Windows
+    je      @@Windows_OS2
     cmp     al, 3
     je      @@Server
     mov     dx, OFFSET msg_unknown_value
@@ -7842,7 +7808,7 @@ PROC Print_Optimize_Read_Code NEAR
 @@Dos:
     mov     dx, OFFSET msg_optimize_dos
     jmp     @@Print
-@@Windows:
+@@Windows_OS2:
     mov     dx, OFFSET msg_optimize_windows_or_os2
     jmp     @@Print
 @@Server:
@@ -7853,7 +7819,7 @@ PROC Print_Optimize_Read_Code NEAR
     pop     dx
     pop     ax
     ret
-ENDP Print_Optimize_Read_Code
+ENDP Decode_Optimize_Value
 
 PROC Print_Optimize_Value NEAR
     push    ax
@@ -7865,7 +7831,7 @@ PROC Print_Optimize_Value NEAR
     mov     cl, 4
     shr     ax, cl
     and     al, 03h
-    call    Print_Optimize_Read_Code
+    call    Decode_Optimize_Value
     jmp     @@Done
 @@Unavailable:
     mov     dx, OFFSET msg_unavailable
@@ -7877,30 +7843,19 @@ PROC Print_Optimize_Value NEAR
     ret
 ENDP Print_Optimize_Value
 
-; Decodes EEPROM word 0Dh Maximum Interrupt Disable Time (bits 13:8).
-; Returns CF=1 for the CLI compatibility value NONE (zero or
-; EEPROM_MODEM_NONE); otherwise CF=0 and AX = a named baud rate, the equivalent
-; custom step value (25-1600), or 0FFFFh for an unrecognised encoding.
+; EEPROM word 0Dh bits 13:8 store Maximum Interrupt Disable Time: raw 00h-3Fh
+; is 25-1600 us in 25 us steps. CLI baud values 1200/2400/9600/19200/38400 take
+; precedence over numeric timings, so /MODEM:1200 is 1300 us. Raw 2Fh is valid
+; 1200 us data but cannot be represented by the CLI: INFO reports this, while
+; SAVECONFIG intentionally normalizes it to /MODEM:NONE.
+; Input AX = EEPROM word.  Output AX = timing in microseconds; CF=1 for NONE.
 PROC Decode_Modem_Value NEAR
     push    dx
     push    cx
 
     and     ax, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
-    or      ax, ax
-    jz      @@None
     cmp     ax, EEPROM_MODEM_NONE
     je      @@None
-    cmp     ax, EEPROM_MODEM_1200
-    je      @@Named1200
-    cmp     ax, EEPROM_MODEM_2400
-    je      @@Named2400
-    cmp     ax, EEPROM_MODEM_9600
-    je      @@Named9600
-    cmp     ax, EEPROM_MODEM_19200
-    je      @@Named19200
-    cmp     ax, EEPROM_MODEM_38400
-    je      @@Named38400
-
     mov     cl, 8
     shr     ax, cl
     inc     ax
@@ -7909,30 +7864,8 @@ PROC Decode_Modem_Value NEAR
     clc
     jmp     @@Done
 
-@@Named1200:
-    mov     ax, 1200
-    jmp     @@ValueDone
-@@Named2400:
-    mov     ax, 2400
-    jmp     @@ValueDone
-@@Named9600:
-    mov     ax, 9600
-    jmp     @@ValueDone
-@@Named19200:
-    mov     ax, 19200
-    jmp     @@ValueDone
-@@Named38400:
-    mov     ax, 38400
-@@ValueDone:
-    clc
-    jmp     @@Done
-
-@@Unknown:
-    mov     ax, 0FFFFh
-    clc
-    jmp     @@Done
-
 @@None:
+    mov     ax, 1600
     stc
 
 @@Done:
@@ -7941,36 +7874,99 @@ PROC Decode_Modem_Value NEAR
     ret
 ENDP Decode_Modem_Value
 
-; Prints the persistent MODEM (Interrupt Disable Time) setting via
-; Decode_Modem_Value: "none", a friendly baud/step value, or "unknown" for an
-; unrecognised raw encoding.
+; Input AX = EEPROM word. Output CF=0 and AX = named baud alias, or CF=1.
+PROC Decode_Modem_Baud_Alias NEAR
+    and     ax, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
+    cmp     ax, EEPROM_MODEM_1200
+    je      @@1200
+    cmp     ax, EEPROM_MODEM_2400
+    je      @@2400
+    cmp     ax, EEPROM_MODEM_9600
+    je      @@9600
+    cmp     ax, EEPROM_MODEM_19200
+    je      @@19200
+    cmp     ax, EEPROM_MODEM_38400
+    je      @@38400
+    stc
+    ret
+@@1200:
+    mov     ax, 1200
+    jmp     @@Done
+@@2400:
+    mov     ax, 2400
+    jmp     @@Done
+@@9600:
+    mov     ax, 9600
+    jmp     @@Done
+@@19200:
+    mov     ax, 19200
+    jmp     @@Done
+@@38400:
+    mov     ax, 38400
+@@Done:
+    clc
+    ret
+ENDP Decode_Modem_Baud_Alias
+
+; Prints the persistent MODEM interrupt-disable time and any CLI baud alias.
 PROC Print_Modem_Value NEAR
     push    ax
+    push    bx
+    push    dx
 
-    mov     ax, [ext_software_info]
-    cmp     ax, 0FFFFh
+    mov     bx, [ext_software_info]
+    cmp     bx, 0FFFFh
     je      @@Unavailable
+    mov     ax, bx
     call    Decode_Modem_Value
-    jc      @@None
-    cmp     ax, 0FFFFh
-    je      @@UnknownEnc
     call    Print_DecWord
-    jmp     @@Done
+    mov     dx, OFFSET msg_modem_us
+    call    Print_String
+    and     bx, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
+    cmp     bx, EEPROM_MODEM_NONE
+    je      @@None
+    cmp     bx, 2F00h
+    je      @@NotRepresentable
+    mov     ax, bx
+    call    Decode_Modem_Baud_Alias
+    jc      @@Done
+    cmp     ax, 1200
+    je      @@Baud1200
+    cmp     ax, 2400
+    je      @@Baud2400
+    cmp     ax, 9600
+    je      @@Baud9600
+    cmp     ax, 19200
+    je      @@Baud19200
+    ; The helper only returns 38400 for the remaining successful alias.
+    mov     dx, OFFSET msg_modem_38400
+    jmp     @@PrintAlias
+@@Baud1200:
+    mov     dx, OFFSET msg_modem_1200
+    jmp     @@PrintAlias
+@@Baud2400:
+    mov     dx, OFFSET msg_modem_2400
+    jmp     @@PrintAlias
+@@Baud9600:
+    mov     dx, OFFSET msg_modem_9600
+    jmp     @@PrintAlias
+@@Baud19200:
+    mov     dx, OFFSET msg_modem_19200
+    jmp     @@PrintAlias
 @@None:
-    mov     dx, OFFSET msg_none
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-@@UnknownEnc:
-    mov     dx, OFFSET msg_unknown_value
-    mov     ah, 09h
-    int     21h
+    mov     dx, OFFSET msg_modem_none
+    jmp     @@PrintAlias
+@@NotRepresentable:
+    mov     dx, OFFSET msg_modem_not_representable
+@@PrintAlias:
+    call    Print_String
     jmp     @@Done
 @@Unavailable:
     mov     dx, OFFSET msg_unavailable
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Done:
+    pop     dx
+    pop     bx
     pop     ax
     ret
 ENDP Print_Modem_Value

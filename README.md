@@ -55,7 +55,7 @@ The new implementation currently covers:
 - `HELP`
 - `LIST`
 - `CONFIGURE`
-- `SAVECONFIG file` (exports a restore batch file for all installed adapters)
+- `SAVECONFIG` (exports a restore batch file for all installed adapters)
 
 Supported `CONFIGURE` subverbs include:
 
@@ -70,6 +70,9 @@ Supported `CONFIGURE` subverbs include:
 - `/OPTIMIZE`
 - `/BADDRESS`
 - `/BSIZE`
+
+Supported global CLI options, valid with any command verb:
+
 - `/VERBOSE` (new enhancement)
 
 ## Where 3CCFGCLI differs
@@ -127,17 +130,52 @@ probing. It does not configure a persistent adapter setting.
 `CONFIGURE /CONFIGPORT` is not implemented in `3CCFGCLI` at this time.
 
 
-### /VERBOSE configuration verb
+### /VERBOSE global CLI option
+
+`/VERBOSE` is a new global CLI option owned by the common command parser,
+which recognizes and consumes it before dispatching to the selected command verb.
+It may therefore be given with any supported verb.
+
+```text
+LIST /VERBOSE
+CONFIGURE /VERBOSE /INT:5
+SAVECONFIG /VERBOSE
+SAVECONFIG /OUTPUTFILE:BACKUP.BAT /VERBOSE
+```
+
+It takes no value and may be given only once; a duplicate `/VERBOSE` is
+rejected.
 
 `/VERBOSE` is a diagnostic aid. It prints additional EEPROM and live-register
 read/write detail so transactions can be traced while debugging hardware
-behavior, mock-state issues, or parser/transaction sequencing.
+behavior, mock-state issues, or parser/transaction sequencing. Those
+diagnostics are currently implemented for `CONFIGURE`.
+
+`LIST` and `SAVECONFIG` accept the global flag but do not yet produce additional diagnostic detail.
 
 ### SAVECONFIG command verb
 
-`SAVECONFIG [filename.bat] [/EXECFILE:program]` reads the persistent configuration
-of every installed adapter with an active IOBASE and writes a batch file with
-one `program CONFIGURE /ADAPTERNUM:N ...` restore line per adapter.
+`SAVECONFIG [/OUTPUTFILE:file] [/EXECFILE:program]` reads the persistent
+configuration of every installed adapter with an active IOBASE and writes a
+batch file with one `program CONFIGURE /ADAPTERNUM:N ...` restore line per
+adapter.
+
+Both options are optional and may be given in any order. Each option may be
+supplied only once; duplicates and unknown options are rejected. The old
+positional filename form (`SAVECONFIG FILE.BAT`) is no longer accepted.
+
+`file` defaults to `RESTORE.BAT`. `/OUTPUTFILE:` requires a non-empty value;
+the default is used only when the option is omitted entirely.
+
+Examples:
+
+```text
+SAVECONFIG
+SAVECONFIG /OUTPUTFILE:BACKUP.BAT
+SAVECONFIG /EXECFILE:3CCFGCLI.EXE
+SAVECONFIG /OUTPUTFILE:BACKUP.BAT /EXECFILE:3CCFGCLI.EXE
+SAVECONFIG /EXECFILE:3CCFGCLI.EXE /OUTPUTFILE:BACKUP.BAT
+```
 
 `program` defaults to `3CCFGCLI.EXE`. `/EXECFILE:%1` is the only supported
 batch placeholder form and is emitted literally. Other `/EXECFILE` values are
@@ -155,7 +193,8 @@ adapter. This is handy for storing your last configuration, but is mainly used
 internally for the standalone hardware conformance tests.
 
 
-### Enhanded LIST verb
+
+### Enhanced LIST verb
 
 The `LIST` verb was also extended beyond the original implementation.
 Because the text-mode UI is intentionally absent, the `LIST` display now
@@ -187,7 +226,7 @@ Number                       Description
        Plug and Play = enabled
        Boot ROM = disabled
        Optimization = DOS
-       Modem Speed = none
+       MODEM Interrupt Disable Time = 1600 us (NONE)
        Full Duplex = disabled
 ```
 
@@ -197,18 +236,6 @@ The code is split into several assembly modules. The CLI logic stays in one plac
 A mock-state seeder utility is supplied to mimic the hardware EEPROM and live registers
 for smoke testing.
 
-### Full Duplex model
-
-Full Duplex capability is derived by the shared capability layer and remains
-separate from configuration.  For compatibility with original 3Com software,
-EEPROM Software Information word `0Dh` bit 15 is retained as an undocumented
-persistent Full Duplex policy; the Technical Reference documents that bit as
-reserved.  The live hardware enable is Window 4 Network Diagnostic bit 15.
-`/FULLDUPLEX:ENABLED` requires the effective configured transceiver to be TP;
-`DISABLED` remains valid for every Full-Duplex-capable adapter.  Every
-successful `/FULLDUPLEX` request also enforces the requested live enable state,
-even when the persistent policy was already correct.
-
 | File | Explanation |
 | --- | --- |
 | [3CCFGCLI.ASM](3CCFGCLI.ASM) | Reduced-scope CLI reimplementation. |
@@ -216,6 +243,8 @@ even when the persistent policy was already correct.
 | [3CMOCKIF.ASM](3CMOCKIF.ASM) | Persistent mock backend for development and tests. |
 | [3CSEED.ASM](3CSEED.ASM) | Mock-state seeder used to create test fixtures. |
 | [TEST.MK](TEST.MK) | Smoke-test suite orchestration. |
+| [TESTHWL.MK](TESTHWL.MK) | Test run on emulated IBM PC-alike constrained system, with 64/128/256 K of RAM. |
+| [TESTHWC.MK](TESTiHWC.MK) | Limited EEPROM Read/Write Hardware Compliance Test |
 
 ## Build
 
@@ -266,6 +295,38 @@ Example:
 6. `build.sh` prints `BUILD.LOG` after DOSBox-X exits.
 
 
+### Interactive DOSBox-X session
+
+For manual or incremental build and test work, run:
+
+```sh
+./interactive.sh
+```
+
+This starts DOSBox-X with [autoexec-interactive](autoexec-interactive), mounts
+the repository root as `C:`, and leaves you at a DOS prompt instead of running
+an automatic build or test command.
+
+From there you can invoke the Borland/TASM tools directly, for example:
+
+```text
+\TASM\BIN\MAKE -f MAKEFILE all
+\TASM\BIN\MAKE -f TEST.MK smoke
+\TASM\BIN\MAKE -f TEST.MK IRQ_CHANGE
+```
+
+Or more conveniently, use the included batch files, which are also used for BUILD and TEST automation:
+
+```text
+\BUILD.BAT
+\TEST.BAT
+\TEST.BAT IRQ_CHANGE
+```
+
+This is useful when iterating on one area and avoiding a full host-side
+`./build.sh` or `./test.sh` cycle.
+
+
 ## Test
 
 Tests use the same DOSBox-X pattern and run:
@@ -295,6 +356,7 @@ profiles, capability overrides, and cleanup states.
 | `TPAUI` | TP product ID + live TP/AUI connector capabilities, for Product-ID mismatch tests. |
 | `TRI` | TP product ID + live TP/AUI/BNC connector capabilities. |
 | `MODEMFIELDS` | INIT + non-MODEM Software Information fields set for preservation tests. |
+| `M1200US` | INIT + MODEM raw value `2Fh` (1200 microseconds), for serialization tests. |
 | `NOLINKBEAT` | INIT + `EEPROM_SOFTWARE_INFO` bit 14 set for MODEM preservation tests. |
 
 
@@ -308,7 +370,9 @@ profiles, capability overrides, and cleanup states.
 5. [TEST.MK](TEST.MK) runs the smoke groups, writing:
    - summary log: `TEST.LOG`
    - per-test logs: `ARTIFACT/T0xx.LOG`
-6. [test.sh](test.sh) then runs hardware-limit checks using
+6. [test.sh](test.sh) then runs a specific line-length check on the generated `RESTORE.BAT` files
+   to ensure individual lines in the BATCH file don't exceed the maximum 128 PSP length for DOS.
+7. [test.sh](test.sh) then runs hardware-limit checks using
    [autoexec-testhwl](autoexec-testhwl), generating:
    - `ARTIFACT/HWL64.LOG`
    - `ARTIFACT/HWL128.LOG`
@@ -318,12 +382,39 @@ profiles, capability overrides, and cleanup states.
 
 Notes:
 
-The smoke target exercises `BIN\3CHWMOCK.EXE` by default.
-There's currently no emulation of a 3Com EtherLink III in DOSBox-X, neither in 86Box or pcem.
+The smoke target exercises `BIN\3CHWMOCK.EXE` by default, as there's currently no
+emulation of a 3Com EtherLink III in DOSBox-X, neither in 86Box or pcem.
 The hardware-limit phase is fail-fast: it stops immediately on the first memory
 step that does not report a PASS marker.
 
 To run the test suite against real hardware, see next section.
+
+
+### Running selected test targets
+
+[TEST.BAT](TEST.BAT) defaults to the `smoke` target:
+
+```text
+TEST
+```
+
+It also accepts one optional argument and forwards it as the [TEST.MK](TEST.MK)
+target:
+
+```text
+TEST IRQ_CHANGE
+TEST SAVECONFIG_TEST
+TEST t0203
+```
+
+This allows direct dispatch into any target defined in [TEST.MK](TEST.MK),
+including symbolic test groups such as `LISTING`, `IRQ_CHANGE`,
+`SAVECONFIG_TEST`, or individual test cases such as `t0101`.
+
+When running targets directly, remember that some tests depend on seeded mock
+state. The full `smoke` target starts with `prep` and runs groups in the
+intended order; isolated targets are mainly intended for manual/debug
+iteration.
 
 
 ### Running tests against real hardware

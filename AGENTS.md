@@ -31,6 +31,26 @@
 - Target: DOS, 8086/8088 real-mode, IDEAL mode TASM syntax.
 - Two build variants controlled by a TASM define: `/dREALHW` → `3CCFGCLI.EXE`, `/dMOCKHW` → `3CHWMOCK.EXE`. Default build target always builds both by default.
 
+## Line Ending Convention
+
+Some files are consumed directly by DOS tooling inside DOSBox-X and must keep
+DOS (CRLF) line endings in the working tree:
+
+- any `*.BAT` file
+- any `*.MK` file
+- `MAKEFILE`
+
+This is enforced by [.gitattributes](.gitattributes) via `eol=crlf`, so git
+restores CRLF on every checkout automatically — no manual conversion is
+needed. Note that git normalizes to LF *in storage*; CRLF appears in the
+working tree, which is what the DOS toolchain sees.
+
+All other files (`*.ASM`, `*.INC`, `*.sh`, `*.md`, `CHANGES`, `TODO.TXT`,
+DOSBox `autoexec-*` configs) use LF.
+
+If a new file type ever needs DOS line endings, add it to `.gitattributes`
+and run `git add --renormalize .` once.
+
 ## Project Layout
 
 ```
