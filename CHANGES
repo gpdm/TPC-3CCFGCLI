@@ -1,4 +1,10 @@
 Changelog 0.7.2
+  - Replaced the linear `CMP`/`JNE` error dispatch in `Cfg_Report_Error()`
+    with a bounds-checked `cfg_error_messages` WORD pointer table indexed by
+    the `CFG_ERR_*` code. The procedure shrank from 759 to 30 bytes; the
+    154-byte table yields a net ~575-byte code reduction. All 77 `CFG_ERR_*`
+    numeric values, message wording and error semantics are unchanged;
+    `CFG_ERR_*` values are now stable table indices and must not be renumbered.
   - Completed `Nic_*` backend abstraction migration: removed obsolete CLI
     forwarding wrappers and duplicate `Cfg_Reg_*` aliases.
   - Fixed bare `SAVECONFIG` (NUL directly after the verb) not being

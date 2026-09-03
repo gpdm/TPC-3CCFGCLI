@@ -715,6 +715,106 @@ SAVE_LEN_COAX EQU 4
 save_auto       DB  'AUTO', 0
 SAVE_LEN_AUTO EQU 4
 
+; ---------------------------------------------------------------------------
+; CONFIGURE error message dispatch table.
+;
+; CFG_ERR_* values are stable indices into cfg_error_messages.
+; Do not renumber existing values.
+; Retired values keep a zero table entry.
+; A zero entry means "no message"; Cfg_Report_Error prints nothing for it.
+;
+; Example: if CFG_ERR_FOO EQU 50 is retired, table entry 50 becomes
+;              DW 0
+;          and entries 51 and above stay at their original indices.
+;          Never delete a slot, as that would shift every later entry and
+;          silently remap all following error codes to the wrong message.
+;
+; The valid index range is derived from the table itself via CFG_ERR_COUNT,
+; so appending or removing the last entry needs no other edit.
+; ---------------------------------------------------------------------------
+
+LABEL cfg_error_messages WORD
+    DW      0                                             ; 0 CFG_ERR_NONE
+    DW      OFFSET msg_no_cards                          ; 1 CFG_ERR_NO_NIC
+    DW      OFFSET msg_cfg_bad_adapter                   ; 2 CFG_ERR_BAD_ADAPTER
+    DW      OFFSET msg_cfg_revalidate                    ; 3 CFG_ERR_REVALIDATE
+    DW      OFFSET msg_cfg_unsupported_product           ; 4 CFG_ERR_UNSUPPORTED_PRODUCT
+    DW      OFFSET msg_cfg_unsupported_asic              ; 5 CFG_ERR_UNSUPPORTED_ASIC
+    DW      OFFSET msg_cfg_eeprom_timeout                ; 6 CFG_ERR_EEPROM_TIMEOUT
+    DW      OFFSET msg_cfg_command_timeout               ; 7 CFG_ERR_COMMAND_TIMEOUT
+    DW      OFFSET msg_cfg_bad_option                    ; 8 CFG_ERR_BAD_OPTION
+    DW      OFFSET msg_cfg_missing_value                 ; 9 CFG_ERR_MISSING_VALUE
+    DW      OFFSET msg_cfg_not_implemented               ; 10 CFG_ERR_NOT_IMPLEMENTED
+    DW      OFFSET msg_cfg_need_adapter                  ; 11 CFG_ERR_ADAPTER_REQUIRED
+    DW      OFFSET msg_cfg_dup_property                  ; 12 CFG_ERR_DUP_PROPERTY
+    DW      OFFSET msg_cfg_no_property                   ; 13 CFG_ERR_NO_PROPERTY
+    DW      OFFSET msg_cfg_bad_int                       ; 14 CFG_ERR_BAD_INT
+    DW      OFFSET msg_cfg_eeprom_read_fail              ; 15 CFG_ERR_EEPROM_READ
+    DW      OFFSET msg_cfg_eeprom_write_fail             ; 16 CFG_ERR_EEPROM_WRITE
+    DW      OFFSET msg_cfg_checksum_fail                 ; 17 CFG_ERR_CHECKSUM_UPDATE
+    DW      OFFSET msg_cfg_live_fail                     ; 18 CFG_ERR_LIVE_UPDATE
+    DW      OFFSET msg_cfg_verify_fail                   ; 19 CFG_ERR_VERIFY
+    DW      OFFSET msg_cfg_int_inactive                  ; 20 CFG_ERR_INT_INACTIVE
+    DW      OFFSET msg_cfg_bad_iobase                    ; 21 CFG_ERR_BAD_IOBASE
+    DW      OFFSET msg_cfg_iobase_inactive               ; 22 CFG_ERR_IOBASE_INACTIVE
+    DW      OFFSET msg_cfg_iobase_conflict               ; 23 CFG_ERR_IOBASE_CONFLICT
+    DW      OFFSET msg_cfg_iobase_deactivate_fail        ; 24 CFG_ERR_IOBASE_DEACTIVATE
+    DW      OFFSET msg_cfg_iobase_reactivate_fail        ; 25 CFG_ERR_IOBASE_REACTIVATE
+    DW      OFFSET msg_cfg_iobase_eeprom_read_fail       ; 26 CFG_ERR_IOBASE_EEPROM_READ
+    DW      OFFSET msg_cfg_iobase_eeprom_write_fail      ; 27 CFG_ERR_IOBASE_EEPROM_WRITE
+    DW      OFFSET msg_cfg_iobase_live_fail              ; 28 CFG_ERR_IOBASE_LIVE
+    DW      OFFSET msg_cfg_iobase_verify_fail            ; 29 CFG_ERR_IOBASE_VERIFY
+    DW      OFFSET msg_cfg_iobase_activate_fail          ; 30 CFG_ERR_IOBASE_ACTIVATE
+    DW      OFFSET msg_cfg_bad_pnp                       ; 31 CFG_ERR_BAD_PNP
+    DW      OFFSET msg_cfg_pnp_inactive                  ; 32 CFG_ERR_PNP_INACTIVE
+    DW      OFFSET msg_cfg_pnp_eeprom_read_fail          ; 33 CFG_ERR_PNP_EEPROM_READ
+    DW      OFFSET msg_cfg_pnp_eeprom_write_fail         ; 34 CFG_ERR_PNP_EEPROM_WRITE
+    DW      OFFSET msg_cfg_pnp_verify_fail               ; 35 CFG_ERR_PNP_VERIFY
+    DW      OFFSET msg_cfg_bad_modem                     ; 36 CFG_ERR_BAD_MODEM
+    DW      OFFSET msg_cfg_modem_inactive                ; 37 CFG_ERR_MODEM_INACTIVE
+    DW      OFFSET msg_cfg_modem_eeprom_read_fail        ; 38 CFG_ERR_MODEM_EEPROM_READ
+    DW      OFFSET msg_cfg_modem_eeprom_write_fail       ; 39 CFG_ERR_MODEM_EEPROM_WRITE
+    DW      OFFSET msg_cfg_modem_verify_fail             ; 40 CFG_ERR_MODEM_VERIFY
+    DW      OFFSET msg_cfg_pnp_not_capable               ; 41 CFG_ERR_PNP_NOT_CAPABLE
+    DW      OFFSET msg_cfg_bad_fullduplex                ; 42 CFG_ERR_BAD_FULLDUPLEX
+    DW      OFFSET msg_cfg_fd_inactive                   ; 43 CFG_ERR_FD_INACTIVE
+    DW      OFFSET msg_cfg_fd_eeprom_read_fail           ; 44 CFG_ERR_FD_EEPROM_READ
+    DW      OFFSET msg_cfg_fd_eeprom_write_fail          ; 45 CFG_ERR_FD_EEPROM_WRITE
+    DW      OFFSET msg_cfg_fd_verify_fail                ; 46 CFG_ERR_FD_VERIFY
+    DW      OFFSET msg_cfg_fd_not_capable                ; 47 CFG_ERR_FD_NOT_CAPABLE
+    DW      OFFSET msg_cfg_bad_optimize                  ; 48 CFG_ERR_BAD_OPTIMIZE
+    DW      OFFSET msg_cfg_optimize_inactive             ; 49 CFG_ERR_OPTIMIZE_INACTIVE
+    DW      OFFSET msg_cfg_optimize_eeprom_read_fail     ; 50 CFG_ERR_OPTIMIZE_EEPROM_READ
+    DW      OFFSET msg_cfg_optimize_eeprom_write_fail    ; 51 CFG_ERR_OPTIMIZE_EEPROM_WRITE
+    DW      OFFSET msg_cfg_optimize_verify_fail          ; 52 CFG_ERR_OPTIMIZE_VERIFY
+    DW      OFFSET msg_cfg_bad_baddress                  ; 53 CFG_ERR_BAD_BADDRESS
+    DW      OFFSET msg_cfg_baddress_inactive             ; 54 CFG_ERR_BADDRESS_INACTIVE
+    DW      OFFSET msg_cfg_baddress_eeprom_read_fail     ; 55 CFG_ERR_BADDRESS_EEPROM_READ
+    DW      OFFSET msg_cfg_baddress_eeprom_write_fail    ; 56 CFG_ERR_BADDRESS_EEPROM_WRITE
+    DW      OFFSET msg_cfg_baddress_verify_fail          ; 57 CFG_ERR_BADDRESS_VERIFY
+    DW      OFFSET msg_cfg_baddress_not_capable          ; 58 CFG_ERR_BADDRESS_NOT_CAPABLE
+    DW      OFFSET msg_cfg_bad_bsize                     ; 59 CFG_ERR_BAD_BSIZE
+    DW      OFFSET msg_cfg_bsize_inactive                ; 60 CFG_ERR_BSIZE_INACTIVE
+    DW      OFFSET msg_cfg_bsize_eeprom_read_fail        ; 61 CFG_ERR_BSIZE_EEPROM_READ
+    DW      OFFSET msg_cfg_bsize_eeprom_write_fail       ; 62 CFG_ERR_BSIZE_EEPROM_WRITE
+    DW      OFFSET msg_cfg_bsize_verify_fail             ; 63 CFG_ERR_BSIZE_VERIFY
+    DW      OFFSET msg_cfg_bsize_not_capable             ; 64 CFG_ERR_BSIZE_NOT_CAPABLE
+    DW      OFFSET msg_cfg_bootrom_incomplete            ; 65 CFG_ERR_BOOTROM_INCOMPLETE
+    DW      OFFSET msg_cfg_bad_tr                        ; 66 CFG_ERR_BAD_TR
+    DW      OFFSET msg_cfg_tr_inactive                   ; 67 CFG_ERR_TR_INACTIVE
+    DW      OFFSET msg_cfg_tr_eeprom_read_fail           ; 68 CFG_ERR_TR_EEPROM_READ
+    DW      OFFSET msg_cfg_tr_eeprom_write_fail          ; 69 CFG_ERR_TR_EEPROM_WRITE
+    DW      OFFSET msg_cfg_tr_verify_fail                ; 70 CFG_ERR_TR_VERIFY
+    DW      OFFSET msg_cfg_tr_not_capable                ; 71 CFG_ERR_TR_NOT_CAPABLE
+    DW      OFFSET msg_cfg_tr_capability_read_fail       ; 72 CFG_ERR_TR_CAPABILITY_READ
+    DW      OFFSET msg_cfg_fd_capability_read_fail       ; 73 CFG_ERR_FD_CAPABILITY_READ
+    DW      OFFSET msg_cfg_fd_transceiver                ; 74 CFG_ERR_FD_TRANSCEIVER
+    DW      OFFSET msg_cfg_fd_live_update_fail           ; 75 CFG_ERR_FD_LIVE_UPDATE
+    DW      OFFSET msg_cfg_fd_live_verify_fail           ; 76 CFG_ERR_FD_LIVE_VERIFY
+LABEL cfg_error_messages_end WORD
+
+CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2
+
 CODESEG
 
 ; ---------------------------------------------------------------------------
@@ -3454,394 +3554,25 @@ PROC Cfg_Handle_FULLDUPLEX NEAR
 ENDP Cfg_Handle_FULLDUPLEX
 
 PROC Cfg_Report_Error NEAR
+; Entry: AL = CFG_ERR_* code. Preserves all registers.
     push    ax
+    push    bx
     push    dx
 
-    or      al, al
+    xor     ah, ah
+    cmp     ax, CFG_ERR_COUNT
+    jae     @@Done
+    mov     bx, ax
+    shl     bx, 1
+    mov     dx, [cfg_error_messages+bx]
+    or      dx, dx
     jz      @@Done
-    cmp     al, CFG_ERR_NO_NIC
-    jne     @@E2
-    mov     dx, OFFSET msg_no_cards
-    jmp     @@Print
-@@E2:
-    cmp     al, CFG_ERR_BAD_ADAPTER
-    jne     @@E3
-    mov     dx, OFFSET msg_cfg_bad_adapter
-    jmp     @@Print
-@@E3:
-    cmp     al, CFG_ERR_REVALIDATE
-    jne     @@E4
-    mov     dx, OFFSET msg_cfg_revalidate
-    jmp     @@Print
-@@E4:
-    cmp     al, CFG_ERR_UNSUPPORTED_PRODUCT
-    jne     @@E5
-    mov     dx, OFFSET msg_cfg_unsupported_product
-    jmp     @@Print
-@@E5:
-    cmp     al, CFG_ERR_UNSUPPORTED_ASIC
-    jne     @@E6
-    mov     dx, OFFSET msg_cfg_unsupported_asic
-    jmp     @@Print
-@@E6:
-    cmp     al, CFG_ERR_EEPROM_TIMEOUT
-    jne     @@E7
-    mov     dx, OFFSET msg_cfg_eeprom_timeout
-    jmp     @@Print
-@@E7:
-    cmp     al, CFG_ERR_COMMAND_TIMEOUT
-    jne     @@E8
-    mov     dx, OFFSET msg_cfg_command_timeout
-    jmp     @@Print
-@@E8:
-    cmp     al, CFG_ERR_BAD_OPTION
-    jne     @@E9
-    mov     dx, OFFSET msg_cfg_bad_option
-    jmp     @@Print
-@@E9:
-    cmp     al, CFG_ERR_MISSING_VALUE
-    jne     @@E10
-    mov     dx, OFFSET msg_cfg_missing_value
-    jmp     @@Print
-@@E10:
-    cmp     al, CFG_ERR_NOT_IMPLEMENTED
-    jne     @@E11
-    mov     dx, OFFSET msg_cfg_not_implemented
-    jmp     @@Print
-@@E11:
-    cmp     al, CFG_ERR_ADAPTER_REQUIRED
-    jne     @@E12
-    mov     dx, OFFSET msg_cfg_need_adapter
-    jmp     @@Print
-@@E12:
-    cmp     al, CFG_ERR_DUP_PROPERTY
-    jne     @@E13
-    mov     dx, OFFSET msg_cfg_dup_property
-    jmp     @@Print
-@@E13:
-    cmp     al, CFG_ERR_NO_PROPERTY
-    jne     @@E14
-    mov     dx, OFFSET msg_cfg_no_property
-    jmp     @@Print
-@@E14:
-    cmp     al, CFG_ERR_BAD_INT
-    jne     @@E15
-    mov     dx, OFFSET msg_cfg_bad_int
-    jmp     @@Print
-@@E15:
-    cmp     al, CFG_ERR_EEPROM_READ
-    jne     @@E16
-    mov     dx, OFFSET msg_cfg_eeprom_read_fail
-    jmp     @@Print
-@@E16:
-    cmp     al, CFG_ERR_EEPROM_WRITE
-    jne     @@E17
-    mov     dx, OFFSET msg_cfg_eeprom_write_fail
-    jmp     @@Print
-@@E17:
-    cmp     al, CFG_ERR_CHECKSUM_UPDATE
-    jne     @@E18
-    mov     dx, OFFSET msg_cfg_checksum_fail
-    jmp     @@Print
-@@E18:
-    cmp     al, CFG_ERR_LIVE_UPDATE
-    jne     @@E19
-    mov     dx, OFFSET msg_cfg_live_fail
-    jmp     @@Print
-@@E19:
-    cmp     al, CFG_ERR_VERIFY
-    jne     @@E20
-    mov     dx, OFFSET msg_cfg_verify_fail
-    jmp     @@Print
-@@E20:
-    cmp     al, CFG_ERR_INT_INACTIVE
-    jne     @@E21
-    mov     dx, OFFSET msg_cfg_int_inactive
-    jmp     @@Print
-@@E21:
-    cmp     al, CFG_ERR_BAD_IOBASE
-    jne     @@E22
-    mov     dx, OFFSET msg_cfg_bad_iobase
-    jmp     @@Print
-@@E22:
-    cmp     al, CFG_ERR_IOBASE_INACTIVE
-    jne     @@E23
-    mov     dx, OFFSET msg_cfg_iobase_inactive
-    jmp     @@Print
-@@E23:
-    cmp     al, CFG_ERR_IOBASE_CONFLICT
-    jne     @@E24
-    mov     dx, OFFSET msg_cfg_iobase_conflict
-    jmp     @@Print
-@@E24:
-    cmp     al, CFG_ERR_IOBASE_DEACTIVATE
-    jne     @@E25
-    mov     dx, OFFSET msg_cfg_iobase_deactivate_fail
-    jmp     @@Print
-@@E25:
-    cmp     al, CFG_ERR_IOBASE_REACTIVATE
-    jne     @@E26
-    mov     dx, OFFSET msg_cfg_iobase_reactivate_fail
-    jmp     @@Print
-@@E26:
-    cmp     al, CFG_ERR_IOBASE_EEPROM_READ
-    jne     @@E27
-    mov     dx, OFFSET msg_cfg_iobase_eeprom_read_fail
-    jmp     @@Print
-@@E27:
-    cmp     al, CFG_ERR_IOBASE_EEPROM_WRITE
-    jne     @@E28
-    mov     dx, OFFSET msg_cfg_iobase_eeprom_write_fail
-    jmp     @@Print
-@@E28:
-    cmp     al, CFG_ERR_IOBASE_LIVE
-    jne     @@E29
-    mov     dx, OFFSET msg_cfg_iobase_live_fail
-    jmp     @@Print
-@@E29:
-    cmp     al, CFG_ERR_IOBASE_VERIFY
-    jne     @@E30
-    mov     dx, OFFSET msg_cfg_iobase_verify_fail
-    jmp     @@Print
-@@E30:
-    cmp     al, CFG_ERR_IOBASE_ACTIVATE
-    jne     @@E31
-    mov     dx, OFFSET msg_cfg_iobase_activate_fail
-    jmp     @@Print
-@@E31:
-    cmp     al, CFG_ERR_BAD_PNP
-    jne     @@E32
-    mov     dx, OFFSET msg_cfg_bad_pnp
-    jmp     @@Print
-@@E32:
-    cmp     al, CFG_ERR_PNP_INACTIVE
-    jne     @@E33
-    mov     dx, OFFSET msg_cfg_pnp_inactive
-    jmp     @@Print
-@@E33:
-    cmp     al, CFG_ERR_PNP_EEPROM_READ
-    jne     @@E34
-    mov     dx, OFFSET msg_cfg_pnp_eeprom_read_fail
-    jmp     @@Print
-@@E34:
-    cmp     al, CFG_ERR_PNP_EEPROM_WRITE
-    jne     @@E35
-    mov     dx, OFFSET msg_cfg_pnp_eeprom_write_fail
-    jmp     @@Print
-@@E35:
-    cmp     al, CFG_ERR_PNP_VERIFY
-    jne     @@E36
-    mov     dx, OFFSET msg_cfg_pnp_verify_fail
-    jmp     @@Print
-@@E36:
-    cmp     al, CFG_ERR_BAD_MODEM
-    jne     @@E37
-    mov     dx, OFFSET msg_cfg_bad_modem
-    jmp     @@Print
-@@E37:
-    cmp     al, CFG_ERR_MODEM_INACTIVE
-    jne     @@E38
-    mov     dx, OFFSET msg_cfg_modem_inactive
-    jmp     @@Print
-@@E38:
-    cmp     al, CFG_ERR_MODEM_EEPROM_READ
-    jne     @@E39
-    mov     dx, OFFSET msg_cfg_modem_eeprom_read_fail
-    jmp     @@Print
-@@E39:
-    cmp     al, CFG_ERR_MODEM_EEPROM_WRITE
-    jne     @@E40
-    mov     dx, OFFSET msg_cfg_modem_eeprom_write_fail
-    jmp     @@Print
-@@E40:
-    cmp     al, CFG_ERR_MODEM_VERIFY
-    jne     @@E41
-    mov     dx, OFFSET msg_cfg_modem_verify_fail
-    jmp     @@Print
-@@E41:
-    cmp     al, CFG_ERR_BAD_OPTIMIZE
-    jne     @@E42
-    mov     dx, OFFSET msg_cfg_bad_optimize
-    jmp     @@Print
-@@E42:
-    cmp     al, CFG_ERR_OPTIMIZE_INACTIVE
-    jne     @@E43
-    mov     dx, OFFSET msg_cfg_optimize_inactive
-    jmp     @@Print
-@@E43:
-    cmp     al, CFG_ERR_OPTIMIZE_EEPROM_READ
-    jne     @@E44
-    mov     dx, OFFSET msg_cfg_optimize_eeprom_read_fail
-    jmp     @@Print
-@@E44:
-    cmp     al, CFG_ERR_OPTIMIZE_EEPROM_WRITE
-    jne     @@E45
-    mov     dx, OFFSET msg_cfg_optimize_eeprom_write_fail
-    jmp     @@Print
-@@E45:
-    cmp     al, CFG_ERR_OPTIMIZE_VERIFY
-    jne     @@E46
-    mov     dx, OFFSET msg_cfg_optimize_verify_fail
-    jmp     @@Print
-@@E46:
-    cmp     al, CFG_ERR_PNP_NOT_CAPABLE
-    jne     @@E47
-    mov     dx, OFFSET msg_cfg_pnp_not_capable
-    jmp     @@Print
-@@E47:
-    cmp     al, CFG_ERR_BAD_FULLDUPLEX
-    jne     @@E48
-    mov     dx, OFFSET msg_cfg_bad_fullduplex
-    jmp     @@Print
-@@E48:
-    cmp     al, CFG_ERR_FD_INACTIVE
-    jne     @@E49
-    mov     dx, OFFSET msg_cfg_fd_inactive
-    jmp     @@Print
-@@E49:
-    cmp     al, CFG_ERR_FD_EEPROM_READ
-    jne     @@E50
-    mov     dx, OFFSET msg_cfg_fd_eeprom_read_fail
-    jmp     @@Print
-@@E50:
-    cmp     al, CFG_ERR_FD_EEPROM_WRITE
-    jne     @@E51
-    mov     dx, OFFSET msg_cfg_fd_eeprom_write_fail
-    jmp     @@Print
-@@E51:
-    cmp     al, CFG_ERR_FD_VERIFY
-    jne     @@E52
-    mov     dx, OFFSET msg_cfg_fd_verify_fail
-    jmp     @@Print
-@@E52:
-    cmp     al, CFG_ERR_FD_NOT_CAPABLE
-    jne     @@E53
-    mov     dx, OFFSET msg_cfg_fd_not_capable
-    jmp     @@Print
-@@E53:
-    cmp     al, CFG_ERR_BAD_BADDRESS
-    jne     @@E54
-    mov     dx, OFFSET msg_cfg_bad_baddress
-    jmp     @@Print
-@@E54:
-    cmp     al, CFG_ERR_BADDRESS_INACTIVE
-    jne     @@E55
-    mov     dx, OFFSET msg_cfg_baddress_inactive
-    jmp     @@Print
-@@E55:
-    cmp     al, CFG_ERR_BADDRESS_EEPROM_READ
-    jne     @@E56
-    mov     dx, OFFSET msg_cfg_baddress_eeprom_read_fail
-    jmp     @@Print
-@@E56:
-    cmp     al, CFG_ERR_BADDRESS_EEPROM_WRITE
-    jne     @@E57
-    mov     dx, OFFSET msg_cfg_baddress_eeprom_write_fail
-    jmp     @@Print
-@@E57:
-    cmp     al, CFG_ERR_BADDRESS_VERIFY
-    jne     @@E58
-    mov     dx, OFFSET msg_cfg_baddress_verify_fail
-    jmp     @@Print
-@@E58:
-    cmp     al, CFG_ERR_BADDRESS_NOT_CAPABLE
-    jne     @@E59
-    mov     dx, OFFSET msg_cfg_baddress_not_capable
-    jmp     @@Print
-@@E59:
-    cmp     al, CFG_ERR_BAD_BSIZE
-    jne     @@E60
-    mov     dx, OFFSET msg_cfg_bad_bsize
-    jmp     @@Print
-@@E60:
-    cmp     al, CFG_ERR_BSIZE_INACTIVE
-    jne     @@E61
-    mov     dx, OFFSET msg_cfg_bsize_inactive
-    jmp     @@Print
-@@E61:
-    cmp     al, CFG_ERR_BSIZE_EEPROM_READ
-    jne     @@E62
-    mov     dx, OFFSET msg_cfg_bsize_eeprom_read_fail
-    jmp     @@Print
-@@E62:
-    cmp     al, CFG_ERR_BSIZE_EEPROM_WRITE
-    jne     @@E63
-    mov     dx, OFFSET msg_cfg_bsize_eeprom_write_fail
-    jmp     @@Print
-@@E63:
-    cmp     al, CFG_ERR_BSIZE_VERIFY
-    jne     @@E64
-    mov     dx, OFFSET msg_cfg_bsize_verify_fail
-    jmp     @@Print
-@@E64:
-    cmp     al, CFG_ERR_BSIZE_NOT_CAPABLE
-    jne     @@E65
-    mov     dx, OFFSET msg_cfg_bsize_not_capable
-    jmp     @@Print
-@@E65:
-    cmp     al, CFG_ERR_BOOTROM_INCOMPLETE
-    jne     @@E66
-    mov     dx, OFFSET msg_cfg_bootrom_incomplete
-    jmp     @@Print
-@@E66:
-    cmp     al, CFG_ERR_BAD_TR
-    jne     @@E67
-    mov     dx, OFFSET msg_cfg_bad_tr
-    jmp     @@Print
-@@E67:
-    cmp     al, CFG_ERR_TR_INACTIVE
-    jne     @@E68
-    mov     dx, OFFSET msg_cfg_tr_inactive
-    jmp     @@Print
-@@E68:
-    cmp     al, CFG_ERR_TR_EEPROM_READ
-    jne     @@E69
-    mov     dx, OFFSET msg_cfg_tr_eeprom_read_fail
-    jmp     @@Print
-@@E69:
-    cmp     al, CFG_ERR_TR_EEPROM_WRITE
-    jne     @@E70
-    mov     dx, OFFSET msg_cfg_tr_eeprom_write_fail
-    jmp     @@Print
-@@E70:
-    cmp     al, CFG_ERR_TR_VERIFY
-    jne     @@E71
-    mov     dx, OFFSET msg_cfg_tr_verify_fail
-    jmp     @@Print
-@@E71:
-    cmp     al, CFG_ERR_TR_NOT_CAPABLE
-    jne     @@E72
-    mov     dx, OFFSET msg_cfg_tr_not_capable
-    jmp     @@Print
-@@E72:
-    cmp     al, CFG_ERR_TR_CAPABILITY_READ
-    jne     @@E73
-    mov     dx, OFFSET msg_cfg_tr_capability_read_fail
-    jmp     @@Print
-@@E73:
-    cmp     al, CFG_ERR_FD_CAPABILITY_READ
-    jne     @@E74
-    mov     dx, OFFSET msg_cfg_fd_capability_read_fail
-    jmp     @@Print
-@@E74:
-    cmp     al, CFG_ERR_FD_TRANSCEIVER
-    jne     @@E75
-    mov     dx, OFFSET msg_cfg_fd_transceiver
-    jmp     @@Print
-@@E75:
-    cmp     al, CFG_ERR_FD_LIVE_UPDATE
-    jne     @@E76
-    mov     dx, OFFSET msg_cfg_fd_live_update_fail
-    jmp     @@Print
-@@E76:
-    cmp     al, CFG_ERR_FD_LIVE_VERIFY
-    jne     @@Done
-    mov     dx, OFFSET msg_cfg_fd_live_verify_fail
-@@Print:
     mov     ah, 09h
     int     21h
+
 @@Done:
     pop     dx
+    pop     bx
     pop     ax
     ret
 ENDP Cfg_Report_Error
