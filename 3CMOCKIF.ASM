@@ -1133,16 +1133,11 @@ PROC Nic_IO_Read_Byte NEAR
     ret
 ENDP Nic_IO_Read_Byte
 
-PROC Cfg_Reg_Read_Word NEAR
+PROC Nic_Reg_Read_Word NEAR
     push    dx
     add     dx, bx
     call    Nic_IO_Read_Word
     pop     dx
-    ret
-ENDP Cfg_Reg_Read_Word
-
-PROC Nic_Reg_Read_Word NEAR
-    call    Cfg_Reg_Read_Word
     ret
 ENDP Nic_Reg_Read_Word
 
@@ -1405,16 +1400,11 @@ PROC Nic_IO_Write_Byte NEAR
     ret
 ENDP Nic_IO_Write_Byte
 
-PROC Cfg_Reg_Write_Word NEAR
+PROC Nic_Reg_Write_Word NEAR
     push    dx
     add     dx, bx
     call    Nic_IO_Write_Word
     pop     dx
-    ret
-ENDP Cfg_Reg_Write_Word
-
-PROC Nic_Reg_Write_Word NEAR
-    call    Cfg_Reg_Write_Word
     ret
 ENDP Nic_Reg_Write_Word
 
@@ -1433,15 +1423,15 @@ PROC Nic_EEPROM_Read NEAR
     and     ax, 003Fh
     or      ax, EEPROM_CMD_READ
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     mov     cx, 4000h
 @@Busy:
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     test    ax, EEPROM_BUSY
     jnz     @@Wait
     mov     bx, EL3_W0_EEPROM_DATA
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     jmp     @@Done
 @@Wait:
     loop    @@Busy

@@ -1,4 +1,6 @@
 Changelog 0.7.2
+  - Completed `Nic_*` backend abstraction migration: removed obsolete CLI
+    forwarding wrappers and duplicate `Cfg_Reg_*` aliases.
   - Fixed bare `SAVECONFIG` (NUL directly after the verb) not being
     recognized by the top level command parser. It now matches the existing
     CONFIGURE boundary handling and produces the default `RESTORE.BAT`.

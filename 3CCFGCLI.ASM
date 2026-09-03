@@ -1203,16 +1203,16 @@ PROC Cmd_SaveConfig NEAR
     jz      @@SkipAdapter
 
     mov     al, EEPROM_ADDR_CFG
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [save_word08], ax
     mov     al, EEPROM_RESOURCE_CFG
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [save_word09], ax
     mov     al, EEPROM_SOFTWARE_INFO
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [save_word0d], ax
     mov     al, EEPROM_CONFIG_CONTROL
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [save_word13], ax
 
     mov     ax, [current_card]
@@ -4009,7 +4009,7 @@ PROC Scan_All_3Com_Cards NEAR
     call    Discover_Id_Port_Cards
 
     ; The original program tags the contenders first and activates them later.
-    call    Activate_Tagged_Cards
+    call    Nic_Activate_Tagged_Cards
 
     ; Finally examine all valid active I O bases.  This also catches a board
     ; that was already active before the proprietary ID sequence was entered.
@@ -4024,41 +4024,6 @@ ENDP Scan_All_3Com_Cards
 ; ============================================================================
 ; ISA ID port discovery
 ; ============================================================================
-
-; Send the complete 255 byte LFSR sequence.
-; This matches original sub_328.
-PROC IdPort_Send_Full_Sequence NEAR
-    call    Nic_IdPort_Send_Full_Sequence
-    ret
-ENDP IdPort_Send_Full_Sequence
-
-; Send the first 8 bytes of the same LFSR stream.
-; This matches original sub_329.
-PROC IdPort_Send_Short_Sequence NEAR
-    call    Nic_IdPort_Send_Short_Sequence
-    ret
-ENDP IdPort_Send_Short_Sequence
-
-; Conservative delay after an ID port EEPROM read command.
-; The hardware minimum is about 162 microseconds.  The original utility uses
-; a calibrated delay routine.  This reduced build uses repeated ISA I O reads
-; so it remains valid on an 8086 and is intentionally longer than the minimum.
-PROC IdPort_Eeprom_Delay NEAR
-    call    Nic_IdPort_Eeprom_Delay
-    ret
-ENDP IdPort_Eeprom_Delay
-
-; Read one 16 bit EEPROM word through the ISA ID port.
-; Input: AL = EEPROM word index, without the 80h read opcode.
-; Output: AX = word, assembled MSB first.
-;
-; A separate SI accumulator is essential.  The failed reimplementation used
-; AL both as the port input byte and as the low byte of AX, destroying the
-; partially assembled word at every bit.
-PROC IdPort_Read_Word NEAR
-    call    Nic_IdPort_Read_Word
-    ret
-ENDP IdPort_Read_Word
 
 ; Return carry clear for a product in the 3C509 family.
 ; The original enumeration applies F0FFh and accepts 9050h family products.
@@ -4076,49 +4041,43 @@ PROC Is_3C509_Family NEAR
     ret
 ENDP Is_3C509_Family
 
-; Initialize both ID sequence modes exactly in the order used by sub_332.
-PROC IdPort_Initialize NEAR
-    call    Nic_Init_Id_Port
-    ret
-ENDP IdPort_Initialize
-
 ; Read the fields needed to construct one record while the current contender
 ; still owns the ID port.
 PROC Read_Id_Contender_Data NEAR
     push    ax
 
     mov     al, EEPROM_NODE_0
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
 
     mov     al, EEPROM_NODE_1
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
 
     mov     al, EEPROM_NODE_2
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
 
     mov     al, EEPROM_ADDR_CFG
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_addr_cfg], ax
 
     mov     al, EEPROM_RESOURCE_CFG
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_resource_cfg], ax
 
     ; Original sub_339 stores the OEM node address at words 0Ah through 0Ch.
     mov     al, EEPROM_OEM_NODE_0
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_oem0], ax
 
     mov     al, EEPROM_OEM_NODE_1
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_oem1], ax
 
     mov     al, EEPROM_OEM_NODE_2
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_oem2], ax
 
     mov     al, EEPROM_SOFTWARE_INFO
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
 
     pop     ax
     ret
@@ -4296,7 +4255,7 @@ PROC Discover_Id_Port_Cards NEAR
     push    dx
     push    di
 
-    call    IdPort_Initialize
+    call    Nic_Init_Id_Port
 
 @@ProbeAgain:
     mov     al, [id_next_tag]
@@ -4306,15 +4265,15 @@ PROC Discover_Id_Port_Cards NEAR
     cli
     cmp     [id_short_mode], 0
     je      @@UseFull
-    call    IdPort_Send_Short_Sequence
+    call    Nic_IdPort_Send_Short_Sequence
     jmp     @@SequenceReady
 @@UseFull:
-    call    IdPort_Send_Full_Sequence
+    call    Nic_IdPort_Send_Full_Sequence
 @@SequenceReady:
 
     ; The original presence test is manufacturer word 7, not node word 0.
     mov     al, EEPROM_MFG_ID
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ax, 06D50h
     je      @@ManufacturerGood
 
@@ -4326,7 +4285,7 @@ PROC Discover_Id_Port_Cards NEAR
 
 @@ManufacturerGood:
     mov     al, EEPROM_PRODUCT_ID
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     mov     [id_product], ax
     call    Is_3C509_Family
     jnc     @@ProductGood
@@ -4389,48 +4348,12 @@ PROC Discover_Id_Port_Cards NEAR
 ENDP Discover_Id_Port_Cards
 
 ; ============================================================================
-; Activation of tagged ISA adapters
-; ============================================================================
-PROC Activate_Tagged_Cards NEAR
-    call    Nic_Activate_Tagged_Cards
-    ret
-ENDP Activate_Tagged_Cards
-
-; ============================================================================
 ; Active register access and signature verification
 ; ============================================================================
-
-; Input DX = base, AL = window 0 through 7.
-PROC Select_Window NEAR
-    call    Nic_Select_Window
-    ret
-ENDP Select_Window
-
-; Input DX = base.  Output AX = current window number.
-PROC Get_Current_Window NEAR
-    call    Nic_Get_Current_Window
-    ret
-ENDP Get_Current_Window
-
-; Verify a live 3C509 register image.
-; Input DX = candidate base.
-; Output CF clear on success, AX = normalized product ID, BL = ASIC revision.
-; The normal x86 word order is 6D50h.  A byte swapped 506Dh read is accepted
-; defensively and the product ID is normalized in the same way.
-PROC Check_3Com_Signature NEAR
-    call    Nic_Check_3Com_Signature
-    ret
-ENDP Check_3Com_Signature
 
 ; ============================================================================
 ; Active EEPROM access
 ; ============================================================================
-; Input DX = base, AL = EEPROM word index.
-; Output AX = EEPROM word, FFFFh on timeout.
-PROC EEPROM_Read NEAR
-    call    Nic_EEPROM_Read
-    ret
-ENDP EEPROM_Read
 
 ; Read hardware capability sources independently.
 ; Input DX = active I/O base.  Output AX = NIC_CAP_* values, BX =
@@ -4443,14 +4366,14 @@ PROC Nic_Read_Capabilities NEAR
     push    di
 
     mov     si, dx
-    call    Get_Current_Window
+    call    Nic_Get_Current_Window
     mov     di, ax
     xor     bx, bx                  ; validity result
     xor     cx, cx                  ; normalized capability result
 
     mov     dx, si
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
     mov     bx, EL3_W0_CONFIG_CONTROL
     call    Nic_Reg_Read_Word
     xor     bx, bx                  ; discard register offset; rebuild validity
@@ -4472,7 +4395,7 @@ PROC Nic_Read_Capabilities NEAR
 @@ReadPnp:
     mov     dx, si
     mov     al, EEPROM_CAPABILITY
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     cmp     ax, 0FFFFh
     je      @@ReadRevision
     or      bx, NIC_CAP_VALID_PNP
@@ -4485,7 +4408,7 @@ PROC Nic_Read_Capabilities NEAR
     jz      @@Restore
     mov     dx, si
     mov     al, EEPROM_REVISION_INFO
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     cmp     ax, 0FFFFh
     je      @@Restore
     or      bx, NIC_CAP_VALID_FULLDUPLEX
@@ -4499,7 +4422,7 @@ PROC Nic_Read_Capabilities NEAR
 @@Restore:
     mov     ax, di
     mov     dx, si
-    call    Select_Window
+    call    Nic_Select_Window
     mov     ax, cx
     clc
 @@Exit:
@@ -4530,25 +4453,25 @@ PROC Build_Record_From_Active NEAR
     mov     si, dx
 
     mov     al, EEPROM_ADDR_CFG
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [id_addr_cfg], ax
 
     mov     dx, si
     mov     al, EEPROM_RESOURCE_CFG
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [id_resource_cfg], ax
 
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_0
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [id_oem0], ax
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_1
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [id_oem1], ax
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_2
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [id_oem2], ax
 
     mov     ax, [id_resource_cfg]
@@ -4633,7 +4556,7 @@ PROC Scan_Active_Base_Ports NEAR
     jz      @@Done
     mov     dx, ax
 
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@PortLoop
 
     push    ax
@@ -4652,7 +4575,7 @@ PROC Scan_Active_Base_Ports NEAR
     add     di, ax
 
     mov     dx, [si-2]
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@PortLoop
     call    Build_Record_From_Active
     inc     [card_count]
@@ -4671,7 +4594,7 @@ PROC Scan_Active_Base_Ports NEAR
     loop    @@FindExisting
     jmp     @@PortLoop
 @@Refresh:
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@PortLoop
     mov     [WORD di + NIC_PRODUCT_ID], ax
     mov     [BYTE di + NIC_ASIC_REV], bl
@@ -4808,7 +4731,7 @@ PROC Cfg_Eeprom_Wait_Ready NEAR
     call    Cfg_Start_Wait_Timer
 @@Loop:
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     test    ax, EEPROM_BUSY
     jz      @@Ready
     call    Cfg_Wait_Expired
@@ -4848,16 +4771,16 @@ PROC Cfg_Eeprom_Read NEAR
     xor     ah, ah
     mov     si, ax
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
 
     mov     ax, si
     or      ax, 0080h
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
     mov     bx, EL3_W0_EEPROM_DATA
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     cmp     [cfg_timeout_latched], 0
     jne     @@Fail
 
@@ -4899,32 +4822,32 @@ PROC Cfg_Eeprom_Write NEAR
     mov     di, bx                 ; DI = data word.
 
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
 
     mov     ax, 0030h
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
     mov     ax, 00C0h
     or      ax, si
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
     mov     ax, di
     mov     bx, EL3_W0_EEPROM_DATA
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
 
     mov     ax, 0030h
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
     mov     ax, 0040h
     or      ax, si
     mov     bx, EL3_W0_EEPROM_COMMAND
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
     cmp     [cfg_timeout_latched], 0
@@ -5118,23 +5041,23 @@ PROC Cfg_Txn_Retag_Selected NEAR
     push    dx
     push    si
 
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
-    call    IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
+    call    Nic_IdPort_Eeprom_Delay
 
     mov     si, [cfg_selected_ptr]
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
-    call    IdPort_Send_Short_Sequence
+    call    Nic_IdPort_Send_Short_Sequence
     jmp     @@WriteTag
 @@Full:
-    call    IdPort_Send_Full_Sequence
+    call    Nic_IdPort_Send_Full_Sequence
 @@WriteTag:
     mov     dx, ID_PORT
     mov     al, ID_CMD_SET_TAG
@@ -5281,12 +5204,12 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     [cfg_txn_old_live06], ax
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     [cfg_txn_old_live08], ax
 
     mov     ax, [cfg_txn_old_word08]
@@ -5815,7 +5738,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     cmp     ax, 0FFFFh
     je      @@Retag
     mov     dx, bx
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@Retag
     mov     si, [cfg_selected_ptr]
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
@@ -5855,19 +5778,19 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
     mov     ax, [cfg_txn_new_live06]
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     mov     ax, [cfg_txn_new_live08]
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
 
     ; Confirm that an EtherLink III register image is reachable.  At this stage
     ; keep the proven strict product and ASIC comparison before any EEPROM write.
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@ActivationFail
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@ActivationFail
@@ -5880,12 +5803,12 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
 
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@CheckIRQ
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     and     al, 01Fh
     cmp     al, [cfg_txn_io_selector]
     jne     @@ActivationLiveFail
@@ -5896,7 +5819,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     test    [cfg_txn_change_flags], CFG_TXN_INT_MIGRATE_MASK
     jz      @@Success
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     bx, ax
     mov     cl, 12
     shr     bx, cl
@@ -5910,7 +5833,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@Success
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     bx, ax
     mov     cl, 12
     shr     bx, cl
@@ -6182,15 +6105,15 @@ PROC Cfg_Txn_Write_Live NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
 
     test    [cfg_txn_change_flags], CFG_TXN_LIVE06_MASK
     jz      @@INT
     mov     ax, [cfg_txn_new_live06]
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     and     al, 01Fh
     cmp     al, [cfg_txn_io_selector]
     jne     @@IOFail
@@ -6200,9 +6123,9 @@ PROC Cfg_Txn_Write_Live NEAR
     jz      @@Success
     mov     ax, [cfg_txn_new_live08]
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     bx, ax
     mov     cl, 12
     shr     bx, cl
@@ -6266,7 +6189,7 @@ PROC Cfg_Txn_Verify NEAR
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@ReachFail
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@ReachFail
@@ -6312,9 +6235,9 @@ PROC Cfg_Txn_Verify NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
     mov     bx, EL3_W0_ADDRESS_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     and     al, 01Fh
     cmp     al, [cfg_txn_io_selector]
     jne     @@IOVerifyFail
@@ -6372,9 +6295,9 @@ PROC Cfg_Txn_Verify NEAR
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     xor     al, al
-    call    Select_Window
+    call    Nic_Select_Window
     mov     bx, EL3_W0_RESOURCE_CFG
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     mov     bx, ax
     mov     cl, 12
     shr     bx, cl
@@ -6596,14 +6519,14 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Get_Current_Window
+    call    Nic_Get_Current_Window
     mov     di, ax
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, 4
-    call    Select_Window
+    call    Nic_Select_Window
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     cmp     ax, 0FFFFh
     je      @@UpdateFail
 
@@ -6619,9 +6542,9 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
     or      ax, W4_NET_DIAG_FD_ENABLE
 @@Write:
     mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
-    call    Cfg_Reg_Write_Word
+    call    Nic_Reg_Write_Word
     mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
-    call    Cfg_Reg_Read_Word
+    call    Nic_Reg_Read_Word
     cmp     ax, 0FFFFh
     je      @@VerifyFail
     test    ax, W4_NET_DIAG_FD_ENABLE
@@ -6648,13 +6571,13 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
 @@RestoreFail:
     mov     ax, di
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Select_Window
+    call    Nic_Select_Window
     stc
     jmp     @@Done
 @@RestoreSuccess:
     mov     ax, di
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Select_Window
+    call    Nic_Select_Window
 @@Success:
     clc
 @@Done:
@@ -7484,7 +7407,7 @@ PROC Cfg_Revalidate_Selected NEAR
     or      dx, dx
     jz      @@ByTag
 
-    call    Check_3Com_Signature
+    call    Nic_Check_3Com_Signature
     jc      @@Mismatch
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@Mismatch
@@ -7495,7 +7418,7 @@ PROC Cfg_Revalidate_Selected NEAR
 
 @@Mac:
     mov     dx, [WORD si + NIC_IO_BASE]
-    call    Get_Current_Window
+    call    Nic_Get_Current_Window
     mov     ch, al
 
     mov     dx, [WORD si + NIC_IO_BASE]
@@ -7527,18 +7450,18 @@ PROC Cfg_Revalidate_Selected NEAR
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, ch
-    call    Select_Window
+    call    Nic_Select_Window
     jmp     @@Good
 
 @@RestoreReadError:
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, ch
-    call    Select_Window
+    call    Nic_Select_Window
     jmp     @@Fail
 @@RestoreMismatch:
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, ch
-    call    Select_Window
+    call    Nic_Select_Window
     jmp     @@Mismatch
 
 @@ByTag:
@@ -7553,10 +7476,10 @@ PROC Cfg_Revalidate_Selected NEAR
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@FullSequence
-    call    IdPort_Send_Short_Sequence
+    call    Nic_IdPort_Send_Short_Sequence
     jmp     @@SelectTag
 @@FullSequence:
-    call    IdPort_Send_Full_Sequence
+    call    Nic_IdPort_Send_Full_Sequence
 @@SelectTag:
     mov     dx, ID_PORT
     mov     al, ID_CMD_SELECT_TAG
@@ -7564,30 +7487,30 @@ PROC Cfg_Revalidate_Selected NEAR
     call    Nic_IdPort_Write_Command
 
     mov     al, EEPROM_MFG_ID
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ax, 06D50h
     jne     @@TagMismatch
     mov     al, EEPROM_PRODUCT_ID
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@TagMismatch
     call    Cfg_Is_Supported_Product
     jc      @@TagUnsupported
 
     mov     al, EEPROM_OEM_NODE_0
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ah, [BYTE si + NIC_MAC_ADDR]
     jne     @@TagMismatch
     cmp     al, [BYTE si + NIC_MAC_ADDR + 1]
     jne     @@TagMismatch
     mov     al, EEPROM_OEM_NODE_1
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ah, [BYTE si + NIC_MAC_ADDR + 2]
     jne     @@TagMismatch
     cmp     al, [BYTE si + NIC_MAC_ADDR + 3]
     jne     @@TagMismatch
     mov     al, EEPROM_OEM_NODE_2
-    call    IdPort_Read_Word
+    call    Nic_IdPort_Read_Word
     cmp     ah, [BYTE si + NIC_MAC_ADDR + 4]
     jne     @@TagMismatch
     cmp     al, [BYTE si + NIC_MAC_ADDR + 5]
@@ -7633,10 +7556,10 @@ PROC Cfg_Id_Deactivate_Selected NEAR
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
-    call    IdPort_Send_Short_Sequence
+    call    Nic_IdPort_Send_Short_Sequence
     jmp     @@Selected
 @@Full:
-    call    IdPort_Send_Full_Sequence
+    call    Nic_IdPort_Send_Full_Sequence
 @@Selected:
     mov     dx, ID_PORT
     mov     al, ID_CMD_SELECT_TAG
@@ -7662,10 +7585,10 @@ PROC Cfg_Id_Activate_Selected NEAR
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
-    call    IdPort_Send_Short_Sequence
+    call    Nic_IdPort_Send_Short_Sequence
     jmp     @@Select
 @@Full:
-    call    IdPort_Send_Full_Sequence
+    call    Nic_IdPort_Send_Full_Sequence
 @@Select:
     mov     dx, ID_PORT
     mov     al, ID_CMD_SELECT_TAG
@@ -7733,17 +7656,17 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_nic_capability_valid], bx
 
     mov     al, EEPROM_ADDR_CFG
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [ext_addr_cfg], ax
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_COMPATIBILITY
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [ext_compatibility], ax
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_SOFTWARE_INFO
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [ext_software_info], ax
     mov     [ext_optimize], ax
 
@@ -7770,12 +7693,12 @@ PROC Read_Extended_Nic_Info NEAR
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CONFIG_CONTROL
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [ext_config_ctrl], ax
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_REVISION_INFO
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [ext_revision_info], ax
 
     mov     ax, [ext_revision_info]
@@ -7787,7 +7710,7 @@ PROC Read_Extended_Nic_Info NEAR
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CAPABILITY
-    call    EEPROM_Read
+    call    Nic_EEPROM_Read
     mov     [ext_capability], ax
 
 @@Done:

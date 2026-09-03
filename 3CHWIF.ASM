@@ -181,29 +181,19 @@ PROC Nic_Wait_Command_Ready NEAR
     ret
 ENDP Nic_Wait_Command_Ready
 
-PROC Cfg_Reg_Read_Word NEAR
+PROC Nic_Reg_Read_Word NEAR
     push    dx
     add     dx, bx
     call    Nic_IO_Read_Word
     pop     dx
     ret
-ENDP Cfg_Reg_Read_Word
-
-PROC Nic_Reg_Read_Word NEAR
-    call    Cfg_Reg_Read_Word
-    ret
 ENDP Nic_Reg_Read_Word
 
-PROC Cfg_Reg_Write_Word NEAR
+PROC Nic_Reg_Write_Word NEAR
     push    dx
     add     dx, bx
     call    Nic_IO_Write_Word
     pop     dx
-    ret
-ENDP Cfg_Reg_Write_Word
-
-PROC Nic_Reg_Write_Word NEAR
-    call    Cfg_Reg_Write_Word
     ret
 ENDP Nic_Reg_Write_Word
 
