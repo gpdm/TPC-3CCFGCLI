@@ -55,77 +55,63 @@ clean-test:
 # ####################
 
 # Base: 0100
-LISTING: t0101 t0102
-   @echo LISTING: Verify general card listing behaviour ... >> TEST.LOG
+LISTING: t0100 t0101 t0102
 
 # Base: 0200
-IRQ_CHANGE: t0201 t0202 t0203 t0204
-   @echo IRQ_CHANGE: Verify IRQ change behaviour ... >> TEST.LOG
+IRQ_CHANGE: t0200 t0201 t0202 t0203 t0204
 
 # Base: 0300
-DEFAULT_NIC_SELECTION: t0301 t0302
-   @echo DEFAULT_NIC_SELECTION: Verify default NIC selection behaviour ... >> TEST.LOG
+DEFAULT_NIC_SELECTION: t0300 t0301 t0302
 
 # Base: 0400
-IOBASE_CHANGE: t0401 t0402 t0403 t0404 t0405 t0406 t0407 t0408 t0409
-   @echo IOBASE_CHANGE: Verify IO base change behaviour ... >> TEST.LOG
+IOBASE_CHANGE: t0400 t0401 t0402 t0403 t0404 t0405 t0406 t0407 t0408 t0409
 
 # Base: 0500
-PNP_CHANGE: t0501 t0502 t0503 t0504 t0505
-   @echo PNP_CHANGE: Verify PNP property change behaviour ... >> TEST.LOG
+PNP_CHANGE: t0500 t0501 t0502 t0503 t0504 t0505
 
 # Base: 0600
-MODEM_CHANGE: t0601 t0602 t0603 t0604 t0605 t0606 t0607 t0608 t0609 t0610
-   @echo MODEM_CHANGE: Verify MODEM property change behaviour ... >> TEST.LOG
+MODEM_CHANGE: t0600 t0601 t0602 t0603 t0604 t0605 t0606 t0607 t0608 t0609 t0610
 
 # Base: 0700
-FD_CHANGE: t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0709 t0710 t0711 t0712 t0713
-   @echo FD_CHANGE: Verify FULLDUPLEX property behaviour ... >> TEST.LOG
+FD_CHANGE: t0700 t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0709 t0710 t0711 t0712 t0713
 
 # Base: 0800
-CAPABILITY_GATES: t0801 t0802 t0803
-   @echo CAPABILITY_GATES: Verify capability gates behaviour ... >> TEST.LOG
+CAPABILITY_GATES: t0800 t0801 t0802 t0803
 
 # Base: 0900
-OPTIMIZE_CHANGE: t0901 t0902 t0903 t0904
-   @echo OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour ... >> TEST.LOG
+OPTIMIZE_CHANGE: t0900 t0901 t0902 t0903 t0904
 
 # Base: 1000
-LINK_STATUS: t1001 t1002
-   @echo LINK_STATUS: Verify LINKBEAT reporting ... >> TEST.LOG
+LINK_STATUS: t1000 t1001 t1002
 
 # Base: 1100
-BOOTROM_CHANGE: t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111
-   @echo BOOTROM_CHANGE: Verify boot ROM change behaviour ... >> TEST.LOG
+BOOTROM_CHANGE: t1100 t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111
 
 # Base: 1200
-XCVR_CHANGE: t1201 t1202 t1203 t1204 t1205 t1206 t1207 t1208 t1209 t1210 t1211 t1212 t1213
-   @echo XCVR_CHANGE: Verify transceiver change behaviour ... >> TEST.LOG
+XCVR_CHANGE: t1200 t1201 t1202 t1203 t1204 t1205 t1206 t1207 t1208 t1209 t1210 t1211 t1212 t1213
 
 # Base: 1300
-CLI_PARSER: t1301 t1302 t1303 t1304
-   @echo CLI_PARSER: Verify CLI parser behaviour ... >> TEST.LOG
+CLI_PARSER: t1300 t1301 t1302 t1303 t1304
 
 # Base: 1400
-COMBINED_TRANSACTIONS: t1401 t1402 t1403 t1404 t1405 t1406 t1407
-   @echo COMBINED_TRANSACTIONS: Verify combined transactions ... >> TEST.LOG
+COMBINED_TRANSACTIONS: t1400 t1401 t1402 t1403 t1404 t1405 t1406 t1407
 
 # Base: 1500
-MULTI_NIC: t1501 t1502 t1503 t1504 t1505
-   @echo MULTI_NIC: Verify multi-NIC behaviour ... >> TEST.LOG
+MULTI_NIC: t1500 t1501 t1502 t1503 t1504 t1505
 
 # Base: 1600
-SAVECONFIG_TEST: t1601 t1602 t1603 t1604 t1605 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622
-   @echo SAVECONFIG_TEST: Verify save configuration behaviour ... >> TEST.LOG
+SAVECONFIG_TEST: t1600 t1601 t1602 t1603 t1604 t1605 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622
 
 # Base: 1700
-VERIFICATION_CONTROL_FLOW: t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708 t1709 t1710 t1711 t1712
-   @echo VERIFICATION_CONTROL_FLOW: verify transaction chain behaviour ... >> TEST.LOG
+VERIFICATION_CONTROL_FLOW: t1700 t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708 t1709 t1710 t1711 t1712
 
 
 
 # Test Case Definitions
 # #####################
+
+t0100:
+   @echo [t01xx] LISTING: Verify general card listing behaviour ... >> TEST.LOG
 
 t0101:
    @echo [t0101] Clearing seed and checking no-card case... >> TEST.LOG
@@ -143,6 +129,9 @@ t0102:
    FIND "Full Duplex Capability = yes" $(ARTIFACTS)\T0102.LOG > NUL
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0102.LOG > NUL
    FIND "Plug and Play = enabled" $(ARTIFACTS)\T0102.LOG > NUL
+
+t0200:
+   @echo [t02xx] IRQ_CHANGE: Verify IRQ change behaviour ... >> TEST.LOG
 
 t0201:
    @echo [t0201] Testing mock CONFIGURE /INT invalid out-of-range value... >> TEST.LOG
@@ -174,6 +163,9 @@ t0204:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0204.LOG
    FIND "IRQ = 9" $(ARTIFACTS)\T0204.LOG > NUL
 
+t0300:
+   @echo [t03xx] DEFAULT_NIC_SELECTION: Verify default NIC selection behaviour ... >> TEST.LOG
+
 t0301:
    @echo [t0301] Testing default NIC selection CONFIGURE /INT transition to 5... >> TEST.LOG
    $(BINAPP) CONFIGURE /INT:5 > $(ARTIFACTS)\T0301.LOG
@@ -189,6 +181,9 @@ t0302:
    FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0302.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0302.LOG
    FIND "IRQ = 9" $(ARTIFACTS)\T0302.LOG > NUL
+
+t0400:
+   @echo [t04xx] IOBASE_CHANGE: Verify IO base change behaviour ... >> TEST.LOG
 
 t0401:
    @echo [t0401] Testing mock CONFIGURE /IOBASE invalid out-of-range high value... >> TEST.LOG
@@ -261,6 +256,9 @@ t0409:
    FIND "IOBASE = 03E0" $(ARTIFACTS)\T0409.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T0409.LOG
 
+t0500:
+   @echo [t05xx] PNP_CHANGE: Verify PNP property change behaviour ... >> TEST.LOG
+
 t0501:
    @echo [t0501] Testing mock CONFIGURE /PNP transition to disabled... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED /VERBOSE > $(ARTIFACTS)\T0501.LOG
@@ -305,6 +303,9 @@ t0505:
    FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0505.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0505.LOG
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0505.LOG > NUL
+
+t0600:
+   @echo [t06xx] MODEM_CHANGE: Verify MODEM property change behaviour ... >> TEST.LOG
 
 t0601:
    @echo [t0601] Testing mock CONFIGURE /MODEM transition to 1200... >> TEST.LOG
@@ -430,6 +431,9 @@ t0610:
    FIND "MODEM:NONE" $(ARTIFACTS)\M1200U.BAT > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T0610.LOG
 
+t0700:
+   @echo [t07xx] FD_CHANGE: Verify FULLDUPLEX property behaviour ... >> TEST.LOG
+
 t0701:
    @echo [t0701] Testing mock CONFIGURE /FULLDUPLEX transition to enabled... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE > $(ARTIFACTS)\T0701.LOG
@@ -543,6 +547,9 @@ t0713:
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0713.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T0713.LOG
 
+t0800:
+   @echo [t08xx] CAPABILITY_GATES: Verify capability gates behaviour ... >> TEST.LOG
+
 t0801:
    @echo [t0801] Testing PNP absence does not disable Full Duplex capability... >> TEST.LOG
    ${SEEDAPP} NOPNP > $(ARTIFACTS)\T0801.LOG
@@ -575,6 +582,9 @@ t0803:
    FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0803.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T0803.LOG
 
+t0900:
+   @echo [t09xx] OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour ... >> TEST.LOG
+
 t0901:
    @echo [t0901] Testing mock CONFIGURE /OPTIMIZE transition to OS/2... >> TEST.LOG
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0901.LOG
@@ -605,6 +615,9 @@ t0904:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0904.LOG
    FIND "Optimization = DOS" $(ARTIFACTS)\T0904.LOG > NUL
 
+t1000:
+   @echo [t10xx] LINK_STATUS: Verify LINKBEAT reporting ... >> TEST.LOG
+
 t1001:
    @echo [t1001] Testing LIST Link Status: LINKUP seed reports connected... >> TEST.LOG
    ${SEEDAPP} LINKUP > $(ARTIFACTS)\T1001.LOG
@@ -620,6 +633,9 @@ t1002:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1002.LOG
    FIND "Link Status = not connected" $(ARTIFACTS)\T1002.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T1002.LOG
+
+t1100:
+   @echo [t11xx] BOOTROM_CHANGE: Verify boot ROM change behaviour ... >> TEST.LOG
 
 t1101:
    @echo [t1101] Testing mock CONFIGURE /BADDRESS minimum valid address with /BSIZE:16... >> TEST.LOG
@@ -709,6 +725,9 @@ t1111:
    FIND "This adapter does not support Boot ROM configuration." $(ARTIFACTS)\T1111.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T1111.LOG
 
+
+t1200:
+   @echo [t12xx] XCVR_CHANGE: Verify transceiver change behaviour ... >> TEST.LOG
 
 t1201:
    @echo [t1201] Testing CONFIGURE /TR:TP on 3C509B-TP (should succeed, TP only card)... >> TEST.LOG
@@ -822,6 +841,9 @@ t1213:
    FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1213.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T1213.LOG
 
+t1300:
+   @echo [t13xx] CLI_PARSER: Verify CLI parser behaviour ... >> TEST.LOG
+
 t1301:
    @echo [t1301] Testing HELP command prints CLI help screen... >> TEST.LOG
    $(BINAPP) HELP > $(ARTIFACTS)\T1301.LOG
@@ -851,6 +873,9 @@ t1304:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1304.LOG
    $(BINAPP) CONFIGURE >> $(ARTIFACTS)\T1304.LOG
    FIND "No CONFIGURE property was specified." $(ARTIFACTS)\T1304.LOG > NUL
+
+t1400:
+   @echo [t14xx] COMBINED_TRANSACTIONS: Verify combined transactions ... >> TEST.LOG
 
 t1401:
    @echo [t1401] Testing combined CONFIGURE /IOBASE+/INT transaction... >> TEST.LOG
@@ -941,6 +966,9 @@ t1407:
    FIND "IRQ = 5" $(ARTIFACTS)\T1407.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T1407.LOG
 
+t1500:
+   @echo [t15xx] MULTI_NIC: Verify multi-NIC behaviour ... >> TEST.LOG
+
 t1501:
    @echo [t1501] Testing multi-NIC default ADD allocation yields distinct bases... >> TEST.LOG
    ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1501.LOG
@@ -995,6 +1023,9 @@ t1505:
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:0310 >> $(ARTIFACTS)\T1505.LOG
    FIND "Selected adapter no longer matches the discovered NIC." $(ARTIFACTS)\T1505.LOG > NUL
    ${SEEDAPP} CLEAR >> $(ARTIFACTS)\T1505.LOG
+
+t1600:
+   @echo [t16xx] SAVECONFIG_TEST: Verify save configuration behaviour ... >> TEST.LOG
 
 t1601:
    @echo [t1601] Testing SAVECONFIG exports the INIT restore command... >> TEST.LOG
@@ -1214,6 +1245,9 @@ t1622:
    FIND "Invalid CONFIGURE option." $(ARTIFACTS)\T1622.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /EXECFILE:FOO.EXE > $(ARTIFACTS)\T1622.LOG
    FIND "Invalid CONFIGURE option." $(ARTIFACTS)\T1622.LOG > NUL
+
+t1700:
+   @echo [t17xx] VERIFICATION_CONTROL_FLOW: verify transaction chain behaviour ... >> TEST.LOG
 
 t1701:
    @echo [t1701] Testing INT+PNP verification chain without /VERBOSE... >> TEST.LOG
