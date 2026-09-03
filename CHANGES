@@ -1,4 +1,8 @@
 Changelog 0.7.2
+  - Corrected MODEM timing encoding: raw values 00h through 3Fh decode as 25
+    through 1600 microseconds, with NONE reserved only for raw 3Fh. Named baud
+    encodings remain preferred; SAVECONFIG intentionally normalizes raw 2Fh
+    (1200 us) to /MODEM:NONE because /MODEM:1200 is the named baud setting.
   - Removed obsolete byte-swapped `506Dh` Manufacturer ID compatibility from
     real and mock NIC signature checks; only documented `6D50h` is accepted.
   - Replaced the linear `CMP`/`JNE` error dispatch in `Cfg_Report_Error()`

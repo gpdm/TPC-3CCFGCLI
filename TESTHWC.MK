@@ -136,7 +136,7 @@ hwc004:
 	@echo [hwc004] Original /MODEM writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(TEST_MODEM) > $(ARTIFACTS)\HWC004.LOG
 	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC004.LOG
-	FIND "Modem Speed = $(TEST_MODEM)" $(ARTIFACTS)\HWC004.LOG > NUL
+	FIND "MODEM Interrupt Disable Time = 1300 us (1200 bd)" $(ARTIFACTS)\HWC004.LOG > NUL
 
 hwc005:
 	@echo [hwc005] Original /FULLDUPLEX writer, 3CCFGCLI LIST observer... >> $(LOGFILE)

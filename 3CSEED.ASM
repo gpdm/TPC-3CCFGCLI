@@ -39,6 +39,7 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  FDSTALEON    Seed enabled FD policy with live FD_ENABLE clear.', 0Dh, 0Ah
              DB '  FDSTALEOFF   Seed disabled FD policy with live FD_ENABLE set.', 0Dh, 0Ah
              DB '  MODEMFIELDS  Seed non-MODEM word 0Dh fields for preservation tests.', 0Dh, 0Ah
+             DB '  M1200US      Seed MODEM raw 2Fh (1200 microseconds).', 0Dh, 0Ah
              DB '  NOLINKBEAT   INIT profile with EEPROM Link Beat Disable set.', 0Dh, 0Ah
              DB '  LINKUP       INIT profile with live Link Status forced connected.', 0Dh, 0Ah
              DB '  LINKDOWN     INIT profile with live Link Status forced not connected.', 0Dh, 0Ah
@@ -59,6 +60,7 @@ msg_ok_tri   DB 'Seed file created (TRI).', 0Dh, 0Ah, '$'
 msg_ok_fdstaleon DB 'Seed file created (FDSTALEON).', 0Dh, 0Ah, '$'
 msg_ok_fdstaleoff DB 'Seed file created (FDSTALEOFF).', 0Dh, 0Ah, '$'
 msg_ok_modemfields DB 'Seed file created (MODEMFIELDS).', 0Dh, 0Ah, '$'
+msg_ok_m1200us DB 'Seed file created (M1200US).', 0Dh, 0Ah, '$'
 msg_ok_nolinkbeat DB 'Seed file created (NOLINKBEAT).', 0Dh, 0Ah, '$'
 msg_ok_linkup   DB 'Seed file created (LINKUP).', 0Dh, 0Ah, '$'
 msg_ok_linkdown DB 'Seed file created (LINKDOWN).', 0Dh, 0Ah, '$'
@@ -87,6 +89,7 @@ kw_tri       DB 'TRI', 0
 kw_fdstaleon DB 'FDSTALEON', 0
 kw_fdstaleoff DB 'FDSTALEOFF', 0
 kw_modemfields DB 'MODEMFIELDS', 0
+kw_m1200us   DB 'M1200US', 0
 kw_nolinkbeat DB 'NOLINKBEAT', 0
 kw_linkup    DB 'LINKUP', 0
 kw_linkdown  DB 'LINKDOWN', 0
@@ -245,6 +248,9 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_modemfields
     call    Match_Token
     jnc     @@DoModemFields
+    mov     dx, OFFSET kw_m1200us
+    call    Match_Token
+    jnc     @@DoM1200us
     mov     dx, OFFSET kw_nolinkbeat
     call    Match_Token
     jnc     @@DoNoLinkBeat
@@ -405,6 +411,14 @@ PROC Parse_And_Run NEAR
     call    Seed_ModemFields
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_modemfields
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoM1200us:
+    call    Seed_M1200us
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_m1200us
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -1315,6 +1329,21 @@ PROC Seed_ModemFields NEAR
     stc
     ret
 ENDP Seed_ModemFields
+
+PROC Seed_M1200us NEAR
+    call    Seed_Init
+    jc      @@Fail
+    mov     si, EEPROM_SOFTWARE_INFO
+    mov     ax, 2F00h
+    or      ax, EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
+    call    EEPROM_Write_SI
+    call    Build_Checksum
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_M1200us
 
 PROC Seed_NoLinkBeat NEAR
     ; INIT profile, then set the persistent Link Beat Disable policy in

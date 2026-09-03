@@ -226,7 +226,7 @@ Number                       Description
        Plug and Play = enabled
        Boot ROM = disabled
        Optimization = DOS
-       Modem Speed = none
+       MODEM Interrupt Disable Time = 1600 us (NONE)
        Full Duplex = disabled
 ```
 
@@ -366,6 +366,7 @@ profiles, capability overrides, and cleanup states.
 | `TPAUI` | TP product ID + live TP/AUI connector capabilities, for Product-ID mismatch tests. |
 | `TRI` | TP product ID + live TP/AUI/BNC connector capabilities. |
 | `MODEMFIELDS` | INIT + non-MODEM Software Information fields set for preservation tests. |
+| `M1200US` | INIT + MODEM raw value `2Fh` (1200 microseconds), for serialization tests. |
 | `NOLINKBEAT` | INIT + `EEPROM_SOFTWARE_INFO` bit 14 set for MODEM preservation tests. |
 
 

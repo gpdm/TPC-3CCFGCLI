@@ -463,7 +463,15 @@ msg_fd_capability_label DB "Full Duplex Capability = ", '$'
 msg_boot_label  DB  "Boot ROM = ", '$'
 msg_compat_label DB "Software Compatibility = failure level ", '$'
 msg_optimize_label DB "Optimization = ", '$'
-msg_modem_label DB "Modem Speed = ", '$'
+msg_modem_label DB "MODEM Interrupt Disable Time = ", '$'
+msg_modem_us DB " us", '$'
+msg_modem_38400 DB " (38400 bd)", '$'
+msg_modem_19200 DB " (19200 bd)", '$'
+msg_modem_9600 DB " (9600 bd)", '$'
+msg_modem_2400 DB " (2400 bd)", '$'
+msg_modem_1200 DB " (1200 bd)", '$'
+msg_modem_none DB " (NONE)", '$'
+msg_modem_not_representable DB " (not representable by CLI)", '$'
 msg_fullduplex_label DB "Full Duplex = ", '$'
 msg_link_status_label DB "Link Status = ", '$'
 msg_optimize_reserved DB "Reserved", '$'
@@ -1997,11 +2005,18 @@ PROC Save_Build_Command NEAR
     jc      @@Fail
 
     mov     ax, [save_word0d]
+    and     ax, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
+    cmp     ax, EEPROM_MODEM_NONE
+    je      @@ModemNone
+    ; Raw 2Fh is valid 1200 us hardware data, but /MODEM:1200 is the named
+    ; baud setting.  Normalize this CLI-unrepresentable value to NONE.
+    cmp     ax, 2F00h
+    je      @@ModemNone
+    call    Decode_Modem_Baud_Alias
+    jnc     @@ModemValue
+    mov     ax, [save_word0d]
     call    Decode_Modem_Value
-    jc      @@ModemNone
-    cmp     ax, 0FFFFh
-    je      @@ModemNone         ; Unrecognised encoding: fall back to NONE,
-                                 ; a value our own parser is guaranteed to accept.
+@@ModemValue:
     call    Save_Dec_Word_Length
     add     cx, SAVE_LEN_MODEM
     call    Save_Ensure_Option_Length
@@ -2010,8 +2025,6 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_modem
     call    Save_Append_String
     jc      @@Fail
-    mov     ax, [save_word0d]
-    call    Decode_Modem_Value
     call    Save_Append_Dec_Word
     jc      @@Fail
     jmp     @@Optimize
@@ -3292,8 +3305,8 @@ PROC Cfg_Handle_MODEM NEAR
     push    si
     push    cx
 
-    ; NONE disables the setting; the original utility encodes this as
-    ; EEPROM_MODEM_NONE, not zero (see 3C509DEF.INC).
+    ; NONE means no modem timing constraint and uses the maximum 1600 us
+    ; EEPROM_MODEM_NONE encoding, not zero (see 3C509DEF.INC).
     cmp     cx, 4
     jne     @@ParseNumber
     cmp     [BYTE si], 'N'
@@ -6855,10 +6868,12 @@ PROC Cfg_Txn_Execute NEAR
     mov     ah, 09h
     int     21h
     mov     ax, [cfg_modem_value]
+    call    Decode_Modem_Baud_Alias
+    jnc     @@PrintModem
+    mov     ax, [cfg_modem_value]
     call    Decode_Modem_Value
     jc      @@PrintModemNone
-    cmp     ax, 0FFFFh
-    je      @@PrintModemUnknown
+@@PrintModem:
     call    Print_DecWord
     jmp     @@AfterRequestedModem
 @@PrintModemNone:
@@ -6866,10 +6881,6 @@ PROC Cfg_Txn_Execute NEAR
     mov     ah, 09h
     int     21h
     jmp     @@AfterRequestedModem
-@@PrintModemUnknown:
-    mov     dx, OFFSET msg_unknown_value
-    mov     ah, 09h
-    int     21h
 @@AfterRequestedModem:
     mov     dx, OFFSET msg_crlf
     mov     ah, 09h
@@ -7763,30 +7774,19 @@ PROC Print_Optimize_Value NEAR
     ret
 ENDP Print_Optimize_Value
 
-; Decodes EEPROM word 0Dh Maximum Interrupt Disable Time (bits 13:8).
-; Returns CF=1 for the CLI compatibility value NONE (zero or
-; EEPROM_MODEM_NONE); otherwise CF=0 and AX = a named baud rate, the equivalent
-; custom step value (25-1600), or 0FFFFh for an unrecognised encoding.
+; EEPROM word 0Dh bits 13:8 store Maximum Interrupt Disable Time: raw 00h-3Fh
+; is 25-1600 us in 25 us steps. CLI baud values 1200/2400/9600/19200/38400 take
+; precedence over numeric timings, so /MODEM:1200 is 1300 us. Raw 2Fh is valid
+; 1200 us data but cannot be represented by the CLI: INFO reports this, while
+; SAVECONFIG intentionally normalizes it to /MODEM:NONE.
+; Input AX = EEPROM word.  Output AX = timing in microseconds; CF=1 for NONE.
 PROC Decode_Modem_Value NEAR
     push    dx
     push    cx
 
     and     ax, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
-    or      ax, ax
-    jz      @@None
     cmp     ax, EEPROM_MODEM_NONE
     je      @@None
-    cmp     ax, EEPROM_MODEM_1200
-    je      @@Named1200
-    cmp     ax, EEPROM_MODEM_2400
-    je      @@Named2400
-    cmp     ax, EEPROM_MODEM_9600
-    je      @@Named9600
-    cmp     ax, EEPROM_MODEM_19200
-    je      @@Named19200
-    cmp     ax, EEPROM_MODEM_38400
-    je      @@Named38400
-
     mov     cl, 8
     shr     ax, cl
     inc     ax
@@ -7795,30 +7795,8 @@ PROC Decode_Modem_Value NEAR
     clc
     jmp     @@Done
 
-@@Named1200:
-    mov     ax, 1200
-    jmp     @@ValueDone
-@@Named2400:
-    mov     ax, 2400
-    jmp     @@ValueDone
-@@Named9600:
-    mov     ax, 9600
-    jmp     @@ValueDone
-@@Named19200:
-    mov     ax, 19200
-    jmp     @@ValueDone
-@@Named38400:
-    mov     ax, 38400
-@@ValueDone:
-    clc
-    jmp     @@Done
-
-@@Unknown:
-    mov     ax, 0FFFFh
-    clc
-    jmp     @@Done
-
 @@None:
+    mov     ax, 1600
     stc
 
 @@Done:
@@ -7827,36 +7805,99 @@ PROC Decode_Modem_Value NEAR
     ret
 ENDP Decode_Modem_Value
 
-; Prints the persistent MODEM (Interrupt Disable Time) setting via
-; Decode_Modem_Value: "none", a friendly baud/step value, or "unknown" for an
-; unrecognised raw encoding.
+; Input AX = EEPROM word. Output CF=0 and AX = named baud alias, or CF=1.
+PROC Decode_Modem_Baud_Alias NEAR
+    and     ax, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
+    cmp     ax, EEPROM_MODEM_1200
+    je      @@1200
+    cmp     ax, EEPROM_MODEM_2400
+    je      @@2400
+    cmp     ax, EEPROM_MODEM_9600
+    je      @@9600
+    cmp     ax, EEPROM_MODEM_19200
+    je      @@19200
+    cmp     ax, EEPROM_MODEM_38400
+    je      @@38400
+    stc
+    ret
+@@1200:
+    mov     ax, 1200
+    jmp     @@Done
+@@2400:
+    mov     ax, 2400
+    jmp     @@Done
+@@9600:
+    mov     ax, 9600
+    jmp     @@Done
+@@19200:
+    mov     ax, 19200
+    jmp     @@Done
+@@38400:
+    mov     ax, 38400
+@@Done:
+    clc
+    ret
+ENDP Decode_Modem_Baud_Alias
+
+; Prints the persistent MODEM interrupt-disable time and any CLI baud alias.
 PROC Print_Modem_Value NEAR
     push    ax
+    push    bx
+    push    dx
 
-    mov     ax, [ext_software_info]
-    cmp     ax, 0FFFFh
+    mov     bx, [ext_software_info]
+    cmp     bx, 0FFFFh
     je      @@Unavailable
+    mov     ax, bx
     call    Decode_Modem_Value
-    jc      @@None
-    cmp     ax, 0FFFFh
-    je      @@UnknownEnc
     call    Print_DecWord
-    jmp     @@Done
+    mov     dx, OFFSET msg_modem_us
+    call    Print_String
+    and     bx, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
+    cmp     bx, EEPROM_MODEM_NONE
+    je      @@None
+    cmp     bx, 2F00h
+    je      @@NotRepresentable
+    mov     ax, bx
+    call    Decode_Modem_Baud_Alias
+    jc      @@Done
+    cmp     ax, 1200
+    je      @@Baud1200
+    cmp     ax, 2400
+    je      @@Baud2400
+    cmp     ax, 9600
+    je      @@Baud9600
+    cmp     ax, 19200
+    je      @@Baud19200
+    ; The helper only returns 38400 for the remaining successful alias.
+    mov     dx, OFFSET msg_modem_38400
+    jmp     @@PrintAlias
+@@Baud1200:
+    mov     dx, OFFSET msg_modem_1200
+    jmp     @@PrintAlias
+@@Baud2400:
+    mov     dx, OFFSET msg_modem_2400
+    jmp     @@PrintAlias
+@@Baud9600:
+    mov     dx, OFFSET msg_modem_9600
+    jmp     @@PrintAlias
+@@Baud19200:
+    mov     dx, OFFSET msg_modem_19200
+    jmp     @@PrintAlias
 @@None:
-    mov     dx, OFFSET msg_none
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-@@UnknownEnc:
-    mov     dx, OFFSET msg_unknown_value
-    mov     ah, 09h
-    int     21h
+    mov     dx, OFFSET msg_modem_none
+    jmp     @@PrintAlias
+@@NotRepresentable:
+    mov     dx, OFFSET msg_modem_not_representable
+@@PrintAlias:
+    call    Print_String
     jmp     @@Done
 @@Unavailable:
     mov     dx, OFFSET msg_unavailable
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Done:
+    pop     dx
+    pop     bx
     pop     ax
     ret
 ENDP Print_Modem_Value
