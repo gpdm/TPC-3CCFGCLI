@@ -1536,8 +1536,7 @@ PROC Build_Checksum NEAR
     push    dx
     push    si
 
-    ; Legacy fixture checksum behavior is retained pending the deferred
-    ; checksum-alignment pass.  EEPROM word 0Fh is not an optimization field.
+    ; Primary low checksum covers only configurable words 08h, 09h, and 0Dh.
     xor     bx, bx
     xor     si, si
 @@PrimaryHigh:
@@ -1563,9 +1562,15 @@ PROC Build_Checksum NEAR
     call    EEPROM_Read_SI
     xor     bh, al
     xor     bh, ah
-    inc     si
     cmp     si, EEPROM_SOFTWARE_INFO
-    jbe     @@PrimaryLow
+    je      @@PrimaryLowDone
+    cmp     si, EEPROM_ADDR_CFG
+    jne     @@PrimaryLowSoftware
+    inc     si
+    jmp     @@PrimaryLow
+@@PrimaryLowSoftware:
+    mov     si, EEPROM_SOFTWARE_INFO
+@@PrimaryLowDone:
     mov     si, EEPROM_CHECKSUM
     call    EEPROM_Read_SI
     mov     al, bh

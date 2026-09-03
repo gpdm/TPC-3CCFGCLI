@@ -1,4 +1,7 @@
 Changelog 0.7.2
+  - Corrected EEPROM checksum domains: CONFIGURE updates word 0Fh low only for
+    words 08h/09h/0Dh, and word 17h low for PNP word 13h changes; both high
+    bytes are preserved. Seeder primary checksum now uses the same 08h/09h/0Dh domain.
   - Corrected MODEM timing encoding: raw values 00h through 3Fh decode as 25
     through 1600 microseconds, with NONE reserved only for raw 3Fh. Named baud
     encodings remain preferred; SAVECONFIG intentionally normalizes raw 2Fh

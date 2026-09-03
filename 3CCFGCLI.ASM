@@ -98,20 +98,22 @@ CFG_TXN_IOBASE_CHANGED   EQU 20h
 CFG_TXN_INT_CHANGED      EQU 40h
 CFG_TXN_CHG_WORD13       EQU 80h
 CFG_TXN_CHG_WORD0D       EQU 0100h
-CFG_TXN_CHG_WORD0F       EQU 0200h
 ; Widened to also require the hardware transaction pipeline for /BADDRESS,
 ; /BSIZE, and /TR (bits 0100h/0200h/0400h), which share EEPROM word 08h
 ; with /IOBASE.
 CFG_PARSE_HW_MASK        EQU 07FAh
 CFG_TXN_IO_DETECT_MASK   EQU 15h
 CFG_TXN_WORD09_INT_MASK  EQU 42h
-CFG_TXN_EEPROM_MASK      EQU 0383h
+; Persistent property changes only; derived checksum writes have no flags.
+CFG_TXN_EEPROM_MASK      EQU 0183h
 CFG_TXN_LIVE06_MASK      EQU 14h
+CFG_TXN_PRIMARY_CHECKSUM_MASK EQU 0103h ; WORD08, WORD09, WORD0D
+CFG_TXN_SECONDARY_CHECKSUM_MASK EQU 0080h ; WORD13
 ; WORD08 (bit 0) is included directly so a /BADDRESS or /BSIZE change (which
 ; has no IOBASE_CHANGED-style composite signal of its own) still triggers
-; the write/verify/success pipeline.  This mirrors how WORD0D/WORD13/WORD0F
-; are already included directly for MODEM/FULLDUPLEX/PNP/OPTIMIZE.
-CFG_TXN_COMMIT_MASK      EQU 03F1h
+; the write/verify/success pipeline. This mirrors how WORD0D and WORD13 are
+; included directly for MODEM/FULLDUPLEX/PNP/OPTIMIZE.
+CFG_TXN_COMMIT_MASK      EQU 01F1h
 CFG_TXN_INT_MIGRATE_MASK EQU 50h
 
 ; Normalized physical NIC capabilities.  These bits are a shared software
@@ -592,6 +594,7 @@ cfg_txn_old_live08        DW 0
 cfg_txn_new_live08        DW 0
 cfg_txn_old_word0f        DW 0
 cfg_txn_new_word0f        DW 0
+cfg_txn_checksum_word     DW 0
 cfg_txn_io_selector       DB 0
 cfg_txn_old_io_selector   DB 0
 cfg_txn_live_io_selector  DB 0
@@ -4709,6 +4712,36 @@ PROC Cfg_Checksum_0F_Low NEAR
     ret
 ENDP Cfg_Checksum_0F_Low
 
+; Destination EEPROM word 17h low byte. Domain: words 13h through 16h.
+PROC Cfg_Checksum_17_Low NEAR
+    push    bx
+    push    dx
+    push    si
+
+    xor     bx, bx
+    mov     si, EEPROM_SECONDARY_CONFIG_START
+@@Loop:
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, EEPROM_SECONDARY_CONFIG_END
+    jb      @@Loop
+    mov     al, bl
+    pop     si
+    pop     dx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     si
+    pop     dx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Checksum_17_Low
+
 ; ============================================================================
 ; /IOBASE hardware transaction, release 0.3.4
 ; ============================================================================
@@ -4981,12 +5014,19 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_word0d], 0
 @@Word0DDone:
 
+    ; PNP-only transactions use the secondary checksum and do not depend on
+    ; EEPROM word 0Fh being readable.
+    test    [cfg_parse_flags], CFG_PARSE_INT + CFG_PARSE_IOBASE + CFG_PARSE_MODEM + CFG_PARSE_FULLDUPLEX + CFG_PARSE_OPTIMIZE + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_TR
+    jz      @@NoWord0F
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Read
     jc      @@ReadOptimizeFail
     mov     [cfg_txn_old_word0f], ax
+    jmp     @@Word0FDone
+@@NoWord0F:
+    mov     [cfg_txn_old_word0f], 0
 @@Word0FDone:
 
     ; Both live words are required because original ISA reactivation restores
@@ -5669,9 +5709,8 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     ret
 ENDP Cfg_Txn_Activate_If_Needed
 
-; Write all changed persistent property words in original sub_342 order, then
-; update the shared low checksum byte once.  Each EEPROM word remains a separate
-; physical Cfg_Eeprom_Write operation inside one logical CONFIGURE transaction.
+; Write persistent property words in original sub_342 order, then update only
+; the checksum domains whose data words changed.
 PROC Cfg_Txn_Write_EEPROM NEAR
     push    ax
     push    bx
@@ -5755,7 +5794,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 
 @@Word13:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
-    jz      @@Checksum
+    jz      @@Checksums
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     bx, [cfg_txn_new_word13]
@@ -5763,18 +5802,25 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     call    Cfg_Eeprom_Write
     jc      @@Write13Fail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Checksum
+    jz      @@Checksums
     mov     dx, OFFSET msg_cfg_pnp_word_written
     mov     ah, 09h
     int     21h
 
-@@Checksum:
+@@Checksums:
+    test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
+    jnz     @@ChecksumAnnounce
+    test    [cfg_txn_change_flags], CFG_TXN_SECONDARY_CHECKSUM_MASK
+    jz      @@ChecksumUpdated
+@@ChecksumAnnounce:
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@ChecksumCalc
+    jz      @@PrimaryChecksum
     mov     dx, OFFSET msg_cfg_update_checksum
     mov     ah, 09h
     int     21h
-@@ChecksumCalc:
+@@PrimaryChecksum:
+    test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
+    jz      @@SecondaryChecksum
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     call    Cfg_Checksum_0F_Low
@@ -5788,18 +5834,47 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     or      ax, bx
     mov     [cfg_txn_new_word0f], ax
     mov     bx, ax
-    mov     al, 0Fh
+    mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Write
     jc      @@ChecksumWriteFail
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, 0Fh
+    mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Read
     jc      @@ChecksumFail
     cmp     ax, [cfg_txn_new_word0f]
     jne     @@ChecksumFail
 
+@@SecondaryChecksum:
+    test    [cfg_txn_change_flags], CFG_TXN_SECONDARY_CHECKSUM_MASK
+    jz      @@ChecksumUpdated
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_SECONDARY_CHECKSUM
+    call    Cfg_Eeprom_Read
+    jc      @@ChecksumFail
+    mov     [cfg_txn_checksum_word], ax
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Cfg_Checksum_17_Low
+    jc      @@ChecksumFail
+    and     [cfg_txn_checksum_word], 0FF00h
+    xor     bx, bx
+    mov     bl, al
+    or      [cfg_txn_checksum_word], bx
+    mov     bx, [cfg_txn_checksum_word]
+    mov     al, EEPROM_SECONDARY_CHECKSUM
+    call    Cfg_Eeprom_Write
+    jc      @@ChecksumWriteFail
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_SECONDARY_CHECKSUM
+    call    Cfg_Eeprom_Read
+    jc      @@ChecksumFail
+    cmp     ax, [cfg_txn_checksum_word]
+    jne     @@ChecksumFail
+@@ChecksumUpdated:
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_checksum_updated
@@ -5850,12 +5925,6 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_WRITE
     jmp     @@Fail
 @@ChecksumWriteFail:
-    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
-    jz      @@ChecksumFail
-    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-    jz      @@ChecksumFail
-    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_EEPROM_WRITE
-    jmp     @@Fail
 @@ChecksumFail:
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail

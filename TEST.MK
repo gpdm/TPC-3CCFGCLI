@@ -107,7 +107,7 @@ CLI_PARSER: t1301 t1302 t1303 t1304
    @echo CLI_PARSER: Verify CLI parser behaviour ... >> TEST.LOG
 
 # Base: 1400
-COMBINED_TRANSACTIONS: t1401 t1402 t1403 t1404 t1405 t1406
+COMBINED_TRANSACTIONS: t1401 t1402 t1403 t1404 t1405 t1406 t1407
    @echo COMBINED_TRANSACTIONS: Verify combined transactions ... >> TEST.LOG
 
 # Base: 1500
@@ -263,8 +263,11 @@ t0409:
 
 t0501:
    @echo [t0501] Testing mock CONFIGURE /PNP transition to disabled... >> TEST.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED > $(ARTIFACTS)\T0501.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED /VERBOSE > $(ARTIFACTS)\T0501.LOG
    FIND "PNP parameter accepted. Requested Plug and Play mode: disabled" $(ARTIFACTS)\T0501.LOG > NUL
+   FIND "Plug and Play configuration word written." $(ARTIFACTS)\T0501.LOG > NUL
+   FIND "Updating EEPROM checksum..." $(ARTIFACTS)\T0501.LOG > NUL
+   FIND "EEPROM checksum updated." $(ARTIFACTS)\T0501.LOG > NUL
    FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0501.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0501.LOG
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0501.LOG > NUL
@@ -272,9 +275,12 @@ t0501:
 
 t0502:
    @echo [t0502] Testing mock CONFIGURE /PNP transition back to enabled... >> TEST.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED > $(ARTIFACTS)\T0502.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED /VERBOSE > $(ARTIFACTS)\T0502.LOG
    FIND "PNP parameter accepted. Requested Plug and Play mode: enabled" $(ARTIFACTS)\T0502.LOG > NUL
    FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0502.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED /VERBOSE >> $(ARTIFACTS)\T0502.LOG
+   FIND "Plug and Play mode is already configured to the requested value." $(ARTIFACTS)\T0502.LOG > NUL
+   FIND "No hardware changes required." $(ARTIFACTS)\T0502.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0502.LOG
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0502.LOG > NUL
    FIND "Plug and Play = enabled" $(ARTIFACTS)\T0502.LOG > NUL
@@ -920,6 +926,20 @@ t1406:
    FIND "Transceiver = auto select" $(ARTIFACTS)\T1406.LOG > NUL
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1406.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T1406.LOG
+
+t1407:
+   @echo [t1407] Testing combined CONFIGURE /PNP+/INT checksum domains... >> TEST.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1407.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED /INT:5 /VERBOSE >> $(ARTIFACTS)\T1407.LOG
+   FIND "PNP parameter accepted. Requested Plug and Play mode: disabled" $(ARTIFACTS)\T1407.LOG > NUL
+   FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T1407.LOG > NUL
+   FIND "Plug and Play configuration word written." $(ARTIFACTS)\T1407.LOG > NUL
+   FIND "IRQ configuration word written." $(ARTIFACTS)\T1407.LOG > NUL
+   FIND "EEPROM checksum updated." $(ARTIFACTS)\T1407.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1407.LOG
+   FIND "Plug and Play = disabled" $(ARTIFACTS)\T1407.LOG > NUL
+   FIND "IRQ = 5" $(ARTIFACTS)\T1407.LOG > NUL
+   ${SEEDAPP} INIT >> $(ARTIFACTS)\T1407.LOG
 
 t1501:
    @echo [t1501] Testing multi-NIC default ADD allocation yields distinct bases... >> TEST.LOG
