@@ -58,6 +58,13 @@ Changelog 0.7.2
     point in passing them down from Pass 1 parser to Pass 2 parser.
     Instead I revised it to now only push pointers to applicable arguments
     for the `CONFIGURE` verb down.
+  - `Nic_EEPROM_Read()` (real HW and mock backends) now reports timeout via
+    CF instead of `AX == FFFFh`, since FFFFh is also a legitimate data value.
+    All callers migrated; `SAVECONFIG` now aborts and reports a read failure
+    instead of silently exporting bogus config data.
+  - `SAVECONFIG` no longer leaves a partial/incomplete restore batch file
+    behind on a failure (EEPROM read failure, write failure, or line-too-long)
+    once output has started; the incomplete file is closed and deleted.
 
 
 Changelog 0.7.1:

@@ -1304,15 +1304,19 @@ PROC Cmd_SaveConfig NEAR
 
     mov     al, EEPROM_ADDR_CFG
     call    Nic_EEPROM_Read
+    jc      @@ReadFail
     mov     [save_word08], ax
     mov     al, EEPROM_RESOURCE_CFG
     call    Nic_EEPROM_Read
+    jc      @@ReadFail
     mov     [save_word09], ax
     mov     al, EEPROM_SOFTWARE_INFO
     call    Nic_EEPROM_Read
+    jc      @@ReadFail
     mov     [save_word0d], ax
     mov     al, EEPROM_CONFIG_CONTROL
     call    Nic_EEPROM_Read
+    jc      @@ReadFail
     mov     [save_word13], ax
 
     mov     ax, [current_card]
@@ -1335,6 +1339,7 @@ PROC Cmd_SaveConfig NEAR
     mov     ah, 3Eh
     int     21h
     jc      @@WriteFail
+    mov     [save_file_open], 0
     mov     dx, OFFSET msg_save_ok
     mov     ah, 09h
     int     21h
@@ -1355,9 +1360,11 @@ PROC Cmd_SaveConfig NEAR
     je      @@LineTooLong
     jmp     @@WriteFail
 @@WriteFail:
+    call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_write_fail
     jmp     @@Print
 @@ReadFail:
+    call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_read_fail
     jmp     @@Print
 @@NoActive:
@@ -1382,6 +1389,7 @@ PROC Cmd_SaveConfig NEAR
     mov     dx, OFFSET msg_save_execfile_not_found
     jmp     @@Print
 @@LineTooLong:
+    call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_line_too_long
     jmp     @@Print
 @@BadName:
@@ -1869,6 +1877,31 @@ PROC Save_Open_File NEAR
     stc
     ret
 ENDP Save_Open_File
+
+; Discards an incomplete SAVECONFIG output file after a fatal error.  A no-op
+; if no file is currently open.  Closes save_handle and deletes save_filename
+; so a partial restore batch can never be mistaken for a complete one.  Any
+; close/delete failure here is ignored; the caller's original error condition
+; is what gets reported.
+PROC Save_Cleanup_Partial_File NEAR
+    push    ax
+    push    bx
+    push    dx
+    cmp     [save_file_open], 0
+    je      @@Done
+    mov     bx, [save_handle]
+    mov     ah, 3Eh
+    int     21h
+    mov     [save_file_open], 0
+    mov     ah, 41h
+    mov     dx, OFFSET save_filename
+    int     21h
+@@Done:
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Save_Cleanup_Partial_File
 
 PROC Save_Build_Command NEAR
     push    ax
@@ -4127,8 +4160,7 @@ PROC Nic_Read_Capabilities NEAR
     mov     dx, si
     mov     al, EEPROM_CAPABILITY
     call    Nic_EEPROM_Read
-    cmp     ax, 0FFFFh
-    je      @@ReadRevision
+    jc      @@ReadRevision
     or      bx, NIC_CAP_VALID_PNP
     test    ax, EEPROM_CAPABILITY_PNP
     jz      @@ReadRevision
@@ -4140,8 +4172,7 @@ PROC Nic_Read_Capabilities NEAR
     mov     dx, si
     mov     al, EEPROM_REVISION_INFO
     call    Nic_EEPROM_Read
-    cmp     ax, 0FFFFh
-    je      @@Restore
+    jc      @@Restore
     or      bx, NIC_CAP_VALID_FULLDUPLEX
     test    cx, NIC_CAP_TP
     jz      @@Restore
@@ -4185,24 +4216,39 @@ PROC Build_Record_From_Active NEAR
 
     mov     al, EEPROM_ADDR_CFG
     call    Nic_EEPROM_Read
+    jnc     @@AddrCfgOk
+    mov     ax, 0FFFFh
+@@AddrCfgOk:
     mov     [id_addr_cfg], ax
 
     mov     dx, si
     mov     al, EEPROM_RESOURCE_CFG
     call    Nic_EEPROM_Read
+    jnc     @@ResourceCfgOk
+    mov     ax, 0FFFFh
+@@ResourceCfgOk:
     mov     [id_resource_cfg], ax
 
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_0
     call    Nic_EEPROM_Read
+    jnc     @@Oem0Ok
+    mov     ax, 0FFFFh
+@@Oem0Ok:
     mov     [id_oem0], ax
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_1
     call    Nic_EEPROM_Read
+    jnc     @@Oem1Ok
+    mov     ax, 0FFFFh
+@@Oem1Ok:
     mov     [id_oem1], ax
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_2
     call    Nic_EEPROM_Read
+    jnc     @@Oem2Ok
+    mov     ax, 0FFFFh
+@@Oem2Ok:
     mov     [id_oem2], ax
 
     mov     ax, [id_resource_cfg]
@@ -7388,18 +7434,24 @@ PROC Read_Extended_Nic_Info NEAR
 
     mov     al, EEPROM_ADDR_CFG
     call    Nic_EEPROM_Read
+    jc      @@SkipAddrCfg
     mov     [ext_addr_cfg], ax
+@@SkipAddrCfg:
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_COMPATIBILITY
     call    Nic_EEPROM_Read
+    jc      @@SkipCompatibility
     mov     [ext_compatibility], ax
+@@SkipCompatibility:
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Nic_EEPROM_Read
+    jc      @@SkipSoftwareInfo
     mov     [ext_software_info], ax
     mov     [ext_optimize], ax
+@@SkipSoftwareInfo:
 
     ; Read the live Media Type and Status register (Window 4/Port 0Ah) to
     ; surface the dynamic "Valid link beat detected" bit (bit 11) in LIST.
@@ -7425,11 +7477,14 @@ PROC Read_Extended_Nic_Info NEAR
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CONFIG_CONTROL
     call    Nic_EEPROM_Read
+    jc      @@SkipConfigCtrl
     mov     [ext_config_ctrl], ax
+@@SkipConfigCtrl:
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_REVISION_INFO
     call    Nic_EEPROM_Read
+    jc      @@Done
     mov     [ext_revision_info], ax
 
     mov     ax, [ext_revision_info]
@@ -7442,6 +7497,7 @@ PROC Read_Extended_Nic_Info NEAR
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CAPABILITY
     call    Nic_EEPROM_Read
+    jc      @@Done
     mov     [ext_capability], ax
 
 @@Done:

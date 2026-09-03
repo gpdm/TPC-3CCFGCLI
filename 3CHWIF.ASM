@@ -197,6 +197,9 @@ PROC Nic_Reg_Write_Word NEAR
     ret
 ENDP Nic_Reg_Write_Word
 
+; Input:  DX = adapter base, AL = EEPROM word address.
+; Output: Success -> CF clear, AX = EEPROM word.
+;         Timeout -> CF set, AX is unspecified and must not be used.
 PROC Nic_EEPROM_Read NEAR
     push    bx
     push    cx
@@ -222,10 +225,12 @@ PROC Nic_EEPROM_Read NEAR
     in      al, 0EDh
     loop    @@Busy
     mov     ax, 0FFFFh
+    stc
     jmp     @@Done
 @@ReadData:
     add     dx, 2
     in      ax, dx
+    clc
 @@Done:
     pop     si
     pop     dx
