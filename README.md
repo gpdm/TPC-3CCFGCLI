@@ -133,10 +133,9 @@ probing. It does not configure a persistent adapter setting.
 
 ### /VERBOSE global CLI option
 
-`/VERBOSE` is not a `CONFIGURE` subverb. It is a global CLI option owned by the
-common command parser, which recognizes and consumes it before dispatching to
-the selected command verb. It may therefore be given with any supported verb
-and at any position on the command line:
+`/VERBOSE` is a new global CLI option owned by the common command parser,
+which recognizes and consumes it before dispatching to the selected command verb.
+It may therefore be given with any supported verb.
 
 ```text
 LIST /VERBOSE
@@ -151,8 +150,9 @@ rejected.
 `/VERBOSE` is a diagnostic aid. It prints additional EEPROM and live-register
 read/write detail so transactions can be traced while debugging hardware
 behavior, mock-state issues, or parser/transaction sequencing. Those
-diagnostics are currently implemented for `CONFIGURE`. `LIST` and `SAVECONFIG`
-accept the global flag but do not yet produce additional diagnostic detail.
+diagnostics are currently implemented for `CONFIGURE`.
+
+`LIST` and `SAVECONFIG` accept the global flag but do not yet produce additional diagnostic detail.
 
 ### SAVECONFIG command verb
 
@@ -194,7 +194,8 @@ adapter. This is handy for storing your last configuration, but is mainly used
 internally for the standalone hardware conformance tests.
 
 
-### Enhanded LIST verb
+
+### Enhanced LIST verb
 
 The `LIST` verb was also extended beyond the original implementation.
 Because the text-mode UI is intentionally absent, the `LIST` display now
@@ -236,18 +237,6 @@ The code is split into several assembly modules. The CLI logic stays in one plac
 A mock-state seeder utility is supplied to mimic the hardware EEPROM and live registers
 for smoke testing.
 
-### Full Duplex model
-
-Full Duplex capability is derived by the shared capability layer and remains
-separate from configuration.  For compatibility with original 3Com software,
-EEPROM Software Information word `0Dh` bit 15 is retained as an undocumented
-persistent Full Duplex policy; the Technical Reference documents that bit as
-reserved.  The live hardware enable is Window 4 Network Diagnostic bit 15.
-`/FULLDUPLEX:ENABLED` requires the effective configured transceiver to be TP;
-`DISABLED` remains valid for every Full-Duplex-capable adapter.  Every
-successful `/FULLDUPLEX` request also enforces the requested live enable state,
-even when the persistent policy was already correct.
-
 | File | Explanation |
 | --- | --- |
 | [3CCFGCLI.ASM](3CCFGCLI.ASM) | Reduced-scope CLI reimplementation. |
@@ -255,6 +244,8 @@ even when the persistent policy was already correct.
 | [3CMOCKIF.ASM](3CMOCKIF.ASM) | Persistent mock backend for development and tests. |
 | [3CSEED.ASM](3CSEED.ASM) | Mock-state seeder used to create test fixtures. |
 | [TEST.MK](TEST.MK) | Smoke-test suite orchestration. |
+| [TESTHWL.MK](TESTHWL.MK) | Test run on emulated IBM PC-alike constrained system, with 64/128/256 K of RAM. |
+| [TESTHWC.MK](TESTiHWC.MK) | Limited EEPROM Read/Write Hardware Compliance Test |
 
 ## Build
 
