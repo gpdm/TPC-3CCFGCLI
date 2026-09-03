@@ -1,4 +1,6 @@
 Changelog 0.7.2
+  - Removed obsolete byte-swapped `506Dh` Manufacturer ID compatibility from
+    real and mock NIC signature checks; only documented `6D50h` is accepted.
   - Replaced the linear `CMP`/`JNE` error dispatch in `Cfg_Report_Error()`
     with a bounds-checked `cfg_error_messages` WORD pointer table indexed by
     the `CFG_ERR_*` code. The procedure shrank from 759 to 30 bytes; the
@@ -25,7 +27,7 @@ Changelog 0.7.2
   - Fixed `Save_Prepare_Execfile()` returning an undefined error code on the
     invalid-`/EXECFILE`-value path, which misreported the diagnostic.
   - Added tests t1617-t1622 (OUTPUTFILE-only matrix case, global VERBOSE
-    coverage, duplicate VERBOSE, verb namespace isolation) and hwc027.
+    coverage, duplicate VERBOSE, verb namespace isolation).
   - `SAVECONFIG` now uses a named `/OUTPUTFILE:file` option instead of the
     former positional filename. Omitting it selects the default `RESTORE.BAT`.
     The old positional form is no longer accepted.

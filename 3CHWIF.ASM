@@ -247,7 +247,6 @@ PROC Nic_Check_3Com_Signature NEAR
 
     mov     si, dx
     mov     ch, 0FFh
-    xor     bh, bh
 
     mov     dx, si
     call    Nic_Read_Status
@@ -269,20 +268,13 @@ PROC Nic_Check_3Com_Signature NEAR
     mov     dx, si
     mov     bx, EL3_W0_MFG_ID
     call    Nic_Reg_Read_Word
+    ; Documented Window 0 Manufacturer ID register value.
     cmp     ax, 06D50h
-    je      @@MfgGood
-    cmp     ax, 0506Dh
     jne     @@RestoreFail
-    mov     bh, 1
 
-@@MfgGood:
     mov     dx, si
     mov     bx, EL3_W0_PRODUCT_ID
     call    Nic_Reg_Read_Word
-    cmp     bh, 0
-    je      @@ProductOrderGood
-    xchg    al, ah
-@@ProductOrderGood:
     mov     di, ax
     and     ax, 0F0FFh
     cmp     ax, 09050h
@@ -295,10 +287,6 @@ PROC Nic_Check_3Com_Signature NEAR
     mov     dx, si
     mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
     call    Nic_Reg_Read_Word
-    cmp     bh, 0
-    je      @@NetDiagOrderGood
-    xchg    al, ah
-@@NetDiagOrderGood:
     and     ax, 003Eh
     shr     ax, 1
     mov     bl, al
