@@ -305,6 +305,38 @@ Example:
 6. `build.sh` prints `BUILD.LOG` after DOSBox-X exits.
 
 
+### Interactive DOSBox-X session
+
+For manual or incremental build and test work, run:
+
+```sh
+./interactive.sh
+```
+
+This starts DOSBox-X with [autoexec-interactive](autoexec-interactive), mounts
+the repository root as `C:`, and leaves you at a DOS prompt instead of running
+an automatic build or test command.
+
+From there you can invoke the Borland/TASM tools directly, for example:
+
+```text
+\TASM\BIN\MAKE -f MAKEFILE all
+\TASM\BIN\MAKE -f TEST.MK smoke
+\TASM\BIN\MAKE -f TEST.MK IRQ_CHANGE
+```
+
+Or more conveniently, use the included batch files, which are also used for BUILD and TEST automation:
+
+```text
+\BUILD.BAT
+\TEST.BAT
+\TEST.BAT IRQ_CHANGE
+```
+
+This is useful when iterating on one area and avoiding a full host-side
+`./build.sh` or `./test.sh` cycle.
+
+
 ## Test
 
 Tests use the same DOSBox-X pattern and run:
@@ -347,7 +379,9 @@ profiles, capability overrides, and cleanup states.
 5. [TEST.MK](TEST.MK) runs the smoke groups, writing:
    - summary log: `TEST.LOG`
    - per-test logs: `ARTIFACT/T0xx.LOG`
-6. [test.sh](test.sh) then runs hardware-limit checks using
+6. [test.sh](test.sh) then runs a specific line-length check on the generated `RESTORE.BAT` files
+   to ensure individual lines in the BATCH file don't exceed the maximum 128 PSP length for DOS.
+7. [test.sh](test.sh) then runs hardware-limit checks using
    [autoexec-testhwl](autoexec-testhwl), generating:
    - `ARTIFACT/HWL64.LOG`
    - `ARTIFACT/HWL128.LOG`
@@ -357,12 +391,39 @@ profiles, capability overrides, and cleanup states.
 
 Notes:
 
-The smoke target exercises `BIN\3CHWMOCK.EXE` by default.
-There's currently no emulation of a 3Com EtherLink III in DOSBox-X, neither in 86Box or pcem.
+The smoke target exercises `BIN\3CHWMOCK.EXE` by default, as there's currently no
+emulation of a 3Com EtherLink III in DOSBox-X, neither in 86Box or pcem.
 The hardware-limit phase is fail-fast: it stops immediately on the first memory
 step that does not report a PASS marker.
 
 To run the test suite against real hardware, see next section.
+
+
+### Running selected test targets
+
+[TEST.BAT](TEST.BAT) defaults to the `smoke` target:
+
+```text
+TEST
+```
+
+It also accepts one optional argument and forwards it as the [TEST.MK](TEST.MK)
+target:
+
+```text
+TEST IRQ_CHANGE
+TEST SAVECONFIG_TEST
+TEST t0203
+```
+
+This allows direct dispatch into any target defined in [TEST.MK](TEST.MK),
+including symbolic test groups such as `LISTING`, `IRQ_CHANGE`,
+`SAVECONFIG_TEST`, or individual test cases such as `t0101`.
+
+When running targets directly, remember that some tests depend on seeded mock
+state. The full `smoke` target starts with `prep` and runs groups in the
+intended order; isolated targets are mainly intended for manual/debug
+iteration.
 
 
 ### Running tests against real hardware
