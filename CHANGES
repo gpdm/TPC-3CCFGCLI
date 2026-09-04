@@ -1,3 +1,9 @@
+Changelog 0.7.4
+  - ID port discovery now rejects an adapter whose EEPROM Address
+    Configuration selector (word 08h, bits 4:0) is 1Fh (EISA slot specific
+    addressing), which this ISA-only utility does not support.
+
+
 Changelog 0.7.3
   - HWC fix
   - Completed the WORD-only NIC register access migration: removed the

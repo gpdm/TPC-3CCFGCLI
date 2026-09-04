@@ -26,6 +26,12 @@ STACK 400h
 ; ----------------------------------------------------------------------------
 MAX_CARDS               EQU 6
 
+; Reserved nonzero ID tag used solely to retire an ID port contender whose
+; Address Configuration selector 1Fh requests EISA slot specific addressing.
+; Supported records only ever use tags 1 through MAX_CARDS, so this tag can
+; never collide with a supported record and the contender is never selected.
+ID_TAG_SKIP_EISA        EQU 7
+
 include '3C509DEF.INC'
 
 ; Record layout used only by this reduced utility.
@@ -250,6 +256,7 @@ msg_cli_dup_verbose DB "Duplicate /VERBOSE option.", 0Dh, 0Ah, '$'
 msg_cli_too_many_args DB "Too many command line arguments.", 0Dh, 0Ah, '$'
 
 msg_no_cards    DB  "No EtherLink III NICs are installed in this computer.", 0Dh, 0Ah, '$'
+msg_id_eisa_unsupported DB "Adapter uses EISA addressing, which is not supported by this utility. Adapter skipped.", 0Dh, 0Ah, '$'
 msg_save_missing DB "SAVECONFIG /OUTPUTFILE requires a value.", 0Dh, 0Ah, '$'
 msg_save_bad_name DB "Invalid SAVECONFIG output filename.", 0Dh, 0Ah, '$'
 msg_save_bad_option DB "Invalid SAVECONFIG option.", 0Dh, 0Ah, '$'
@@ -3836,19 +3843,15 @@ PROC Build_Record_From_Id NEAR
     mov     [WORD di + NIC_PRODUCT_ID], ax
 
     ; Address Configuration bits 4 to 0 select 0200h plus index times 10h.
-    ; Value 1Fh means no assigned I O base.
+    ; Selector 1Fh selects EISA slot specific addressing and is rejected by
+    ; Discover_Id_Port_Cards before normal ISA record construction, so the
+    ; selector decoded here is always in the range 00h through 1Eh.
     mov     ax, [id_addr_cfg]
     and     ax, 001Fh
-    cmp     ax, 001Fh
-    je      @@NoBase
     mov     cl, 4
     shl     ax, cl
     add     ax, 0200h
     mov     [WORD di + NIC_IO_BASE], ax
-    jmp     @@HaveBase
-@@NoBase:
-    mov     [WORD di + NIC_IO_BASE], 0
-@@HaveBase:
 
     ; Resource Configuration bits 15 to 12 contain the actual IRQ number.
     mov     ax, [id_resource_cfg]
@@ -4002,6 +4005,14 @@ PROC Discover_Id_Port_Cards NEAR
     ; Reading the node address also performs the standard contention process.
     call    Read_Id_Contender_Data
 
+    ; Address Configuration selector 1Fh selects EISA slot specific addressing,
+    ; which this ISA only utility does not support.  Reject the contender
+    ; before normal record construction.
+    mov     ax, [id_addr_cfg]
+    and     ax, 001Fh
+    cmp     ax, 001Fh
+    je      @@SkipEisaContender
+
     ; Suppress a duplicate identity and reapply its existing tag.  This mirrors
     ; the original duplicate path used when the same board is visible by more
     ; than one enumeration mechanism.
@@ -4011,6 +4022,19 @@ PROC Discover_Id_Port_Cards NEAR
     or      al, ID_CMD_SET_TAG
     call    Nic_IdPort_Write_Command
     popf
+    jmp     @@ProbeAgain
+
+@@SkipEisaContender:
+    ; Retire the unsupported contender from further ID port contention with
+    ; the reserved nonzero skip tag.  No nic_table record is created,
+    ; card_count is not incremented, and the adapter is never activated.
+    ; The scan then continues with the remaining untagged adapters.
+    mov     al, ID_CMD_SET_TAG
+    or      al, ID_TAG_SKIP_EISA
+    call    Nic_IdPort_Write_Command
+    popf
+    mov     dx, OFFSET msg_id_eisa_unsupported
+    call    Print_String
     jmp     @@ProbeAgain
 
 @@NewRecord:
