@@ -21,6 +21,11 @@ Changelog 0.7.3
   - Removed the duplicate product predicate `Cfg_Is_Supported_Product`;
     CONFIGURE product revalidation now calls `Is_3C509_Family`, which has
     identical semantics. No behavior change.
+  - `Scan_Active_Base_Ports` no longer re-probes a candidate I/O base with
+    `Nic_Check_3Com_Signature` after the initial successful probe. Each
+    detected active base is probed exactly once; the product ID (AX) and
+    ASIC revision (BL) from that probe are carried to both the new-record
+    and the record-refresh path. No behavior change.
 
 
 Changelog 0.7.2

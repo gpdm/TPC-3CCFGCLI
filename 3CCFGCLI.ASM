@@ -4358,15 +4358,19 @@ PROC Scan_Active_Base_Ports NEAR
     cmp     cx, MAX_CARDS
     jae     @@Done
 
+    ; The record offset computation clobbers AX, BX and DX, so keep the
+    ; signature results from the probe above.
+    push    ax
+    push    bx
     mov     ax, cx
     mov     bx, NIC_RECORD_SIZE
     mul     bx
     mov     di, OFFSET nic_table
     add     di, ax
+    pop     bx
+    pop     ax
 
     mov     dx, [si-2]
-    call    Nic_Check_3Com_Signature
-    jc      @@PortLoop
     call    Build_Record_From_Active
     jc      @@PortLoop
     inc     [card_count]
@@ -4385,8 +4389,6 @@ PROC Scan_Active_Base_Ports NEAR
     loop    @@FindExisting
     jmp     @@PortLoop
 @@Refresh:
-    call    Nic_Check_3Com_Signature
-    jc      @@PortLoop
     mov     [WORD di + NIC_PRODUCT_ID], ax
     mov     [BYTE di + NIC_ASIC_REV], bl
     or      [BYTE di + NIC_FLAGS], NIC_FLAG_ACTIVE
