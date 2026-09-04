@@ -15,6 +15,9 @@ Changelog 0.7.3
   - Active adapter record construction now rejects adapters whose mandatory
     EEPROM identity/configuration reads fail, instead of synthesizing FFFFh
     record fields.
+  - Dead code cleanup: removed a no-op `mov al, al` from
+    `Save_Append_Hex_Word` and an unused `mov di, dx` assignment from
+    `Find_Duplicate_Id_Record` in 3CCFGCLI.ASM. No behavior change.
 
 
 Changelog 0.7.2

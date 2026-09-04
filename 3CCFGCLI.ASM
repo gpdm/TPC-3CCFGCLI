@@ -1741,7 +1741,6 @@ PROC Save_Append_Hex_Word NEAR
     jc      @@Fail
     pop     ax
     push    ax
-    mov     al, al
     shr     al, 1
     shr     al, 1
     shr     al, 1
@@ -3998,7 +3997,6 @@ PROC Find_Duplicate_Id_Record NEAR
     jne     @@Next
     cmp     [BYTE si + NIC_MAC_ADDR + 3], bl
     jne     @@Next
-    mov     di, dx
     cmp     [BYTE si + NIC_MAC_ADDR + 4], dh
     jne     @@Next
     cmp     [BYTE si + NIC_MAC_ADDR + 5], dl
