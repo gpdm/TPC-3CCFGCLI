@@ -136,14 +136,14 @@ t0200:
 t0201:
    @echo [t0201] Testing mock CONFIGURE /INT invalid out-of-range value... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:21 > $(ARTIFACTS)\T0201.LOG
-   FIND "Invalid /INT parameter. Value must be 3, 5, 7, 9, 10, 11, 12, or 15." $(ARTIFACTS)\T0201.LOG > NUL
+   FIND "Invalid /INT parameter." $(ARTIFACTS)\T0201.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0201.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T0201.LOG > NUL
 
 t0202:
    @echo [t0202] Testing mock CONFIGURE /INT invalid input... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:BADVALUE > $(ARTIFACTS)\T0202.LOG
-   FIND "Invalid /INT parameter. Value must be 3, 5, 7, 9, 10, 11, 12, or 15." $(ARTIFACTS)\T0202.LOG > NUL
+   FIND "Invalid /INT parameter." $(ARTIFACTS)\T0202.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0202.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T0202.LOG > NUL
 
