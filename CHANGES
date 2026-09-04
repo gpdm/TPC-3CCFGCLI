@@ -18,6 +18,9 @@ Changelog 0.7.3
   - Dead code cleanup: removed a no-op `mov al, al` from
     `Save_Append_Hex_Word` and an unused `mov di, dx` assignment from
     `Find_Duplicate_Id_Record` in 3CCFGCLI.ASM. No behavior change.
+  - Removed the duplicate product predicate `Cfg_Is_Supported_Product`;
+    CONFIGURE product revalidation now calls `Is_3C509_Family`, which has
+    identical semantics. No behavior change.
 
 
 Changelog 0.7.2

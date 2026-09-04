@@ -4496,23 +4496,6 @@ PROC Cfg_Wait_Expired NEAR
     ret
 ENDP Cfg_Wait_Expired
 
-; Test the exact product family used by the original ISA CONFIGURE helpers.
-; Input AX = product ID.  Carry clear means F0FFh masked value is 9050h.
-PROC Cfg_Is_Supported_Product NEAR
-    push    ax
-    and     ax, 0F0FFh
-    cmp     ax, 09050h
-    jne     @@No
-    pop     ax
-    clc
-    ret
-@@No:
-    pop     ax
-    stc
-    ret
-ENDP Cfg_Is_Supported_Product
-
-
 ; EEPROM busy wait shared by original sub_314 and sub_315.
 ; Input DX = adapter base.  Carry set on timeout.
 PROC Cfg_Eeprom_Wait_Ready NEAR
@@ -7351,7 +7334,7 @@ PROC Cfg_Revalidate_Selected NEAR
     call    Nic_IdPort_Read_Word
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@TagMismatch
-    call    Cfg_Is_Supported_Product
+    call    Is_3C509_Family
     jc      @@TagUnsupported
 
     mov     al, EEPROM_OEM_NODE_0
