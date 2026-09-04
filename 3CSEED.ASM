@@ -23,7 +23,6 @@ msg_banner_prefix DB '3CSEED - 3C509B mock state seeder v', '$'
 msg_banner_suffix DB 0Dh, 0Ah, '$'
 msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  INIT         Create deterministic one-card seed (3C509B-TP profile).', 0Dh, 0Ah
-             DB '  RANDOM       Create randomized one-card seed state.', 0Dh, 0Ah
              DB '  ADD model [io] [irq]  Append one card; defaults pick next free I/O.', 0Dh, 0Ah
              DB '  CLEAR        Delete 3C509B.MCK.', 0Dh, 0Ah
              DB '  3C509B-TP    Seed as 3C509B-TP  (product 9050h, twisted-pair).', 0Dh, 0Ah
@@ -45,7 +44,6 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  LINKDOWN     INIT profile with live Link Status forced not connected.', 0Dh, 0Ah
              DB '$'
 msg_ok_init  DB 'Seed file created (INIT).', 0Dh, 0Ah, '$'
-msg_ok_rand  DB 'Seed file created (RANDOM).', 0Dh, 0Ah, '$'
 msg_ok_clear DB 'Seed file deleted (or already absent).', 0Dh, 0Ah, '$'
 msg_ok_tp    DB 'Seed file created (3C509B-TP).', 0Dh, 0Ah, '$'
 msg_ok_combo DB 'Seed file created (3C509B-COMBO).', 0Dh, 0Ah, '$'
@@ -73,7 +71,6 @@ msg_bad_iobase DB 'Invalid IOBASE argument.', 0Dh, 0Ah, '$'
 msg_bad_irq  DB 'Invalid IRQ argument.', 0Dh, 0Ah, '$'
 
 kw_init      DB 'INIT', 0
-kw_random    DB 'RANDOM', 0
 kw_add       DB 'ADD', 0
 kw_clear     DB 'CLEAR', 0
 kw_tp        DB '3C509B-TP', 0
@@ -102,20 +99,11 @@ state_record_count DB 0
 seed_product DW PRODUCT_3C509_TP
 seed_base    DW 0300h
 seed_irq     DB 10
-seed_asic    DB 4
 seed_media   DB 0
 seed_config_control DW W0_CONFIG_CONTROL_3C509B_DEFAULT
 
 factory_mac  DB 6 DUP (0)
 oem_mac      DB 6 DUP (0)
-
-rand_seed    DW 0A5A5h
-
-product_table DW PRODUCT_3C509
-             DW PRODUCT_3C509_TP
-             DW PRODUCT_3C509_COMBO
-             DW PRODUCT_3C509_TPO
-             DW PRODUCT_3C509_TPC
 
 irq_table    DB 3, 5, 7, 9, 10, 11, 12, 15
 
@@ -200,9 +188,6 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_init
     call    Match_Token
     jnc     @@DoInit
-    mov     dx, OFFSET kw_random
-    call    Match_Token
-    jnc     @@DoRandom
     mov     dx, OFFSET kw_add
     call    Match_Token
     jnc     @@DoAdd
@@ -282,14 +267,6 @@ PROC Parse_And_Run NEAR
     call    Seed_Init
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_init
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoRandom:
-    call    Seed_Random
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_rand
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -956,96 +933,11 @@ PROC Seed_Init NEAR
     ret
 ENDP Seed_Init
 
-PROC Seed_Random NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    dx
-    push    si
-
-    call    Seed_From_Time
-
-    mov     cx, 5
-    call    Rand_Mod
-    shl     ax, 1
-    mov     si, ax
-    mov     ax, [WORD product_table + si]
-    mov     [seed_product], ax
-
-    mov     cx, 31
-    call    Rand_Mod
-    shl     ax, 1
-    mov     si, ax
-    mov     ax, [WORD iobase_table + si]
-    mov     [seed_base], ax
-
-    mov     cx, 8
-    call    Rand_Mod
-    mov     si, ax
-    mov     al, [BYTE irq_table + si]
-    mov     [seed_irq], al
-
-    mov     cx, 5
-    call    Rand_Mod
-    add     al, 2
-    mov     [seed_asic], al
-
-    mov     cx, 3
-    call    Rand_Mod
-    cmp     al, 0
-    je      @@MediaDone
-    cmp     al, 1
-    je      @@MediaExternal
-    mov     al, 3
-    jmp     @@MediaDone
-@@MediaExternal:
-    mov     al, 1
-@@MediaDone:
-    mov     [seed_media], al
-
-    mov     cx, 6
-    mov     si, OFFSET factory_mac
-@@Mac0:
-    call    Rand16
-    mov     [BYTE si], al
-    inc     si
-    loop    @@Mac0
-
-    mov     cx, 6
-    mov     si, OFFSET oem_mac
-@@Mac1:
-    call    Rand16
-    mov     [BYTE si], al
-    inc     si
-    loop    @@Mac1
-
-    mov     al, [BYTE factory_mac+0]
-    and     al, 0FEh
-    or      al, 02h
-    mov     [BYTE factory_mac+0], al
-
-    mov     al, [BYTE oem_mac+0]
-    and     al, 0FEh
-    or      al, 02h
-    mov     [BYTE oem_mac+0], al
-
-    call    Build_State
-    call    Write_State_File
-
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    pop     ax
-    ret
-ENDP Seed_Random
-
 PROC Seed_Add NEAR
     push    ax
     push    dx
     push    si
 
-    mov     [seed_asic], 4
     mov     [seed_irq], 10
 
     call    Skip_Spaces
@@ -1364,7 +1256,7 @@ ENDP Seed_NoLinkBeat
 PROC Seed_LinkUp NEAR
     ; INIT profile with the live link status explicitly forced to
     ; connected (Media Type and Status register, Window 4/Port 0Ah,
-    ; bit 11 set).  This is already the INIT/RANDOM default; the explicit
+    ; bit 11 set).  This is already the INIT default; the explicit
     ; seed exists for test clarity and as the counterpart to LINKDOWN.
     call    Seed_Init
     jc      @@Fail
@@ -1489,9 +1381,8 @@ PROC Build_Record_Current NEAR
     mov     ax, EEPROM_REVISION_3C509B
     call    EEPROM_Write_SI
 
-    ; Legacy fixture initialization retained until the deferred OPTIMIZE and
-    ; checksum alignment pass.  Word 0Fh is not the documented optimization
-    ; field; the checksum pass below owns its bytes.
+    ; Clear EEPROM word 0Fh so its high byte is 00h before Build_Checksum
+    ; populates the primary low checksum in the low byte.
     xor     ax, ax
     mov     si, EEPROM_CHECKSUM
     call    EEPROM_Write_SI
@@ -1537,25 +1428,6 @@ PROC Build_Checksum NEAR
     push    si
 
     ; Primary low checksum covers only configurable words 08h, 09h, and 0Dh.
-    xor     bx, bx
-    xor     si, si
-@@PrimaryHigh:
-    cmp     si, EEPROM_CHECKSUM
-    jae     @@PrimaryLowStart
-    cmp     si, EEPROM_ADDR_CFG
-    je      @@PrimaryHighNext
-    cmp     si, EEPROM_RESOURCE_CFG
-    je      @@PrimaryHighNext
-    cmp     si, EEPROM_SOFTWARE_INFO
-    je      @@PrimaryHighNext
-    call    EEPROM_Read_SI
-    xor     bl, al
-    xor     bl, ah
-@@PrimaryHighNext:
-    inc     si
-    jmp     @@PrimaryHigh
-
-@@PrimaryLowStart:
     xor     bh, bh
     mov     si, EEPROM_ADDR_CFG
 @@PrimaryLow:
@@ -1695,47 +1567,5 @@ PROC Write_State_File NEAR
     stc
     ret
 ENDP Write_State_File
-
-PROC Seed_From_Time NEAR
-    push    ax
-    push    cx
-    push    dx
-
-    mov     ah, 2Ch
-    int     21h
-    mov     al, dl
-    xor     ah, ah
-    add     ax, dx
-    add     ax, cx
-    add     ax, [rand_seed]
-    mov     [rand_seed], ax
-
-    pop     dx
-    pop     cx
-    pop     ax
-    ret
-ENDP Seed_From_Time
-
-PROC Rand16 NEAR
-    push    bx
-    mov     ax, [rand_seed]
-    mov     bx, 25173
-    mul     bx
-    add     ax, 13849
-    mov     [rand_seed], ax
-    pop     bx
-    ret
-ENDP Rand16
-
-PROC Rand_Mod NEAR
-    ; Input CX = modulus. Output AX = random 0..CX-1.
-    push    dx
-    call    Rand16
-    xor     dx, dx
-    div     cx
-    mov     ax, dx
-    pop     dx
-    ret
-ENDP Rand_Mod
 
 END Start

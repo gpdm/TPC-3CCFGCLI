@@ -343,7 +343,6 @@ profiles, capability overrides, and cleanup states.
 | Verb | Description |
 |------|-------------|
 | `INIT` | Deterministic 3C509B-TP profile (IRQ 10, base 0x0300). Default for most tests. |
-| `RANDOM` | Random real-model card. Always PNP+FD capable. |
 | `CLEAR` | Deletes `3C509B.MCK`. |
 | `3C509B-TP` | Product 9050h, media=TP. |
 | `3C509B-COMBO` | Product 9150h, media=AUI. |

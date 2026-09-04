@@ -12,6 +12,11 @@ Changelog 0.7.4
   - Fixed prospective /TR and /FULLDUPLEX validation: an enabled Full Duplex
     policy now rejects an effective AUI, COAX, or AUTO transceiver regardless
     of which property was requested, without changing either requested value.
+  - Dead code and stale comment cleanup in 3CSEED.ASM: removed the RANDOM
+    command, all RNG infrastructure, and unused seed_asic.
+    I introduced RANDOM during early development, but it quickly turned out
+    to make the tests non-deterministic, since flags were totally randomized.
+    That's a condition that would never appear on an actual NIC.
 
 
 Changelog 0.7.3
