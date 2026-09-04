@@ -3167,6 +3167,84 @@ PROC Cfg_Handle_BSIZE NEAR
     ret
 ENDP Cfg_Handle_BSIZE
 
+; Input:  DX = adapter I/O base, ES:BX = Boot ROM aperture base,
+;         CX = configured Boot ROM size in bytes.
+; Output: CF clear = valid ROM, CF set = invalid or inaccessible ROM.
+; Preserves all registers. Page 0 is selected before return.
+PROC Cfg_Probe_Boot_ROM NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    xor     al, al
+    call    Nic_Rom_Set_Page
+
+    call    Nic_Rom_Read_Byte
+    cmp     al, 55h
+    jne     @@Invalid
+    inc     bx
+    call    Nic_Rom_Read_Byte
+    cmp     al, 0AAh
+    jne     @@Invalid
+    inc     bx
+    call    Nic_Rom_Read_Byte
+    xor     ah, ah
+    shl     ax, 1
+    shl     ax, 1
+    shl     ax, 1
+    shl     ax, 1
+    shl     ax, 1
+    shl     ax, 1
+    shl     ax, 1
+    shl     ax, 1
+    shl     ax, 1
+    cmp     ax, cx
+    ja      @@Invalid
+    mov     cx, ax
+    sub     bx, 2
+    xor     si, si
+    mov     di, 4000h
+    or      cx, cx
+    jz      @@ChecksumDone
+@@Checksum:
+    call    Nic_Rom_Read_Byte
+    xor     ah, ah
+    add     si, ax
+    inc     bx
+    dec     di
+    jnz     @@Next
+    cmp     cx, 1
+    jbe     @@Next
+    mov     al, 1
+    call    Nic_Rom_Set_Page
+    sub     bx, 4000h
+@@Next:
+    loop    @@Checksum
+@@ChecksumDone:
+    test    si, 00FFh
+    jnz     @@Invalid
+    clc
+    jmp     @@Done
+
+@@Invalid:
+    stc
+@@Done:
+    pushf
+    xor     al, al
+    call    Nic_Rom_Set_Page
+    popf
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Probe_Boot_ROM
+
 PROC Cfg_Handle_TR NEAR
     push    si
     push    cx

@@ -20,34 +20,28 @@ Do not infer desired functionality from the original 3Com utility alone. Feature
 
 ## 2. Mandatory Build and Test Workflow
 
-Build and test validation is required only when the agent has modified code or other files that affect the produced binaries or automated tests.
+Build and test validation is required only when the agent has modified code, tests, build files, or other files that affect the produced binaries or automated tests.
 
-If the agent has not changed any such file, it MUST NOT run build.sh or test.sh unless the user explicitly requests a build or test run.
+If the agent has not made such a modification, it MUST NOT run `build.sh` or `test.sh` unless the user explicitly requests a build or test run.
 
-Examples of tasks that do not require build or test execution include:
+Tasks that do not require build or test execution include source review or analysis without modifications, reading or explaining existing code, producing implementation recommendations or prompts, reviewing already supplied changes without modifying the repository, and documentation only changes unless the user explicitly requests validation.
 
-Source review or analysis without modifications.
-Reading or explaining existing code.
-Producing implementation recommendations or prompts.
-Reviewing already supplied changes without modifying the repository.
-Documentation only changes, unless the user explicitly requests validation.
-
-When the agent has made a code or test affecting change, validation MUST use this sequence:
+When the agent has made a change that requires validation, the mandatory sequence is:
 
 ```text
 ./build.sh
 ./test.sh
 ```
 
-This order is mandatory.
+The order is mandatory.
 
-After any code change:
+After a change that requires validation:
 
 1. Run `./build.sh`.
 
-2. Wait for `build.sh` to finish.
+2. Wait for `build.sh` to finish completely.
 
-3. Inspect `BUILD.LOG`.
+3. Inspect `BUILD.LOG` after the script has completed.
 
 4. Confirm that the build completed successfully.
 
@@ -61,25 +55,81 @@ Error messages: None
 
 7. Wait for `test.sh` to finish completely.
 
-8. Inspect `TEST.LOG` and the relevant logs under `ARTIFACT/`.
+8. Review the `TEST.LOG` output emitted by `test.sh`.
 
-9. Confirm that the complete test suite reached its normal successful completion, including the hardware limit checks.
+9. Inspect any relevant logs under `ARTIFACT/` separately after `test.sh` has completed.
 
-A previous build does not satisfy this requirement after the source tree has changed.
+10. Confirm that the complete test suite reached its normal successful completion, including the hardware limit checks.
 
-If any source is changed after `build.sh` was run, run `build.sh` again before running `test.sh`.
+A previous build does not satisfy this requirement after files affecting the binaries or tests have changed.
+
+If such a file is changed after `build.sh` was run, run `build.sh` again before running `test.sh`.
 
 If `build.sh` fails, do not run `test.sh`. Fix or report the build failure first.
 
-Running tests against binaries produced before the current source changes is invalid validation.
+Running tests against binaries produced before the current relevant source changes is invalid validation.
 
-Pure documentation changes do not require a build or test run unless testing is otherwise required by the task.
+Pure documentation changes do not require a build or test run unless validation is explicitly requested by the user.
 
 ### Command invocation rules
 
-Run the validation scripts directly.
+`build.sh` and `test.sh` MUST always be executed as bare standalone commands.
 
-Do not pipe `build.sh` or `test.sh` into tools such as `grep`, `tail`, or similar commands.
+The complete shell command used to invoke them MUST be exactly one of:
+
+```text
+./build.sh
+```
+
+or:
+
+```text
+./test.sh
+```
+
+Nothing may be appended, prepended, chained, wrapped, redirected, or combined with either command.
+
+Do not append another command with a shell separator.
+
+Do not chain another command conditionally.
+
+Do not pipe script output into another command.
+
+Do not redirect script output.
+
+Do not capture the script exit status into a shell variable.
+
+Do not append `echo`, `cat`, `find`, `grep`, `tail`, or similar commands.
+
+Do not wrap either script in `sh`, `bash`, a subshell, or another helper command.
+
+Do not perform cleanup, status reporting, or log collection in the same shell invocation.
+
+Commands such as these are forbidden:
+
+```text
+./test.sh; echo $?
+```
+
+```text
+./test.sh && cat TEST.LOG
+```
+
+```text
+./test.sh | tee output.log
+```
+
+```text
+./test.sh; ret=$?; cat TEST.LOG; exit $ret
+```
+
+```text
+./build.sh; cat BUILD.LOG
+```
+
+Run the script by itself and wait for it to finish.
+
+Log inspection MUST occur only after the corresponding script has completed, using separate tool calls or separate shell commands.
 
 Do not prepend speculative cleanup commands such as `rm`, `find`, or cache removal.
 
@@ -87,17 +137,29 @@ The test infrastructure performs its own required cleanup.
 
 If stale state is suspected, investigate it first rather than modifying the normal validation command.
 
-Logs MUST be inspected after the corresponding scripts have completed.
+Script exit status is no sufficient validation.
 
-Script exit status alone is not sufficient validation.
+Both `build.sh` and `test.sh` automatically emit their main log, `BUILD.LOG` and `TEST.LOG` respectively, as part of their normal output.
+
+Do not print, dump, or `cat` either `BUILD.LOG` or `TEST.LOG` again after script run merely to duplicate output that was already emitted.
+
+For regression tests, inspect additional logs under `ARTIFACT/` separately when they are required to determine the final validation result.
 
 ### Long running test process
 
 A complete `test.sh` run may take more than 120 seconds and can exceed the default timeout of an execution tool.
 
+This does not justify wrapping `test.sh` in additional shell logic.
+
+Always invoke it exactly as:
+
+```text
+./test.sh
+```
+
 A tool timeout does not mean that the test suite passed, failed, or completed.
 
-The agent MUST NOT issue a final assessment, claim successful validation, or report the change as complete until the test process has actually finished and its logs have been inspected.
+The agent MUST NOT issue a final assessment, claim successful validation, or report the change as complete until the original test process has actually finished and the required logs have been inspected.
 
 Use an execution timeout long enough for the complete test run whenever possible.
 
@@ -105,17 +167,19 @@ If the execution tool returns before the test process has finished, continue obs
 
 Do not start another `test.sh` merely because the first invocation exceeded a tool timeout.
 
-Once the process has finished, inspect `TEST.LOG` and the relevant `ARTIFACT/` logs before determining the validation result.
+Do not replace the bare invocation with shell logic intended to capture status, collect logs, or work around the timeout.
+
+Once the original process has finished, review the output emitted by `test.sh` and inspect relevant `ARTIFACT/` logs separately before determining the validation result.
 
 ## 3. Validation Semantics
 
-The test suite is fail fast by design.
+The test suite uses fail fast behavior by design.
 
 A test run that terminates before all expected tests and hardware limit checks have completed is a failed validation, even if earlier tests passed.
 
 Do not describe a partial test run as successful.
 
-The authoritative test results are the assertions recorded in `TEST.LOG` and the corresponding logs under `ARTIFACT/`.
+The authoritative test result comes from the assertions recorded in `TEST.LOG` together with the corresponding relevant logs under `ARTIFACT/`.
 
 Tests use explicit `3CSEED` state so that results remain deterministic.
 
@@ -123,7 +187,7 @@ When adding or changing tests, establish the required mock state explicitly.
 
 After temporary capability or configuration overrides, restore the state with the appropriate `INIT` or `CLEAR` operation.
 
-The complete seeder command reference belongs in `README.md`, not here.
+The complete seeder command reference is found in `README.md`.
 
 ## 4. Target and Toolchain Constraints
 
@@ -188,7 +252,9 @@ Keep hardware access behind the existing backend boundary.
 
 When changing a generic hardware interface contract, inspect both `3CHWIF.ASM` and `3CMOCKIF.ASM`.
 
-The mock backend should reproduce the externally relevant behavior of the real backend where practical. Backend specific implementation details may differ, but their shared caller contract must remain consistent.
+The mock backend should reproduce the externally relevant behavior of the real backend where practical.
+
+Backend specific implementation details may differ, but their shared caller contract must remain consistent.
 
 Do not add production behavior merely to make a mock test easier to implement.
 
@@ -242,30 +308,42 @@ Do not weaken an existing assertion merely to make a changed implementation pass
 
 ## 9. Completion Criteria
 
-These validation steps apply only when the agent has modified code or other files that affect the produced binaries or automated tests.
+These validation steps apply only when the agent has modified code, tests, build files, or other files that affect the produced binaries or automated tests.
 
-If no such modification was made, do not run `build.sh?  or `test.sh` merely as a completion ritual.
+If no such modification was made, do not run `build.sh` or `test.sh` merely as a completion ritual.
 
 When validation is required, before reporting the modification as complete:
 
 1. Review the final changes for unrelated or accidental edits.
 
-2. Run `./build.sh`.
+2. Run exactly:
+
+```text
+./build.sh
+```
 
 3. Wait for the build process to finish.
 
-4. Inspect `BUILD.LOG`.
+4.  Review the `BUILDTEST.LOG` output already emitted by `build.sh` after the build has completed.
 
 5. Verify that the current source tree builds successfully.
 
-6. Run `./test.sh` only after that successful build.
+6. Only after that successful build, run exactly:
+
+```text
+./test.sh
+```
 
 7. Wait for the complete test process to finish, even if this takes more than 120 seconds.
 
-8. Inspect `TEST.LOG` and the relevant `ARTIFACT/` logs.
+8. Review the `TEST.LOG` output already emitted by `test.sh`.
 
-9. Verify that the full test sequence completed successfully.
+9. Inspect relevant `ARTIFACT/` logs separately.
 
-10. Report any validation that could not be performed.
+10. Verify that the full test sequence completed successfully.
 
-Never claim that a change was fully validated when the build failed, the tests terminated early, only an isolated test was run, the test process had not yet finished, the required logs were not inspected, or the tests used binaries from an earlier source state.
+11. Report any validation that could not be performed.
+
+Never claim that a change was fully validated when the build failed, the tests terminated early, only an isolated test was run, the test process had not yet finished, the required logs were not inspected, or the tests used binaries from an earlier relevant source state.
+
+Never combine build execution, test execution, status capture, cleanup, or log inspection into a compound shell command.

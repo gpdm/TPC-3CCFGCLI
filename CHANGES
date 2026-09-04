@@ -27,6 +27,8 @@ Changelog 0.7.4
     implemented `Nic_Rom_Read_Byte` and `Nic_Rom_Set_Page` in 3CHWIF.ASM and
     3CMOCKIF.ASM, with live Address Configuration aperture gating and
     deterministic synthetic Option ROM generation (8K/16K/32K/NONE) in MOCKIF.
+  - Added common `Cfg_Probe_Boot_ROM` validation for Option ROM signatures,
+    declared size, full checksum, and 32 KB page traversal with aperture wrap.
 
 
 Changelog 0.7.3
