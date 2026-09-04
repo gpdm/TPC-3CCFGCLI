@@ -6,6 +6,9 @@ Changelog 0.7.4
     Cfg_Txn_Verify when transceiver configuration changes, verifying bits
     15:14 (transceiver selection) and bit 7 (auto-select) against the requested
     state and reporting CFG_ERR_TR_VERIFY on mismatch.
+  - CONFIGURE revalidation and transaction reads now use NIC_FLAG_ACTIVE to
+    select active hardware access; inactive /TR requests report
+    CFG_ERR_TR_INACTIVE rather than falling through to the IRQ error.
 
 
 Changelog 0.7.3

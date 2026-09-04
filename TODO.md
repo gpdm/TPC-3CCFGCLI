@@ -5,15 +5,10 @@ This file documents pending items, in no particular order or priority.
 
 ## Bugs
 
-- [Bug] /TR not chaing /FULLDUPLEX
+- [Bug] /TR not changing /FULLDUPLEX
 
   When selecting trascever type other than TP, FULLDUPLEX should be automatically disabled.
   The original utility does prevents combining FULLDUPLEX=enabled + COAX/AUI/AUTO combination.
-
-- [Bug] Adapter Read-out does not honor EEPROM failure
-
-  Adapter discovery honors EEPROM read failure, but does not handle it correctly.
-  The function should abort on error, which it currently does not.
 
 
 - [Bug] Boot ROM Activation:
@@ -39,38 +34,34 @@ This file documents pending items, in no particular order or priority.
   So apparently, also the MOCKIF would need to be extended to mimic the
   signature in an identical way how the actual hardware does it.
 
+- Pending Clarification/Compatibility] t1505 duplicate active IOBASE conflict:
 
+  The hardware-faithful mock currently rejects a targeted IOBASE migration
+  when two active adapters decode the same IOBASE. The physical port response
+  is ambiguous, so selecting and safely reconfiguring adapter 2 is not
+  supported by the model.
+  
+  Retest this with real EtherLink III cards intentionally configured to the
+  same IOBASE and the original 3C5X9CFG utility. Determine whether the
+  original utility handles this conflict gracefully or simply fails. Until
+  confirmed, retain the conservative failure expectation in t1505.
+  
 
-### [Bug] Hardware Compliance Tests  
+- Pending Clarification/Compatibility] config restore fails
 
-#### Pending Clarification/Compatibility] t1505 duplicate active IOBASE conflict:
-
-The hardware-faithful mock currently rejects a targeted IOBASE migration
-when two active adapters decode the same IOBASE. The physical port response
-is ambiguous, so selecting and safely reconfiguring adapter 2 is not
-supported by the model.
-
-Retest this with real EtherLink III cards intentionally configured to the
-same IOBASE and the original 3C5X9CFG utility. Determine whether the
-original utility handles this conflict gracefully or simply fails. Until
-confirmed, retain the conservative failure expectation in t1505.
-
-
-#### Pending Clarification/Compatibility] config restore fails
-
-TESTHWC.MK includes config restoration via `RESTORE.BAT` as generated
-by `3CCFGCLI.EXE` during the compliance test.
-
-This somewhat broken right now:
-
-When invoking `RESTORE.BAT 3C5X9CFG.EXE` from `make`, the test system locks up.
-
-When invoking the same command from the DOS prompt, it runs through.
-This may hint at an actual out-of-memory issue, possible related to MAKE.
-
-Tested only on MS-DOS 4 so far. Needs further investigation.
-Might be related to the fact that I'm not using MAKE 4.0, but the older MAKE 3.0,
-as only this one runs on MS-DOS 4.
+  TESTHWC.MK includes config restoration via `RESTORE.BAT` as generated
+  by `3CCFGCLI.EXE` during the compliance test.
+  
+  This somewhat broken right now:
+  
+  When invoking `RESTORE.BAT 3C5X9CFG.EXE` from `make`, the test system locks up.
+  
+  When invoking the same command from the DOS prompt, it runs through.
+  This may hint at an actual out-of-memory issue, possible related to MAKE.
+  
+  Tested only on MS-DOS 4 so far. Needs further investigation.
+  Might be related to the fact that I'm not using MAKE 4.0, but the older MAKE 3.0,
+  as only this one runs on MS-DOS 4.
 
 
 

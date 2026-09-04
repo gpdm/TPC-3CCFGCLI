@@ -4831,8 +4831,7 @@ PROC Cfg_Txn_Read_Current NEAR
     push    si
 
     mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
-    or      dx, dx
+    test    [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
     jnz     @@HaveBase
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@InactiveINT
@@ -4865,14 +4864,20 @@ PROC Cfg_Txn_Read_Current NEAR
     jmp     @@Fail
 @@InactiveBSize:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jz      @@InactiveIRQ
+    jz      @@InactiveTR
     mov     [cfg_last_error], CFG_ERR_BSIZE_INACTIVE
+    jmp     @@Fail
+@@InactiveTR:
+    test    [cfg_parse_flags], CFG_PARSE_TR
+    jz      @@InactiveIRQ
+    mov     [cfg_last_error], CFG_ERR_TR_INACTIVE
     jmp     @@Fail
 @@InactiveIRQ:
     mov     [cfg_last_error], CFG_ERR_INT_INACTIVE
     jmp     @@Fail
 
 @@HaveBase:
+    mov     dx, [WORD si + NIC_IO_BASE]
     mov     [cfg_txn_old_base], dx
     mov     [cfg_txn_new_base], dx
 
@@ -7201,7 +7206,7 @@ ENDP Cfg_Txn_Execute
 
 ; Revalidate the logical record selected from nic_table against live hardware.
 ; Active records use the existing proven register signature path and then the
-; OEM station address from EEPROM.  An unassigned ID port record can be checked
+; OEM station address from EEPROM.  An inactive ID port record can be checked
 ; read only by selecting its existing tag and re-reading the same identity words.
 ; Input SI = selected record.  Carry set with cfg_last_error on failure.
 PROC Cfg_Revalidate_Selected NEAR
@@ -7212,10 +7217,10 @@ PROC Cfg_Revalidate_Selected NEAR
     push    di
     push    si
 
-    mov     dx, [WORD si + NIC_IO_BASE]
-    or      dx, dx
+    test    [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
     jz      @@ByTag
 
+    mov     dx, [WORD si + NIC_IO_BASE]
     call    Nic_Check_3Com_Signature
     jc      @@Mismatch
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
