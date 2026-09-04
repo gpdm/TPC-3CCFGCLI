@@ -669,6 +669,10 @@ save_execname   DB  65 DUP(0)
 save_execname_default DB '3CCFGCLI.EXE', 0
 save_filename_default DB 'RESTORE.BAT', 0
 save_outputfile_kw DB 'OUTPUTFILE:', 0
+cli_kw_help     DB 'HELP', 0
+cli_kw_list     DB 'LIST', 0
+cli_kw_saveconfig DB 'SAVECONFIG', 0
+cli_kw_configure DB 'CONFIGURE', 0
 cli_kw_verbose  DB 'VERBOSE', 0
 save_execfile_kw DB 'EXECFILE:', 0
 save_buffer     DB  SAVE_BUFFER_SIZE DUP(0)
@@ -946,117 +950,33 @@ PROC Parse_And_Execute NEAR
     or      al, al
     jz      @@Help
 
-    cmp     al, '?'
-    je      @@Help
-    cmp     al, '/'
-    je      @@Slash
-    cmp     al, '-'
-    je      @@Slash
+    mov     bx, OFFSET cli_kw_help
+    call    Cli_Match_Token
+    jnc     @@Help
 
-    ; HELP
-    cmp     [BYTE si], 'H'
-    jne     @@TryList
-    cmp     [BYTE si+1], 'E'
-    jne     @@TryList
-    cmp     [BYTE si+2], 'L'
-    jne     @@TryList
-    cmp     [BYTE si+3], 'P'
-    je      @@Help
+    mov     bx, OFFSET cli_kw_list
+    call    Cli_Match_Token
+    jnc     @@List
 
-@@TryList:
-    cmp     [BYTE si], 'L'
-    jne     @@TrySaveConfig
-    cmp     [BYTE si+1], 'I'
-    jne     @@TryConfig
-    cmp     [BYTE si+2], 'S'
-    jne     @@TryConfig
-    cmp     [BYTE si+3], 'T'
-    jne     @@TryConfig
-    mov     al, [si+4]
-    or      al, al
-    jz      @@List
-    cmp     al, ' '
-    je      @@List
-    cmp     al, 09h
-    je      @@List
-    jmp     @@Help
-
-@@TrySaveConfig:
-    cmp     [BYTE si], 'S'
-    jne     @@TryConfig
-    cmp     [BYTE si+1], 'A'
-    jne     @@TryConfig
-    cmp     [BYTE si+2], 'V'
-    jne     @@TryConfig
-    cmp     [BYTE si+3], 'E'
-    jne     @@TryConfig
-    cmp     [BYTE si+4], 'C'
-    jne     @@TryConfig
-    cmp     [BYTE si+5], 'O'
-    jne     @@TryConfig
-    cmp     [BYTE si+6], 'N'
-    jne     @@TryConfig
-    cmp     [BYTE si+7], 'F'
-    jne     @@TryConfig
-    cmp     [BYTE si+8], 'I'
-    jne     @@TryConfig
-    cmp     [BYTE si+9], 'G'
-    jne     @@TryConfig
-    mov     al, [si+10]
-    or      al, al
-    jz      @@SaveConfig
-    cmp     al, ' '
-    je      @@SaveConfig
-    cmp     al, 09h
-    jne     @@TryConfig
-@@SaveConfig:
+    mov     bx, OFFSET cli_kw_saveconfig
+    call    Cli_Match_Token
+    jc      @@CheckConfig
     add     si, 10
     call    Cli_Collect_Args
     jc      @@Done
     call    Cmd_SaveConfig
     ret
 
-@@TryConfig:
-    cmp     [BYTE si], 'C'
-    jne     @@Help
-    cmp     [BYTE si+1], 'O'
-    jne     @@Help
-    cmp     [BYTE si+2], 'N'
-    jne     @@Help
-    cmp     [BYTE si+3], 'F'
-    jne     @@Help
-    cmp     [BYTE si+4], 'I'
-    jne     @@Help
-    cmp     [BYTE si+5], 'G'
-    jne     @@Help
-    cmp     [BYTE si+6], 'U'
-    jne     @@Help
-    cmp     [BYTE si+7], 'R'
-    jne     @@Help
-    cmp     [BYTE si+8], 'E'
-    jne     @@Help
-    mov     al, [si+9]
-    or      al, al
-    jz      @@Configure
-    cmp     al, ' '
-    je      @@Configure
-    cmp     al, 09h
-    jne     @@Help
+@@CheckConfig:
+    mov     bx, OFFSET cli_kw_configure
+    call    Cli_Match_Token
+    jc      @@Help
 
-@@Configure:
     add     si, 9
     call    Cli_Collect_Args
     jc      @@Done
     call    Cmd_Configure
     ret
-
-@@Slash:
-    inc     si
-    cmp     [BYTE si], '?'
-    je      @@Help
-    cmp     [BYTE si], 'H'
-    je      @@Help
-    jmp     @@Help
 
 @@List:
     add     si, 4
@@ -1119,7 +1039,7 @@ PROC Cli_Collect_Args NEAR
     ; switch is left intact for the verb specific parser.
     inc     si
     mov     bx, OFFSET cli_kw_verbose
-    call    Cli_Match_Global
+    call    Cli_Match_Token
     dec     si
     jc      @@RecordArg
 
@@ -1168,11 +1088,10 @@ PROC Cli_Collect_Args NEAR
     ret
 ENDP Cli_Collect_Args
 
-; Matches the NUL terminated global keyword at DS:BX against the switch body
-; at DS:SI.  A match requires a whitespace or NUL delimiter directly after
-; the keyword, so /VERBOSE:X is not mistaken for the valueless global option.
+; Matches the NUL terminated keyword at DS:BX against the token at DS:SI.
+; A match requires a whitespace or NUL delimiter directly after the keyword.
 ; SI is preserved.  CF clear on match.
-PROC Cli_Match_Global NEAR
+PROC Cli_Match_Token NEAR
     push    ax
     push    bx
     push    si
@@ -1205,7 +1124,7 @@ PROC Cli_Match_Global NEAR
     pop     ax
     stc
     ret
-ENDP Cli_Match_Global
+ENDP Cli_Match_Token
 
 ; Returns the next verb specific argument token in SI, or CF set when the
 ; filtered argument view is exhausted.
