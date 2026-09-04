@@ -1,5 +1,10 @@
 Changelog 0.7.3
   - HWC fix
+  - Completed the WORD-only NIC register access migration: removed the
+    unreferenced Nic_IO_Read_Byte/Nic_IO_Write_Byte backend entry points
+    from 3CHWIF.ASM and 3CMOCKIF.ASM, the entire mock_byte_pair_* byte
+    pairing emulation state and Mock_Byte_Pair_Invalidate_Current, and the
+    dead Mock_Ensure_Record_By_Base/Mock_Find_Record_By_Base helpers.
   - clarified IRQ-related CLI error message on wrong input
   - renamed TODO.TXT to TODO.md, updated document structure
   - Interrupt state preservation cleanup: all CLI/STI critical regions

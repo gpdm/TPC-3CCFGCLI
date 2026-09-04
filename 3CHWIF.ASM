@@ -103,20 +103,10 @@ ENDP Nic_IdPort_Read_Bit
 
 ; Backend physical I/O primitives.  Shared hardware algorithms pass actual
 ; ISA port addresses here; this backend performs the corresponding IN/OUT.
-PROC Nic_IO_Read_Byte NEAR
-    in      al, dx
-    ret
-ENDP Nic_IO_Read_Byte
-
 PROC Nic_IO_Read_Word NEAR
     in      ax, dx
     ret
 ENDP Nic_IO_Read_Word
-
-PROC Nic_IO_Write_Byte NEAR
-    out     dx, al
-    ret
-ENDP Nic_IO_Write_Byte
 
 PROC Nic_IO_Write_Word NEAR
     out     dx, ax

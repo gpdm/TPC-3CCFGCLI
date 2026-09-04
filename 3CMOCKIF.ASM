@@ -41,9 +41,7 @@
 ;   mock_contender_visible/mock_id_contention_active (which record, if any,
 ;   is still contending), mock_selected_tag/mock_selected_valid (which tag
 ;   was isolated by the last SELECT_TAG, used to route direct EEPROM reads
-;   -- see @@ReadContender in Nic_IdPort_Write_Command), mock_byte_pair_*
-;   (host-side byte-pair assembly state; see its own declaration comment
-;   below).
+;   -- see @@ReadContender in Nic_IdPort_Write_Command).
 ;
 ;   Temporary host-side scratch (sequence recognition bookkeeping that has
 ;   no per-adapter meaning at all, since every untagged adapter tracks the
@@ -101,17 +99,6 @@ mock_command_busy DB 0
 ; mirrors MCKRF_ACTIVE.  Set by a (currently unreachable) Start Coaxial
 ; Transceiver command; configuration-visible state only, no analog model.
 mock_coax_started DB 0
-; Generic byte-pair state for every configuration-facing 16-bit register.
-; A pair is valid only when the high byte immediately follows the low byte
-; of the same register, adapter, window, and access direction.  The low
-; write is held until completion; the low read latches one coherent word.
-mock_byte_pair_pending DB 0
-mock_byte_pair_index DB 0FFh
-mock_byte_pair_offset DW 0000h
-mock_byte_pair_window DB 0
-mock_byte_pair_write DB 0
-mock_byte_pair_low DB 0
-mock_byte_pair_word DW 0000h
 
 ; Global mock discovery state.
 mock_selected_tag DB 0
@@ -177,8 +164,6 @@ PROC Init_State NEAR
     mov     [byte mock_record_count], 0
     mov     [byte mock_loaded_index], 0FFh
     mov     [byte mock_contender_index], 0FFh
-    mov     [byte mock_byte_pair_pending], 0
-    mov     [byte mock_byte_pair_index], 0FFh
     ret
 ENDP Init_State
 
@@ -426,44 +411,6 @@ PROC Mock_Load_Record_By_Index NEAR
     ret
 ENDP Mock_Load_Record_By_Index
 
-PROC Mock_Find_Record_By_Base NEAR
-    push    bx
-    push    cx
-    push    di
-
-    xor     ax, ax
-    mov     cl, [byte mock_record_count]
-    xor     ch, ch
-@@Loop:
-    or      cx, cx
-    jz      @@NotFound
-    push    ax
-    call    Mock_Get_Record_Ptr
-    pop     ax
-    cmp     [BYTE di + MCK3R_PRESENT], 0
-    je      @@Next
-    test    [BYTE di + MCK3R_FLAGS], MCKRF_ACTIVE
-    je      @@Next
-    cmp     [WORD di + MCK3R_ACTIVE_BASE], dx
-    je      @@Found
-@@Next:
-    inc     al
-    dec     cx
-    jmp     @@Loop
-@@Found:
-    pop     di
-    pop     cx
-    pop     bx
-    clc
-    ret
-@@NotFound:
-    pop     di
-    pop     cx
-    pop     bx
-    stc
-    ret
-ENDP Mock_Find_Record_By_Base
-
 PROC Mock_Find_Record_By_Tag NEAR
     push    bx
     push    cx
@@ -578,30 +525,6 @@ PROC Mock_Find_First_Command_Contender NEAR
     stc
     ret
 ENDP Mock_Find_First_Command_Contender
-
-PROC Mock_Ensure_Record_By_Base NEAR
-    push    ax
-
-    cmp     [byte mock_loaded_index], 0FFh
-    je      @@Load
-    cmp     dx, [word mock_active_base]
-    jne     @@Load
-    pop     ax
-    clc
-    ret
-@@Load:
-    call    Mock_Find_Record_By_Base
-    jc      @@Fail
-    call    Mock_Load_Record_By_Index
-    jc      @@Fail
-    pop     ax
-    clc
-    ret
-@@Fail:
-    pop     ax
-    stc
-    ret
-ENDP Mock_Ensure_Record_By_Base
 
 ; Input DX = physical ISA port.  Output AL = matching active record index.
 ; A card decodes exactly its configured 16-byte I/O region.
@@ -1000,9 +923,9 @@ PROC Mock_Reg_Read_Word NEAR
     ret
 ENDP Mock_Reg_Read_Word
 
-; Shared word-level register resolution used by both Nic_IO_Read_Word and
-; Nic_IO_Read_Byte, once the physical port has already been resolved to a
-; loaded record.  Input BX = even offset within the 16-byte adapter region.
+; Shared word-level register resolution used by Nic_IO_Read_Word once the
+; physical port has already been resolved to a loaded record.  Input BX =
+; even offset within the 16-byte adapter region.
 PROC Mock_Resolve_And_Read_Word NEAR
     cmp     bx, EL3_STATUS
     jne     @@RegisterPath
@@ -1023,21 +946,6 @@ PROC Mock_Resolve_And_Read_Word NEAR
     ret
 ENDP Mock_Resolve_And_Read_Word
 
-; A word access is an intervening access for any outstanding byte pair on
-; this adapter.  Accesses to other adapters do not invalidate the pair.
-PROC Mock_Byte_Pair_Invalidate_Current NEAR
-    push    ax
-    cmp     [byte mock_byte_pair_pending], 0
-    je      @@Done
-    mov     al, [byte mock_loaded_index]
-    cmp     al, [byte mock_byte_pair_index]
-    jne     @@Done
-    mov     [byte mock_byte_pair_pending], 0
-@@Done:
-    pop     ax
-    ret
-ENDP Mock_Byte_Pair_Invalidate_Current
-
 PROC Nic_IO_Read_Word NEAR
     push    bx
     push    dx
@@ -1049,7 +957,6 @@ PROC Nic_IO_Read_Word NEAR
     call    Mock_Load_Record_By_Index
     jc      @@Absent
 @@Loaded:
-    call    Mock_Byte_Pair_Invalidate_Current
     pop     dx
     push    dx
     mov     bx, dx
@@ -1063,75 +970,6 @@ PROC Nic_IO_Read_Word NEAR
     pop     bx
     ret
 ENDP Nic_IO_Read_Word
-
-; Byte-wide equivalent of Nic_IO_Read_Word.  Reads use the same physical
-; dispatch as word access, but a low-byte read snapshots one coherent word
-; and only the immediate matching high-byte read consumes that snapshot.
-PROC Nic_IO_Read_Byte NEAR
-    push    bx
-    push    cx
-    push    dx
-
-    call    Mock_Find_Record_By_Port
-    jc      @@Absent
-    cmp     al, [byte mock_loaded_index]
-    je      @@Loaded
-    call    Mock_Load_Record_By_Index
-    jc      @@Absent
-@@Loaded:
-    pop     dx
-    push    dx
-    mov     bx, dx
-    sub     bx, [word mock_active_base]
-    mov     cl, bl
-    and     cl, 01h
-    and     bx, 0FFFEh
-    or      cl, cl
-    jz      @@Low
-    cmp     [byte mock_byte_pair_pending], 0
-    je      @@InvalidHigh
-    mov     al, [byte mock_loaded_index]
-    cmp     al, [byte mock_byte_pair_index]
-    jne     @@InvalidHigh
-    cmp     [word mock_byte_pair_offset], bx
-    jne     @@InvalidHigh
-    mov     al, [byte mock_current_window]
-    cmp     al, [byte mock_byte_pair_window]
-    jne     @@InvalidHigh
-    cmp     [byte mock_byte_pair_write], 0
-    jne     @@InvalidHigh
-    mov     ax, [word mock_byte_pair_word]
-    mov     [byte mock_byte_pair_pending], 0
-    mov     al, ah
-    xor     ah, ah
-    jmp     @@Done
-@@InvalidHigh:
-    call    Mock_Byte_Pair_Invalidate_Current
-    call    Mock_Resolve_And_Read_Word
-    mov     al, ah
-    xor     ah, ah
-    jmp     @@Done
-@@Low:
-    call    Mock_Byte_Pair_Invalidate_Current
-    call    Mock_Resolve_And_Read_Word
-    mov     [word mock_byte_pair_word], ax
-    mov     al, [byte mock_loaded_index]
-    mov     [byte mock_byte_pair_index], al
-    mov     [word mock_byte_pair_offset], bx
-    mov     al, [byte mock_current_window]
-    mov     [byte mock_byte_pair_window], al
-    mov     [byte mock_byte_pair_write], 0
-    mov     [byte mock_byte_pair_pending], 1
-    xor     ah, ah
-    jmp     @@Done
-@@Absent:
-    mov     ax, 00FFh
-@@Done:
-    pop     dx
-    pop     cx
-    pop     bx
-    ret
-ENDP Nic_IO_Read_Byte
 
 PROC Nic_Reg_Read_Word NEAR
     push    dx
@@ -1256,10 +1094,9 @@ ENDP Mock_Reg_Write_Word
 
 ; Central Command Register (EL3_COMMAND, offset 0Eh) decoder.  Input AX =
 ; the full 16-bit command word; the addressed adapter's record must
-; already be the loaded scratch record.  Both the word write path
-; (Nic_IO_Write_Word) and the bytewise assembly path (Nic_IO_Write_Byte,
-; once the high byte completes a pending pair) dispatch through here, so
-; there is exactly one command decoder regardless of access width.
+; already be the loaded scratch record.  The word write path
+; (Nic_IO_Write_Word) dispatches through here, so there is exactly one
+; command decoder.
 ;
 ; Select Window is the only opcode reachable from current 3CCFGCLI code.
 ; Global Reset and Start Coaxial Transceiver are modeled for architectural
@@ -1310,7 +1147,6 @@ PROC Nic_IO_Write_Word NEAR
     call    Mock_Load_Record_By_Index
     jc      @@Absent
 @@Loaded:
-    call    Mock_Byte_Pair_Invalidate_Current
     pop     ax
     mov     bx, dx
     sub     bx, [word mock_active_base]
@@ -1328,77 +1164,6 @@ PROC Nic_IO_Write_Word NEAR
     pop     bx
     ret
 ENDP Nic_IO_Write_Word
-
-; Byte-wide equivalent of Nic_IO_Write_Word.  A low byte starts a pending
-; 16-bit write; no register effect occurs until the immediate matching high
-; byte completes it.  This applies equally to Command and normal registers.
-PROC Nic_IO_Write_Byte NEAR
-    push    bx
-    push    cx
-    push    dx
-    push    ax
-
-    call    Mock_Find_Record_By_Port
-    jc      @@Absent
-    cmp     al, [byte mock_loaded_index]
-    je      @@Loaded
-    call    Mock_Load_Record_By_Index
-    jc      @@Absent
-@@Loaded:
-    pop     ax
-    mov     bx, dx
-    sub     bx, [word mock_active_base]
-    mov     cl, bl
-    and     cl, 01h
-    and     bx, 0FFFEh
-    or      cl, cl
-    jz      @@Low
-    cmp     [byte mock_byte_pair_pending], 0
-    je      @@InvalidHigh
-    mov     cl, [byte mock_loaded_index]
-    cmp     cl, [byte mock_byte_pair_index]
-    jne     @@InvalidHigh
-    cmp     [word mock_byte_pair_offset], bx
-    jne     @@InvalidHigh
-    mov     cl, [byte mock_current_window]
-    cmp     cl, [byte mock_byte_pair_window]
-    jne     @@InvalidHigh
-    cmp     [byte mock_byte_pair_write], 1
-    jne     @@InvalidHigh
-    mov     ah, al
-    mov     al, [byte mock_byte_pair_low]
-    mov     [byte mock_byte_pair_pending], 0
-    cmp     bx, EL3_COMMAND
-    jne     @@RegisterComplete
-    call    Mock_Command_Register_Write
-    jmp     @@Done
-@@RegisterComplete:
-    call    Mock_Reg_Write_Word
-    jmp     @@Done
-@@InvalidHigh:
-    ; A high byte without an immediate matching low byte is discarded.
-    ; It cannot complete a read-direction pair or one for another register.
-    call    Mock_Byte_Pair_Invalidate_Current
-    jmp     @@Done
-@@Low:
-    call    Mock_Byte_Pair_Invalidate_Current
-    mov     [byte mock_byte_pair_low], al
-    mov     al, [byte mock_loaded_index]
-    mov     [byte mock_byte_pair_index], al
-    mov     [word mock_byte_pair_offset], bx
-    mov     al, [byte mock_current_window]
-    mov     [byte mock_byte_pair_window], al
-    mov     [byte mock_byte_pair_write], 1
-    mov     [byte mock_byte_pair_pending], 1
-    jmp     @@Done
-@@Absent:
-    pop     ax
-@@Done:
-    pop     dx
-    pop     cx
-    pop     bx
-    ret
-ENDP Nic_IO_Write_Byte
 
 PROC Nic_Reg_Write_Word NEAR
     push    dx
@@ -1502,7 +1267,6 @@ PROC Mock_Reset_Loaded_Record NEAR
     call    Mock_Automatic_Configuration
     mov     [byte mock_selected_valid], 0
     mov     [byte mock_selected_tag], 0
-    mov     [byte mock_byte_pair_pending], 0
     ret
 ENDP Mock_Reset_Loaded_Record
 
