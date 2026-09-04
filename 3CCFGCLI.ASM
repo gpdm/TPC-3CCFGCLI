@@ -275,7 +275,9 @@ msg_cfg_bad_option DB "Invalid CONFIGURE option.", 0Dh, 0Ah, '$'
 msg_cfg_missing_value DB "Missing CONFIGURE option value.", 0Dh, 0Ah, '$'
 msg_cfg_no_property DB "No CONFIGURE property was specified.", 0Dh, 0Ah, '$'
 msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 0Dh, 0Ah, '$'
-msg_cfg_bad_int DB "Invalid /INT parameter. Value must be 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
+msg_cfg_bad_int DB "Invalid /INT parameter. Value must be either of", 0Dh, 0Ah,
+                DB "Systems with 8-bit Bus: 3, 5, 7", 0Dh, 0Ah,
+                DB "Systems with 16-bit Bus: 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
 msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER.", 0Dh, 0Ah, '$'

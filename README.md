@@ -48,7 +48,7 @@ This reimplementation is intentionally CLI-only. It does not aim to reproduce th
 original text UI, nor all CLI verbs supported by the original `3C5x9CFG.EXE` utility.
 Therefore it does not include other functions like the `echo server` by intention.
 
-Current task notes and open follow-ups are tracked in [TODO.TXT](TODO.TXT).
+Current task notes and open follow-ups are tracked in [TODO.md](TODO.md).
 
 The new implementation currently covers:
 

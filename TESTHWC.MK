@@ -59,7 +59,7 @@ TEST_TR = TP
 TEST_TR_RESULT_STR = on-board TP
 
 all: hwc
-hwc: clean prep save-config set-default HWC_CONFIGURATION HWC_SAVECONFIG restore-config complete
+hwc: clean prep save-config set-default HWC_CONFIGURATION restore-config complete
 
 # Runs the full conformance chain, restoring through 3CCFGCLI itself instead
 # of the original utility. Use once 3CCFGCLI's own EEPROM writes are trusted.

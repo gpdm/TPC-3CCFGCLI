@@ -1,3 +1,9 @@
+Changelog 0.7.3
+  - HWC fix
+  - clarified IRQ-related CLI error message on wrong input
+  - renamed TODO.TXT to TODO.md, updated document structure
+
+
 Changelog 0.7.2
   - restructrured TEST.MK to emit the test group "entrypoint" log line
     correctly before the actual tests, and not after.
