@@ -533,7 +533,6 @@ id_resource_cfg DW  0
 ; enumeration record layout remains unchanged.
 ext_addr_cfg      DW 0FFFFh
 ext_compatibility DW 0FFFFh
-ext_capability    DW 0FFFFh
 ext_config_ctrl   DW 0FFFFh
 ext_nic_capabilities DW 0FFFFh
 ext_nic_capability_valid DW 0
@@ -7450,7 +7449,6 @@ PROC Read_Extended_Nic_Info NEAR
 
     mov     [ext_addr_cfg], 0FFFFh
     mov     [ext_compatibility], 0FFFFh
-    mov     [ext_capability], 0FFFFh
     mov     [ext_config_ctrl], 0FFFFh
     mov     [ext_revision_info], 0FFFFh
     mov     [ext_link_status], 0FFFFh
@@ -7521,19 +7519,6 @@ PROC Read_Extended_Nic_Info NEAR
     call    Nic_EEPROM_Read
     jc      @@Done
     mov     [ext_revision_info], ax
-
-    mov     ax, [ext_revision_info]
-    cmp     ax, 0FFFFh
-    je      @@Done
-    and     ax, 00FFh
-    cmp     ax, 1
-    jb      @@Done
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_CAPABILITY
-    call    Nic_EEPROM_Read
-    jc      @@Done
-    mov     [ext_capability], ax
 
 @@Done:
     pop     dx

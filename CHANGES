@@ -21,6 +21,8 @@ Changelog 0.7.4
   - Consolidated the raw EEPROM Software Information word (0Dh) cache in
     3CCFGCLI.ASM: LIST MODEM, OPTIMIZE, and FULLDUPLEX decoders now share
     ext_software_info; removed the redundant ext_optimize state.
+  - Removed dead `ext_capability` state and the redundant trailing
+    `EEPROM_CAPABILITY` read from `Read_Extended_Nic_Info` in 3CCFGCLI.ASM.
 
 
 Changelog 0.7.3
