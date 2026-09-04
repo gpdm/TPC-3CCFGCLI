@@ -538,12 +538,11 @@ ext_config_ctrl   DW 0FFFFh
 ext_nic_capabilities DW 0FFFFh
 ext_nic_capability_valid DW 0
 ext_revision_info DW 0FFFFh
-ext_optimize      DW 0FFFFh
 ; Live link status (Window 4/Port 0Ah bit 11); 0 = not connected,
 ; 1 = connected, 0FFFFh = unavailable (adapter not active).
 ext_link_status   DW 0FFFFh
-; Raw EEPROM_SOFTWARE_INFO (word 0Dh).  /MODEM uses only its Maximum Interrupt
-; Disable Time field, bits 13:8.
+; Raw EEPROM_SOFTWARE_INFO (word 0Dh), shared by the LIST
+; MODEM, OPTIMIZE, and FULLDUPLEX decoders.
 ext_software_info DW 0FFFFh
 ; Global CLI parser state.  cli_arg_ptrs holds pointers into cmd_buffer for
 ; the verb specific argument tokens that remain after global options have
@@ -7454,7 +7453,6 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_capability], 0FFFFh
     mov     [ext_config_ctrl], 0FFFFh
     mov     [ext_revision_info], 0FFFFh
-    mov     [ext_optimize], 0FFFFh
     mov     [ext_link_status], 0FFFFh
     mov     [ext_software_info], 0FFFFh
     mov     [ext_nic_capabilities], 0FFFFh
@@ -7488,7 +7486,6 @@ PROC Read_Extended_Nic_Info NEAR
     call    Nic_EEPROM_Read
     jc      @@SkipSoftwareInfo
     mov     [ext_software_info], ax
-    mov     [ext_optimize], ax
 @@SkipSoftwareInfo:
 
     ; Read the live Media Type and Status register (Window 4/Port 0Ah) to
@@ -7783,7 +7780,7 @@ PROC Print_Optimize_Value NEAR
     push    ax
     push    cx
 
-    mov     ax, [ext_optimize]
+    mov     ax, [ext_software_info]
     cmp     ax, 0FFFFh
     je      @@Unavailable
     mov     cl, 4

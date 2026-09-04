@@ -18,6 +18,9 @@ Changelog 0.7.4
     to make the tests non-deterministic, since flags were totally randomized.
     That's a condition that would never appear on an actual NIC.
   - Remove stale `mock_irq` declaration from 3CMOCKIF.ASM
+  - Consolidated the raw EEPROM Software Information word (0Dh) cache in
+    3CCFGCLI.ASM: LIST MODEM, OPTIMIZE, and FULLDUPLEX decoders now share
+    ext_software_info; removed the redundant ext_optimize state.
 
 
 Changelog 0.7.3
