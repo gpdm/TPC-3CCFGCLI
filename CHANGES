@@ -12,6 +12,9 @@ Changelog 0.7.3
     sequencing, real hardware backend) now use PUSHF/CLI ... POPF so the
     caller's incoming IF state is restored instead of unconditionally
     re-enabled. CF/FLAGS return contracts preserved on all exits.
+  - Active adapter record construction now rejects adapters whose mandatory
+    EEPROM identity/configuration reads fail, instead of synthesizing FFFFh
+    record fields.
 
 
 Changelog 0.7.2

@@ -4235,39 +4235,29 @@ PROC Build_Record_From_Active NEAR
 
     mov     al, EEPROM_ADDR_CFG
     call    Nic_EEPROM_Read
-    jnc     @@AddrCfgOk
-    mov     ax, 0FFFFh
-@@AddrCfgOk:
+    jc      @@Fail
     mov     [id_addr_cfg], ax
 
     mov     dx, si
     mov     al, EEPROM_RESOURCE_CFG
     call    Nic_EEPROM_Read
-    jnc     @@ResourceCfgOk
-    mov     ax, 0FFFFh
-@@ResourceCfgOk:
+    jc      @@Fail
     mov     [id_resource_cfg], ax
 
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_0
     call    Nic_EEPROM_Read
-    jnc     @@Oem0Ok
-    mov     ax, 0FFFFh
-@@Oem0Ok:
+    jc      @@Fail
     mov     [id_oem0], ax
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_1
     call    Nic_EEPROM_Read
-    jnc     @@Oem1Ok
-    mov     ax, 0FFFFh
-@@Oem1Ok:
+    jc      @@Fail
     mov     [id_oem1], ax
     mov     dx, si
     mov     al, EEPROM_OEM_NODE_2
     call    Nic_EEPROM_Read
-    jnc     @@Oem2Ok
-    mov     ax, 0FFFFh
-@@Oem2Ok:
+    jc      @@Fail
     mov     [id_oem2], ax
 
     mov     ax, [id_resource_cfg]
@@ -4295,6 +4285,12 @@ PROC Build_Record_From_Active NEAR
     call    Store_Mac_Word
     mov     ax, [id_oem2]
     call    Store_Mac_Word
+
+    clc
+    jmp     @@Done
+
+@@Fail:
+    stc
 
 @@Done:
     pop     di
@@ -4374,6 +4370,7 @@ PROC Scan_Active_Base_Ports NEAR
     call    Nic_Check_3Com_Signature
     jc      @@PortLoop
     call    Build_Record_From_Active
+    jc      @@PortLoop
     inc     [card_count]
     jmp     @@PortLoop
 
