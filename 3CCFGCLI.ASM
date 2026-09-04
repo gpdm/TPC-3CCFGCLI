@@ -423,6 +423,7 @@ msg_cfg_tr_unchanged DB 0Dh, 0Ah, "Transceiver type is already configured to the
                DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_tr_eeprom_read_fail DB "EEPROM read timed out while reading transceiver configuration.", 0Dh, 0Ah, '$'
 msg_cfg_tr_eeprom_write_fail DB "EEPROM write timed out while writing transceiver configuration.", 0Dh, 0Ah, '$'
+msg_cfg_tr_verified DB "EEPROM transceiver selection verified.", 0Dh, 0Ah, '$'
 msg_cfg_tr_verify_fail DB "Transceiver configuration verification failed.", 0Dh, 0Ah, '$'
 
 ; Symbolic transceiver names used for /TR echo output.
@@ -6182,10 +6183,10 @@ PROC Cfg_Txn_Verify NEAR
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jnz     @@BootRomNeedsRead
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jz      @@Success
+    jz      @@TRPersistent
 @@BootRomNeedsRead:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
-    jz      @@Success
+    jz      @@TRPersistent
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_ADDR_CFG
@@ -6211,7 +6212,7 @@ PROC Cfg_Txn_Verify NEAR
 
 @@BSizeVerify:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jz      @@Success
+    jz      @@TRPersistent
     mov     ax, bx
     and     ax, 3000h
     mov     cl, 12
@@ -6219,8 +6220,27 @@ PROC Cfg_Txn_Verify NEAR
     cmp     al, [cfg_bsize_value]
     jne     @@BootRomVerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Success
+    jz      @@TRPersistent
     mov     dx, OFFSET msg_cfg_bsize_verified
+    mov     ah, 09h
+    int     21h
+
+@@TRPersistent:
+    test    [cfg_parse_flags], CFG_PARSE_TR
+    jz      @@Success
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
+    jz      @@Success
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_ADDR_CFG
+    call    Cfg_Eeprom_Read
+    jc      @@TRVerifyFail
+    xor     ax, [cfg_txn_new_word08]
+    test    ax, W0_ADDRESS_CFG_XCVR_MASK OR W0_ADDRESS_CFG_AUTO_SELECT
+    jnz     @@TRVerifyFail
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@Success
+    mov     dx, OFFSET msg_cfg_tr_verified
     mov     ah, 09h
     int     21h
 
@@ -6279,6 +6299,11 @@ PROC Cfg_Txn_Verify NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_OPTIMIZE_VERIFY
+    jmp     @@Fail
+@@TRVerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    mov     [cfg_last_error], CFG_ERR_TR_VERIFY
 @@Fail:
     pop     si
     pop     dx

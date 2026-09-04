@@ -2,6 +2,10 @@ Changelog 0.7.4
   - ID port discovery now rejects an adapter whose EEPROM Address
     Configuration selector (word 08h, bits 4:0) is 1Fh (EISA slot specific
     addressing), which this ISA-only utility does not support.
+  - Added persistent EEPROM readback verification for /TR transactions in
+    Cfg_Txn_Verify when transceiver configuration changes, verifying bits
+    15:14 (transceiver selection) and bit 7 (auto-select) against the requested
+    state and reporting CFG_ERR_TR_VERIFY on mismatch.
 
 
 Changelog 0.7.3
