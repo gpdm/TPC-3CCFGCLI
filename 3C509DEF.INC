@@ -654,6 +654,7 @@ EL3_W2_STATION_1        EQU 02h
 EL3_W2_STATION_2        EQU 04h
 EL3_W3_INTERNAL_CONFIG_0 EQU 00h
 EL3_W3_INTERNAL_CONFIG_1 EQU 02h
+EL3_W3_ROM_PAGE         EQU 05h
 EL3_W4_NETWORK_DIAGNOSTIC EQU 06h
 ; Media Type and Status register.  Bit 11 = "Valid link beat detected"
 ; (TP, read only).  Bit 7 = "Link beat enabled" (writable, not used by
@@ -713,6 +714,14 @@ PRODUCT_3C509_TP        EQU 09050h
 PRODUCT_3C509_COMBO     EQU 09450h
 PRODUCT_3C509_TPO       EQU 09550h
 PRODUCT_3C509_TPC       EQU 09850h
+
+ROM_SIGNATURE_0         EQU 55h
+ROM_SIGNATURE_1         EQU 0AAh
+
+MCK_ROM_NONE            EQU 0
+MCK_ROM_8K              EQU 8
+MCK_ROM_16K             EQU 16
+MCK_ROM_32K             EQU 32
 
 VALID_IOBASE_MIN        EQU 0200h
 VALID_IOBASE_MAX        EQU 03E0h
@@ -774,3 +783,5 @@ MCK3R_W4_NET_DIAG_WRITE  EQU 26h    ; DW
 MCK3R_W4_MEDIA_WRITE     EQU 28h    ; DW
 MCK3R_W4_MEDIA_INPUT     EQU 2Ah    ; DW
 MCK3R_EEPROM             EQU 2Ch    ; 64 words, 128 bytes
+MCK3R_ROM_SIZE           EQU 0ACh   ; DB (0=NONE, 8=8K, 16=16K, 32=32K)
+MCK3R_ROM_PAGE           EQU 0ADh   ; DB (Window 3 port 05h ROM page)

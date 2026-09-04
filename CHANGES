@@ -23,6 +23,10 @@ Changelog 0.7.4
     ext_software_info; removed the redundant ext_optimize state.
   - Removed dead `ext_capability` state and the redundant trailing
     `EEPROM_CAPABILITY` read from `Read_Extended_Nic_Info` in 3CCFGCLI.ASM.
+  - Added Boot ROM backend abstraction and primitives:
+    implemented `Nic_Rom_Read_Byte` and `Nic_Rom_Set_Page` in 3CHWIF.ASM and
+    3CMOCKIF.ASM, with live Address Configuration aperture gating and
+    deterministic synthetic Option ROM generation (8K/16K/32K/NONE) in MOCKIF.
 
 
 Changelog 0.7.3

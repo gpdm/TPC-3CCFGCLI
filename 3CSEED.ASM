@@ -42,6 +42,10 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  NOLINKBEAT   INIT profile with EEPROM Link Beat Disable set.', 0Dh, 0Ah
              DB '  LINKUP       INIT profile with live Link Status forced connected.', 0Dh, 0Ah
              DB '  LINKDOWN     INIT profile with live Link Status forced not connected.', 0Dh, 0Ah
+             DB '  ROM8K        INIT profile with 8 KB synthetic Boot ROM.', 0Dh, 0Ah
+             DB '  ROM16K       INIT profile with 16 KB synthetic Boot ROM.', 0Dh, 0Ah
+             DB '  ROM32K       INIT profile with 32 KB synthetic Boot ROM.', 0Dh, 0Ah
+             DB '  ROMNONE      INIT profile with no Boot ROM installed.', 0Dh, 0Ah
              DB '$'
 msg_ok_init  DB 'Seed file created (INIT).', 0Dh, 0Ah, '$'
 msg_ok_clear DB 'Seed file deleted (or already absent).', 0Dh, 0Ah, '$'
@@ -62,6 +66,10 @@ msg_ok_m1200us DB 'Seed file created (M1200US).', 0Dh, 0Ah, '$'
 msg_ok_nolinkbeat DB 'Seed file created (NOLINKBEAT).', 0Dh, 0Ah, '$'
 msg_ok_linkup   DB 'Seed file created (LINKUP).', 0Dh, 0Ah, '$'
 msg_ok_linkdown DB 'Seed file created (LINKDOWN).', 0Dh, 0Ah, '$'
+msg_ok_rom8k    DB 'Seed file created (ROM8K).', 0Dh, 0Ah, '$'
+msg_ok_rom16k   DB 'Seed file created (ROM16K).', 0Dh, 0Ah, '$'
+msg_ok_rom32k   DB 'Seed file created (ROM32K).', 0Dh, 0Ah, '$'
+msg_ok_romnone  DB 'Seed file created (ROMNONE).', 0Dh, 0Ah, '$'
 msg_ok_add   DB 'Seed file updated (ADD).', 0Dh, 0Ah, '$'
 msg_fail_io  DB 'File I/O error.', 0Dh, 0Ah, '$'
 msg_bad_arg  DB 'Invalid command argument.', 0Dh, 0Ah, '$'
@@ -90,6 +98,10 @@ kw_m1200us   DB 'M1200US', 0
 kw_nolinkbeat DB 'NOLINKBEAT', 0
 kw_linkup    DB 'LINKUP', 0
 kw_linkdown  DB 'LINKDOWN', 0
+kw_rom8k     DB 'ROM8K', 0
+kw_rom16k    DB 'ROM16K', 0
+kw_rom32k    DB 'ROM32K', 0
+kw_romnone   DB 'ROMNONE', 0
 
 cmd_buffer   DB 128 DUP (0)
 state_blob   DB MCK_FILE_SIZE DUP (0)
@@ -245,6 +257,18 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_linkdown
     call    Match_Token
     jnc     @@DoLinkDown
+    mov     dx, OFFSET kw_rom8k
+    call    Match_Token
+    jnc     @@DoRom8K
+    mov     dx, OFFSET kw_rom16k
+    call    Match_Token
+    jnc     @@DoRom16K
+    mov     dx, OFFSET kw_rom32k
+    call    Match_Token
+    jnc     @@DoRom32K
+    mov     dx, OFFSET kw_romnone
+    call    Match_Token
+    jnc     @@DoRomNone
 
     mov     dx, OFFSET msg_bad_arg
     mov     ah, 09h
@@ -420,6 +444,38 @@ PROC Parse_And_Run NEAR
     call    Seed_LinkDown
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_linkdown
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoRom8K:
+    call    Seed_Rom8K
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_rom8k
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoRom16K:
+    call    Seed_Rom16K
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_rom16k
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoRom32K:
+    call    Seed_Rom32K
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_rom32k
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoRomNone:
+    call    Seed_RomNone
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_romnone
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -1281,6 +1337,50 @@ PROC Seed_LinkDown NEAR
     ret
 ENDP Seed_LinkDown
 
+PROC Seed_Rom8K NEAR
+    call    Seed_Init
+    jc      @@Fail
+    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCK3R_ROM_SIZE], MCK_ROM_8K
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_Rom8K
+
+PROC Seed_Rom16K NEAR
+    call    Seed_Init
+    jc      @@Fail
+    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCK3R_ROM_SIZE], MCK_ROM_16K
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_Rom16K
+
+PROC Seed_Rom32K NEAR
+    call    Seed_Init
+    jc      @@Fail
+    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCK3R_ROM_SIZE], MCK_ROM_32K
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_Rom32K
+
+PROC Seed_RomNone NEAR
+    call    Seed_Init
+    jc      @@Fail
+    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCK3R_ROM_SIZE], MCK_ROM_NONE
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_RomNone
+
 PROC Build_Record_Current NEAR
     push    ax
     push    bx
@@ -1296,6 +1396,8 @@ PROC Build_Record_Current NEAR
     mov     [BYTE state_blob + di + MCK3R_TAG], 0
     mov     [BYTE state_blob + di + MCK3R_FLAGS], MCKRF_ACTIVE
     mov     [BYTE state_blob + di + MCK3R_CURRENT_WINDOW], 0
+    mov     [BYTE state_blob + di + MCK3R_ROM_SIZE], MCK_ROM_NONE
+    mov     [BYTE state_blob + di + MCK3R_ROM_PAGE], 0
     mov     ax, [seed_base]
     mov     [WORD state_blob + di + MCK3R_ACTIVE_BASE], ax
  

@@ -98,6 +98,8 @@ mock_command_busy DB 0
 ; mirrors MCKRF_ACTIVE.  Set by a (currently unreachable) Start Coaxial
 ; Transceiver command; configuration-visible state only, no analog model.
 mock_coax_started DB 0
+mock_rom_size DB 0
+mock_rom_page DB 0
 
 ; Global mock discovery state.
 mock_selected_tag DB 0
@@ -144,6 +146,8 @@ PROC Mock_Clear_Scratch NEAR
     mov     [word mock_w3_config_hi], 0
     mov     [byte mock_command_busy], 0
     mov     [byte mock_coax_started], 0
+    mov     [byte mock_rom_size], 0
+    mov     [byte mock_rom_page], 0
     mov     [word mock_w2_station + 0], 0
     mov     [word mock_w2_station + 2], 0
     mov     [word mock_w2_station + 4], 0
@@ -291,6 +295,10 @@ PROC Mock_Commit_Loaded_Record NEAR
     mov     [WORD di + MCK3R_W3_INTERNAL_CONFIG + 0], ax
     mov     ax, [word mock_w3_config_hi]
     mov     [WORD di + MCK3R_W3_INTERNAL_CONFIG + 2], ax
+    mov     al, [byte mock_rom_size]
+    mov     [BYTE di + MCK3R_ROM_SIZE], al
+    mov     al, [byte mock_rom_page]
+    mov     [BYTE di + MCK3R_ROM_PAGE], al
 
     lea     si, [mock_state + 40h]
     lea     di, [di + MCK3R_EEPROM]
@@ -383,6 +391,10 @@ PROC Mock_Load_Record_By_Index NEAR
     mov     [word mock_w3_config_lo], ax
     mov     ax, [WORD di + MCK3R_W3_INTERNAL_CONFIG + 2]
     mov     [word mock_w3_config_hi], ax
+    mov     al, [BYTE di + MCK3R_ROM_SIZE]
+    mov     [byte mock_rom_size], al
+    mov     al, [BYTE di + MCK3R_ROM_PAGE]
+    mov     [byte mock_rom_page], al
 
     lea     si, [di + MCK3R_EEPROM]
     lea     di, [mock_state + 40h]
@@ -1244,6 +1256,7 @@ PROC Mock_Automatic_Configuration NEAR
     mov     [byte mock_eeprom_pending], 0
     mov     [byte mock_command_busy], 0
     mov     [byte mock_coax_started], 0
+    mov     [byte mock_rom_page], 0
     mov     [byte mock_state_dirty], 1
 
     pop     bx
@@ -2032,3 +2045,235 @@ PROC Nic_IdPort_Read_Bit NEAR
 @@Done:
     ret
 ENDP Nic_IdPort_Read_Bit
+
+; Input:  DX = adapter I/O base
+;         ES:BX = mapped Boot ROM memory address
+; Output: AL = synthetic ROM byte
+; Preserves: BX, CX, DX, SI, DI, BP, DS, ES
+; AH: undefined
+; Flags: undefined
+PROC Nic_Rom_Read_Byte NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    ; Resolve mock adapter record by active I/O base in DX.
+    call    Mock_Find_Record_By_Port
+    jc      @@ReturnFF
+    cmp     al, [byte mock_loaded_index]
+    je      @@Loaded
+    call    Mock_Load_Record_By_Index
+    jc      @@ReturnFF
+
+@@Loaded:
+    ; Check if physical ROM size installed on mock adapter is non-zero.
+    mov     al, [byte mock_rom_size]
+    or      al, al
+    jz      @@ReturnFF
+
+    ; Check if adapter's live Window 0 Address Configuration enables Boot ROM.
+    ; Bits 11:8 = Base selector (00h = disabled).
+    ; Bits 13:12 = Configured window size (0=8K, 1=16K, 2=32K, 3=invalid/reserved).
+    mov     ax, [word mock_state + EL3_W0_ADDRESS_CFG]
+    mov     di, ax
+    and     di, 0F00h
+    jz      @@ReturnFF              ; Base selector is 0 -> Boot ROM disabled
+
+    mov     cl, 8
+    shr     di, cl                  ; DI = base selector (1..15)
+
+    mov     si, ax
+    and     si, 3000h
+    mov     cl, 12
+    shr     si, cl                  ; SI = size code (0..3)
+    cmp     si, 3
+    je      @@ReturnFF              ; Invalid size code -> disabled
+
+    ; Address calculation:
+    ; 8K:  base index uses full DI, aperture = 2000h (8K)
+    ; 16K: base index & 0Eh, aperture = 4000h (16K)
+    ; 32K: base index & 0Eh, aperture = 4000h (16K window in host memory)
+    cmp     si, 0
+    je      @@CalcBase
+    and     di, 000Eh
+
+@@CalcBase:
+    ; Compute base segment = 0C000h + (DI * 200h)
+    mov     ax, di
+    mov     cl, 5                   ; DI * 200h in segment units = DI * 20h
+    shl     ax, cl
+    add     ax, 0C000h
+    mov     dx, ax                  ; DX = base segment
+
+    ; Compute linear offset within window: (ES - DX) * 16 + BX
+    mov     ax, es
+    sub     ax, dx                  ; AX = segment delta (signed)
+    ; Convert segment delta to bytes: AX * 16.
+    ; If segment delta is negative (or >= 1000h), address is out of range.
+    cmp     ax, 0
+    jl      @@ReturnFF
+    cmp     ax, 1000h
+    jae     @@ReturnFF
+    mov     cl, 4
+    shl     ax, cl
+    add     ax, bx                  ; AX = linear offset from base of window
+    jc      @@ReturnFF              ; Overflow past 64K
+
+    ; Aperture check:
+    ; SI = size code:
+    ;   0 -> 8K  (aperture = 2000h)
+    ;   1 -> 16K (aperture = 4000h)
+    ;   2 -> 32K (aperture = 4000h window)
+    cmp     si, 0
+    je      @@Check8K
+    cmp     ax, 4000h
+    jae     @@ReturnFF
+    jmp     @@ApertureOk
+
+@@Check8K:
+    cmp     ax, 2000h
+    jae     @@ReturnFF
+
+@@ApertureOk:
+    ; AX is the valid offset within the 16K visible window (0..3FFFh)
+    mov     cx, ax                  ; CX = window offset (0..3FFFh)
+    mov     dl, [byte mock_rom_page]
+    mov     al, [byte mock_rom_size]
+
+    cmp     al, MCK_ROM_8K
+    je      @@Rom8K
+    cmp     al, MCK_ROM_16K
+    je      @@Rom16K
+    cmp     al, MCK_ROM_32K
+    je      @@Rom32K
+    jmp     @@ReturnFF
+
+@@Rom8K:
+    or      dl, dl
+    jnz     @@ReturnFF
+    cmp     cx, 0000h
+    je      @@Header55
+    cmp     cx, 0001h
+    je      @@HeaderAA
+    cmp     cx, 0002h
+    je      @@Size8K
+    cmp     cx, 1FFFh
+    je      @@Checksum8K
+    cmp     cx, 2000h
+    jae     @@ReturnFF
+    xor     al, al
+    jmp     @@Done
+
+@@Rom16K:
+    or      dl, dl
+    jnz     @@ReturnFF
+    cmp     cx, 0000h
+    je      @@Header55
+    cmp     cx, 0001h
+    je      @@HeaderAA
+    cmp     cx, 0002h
+    je      @@Size16K
+    cmp     cx, 3FFFh
+    je      @@Checksum16K
+    xor     al, al
+    jmp     @@Done
+
+@@Rom32K:
+    cmp     dl, 0
+    je      @@Rom32K_Page0
+    cmp     dl, 1
+    je      @@Rom32K_Page1
+    jmp     @@ReturnFF
+
+@@Rom32K_Page0:
+    cmp     cx, 0000h
+    je      @@Header55
+    cmp     cx, 0001h
+    je      @@HeaderAA
+    cmp     cx, 0002h
+    je      @@Size32K
+    xor     al, al
+    jmp     @@Done
+
+@@Rom32K_Page1:
+    cmp     cx, 3FFFh
+    je      @@Checksum32K
+    xor     al, al
+    jmp     @@Done
+
+@@Header55:
+    mov     al, ROM_SIGNATURE_0
+    jmp     @@Done
+
+@@HeaderAA:
+    mov     al, ROM_SIGNATURE_1
+    jmp     @@Done
+
+@@Size8K:
+    mov     al, 10h
+    jmp     @@Done
+
+@@Checksum8K:
+    mov     al, 0F1h
+    jmp     @@Done
+
+@@Size16K:
+    mov     al, 20h
+    jmp     @@Done
+
+@@Checksum16K:
+    mov     al, 0E1h
+    jmp     @@Done
+
+@@Size32K:
+    mov     al, 40h
+    jmp     @@Done
+
+@@Checksum32K:
+    mov     al, 0C1h
+    jmp     @@Done
+
+@@ReturnFF:
+    mov     al, 0FFh
+
+@@Done:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    ret
+ENDP Nic_Rom_Read_Byte
+
+; Input:  DX = adapter base, AL = Boot ROM page number.
+; Output: None.
+; Preserves all caller registers. Live register window preserved. Flags undefined.
+PROC Nic_Rom_Set_Page NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+
+    mov     bl, al
+    call    Nic_Get_Current_Window
+    mov     ch, al
+
+    mov     al, 3
+    call    Nic_Select_Window
+
+    mov     [byte mock_rom_page], bl
+    mov     [byte mock_state_dirty], 1
+    call    Save_State
+
+    mov     al, ch
+    call    Nic_Select_Window
+
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Nic_Rom_Set_Page
+

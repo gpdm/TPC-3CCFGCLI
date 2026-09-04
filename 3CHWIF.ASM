@@ -367,3 +367,46 @@ PROC Nic_Activate_Tagged_Cards NEAR
     pop     ax
     ret
 ENDP Nic_Activate_Tagged_Cards
+
+; Input:  DX = adapter I/O base (unused on real HW; read is physical memory)
+;         ES:BX = mapped Boot ROM memory address
+; Output: AL = byte read
+; Preserves: BX, CX, DX, SI, DI, BP, DS, ES
+; AH: undefined
+; Flags: undefined
+PROC Nic_Rom_Read_Byte NEAR
+    mov     al, [BYTE es:bx]
+    ret
+ENDP Nic_Rom_Read_Byte
+
+; Input:  DX = adapter base, AL = Boot ROM page number.
+; Output: None.
+; Preserves all caller registers. Live register window preserved. Flags undefined.
+PROC Nic_Rom_Set_Page NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+
+    mov     bl, al
+    call    Nic_Get_Current_Window
+    mov     ch, al
+
+    mov     al, 3
+    call    Nic_Select_Window
+
+    mov     al, bl
+    add     dx, EL3_W3_ROM_PAGE
+    out     dx, al
+    sub     dx, EL3_W3_ROM_PAGE
+
+    mov     al, ch
+    call    Nic_Select_Window
+
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Nic_Rom_Set_Page
+
