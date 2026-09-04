@@ -20,7 +20,19 @@ Do not infer desired functionality from the original 3Com utility alone. Feature
 
 ## 2. Mandatory Build and Test Workflow
 
-Any validation involving `test.sh` MUST use this sequence:
+Build and test validation is required only when the agent has modified code or other files that affect the produced binaries or automated tests.
+
+If the agent has not changed any such file, it MUST NOT run build.sh or test.sh unless the user explicitly requests a build or test run.
+
+Examples of tasks that do not require build or test execution include:
+
+Source review or analysis without modifications.
+Reading or explaining existing code.
+Producing implementation recommendations or prompts.
+Reviewing already supplied changes without modifying the repository.
+Documentation only changes, unless the user explicitly requests validation.
+
+When the agent has made a code or test affecting change, validation MUST use this sequence:
 
 ```text
 ./build.sh
@@ -230,7 +242,11 @@ Do not weaken an existing assertion merely to make a changed implementation pass
 
 ## 9. Completion Criteria
 
-Before reporting a code modification as complete:
+These validation steps apply only when the agent has modified code or other files that affect the produced binaries or automated tests.
+
+If no such modification was made, do not run `build.sh?  or `test.sh` merely as a completion ritual.
+
+When validation is required, before reporting the modification as complete:
 
 1. Review the final changes for unrelated or accidental edits.
 
