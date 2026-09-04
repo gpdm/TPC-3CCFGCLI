@@ -66,7 +66,6 @@ mock_state DB MOCK_STATE_SIZE DUP (0)
 mock_state_dirty DB 0
 mock_current_window DB 0
 mock_active_base DW 0000h
-mock_irq DB 0
 mock_tag DB 0
 mock_active DB 0
 mock_w4_netdiag DW 0000h
@@ -126,7 +125,6 @@ PROC Mock_Clear_Scratch NEAR
     mov     [byte mock_state_dirty], 0
     mov     [byte mock_current_window], 0
     mov     [word mock_active_base], 0000h
-    mov     [byte mock_irq], 0
     mov     [byte mock_tag], 0
     mov     [byte mock_active], 0
     mov     [word mock_w4_netdiag], 0

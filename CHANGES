@@ -17,6 +17,7 @@ Changelog 0.7.4
     I introduced RANDOM during early development, but it quickly turned out
     to make the tests non-deterministic, since flags were totally randomized.
     That's a condition that would never appear on an actual NIC.
+  - Remove stale `mock_irq` declaration from 3CMOCKIF.ASM
 
 
 Changelog 0.7.3
