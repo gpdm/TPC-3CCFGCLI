@@ -79,6 +79,7 @@ ENDP Nic_IdPort_Eeprom_Delay
 
 PROC Nic_Init_Id_Port NEAR
     push    ax
+    pushf
     cli
     call    Nic_IdPort_Send_Full_Sequence
     mov     al, ID_CMD_SET_TAG
@@ -86,7 +87,7 @@ PROC Nic_Init_Id_Port NEAR
     call    Nic_IdPort_Send_Short_Sequence
     mov     al, ID_CMD_SET_TAG
     call    Nic_IdPort_Write_Command
-    sti
+    popf
     pop     ax
     ret
 ENDP Nic_Init_Id_Port
@@ -334,6 +335,7 @@ PROC Nic_Activate_Tagged_Cards NEAR
     or      dx, dx
     jz      @@Next
 
+    pushf
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
@@ -356,7 +358,7 @@ PROC Nic_Activate_Tagged_Cards NEAR
     and     al, 1Fh
     or      al, ID_CMD_ACTIVATE
     call    Nic_IdPort_Write_Command
-    sti
+    popf
 
     mov     dx, [WORD si + NIC_IO_BASE]
     call    Nic_Check_3Com_Signature

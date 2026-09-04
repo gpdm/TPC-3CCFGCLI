@@ -2,6 +2,11 @@ Changelog 0.7.3
   - HWC fix
   - clarified IRQ-related CLI error message on wrong input
   - renamed TODO.TXT to TODO.md, updated document structure
+  - Interrupt state preservation cleanup: all CLI/STI critical regions
+    (discovery, adapter revalidation, ID port activation/deactivation and
+    sequencing, real hardware backend) now use PUSHF/CLI ... POPF so the
+    caller's incoming IF state is restored instead of unconditionally
+    re-enabled. CF/FLAGS return contracts preserved on all exits.
 
 
 Changelog 0.7.2

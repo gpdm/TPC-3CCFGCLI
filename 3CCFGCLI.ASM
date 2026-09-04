@@ -275,8 +275,8 @@ msg_cfg_bad_option DB "Invalid CONFIGURE option.", 0Dh, 0Ah, '$'
 msg_cfg_missing_value DB "Missing CONFIGURE option value.", 0Dh, 0Ah, '$'
 msg_cfg_no_property DB "No CONFIGURE property was specified.", 0Dh, 0Ah, '$'
 msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 0Dh, 0Ah, '$'
-msg_cfg_bad_int DB "Invalid /INT parameter. Value must be either of", 0Dh, 0Ah,
-                DB "Systems with 8-bit Bus: 3, 5, 7", 0Dh, 0Ah,
+msg_cfg_bad_int DB "Invalid /INT parameter. Value must be either of", 0Dh, 0Ah
+                DB "Systems with 8-bit Bus: 3, 5, 7", 0Dh, 0Ah
                 DB "Systems with 16-bit Bus: 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
@@ -4044,6 +4044,7 @@ PROC Discover_Id_Port_Cards NEAR
     cmp     al, MAX_CARDS
     ja      @@Done
 
+    pushf
     cli
     cmp     [id_short_mode], 0
     je      @@UseFull
@@ -4059,7 +4060,7 @@ PROC Discover_Id_Port_Cards NEAR
     cmp     ax, 06D50h
     je      @@ManufacturerGood
 
-    sti
+    popf
     cmp     [id_short_mode], 0
     je      @@Done
     mov     [id_short_mode], 0
@@ -4074,7 +4075,7 @@ PROC Discover_Id_Port_Cards NEAR
 
     ; Original sub_332 also has an 8050h family branch for other EtherLink III
     ; members.  This reduced executable is intentionally restricted to 3C509.
-    sti
+    popf
     cmp     [id_short_mode], 0
     je      @@Done
     mov     [id_short_mode], 0
@@ -4092,13 +4093,13 @@ PROC Discover_Id_Port_Cards NEAR
     and     al, 07h
     or      al, ID_CMD_SET_TAG
     call    Nic_IdPort_Write_Command
-    sti
+    popf
     jmp     @@ProbeAgain
 
 @@NewRecord:
     mov     ax, [card_count]
     cmp     ax, MAX_CARDS
-    jae     @@StopWithInterrupts
+    jae     @@TableFull
 
     mov     bx, NIC_RECORD_SIZE
     mul     bx
@@ -4116,11 +4117,11 @@ PROC Discover_Id_Port_Cards NEAR
 
     inc     [card_count]
     inc     [id_next_tag]
-    sti
+    popf
     jmp     @@ProbeAgain
 
-@@StopWithInterrupts:
-    sti
+@@TableFull:
+    popf
 @@Done:
     pop     di
     pop     dx
@@ -4876,6 +4877,7 @@ PROC Cfg_Txn_Retag_Selected NEAR
     call    Nic_IdPort_Eeprom_Delay
 
     mov     si, [cfg_selected_ptr]
+    pushf
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
@@ -4888,7 +4890,7 @@ PROC Cfg_Txn_Retag_Selected NEAR
     mov     al, ID_CMD_SET_TAG
     or      al, [BYTE si + NIC_TAG]
     call    Nic_IdPort_Write_Command
-    sti
+    popf
 
     pop     si
     pop     dx
@@ -7332,6 +7334,7 @@ PROC Cfg_Revalidate_Selected NEAR
     cmp     al, 7
     ja      @@Mismatch
 
+    pushf
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@FullSequence
@@ -7374,15 +7377,15 @@ PROC Cfg_Revalidate_Selected NEAR
     jne     @@TagMismatch
     cmp     al, [BYTE si + NIC_MAC_ADDR + 5]
     jne     @@TagMismatch
-    sti
+    popf
     jmp     @@Good
 
 @@TagUnsupported:
-    sti
+    popf
     mov     [cfg_last_error], CFG_ERR_UNSUPPORTED_PRODUCT
     jmp     @@Fail
 @@TagMismatch:
-    sti
+    popf
 @@Mismatch:
     mov     [cfg_last_error], CFG_ERR_REVALIDATE
 @@Fail:
@@ -7412,6 +7415,7 @@ PROC Cfg_Id_Deactivate_Selected NEAR
     push    ax
     push    dx
 
+    pushf
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
@@ -7426,7 +7430,7 @@ PROC Cfg_Id_Deactivate_Selected NEAR
     call    Nic_IdPort_Write_Command
     mov     al, 0C0h
     call    Nic_IdPort_Write_Command
-    sti
+    popf
 
     pop     dx
     pop     ax
@@ -7441,6 +7445,7 @@ PROC Cfg_Id_Activate_Selected NEAR
     push    bx
     push    dx
 
+    pushf
     cli
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
@@ -7462,7 +7467,7 @@ PROC Cfg_Id_Activate_Selected NEAR
     or      al, ID_CMD_ACTIVATE
     mov     dx, ID_PORT
     call    Nic_IdPort_Write_Command
-    sti
+    popf
 
     pop     dx
     pop     bx
