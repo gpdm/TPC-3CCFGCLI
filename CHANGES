@@ -9,6 +9,9 @@ Changelog 0.7.4
   - CONFIGURE revalidation and transaction reads now use NIC_FLAG_ACTIVE to
     select active hardware access; inactive /TR requests report
     CFG_ERR_TR_INACTIVE rather than falling through to the IRQ error.
+  - Fixed prospective /TR and /FULLDUPLEX validation: an enabled Full Duplex
+    policy now rejects an effective AUI, COAX, or AUTO transceiver regardless
+    of which property was requested, without changing either requested value.
 
 
 Changelog 0.7.3

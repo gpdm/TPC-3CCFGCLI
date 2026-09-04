@@ -5,12 +5,6 @@ This file documents pending items, in no particular order or priority.
 
 ## Bugs
 
-- [Bug] /TR not changing /FULLDUPLEX
-
-  When selecting trascever type other than TP, FULLDUPLEX should be automatically disabled.
-  The original utility does prevents combining FULLDUPLEX=enabled + COAX/AUI/AUTO combination.
-
-
 - [Bug] Boot ROM Activation:
 
   Boot ROM (/BADDRESS & /BSIZE) seem to probe if a ROM is actually socketed.

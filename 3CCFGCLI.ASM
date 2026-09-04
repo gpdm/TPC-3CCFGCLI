@@ -4934,6 +4934,8 @@ PROC Cfg_Txn_Read_Current NEAR
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jnz     @@ReadWord0D
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jnz     @@ReadWord0D
+    test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@NoWord0D
 @@ReadWord0D:
     mov     si, [cfg_selected_ptr]
@@ -5290,22 +5292,16 @@ PROC Cfg_Prepare_TR NEAR
     ret
 ENDP Cfg_Prepare_TR
 
-; FULLDUPLEX:ENABLED requires effective TP selection.  A staged /TR takes
-; precedence; otherwise decode the transaction's current Address Configuration.
+; FULLDUPLEX:ENABLED requires effective TP selection.  Both values come from
+; the fully prepared prospective EEPROM image.
 PROC Cfg_Validate_FD_Transceiver NEAR
     push    ax
-    push    bx
     push    cx
 
-    cmp     [cfg_fullduplex_value], 0
+    mov     ax, [cfg_txn_new_word0d]
+    test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     je      @@Success
-    test    [cfg_parse_flags], CFG_PARSE_TR
-    jz      @@Current
-    cmp     [cfg_tr_value], 0
-    je      @@Success
-    jmp     @@Conflict
-@@Current:
-    mov     ax, [cfg_txn_old_word08]
+    mov     ax, [cfg_txn_new_word08]
     test    ax, W0_ADDRESS_CFG_AUTO_SELECT
     jnz     @@Conflict
     and     ax, W0_ADDRESS_CFG_XCVR_MASK
@@ -5321,7 +5317,6 @@ PROC Cfg_Validate_FD_Transceiver NEAR
     clc
 @@Done:
     pop     cx
-    pop     bx
     pop     ax
     ret
 ENDP Cfg_Validate_FD_Transceiver
@@ -7069,7 +7064,10 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Prepare_TR
 @@Detect:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@ValidateFDTransceiver
+    test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@DetectChanges
+@@ValidateFDTransceiver:
     call    Cfg_Validate_FD_Transceiver
     jc      @@Done
 @@DetectChanges:

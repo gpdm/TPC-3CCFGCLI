@@ -73,7 +73,7 @@ PNP_CHANGE: t0500 t0501 t0502 t0503 t0504 t0505
 MODEM_CHANGE: t0600 t0601 t0602 t0603 t0604 t0605 t0606 t0607 t0608 t0609 t0610
 
 # Base: 0700
-FD_CHANGE: t0700 t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0709 t0710 t0711 t0712 t0713
+FD_CHANGE: t0700 t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0709 t0710 t0711 t0712 t0713 t0714
 
 # Base: 0800
 CAPABILITY_GATES: t0800 t0801 t0802 t0803
@@ -546,6 +546,28 @@ t0713:
    FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0713.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0713.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T0713.LOG
+
+t0714:
+   @echo [t0714] Testing prospective transceiver Full Duplex consistency matrix... >> TEST.LOG
+   ${SEEDAPP} TPAUI > $(ARTIFACTS)\T0714.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0714.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T0714.LOG
+   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0714.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0714.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0714.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0714.LOG
+   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0714.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0714.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0714.LOG > NUL
+   ${SEEDAPP} TRI >> $(ARTIFACTS)\T0714.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0714.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX >> $(ARTIFACTS)\T0714.LOG
+   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0714.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T0714.LOG
+   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0714.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0714.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0714.LOG > NUL
+   ${SEEDAPP} INIT >> $(ARTIFACTS)\T0714.LOG
 
 t0800:
    @echo [t08xx] CAPABILITY_GATES: Verify capability gates behaviour ... >> TEST.LOG
