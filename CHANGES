@@ -29,6 +29,8 @@ Changelog 0.7.4
     deterministic synthetic Option ROM generation (8K/16K/32K/NONE) in MOCKIF.
   - Added common `Cfg_Probe_Boot_ROM` validation for Option ROM signatures,
     declared size, full checksum, and 32 KB page traversal with aperture wrap.
+  - Adapted build and test harness to include consise summaries at the end
+    of each run. Also implement exit codes, to be clear on SUCCESS or FAIL states.
 
 
 Changelog 0.7.3

@@ -12,5 +12,7 @@ memsizekb = __MEMKB__
 CLS
 MOUNT C: . >NUL
 C:
+REM TESTHWL doesn't log itself, therefore forcing it through
+REM COMMAND /C invocation so we can capture the LOG from "outside"
 COMMAND /C TESTHWL.BAT __MEMKB__ > /ARTIFACT/HWL__MEMKB__.LOG
 EXIT

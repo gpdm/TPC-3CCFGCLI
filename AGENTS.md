@@ -1,12 +1,10 @@
 # 3CCFG Project Agent Instructions
 
-## 1. Purpose
+## 1. Purpose and Sources of Truth
 
 This file defines repository rules for automated coding agents.
 
-It is intentionally limited to instructions that affect how an agent modifies, builds, tests, and validates this project.
-
-Do not duplicate general project documentation here.
+It contains only instructions that affect how an agent modifies, builds, tests, and validates this project.
 
 For project behavior, supported commands, implementation scope, usage, and technical background, consult `README.md`.
 
@@ -16,188 +14,35 @@ The changelog is maintained in `CHANGES`.
 
 If this file and `README.md` appear to disagree about implemented project scope, `README.md` is authoritative.
 
-Do not infer desired functionality from the original 3Com utility alone. Features intentionally omitted by this project must remain omitted unless the task explicitly asks for them.
+Do not infer desired functionality from the original 3Com utility alone.
 
-## 2. Mandatory Build and Test Workflow
+Features intentionally omitted by this project must remain omitted unless the task explicitly requests them.
 
-Build and test validation is required only when the agent has modified code, tests, build files, or other files that affect the produced binaries or automated tests.
+## 2. Scope Discipline
 
-If the agent has not made such a modification, it MUST NOT run `build.sh` or `test.sh` unless the user explicitly requests a build or test run.
+Keep changes focused on the requested task.
 
-Tasks that do not require build or test execution include source review or analysis without modifications, reading or explaining existing code, producing implementation recommendations or prompts, reviewing already supplied changes without modifying the repository, and documentation only changes unless the user explicitly requests validation.
+Do not perform unrelated refactoring merely because nearby code could also be changed.
 
-When the agent has made a change that requires validation, the mandatory sequence is:
+Do not silently change established CLI semantics during cleanup, optimization, or maintenance work.
 
-```text
-./build.sh
-./test.sh
-```
+For behavior intended to reproduce the original utility, preserve the compatibility semantics chosen by this project rather than introducing generic best practice behavior that changes compatibility.
 
-The order is mandatory.
+Before removing apparently dead code, verify its references across all relevant source files.
 
-After a change that requires validation:
+Before changing shared constants, EEPROM handling, hardware interface behavior, transaction behavior, or mock record layout, inspect all consumers.
 
-1. Run `./build.sh`.
+`README.md` is authoritative for which commands, features, and original utility behaviors this project intentionally supports.
 
-2. Wait for `build.sh` to finish completely.
-
-3. Inspect `BUILD.LOG` after the script has completed.
-
-4. Confirm that the build completed successfully.
-
-5. Confirm that every TASM pass reports:
-
-```text
-Error messages: None
-```
-
-6. Only after that successful build, run `./test.sh`.
-
-7. Wait for `test.sh` to finish completely.
-
-8. Review the `TEST.LOG` output emitted by `test.sh`.
-
-9. Inspect any relevant logs under `ARTIFACT/` separately after `test.sh` has completed.
-
-10. Confirm that the complete test suite reached its normal successful completion, including the hardware limit checks.
-
-A previous build does not satisfy this requirement after files affecting the binaries or tests have changed.
-
-If such a file is changed after `build.sh` was run, run `build.sh` again before running `test.sh`.
-
-If `build.sh` fails, do not run `test.sh`. Fix or report the build failure first.
-
-Running tests against binaries produced before the current relevant source changes is invalid validation.
-
-Pure documentation changes do not require a build or test run unless validation is explicitly requested by the user.
-
-### Command invocation rules
-
-`build.sh` and `test.sh` MUST always be executed as bare standalone commands.
-
-The complete shell command used to invoke them MUST be exactly one of:
-
-```text
-./build.sh
-```
-
-or:
-
-```text
-./test.sh
-```
-
-Nothing may be appended, prepended, chained, wrapped, redirected, or combined with either command.
-
-Do not append another command with a shell separator.
-
-Do not chain another command conditionally.
-
-Do not pipe script output into another command.
-
-Do not redirect script output.
-
-Do not capture the script exit status into a shell variable.
-
-Do not append `echo`, `cat`, `find`, `grep`, `tail`, or similar commands.
-
-Do not wrap either script in `sh`, `bash`, a subshell, or another helper command.
-
-Do not perform cleanup, status reporting, or log collection in the same shell invocation.
-
-Commands such as these are forbidden:
-
-```text
-./test.sh; echo $?
-```
-
-```text
-./test.sh && cat TEST.LOG
-```
-
-```text
-./test.sh | tee output.log
-```
-
-```text
-./test.sh; ret=$?; cat TEST.LOG; exit $ret
-```
-
-```text
-./build.sh; cat BUILD.LOG
-```
-
-Run the script by itself and wait for it to finish.
-
-Log inspection MUST occur only after the corresponding script has completed, using separate tool calls or separate shell commands.
-
-Do not prepend speculative cleanup commands such as `rm`, `find`, or cache removal.
-
-The test infrastructure performs its own required cleanup.
-
-If stale state is suspected, investigate it first rather than modifying the normal validation command.
-
-Script exit status is no sufficient validation.
-
-Both `build.sh` and `test.sh` automatically emit their main log, `BUILD.LOG` and `TEST.LOG` respectively, as part of their normal output.
-
-Do not print, dump, or `cat` either `BUILD.LOG` or `TEST.LOG` again after script run merely to duplicate output that was already emitted.
-
-For regression tests, inspect additional logs under `ARTIFACT/` separately when they are required to determine the final validation result.
-
-### Long running test process
-
-A complete `test.sh` run may take more than 120 seconds and can exceed the default timeout of an execution tool.
-
-This does not justify wrapping `test.sh` in additional shell logic.
-
-Always invoke it exactly as:
-
-```text
-./test.sh
-```
-
-A tool timeout does not mean that the test suite passed, failed, or completed.
-
-The agent MUST NOT issue a final assessment, claim successful validation, or report the change as complete until the original test process has actually finished and the required logs have been inspected.
-
-Use an execution timeout long enough for the complete test run whenever possible.
-
-If the execution tool returns before the test process has finished, continue observing the existing process when the environment permits it.
-
-Do not start another `test.sh` merely because the first invocation exceeded a tool timeout.
-
-Do not replace the bare invocation with shell logic intended to capture status, collect logs, or work around the timeout.
-
-Once the original process has finished, review the output emitted by `test.sh` and inspect relevant `ARTIFACT/` logs separately before determining the validation result.
-
-## 3. Validation Semantics
-
-The test suite uses fail fast behavior by design.
-
-A test run that terminates before all expected tests and hardware limit checks have completed is a failed validation, even if earlier tests passed.
-
-Do not describe a partial test run as successful.
-
-The authoritative test result comes from the assertions recorded in `TEST.LOG` together with the corresponding relevant logs under `ARTIFACT/`.
-
-Tests use explicit `3CSEED` state so that results remain deterministic.
-
-When adding or changing tests, establish the required mock state explicitly.
-
-After temporary capability or configuration overrides, restore the state with the appropriate `INIT` or `CLEAR` operation.
-
-The complete seeder command reference is found in `README.md`.
-
-## 4. Target and Toolchain Constraints
+## 3. Target and Toolchain Constraints
 
 The production target is 16 bit DOS on 8086 and 8088 class processors.
 
 Assembly source uses TASM IDEAL mode syntax.
 
-Instructions that require an 80186 or later processor are forbidden.
+Instructions requiring an 80186 or later processor are forbidden.
 
-Do not introduce newer processor instructions accidentally during optimization or cleanup.
+Do not accidentally introduce newer processor instructions during implementation, cleanup, or optimization.
 
 The normal build produces both hardware implementations:
 
@@ -219,11 +64,11 @@ The test seeder is:
 BIN/3CSEED.EXE
 ```
 
-File and directory names must remain compatible with the repository's DOS 8.3 naming convention.
+File and directory names must remain compatible with the repository DOS 8.3 naming convention.
 
-## 5. Source Architecture
+## 4. Source Architecture
 
-The important source responsibilities are:
+The principal source responsibilities are:
 
 ```text
 3CCFGCLI.ASM
@@ -252,29 +97,310 @@ Keep hardware access behind the existing backend boundary.
 
 When changing a generic hardware interface contract, inspect both `3CHWIF.ASM` and `3CMOCKIF.ASM`.
 
-The mock backend should reproduce the externally relevant behavior of the real backend where practical.
+Their implementations may differ internally, but their shared caller contract must remain consistent.
 
-Backend specific implementation details may differ, but their shared caller contract must remain consistent.
+The mock backend should reproduce externally relevant real hardware behavior where practical.
 
 Do not add production behavior merely to make a mock test easier to implement.
 
-Do not add nondeterministic behavior to `3CSEED` or the automated tests.
+Do not introduce nondeterministic behavior into `3CSEED` or the automated tests.
 
-## 6. Scope Discipline
+## 5. Build and Validation
 
-Keep changes focused on the requested task.
+### 5.1 When validation is required
 
-Do not perform unrelated refactoring merely because nearby code could also be changed.
+Build and test validation is required when the agent modifies code, tests, build files, or any other file that affects produced binaries or automated tests.
 
-Do not silently change established CLI semantics while performing cleanup or optimization.
+Validation is not required when no such files were modified.
 
-When removing apparently dead code, first verify references across the main program and both hardware backends where applicable.
+Examples include:
 
-When changing shared constants, EEPROM handling, hardware interface behavior, transaction behavior, or mock record layout, inspect all consumers before making the change.
+1. Source review or analysis without repository modifications.
 
-For behavior intended to reproduce the original utility, preserve the project's chosen compatibility semantics rather than introducing generic best practice behavior that changes compatibility.
+2. Explanation of existing code.
 
-`README.md` remains the authority for which commands and features this project intentionally implements.
+3. Producing implementation recommendations or prompts.
+
+4. Reviewing changes already supplied by the user without modifying the repository.
+
+5. Documentation only changes.
+
+Do not run `build.sh` or `test.sh` for such tasks unless the user explicitly requests validation.
+
+A previous validation run becomes invalid after any relevant source, test, or build file has changed.
+
+### 5.2 Mandatory validation sequence
+
+When validation is required, perform the following sequence exactly.
+
+1. Review the final changes for accidental or unrelated edits.
+
+2. Run exactly:
+
+```text
+./build.sh
+```
+
+3. Wait until the command has completely finished.
+
+4. Check the process exit status and the `Build summary` emitted by the script.
+
+5. Only if the build is successful, run exactly:
+
+```text
+./test.sh
+```
+
+6. Wait until the original test process has completely finished.
+
+7. Check the process exit status and the `Test summary` emitted by the script.
+
+8. Inspect additional logs under `ARTIFACT/` separately when they are relevant to the changed behavior or needed to establish the final result.
+
+9. Report the modification as fully validated only when both build and test validation succeeded.
+
+If `build.sh` fails, do not run `test.sh`.
+
+If a relevant file is changed after the build, run `build.sh` again before running `test.sh`.
+
+Tests run against binaries produced before the latest relevant source change are invalid validation.
+
+### 5.3 Build success criteria
+
+`build.sh` provides both a process exit status and an explicit summary.
+
+A zero exit status indicates that the script reports success.
+
+A nonzero exit status indicates failure.
+
+A normal successful build ends with a summary equivalent to:
+
+```text
+Build summary
+=============
+TASM calls : 3
+TLINK calls: 3
+Warnings   : 0
+Errors     : 0
+
+Overall result: PASS
+```
+
+For the normal repository build, successful validation requires:
+
+```text
+build.sh exit status = 0
+TASM calls           = 3
+TLINK calls          = 3
+Warnings             = 0
+Errors               = 0
+Overall result        = PASS
+```
+
+The exact whitespace used to align summary fields is not significant.
+
+A nonzero exit status is always a failed build.
+
+A summary reporting warnings, errors, or an overall result other than `PASS` is also a failed build.
+
+If the exit status and summary disagree, or the expected summary is missing or incomplete, do not assume success.
+
+Inspect the emitted build output and report the inconsistency.
+
+Do not run `test.sh` until the current build has been established as successful.
+
+### 5.4 Test success criteria
+
+`test.sh` provides both a process exit status and an explicit summary.
+
+A zero exit status indicates that the script reports success.
+
+A nonzero exit status indicates failure.
+
+A successful current test run has a summary equivalent to:
+
+```text
+Test summary
+============
+Smoke Test            : SUCCESS
+    Defined Tests     : 144
+    Executed Tests    : 144
+    Failed Tests      : NONE
+SAVECONFIG Test       : SUCCESS
+Hardware Limit Test   : SUCCESS
+
+Overall result        : PASS
+```
+
+The exact whitespace used to align summary fields is not significant.
+
+The number of defined tests may legitimately change when tests are intentionally added or removed.
+
+Successful validation requires all of the following:
+
+```text
+test.sh exit status         = 0
+Smoke Test                  = SUCCESS
+Defined Tests               = Executed Tests
+Failed Tests                = NONE
+SAVECONFIG Test             = SUCCESS
+Hardware Limit Test         = SUCCESS
+Overall result              = PASS
+```
+
+The hardware limit phase must complete normally, including successful checks for 64 KB, 128 KB, and 256 KB memory limits.
+
+A nonzero exit status is always failed validation.
+
+Any failed test, incomplete test count, failed test phase, failed hardware limit check, or overall result other than `PASS` is failed validation.
+
+If the exit status and summary disagree, or the expected summary is missing or incomplete, do not assume success.
+
+Inspect the emitted test output and relevant logs to determine what happened, then report the inconsistency.
+
+### 5.5 Script invocation rules
+
+`build.sh` and `test.sh` must always be executed as bare standalone commands.
+
+The complete shell command used to invoke them must be exactly:
+
+```text
+./build.sh
+```
+
+or:
+
+```text
+./test.sh
+```
+
+Nothing may be appended, prepended, chained, wrapped, redirected, piped, or combined with either command.
+
+In particular, do not:
+
+1. Append another command using a shell separator.
+
+2. Add conditional command execution.
+
+3. Pipe script output into another program.
+
+4. Redirect script output.
+
+5. Capture the script exit status into a shell variable.
+
+6. Wrap the script using `sh`, `bash`, a subshell, or another helper.
+
+7. Combine script execution with cleanup, log inspection, or status reporting.
+
+Forbidden examples include:
+
+```text
+./test.sh; echo $?
+```
+
+```text
+./test.sh && cat TEST.LOG
+```
+
+```text
+./test.sh | tee output.log
+```
+
+```text
+./test.sh; ret=$?; cat TEST.LOG; exit $ret
+```
+
+```text
+./build.sh; cat BUILD.LOG
+```
+
+Run each script by itself and wait for it to finish.
+
+Any later inspection must use a separate command or tool call.
+
+Do not prepend speculative cleanup commands such as `rm`, `find`, or cache removal.
+
+The test infrastructure performs its own required cleanup.
+
+If stale state is suspected, investigate the cause rather than changing the normal validation invocation.
+
+### 5.6 Log handling
+
+`build.sh` emits the contents of `BUILD.LOG` as part of its normal output.
+
+`test.sh` emits the contents of `TEST.LOG` as part of its normal output.
+
+Do not dump or `cat` either main log again merely to duplicate output already emitted by the corresponding script.
+
+Use the emitted summaries as the primary concise validation result.
+
+Inspect the preceding emitted log content when the summary indicates a failure, when the summary is incomplete or inconsistent, or when details are needed to diagnose a problem.
+
+Additional regression logs under `ARTIFACT/` must be inspected separately when they are relevant to the changed functionality or necessary to establish the validation result.
+
+Do not treat the process exit status alone as proof of complete validation.
+
+Successful validation requires a successful exit status and a complete successful summary without contradictory evidence in the corresponding output or relevant artifacts.
+
+### 5.7 Long running tests
+
+A complete `test.sh` run may take more than 120 seconds and may exceed the default timeout of an execution tool.
+
+Use an execution timeout long enough for the complete test suite whenever possible.
+
+A tool timeout does not mean that the test suite passed, failed, or completed.
+
+If the execution tool returns while the original test process is still running, continue observing that existing process when the environment permits it.
+
+Do not start another `test.sh` merely because the original invocation exceeded a tool timeout.
+
+Do not replace the required bare invocation with additional shell logic intended to work around a timeout.
+
+The test suite uses fail fast behavior.
+
+A run that terminates before all expected phases and hardware limit checks have completed is failed validation, even if every test executed before termination passed.
+
+Never describe a partial test run as successful.
+
+### 5.8 Reporting validation
+
+Never report a modification as fully validated when any of the following is true:
+
+1. The current build failed.
+
+2. Tests were run without a successful build of the current relevant source state.
+
+3. The test process terminated before normal completion.
+
+4. Only an isolated subset of the required suite was run.
+
+5. The test process was still running.
+
+6. The build or test summary was missing, incomplete, contradictory, or reported failure.
+
+7. Required relevant artifact logs were not inspected.
+
+8. Tests used binaries from an earlier relevant source state.
+
+If required validation cannot be completed, state exactly what was performed, what succeeded, what failed, and what remains unvalidated.
+
+## 6. Test Design Rules
+
+Tests in `TEST.MK` are grouped by feature and use numbered test identifiers.
+
+New or changed behavior should normally include appropriate positive and negative coverage.
+
+Tests must explicitly establish prerequisite mock state rather than depend accidentally on state left by an unrelated test.
+
+Tests use explicit `3CSEED` state to remain deterministic.
+
+A test that changes persistent mock state must leave subsequent tests with a defined state.
+
+After temporary capability or configuration overrides, restore the required state using the appropriate `INIT` or `CLEAR` operation.
+
+The complete `3CSEED` command reference is documented in `README.md`.
+
+Do not weaken an existing assertion merely to make a changed implementation pass unless the expected behavior itself is intentionally being changed.
 
 ## 7. Line Ending Requirements
 
@@ -292,58 +418,4 @@ Do not manually normalize these files to LF.
 
 The remaining source and documentation files use LF.
 
-If a new DOS consumed file type requires CRLF, update `.gitattributes` accordingly.
-
-## 8. Test Changes
-
-Tests in `TEST.MK` are grouped by feature and use numbered test identifiers.
-
-New behavior should normally include appropriate positive and negative coverage.
-
-Tests should explicitly establish their prerequisite state rather than depending accidentally on state left behind by an unrelated test.
-
-A test that changes persistent mock state must leave subsequent tests with a defined state.
-
-Do not weaken an existing assertion merely to make a changed implementation pass unless the expected behavior itself is intentionally being changed.
-
-## 9. Completion Criteria
-
-These validation steps apply only when the agent has modified code, tests, build files, or other files that affect the produced binaries or automated tests.
-
-If no such modification was made, do not run `build.sh` or `test.sh` merely as a completion ritual.
-
-When validation is required, before reporting the modification as complete:
-
-1. Review the final changes for unrelated or accidental edits.
-
-2. Run exactly:
-
-```text
-./build.sh
-```
-
-3. Wait for the build process to finish.
-
-4.  Review the `BUILDTEST.LOG` output already emitted by `build.sh` after the build has completed.
-
-5. Verify that the current source tree builds successfully.
-
-6. Only after that successful build, run exactly:
-
-```text
-./test.sh
-```
-
-7. Wait for the complete test process to finish, even if this takes more than 120 seconds.
-
-8. Review the `TEST.LOG` output already emitted by `test.sh`.
-
-9. Inspect relevant `ARTIFACT/` logs separately.
-
-10. Verify that the full test sequence completed successfully.
-
-11. Report any validation that could not be performed.
-
-Never claim that a change was fully validated when the build failed, the tests terminated early, only an isolated test was run, the test process had not yet finished, the required logs were not inspected, or the tests used binaries from an earlier relevant source state.
-
-Never combine build execution, test execution, status capture, cleanup, or log inspection into a compound shell command.
+If another DOS consumed file type is introduced and requires CRLF, update `.gitattributes` accordingly.

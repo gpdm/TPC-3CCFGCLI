@@ -36,13 +36,20 @@ ERRORS=$(awk '
     END { print total + 0 }
 ' "$BUILD_LOG")
 
-echo
-echo "Build summary"
-echo "============="
-printf "TASM calls : %d\n" "${TASM_COUNT}"
-printf "TLINK calls: %d\n" "${TLINK_COUNT}"
-printf "Warnings   : %d\n" "${WARNINGS}"
-printf "Errors     : %d\n" "${ERRORS}"
+
+cat <<EOF | tee >(cat >> "$BUILD_LOG")
+
+Build summary
+=============
+TASM calls    : ${TASM_COUNT}
+TLINK calls   : ${TLINK_COUNT}
+Warnings      : ${WARNINGS}
+Errors        : ${ERRORS}
+
+Overall result: $( (( WARNINGS + ERRORS > 0 )) && echo FAIL || echo PASS )
+
+EOF
+
 
 # emmit return code based on warnings and errors
 #

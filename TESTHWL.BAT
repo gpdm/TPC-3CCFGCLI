@@ -16,4 +16,3 @@ GOTO END
 ECHO HWLIMIT FAIL memsizekb=%1
 
 :END
-EXIT

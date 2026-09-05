@@ -35,7 +35,6 @@ test_saveconfig_line_lengths() {
     return 1
   fi
 
-
   echo "SAVECONFIG: run completed" >> "${TEST_LOG}"
 }
 
@@ -45,18 +44,18 @@ test_saveconfig_line_lengths() {
 # It does no additional assertions than that.
 #
 test_hwlimits() {
-  local template="autoexec-testhwl"
-  local artifact_dir="ARTIFACT"
+  local template="autoexec-testhwl.template"
 
   echo "Running Hardware Limit test ..." >> "${TEST_LOG}"
+
   # clear old logs - if any ...
-  find "${artifact_dir}" -maxdepth 1 -type f -name 'HWL*.LOG' -exec rm -f {} \;
+  find "${ARTIFACT_DIR}" -maxdepth 1 -type f -name 'HWL*.LOG' -exec rm -f {} \;
 
   for memkb in 64 128 256; do
     local conf
     local log
-    conf=$(mktemp "/tmp/autoexec-testhwl-${memkb}-XXXX.conf")
-    log="${artifact_dir}/HWL${memkb}.LOG"
+    conf=$(mktemp "/tmp/autoexec-testhwl-${memkb}.XXXXXX")
+    log="${ARTIFACT_DIR}/HWL${memkb}.LOG"
 
     echo "Dispatching resource test with ${memkb} KB memory limit to DOSBox-X ..."
     echo "[HWL${memkb}] Testing 8086/8088 with ${memkb} KB memory limit..." >> "${TEST_LOG}"
@@ -102,9 +101,9 @@ SAVECONFIG_FAIL=1
 HWLIMIT_FAIL=1
 
 # run completed usually means success, but there may be exceptions
-grep -q '^Smoke test: run completed$' "$TEST_LOG" && SMOKE_FAIL=0
-grep -q '^SAVECONFIG: run completed$' "$TEST_LOG" && SAVECONFIG_FAIL=0
-grep -q '^Hardware Limit test: run completed$' "$TEST_LOG" && HWLIMIT_FAIL=0
+grep -q '^Smoke test: run completed' "$TEST_LOG" && SMOKE_FAIL=0
+grep -q '^SAVECONFIG: run completed' "$TEST_LOG" && SAVECONFIG_FAIL=0
+grep -q '^Hardware Limit test: run completed' "$TEST_LOG" && HWLIMIT_FAIL=0
 
 # check defined vs. executed tests and see if we anyway
 # had a delta, which would indicate a failure.
@@ -113,16 +112,20 @@ TESTS_EXECUTED=$(grep -Ec '\[t[0-9]{4}\]' "$TEST_LOG")
 TESTS_FAILED=$(( TESTS_DEFINED != TESTS_EXECUTED ))
 
 
-echo
-echo "Test summary"
-echo "============"
+cat <<EOF | tee >(cat >> "$TEST_LOG")
 
-printf "Smoke Test            : %s\n" $( [ ${SMOKE_FAIL} -eq 0 -a ${TESTS_FAILED} -eq 0 ] && echo SUCCESS || echo FAILED)
-printf "    Defined Tests     : %d\n" "${TESTS_DEFINED}"
-printf "    Executed Tests    : %d\n" "${TESTS_EXECUTED}"
-printf "    Failed Tests      : %s\n" $( [ ${TESTS_FAILED} -eq 0 ] && echo NONE || echo OBSERVED)
-printf "SAVECONFIG Test       : %s\n" $( [ ${SAVECONFIG_FAIL} -eq 0 ] && echo SUCCESS || echo FAILED)
-printf "Hardware Limit Test   : %s\n" $( [ ${HWLIMIT_FAIL} -eq 0 ] && echo SUCCESS || echo FAILED)
+Test summary
+============
+Smoke Test            : $( (( SMOKE_FAIL + TESTS_FAILED == 0 )) && echo SUCCESS || echo FAILED )
+    Defined Tests     : ${TESTS_DEFINED}
+    Executed Tests    : ${TESTS_EXECUTED}
+    Failed Tests      : $( (( TESTS_FAILED == 0 )) && echo NONE || echo OBSERVED )
+SAVECONFIG Test       : $( (( SAVECONFIG_FAIL == 0 )) && echo SUCCESS || echo FAILED )
+Hardware Limit Test   : $( (( HWLIMIT_FAIL == 0 )) && echo SUCCESS || echo FAILED )
+
+Overall result        : $( (( SMOKE_FAIL + SAVECONFIG_FAIL + HWLIMIT_FAIL + TESTS_FAILED > 0 )) && echo FAIL || echo PASS )
+
+EOF
 
 
 # emmit return code based on assertions of the individual tests.
