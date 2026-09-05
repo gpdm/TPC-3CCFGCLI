@@ -2768,8 +2768,8 @@ PROC Cfg_Dispatch_Property NEAR
 ENDP Cfg_Dispatch_Property
 
 ; Property handler entry points receive SI = value pointer and CX = value length.
-; /INT preserves the hardware tested validation body and only stages its final
-; accepted value.  /IOBASE and /PNP likewise parse and stage only.  No handler
+; /INT validates its accepted value and stages it without hardware access.
+; /IOBASE and /PNP likewise parse and stage only.  No property handler
 ; performs hardware access directly.
 ; Input SI = /INT value pointer, CX = value length.
 ; Accepted canonical decimal forms are exactly:
@@ -4432,8 +4432,8 @@ PROC Scan_Active_Base_Ports NEAR
 ENDP Scan_Active_Base_Ports
 
 ; ============================================================================
-; Common CONFIGURE hardware infrastructure.  Release 0.4 exposes only the
-; original resources required by the deferred /INT transaction.
+; Common CONFIGURE hardware infrastructure for the supported persistent and
+; live resource transactions.
 ; ============================================================================
 
 ; Reduced replacement for the original sub_139 timing dependency.  The original
@@ -4611,7 +4611,7 @@ ENDP Cfg_Eeprom_Read
 ;   0030h, wait, 0040h OR word, wait.
 ; The original continues through the sequence after a timeout, so this helper
 ; does the same and returns the shared timeout latch in carry at the end.
-; Release 0.3.4 reaches this procedure from the centralized CONFIGURE transaction.
+; The centralized CONFIGURE transaction calls this helper for EEPROM writes.
 PROC Cfg_Eeprom_Write NEAR
     push    ax
     push    bx
@@ -4753,7 +4753,7 @@ PROC Cfg_Checksum_17_Low NEAR
 ENDP Cfg_Checksum_17_Low
 
 ; ============================================================================
-; /IOBASE hardware transaction, release 0.3.4
+; /IOBASE hardware transaction
 ; ============================================================================
 ; Original authorities:
 ;   loc_2590 through loc_2605, command line IOBASE parser and staging
@@ -4831,7 +4831,7 @@ PROC Cfg_IOBASE_Check_Conflict NEAR
 ENDP Cfg_IOBASE_Check_Conflict
 
 ; ============================================================================
-; Central staged CONFIGURE transaction facility, release 0.3.4
+; Central staged CONFIGURE transaction facility
 ; ============================================================================
 ;
 ; Property handlers only parse and stage values.  The routines below snapshot
@@ -5190,7 +5190,7 @@ PROC Cfg_Prepare_IOBASE NEAR
 ENDP Cfg_Prepare_IOBASE
 
 ; Merge only the staged IRQ field into the prospective state.
-; Encoding is the hardware tested release 0.3.3 behavior.
+; Encoding follows the 3C509B resource-configuration IRQ field format.
 PROC Cfg_Prepare_INT NEAR
     push    ax
     push    bx
@@ -5531,9 +5531,9 @@ PROC Cfg_Validate_FD_Transceiver NEAR
 ENDP Cfg_Validate_FD_Transceiver
 
 ; Compare current and prospective states once after all properties are prepared.
-; INT keeps release 0.3.3 unchanged semantics: its persistent EEPROM field is
-; authoritative.  A matching persistent IRQ alone remains a no write success
-; unless an IOBASE migration is already required and must restore live state.
+; INT keeps the persistent EEPROM field authoritative.  A matching persistent
+; IRQ alone remains a no-write success unless an IOBASE migration is already
+; required and must restore live state.
 PROC Cfg_Txn_Detect_Changes NEAR
     push    ax
 
@@ -5588,8 +5588,8 @@ PROC Cfg_Txn_Detect_Changes NEAR
 
 @@INTPersistentSame:
     ; During a real IOBASE migration the activation restore uses the requested
-    ; staged IRQ, even when EEPROM already contains it.  Outside migration, the
-    ; tested 0.3.3 unchanged INT path performs no live correction.
+    ; staged IRQ, even when EEPROM already contains it.  Outside migration, an
+    ; unchanged INT request performs no live correction.
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@PNP
     mov     ax, [cfg_txn_old_live08]
@@ -5659,8 +5659,8 @@ PROC Cfg_Txn_Preflight NEAR
     ret
 
 @@ActivationChoice:
-    ; Preserve release 0.3.3 INT behavior: when an ID tagged adapter is
-    ; available, a real IRQ change uses the original deactivate/reactivate path.
+    ; When an ID-tagged adapter is available, a real IRQ change uses the
+    ; deactivate/reactivate path.
     test    [cfg_txn_change_flags], CFG_TXN_INT_CHANGED
     jz      @@Good
     call    Cfg_Txn_Has_Valid_Tag
@@ -6237,9 +6237,8 @@ PROC Cfg_Txn_Verify NEAR
     int     21h
 
 @@Reachable:
-    ; Release 0.3.3 INT verification did not add a final signature probe.  Keep
-    ; reachability as an IOBASE transaction check only, where the active address
-    ; itself may have changed.
+    ; Check reachability only for an IOBASE transaction, where the active address
+    ; itself may have changed; INT verification uses its persistent/live checks.
     test    [cfg_txn_change_flags], CFG_TXN_IOBASE_CHANGED
     jz      @@INTPersistent
 
@@ -6312,10 +6311,9 @@ PROC Cfg_Txn_Verify NEAR
 @@INTPersistent:
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@PNPPersistent
-    ; Preserve the standalone 0.3.3 unchanged path.  Verify INT only when its
-    ; persistent field changed, or when an IO migration forced live restoration.
-    ; An unchanged INT skips its own readback only; later requested properties
-    ; are still verified.
+    ; Verify INT only when its persistent field changed, or when an IO migration
+    ; forced live restoration.  An unchanged INT skips its own readback only;
+    ; later requested properties are still verified.
     test    [cfg_txn_change_flags], CFG_TXN_INT_MIGRATE_MASK
     jz      @@PNPPersistent
 
@@ -7011,8 +7009,8 @@ PROC Cfg_Txn_Execute NEAR
 ; CONFIGURE verbs (/PNP, /FULLDUPLEX, /BADDRESS, /BSIZE, /TR) run here, before any
 ; "parameter accepted" echo.  An adapter that cannot support a requested verb
 ; is rejected immediately, without ever being told its input was accepted.
-; Moved out of the Prepare phase in 0.5.6; the Prepare phase below now only
-; stages values, since every gate has already passed by the time it runs.
+; The Prepare phase below only stages values; every capability gate has already
+; passed by the time it runs.
 ; ----------------------------------------------------------------------------
 @@GatePNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
@@ -7142,7 +7140,7 @@ PROC Cfg_Txn_Execute NEAR
 
 @@GateTR_Pass:
 @@RequestedIOBASE:
-    ; Preserve normal requested parameter output from the existing releases.
+    ; Preserve normal requested parameter output.
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@RequestedINT
     mov     dx, OFFSET msg_cfg_iobase_ok
@@ -7466,8 +7464,8 @@ PROC Cfg_Txn_Execute NEAR
     int     21h
 
 @@CheckAnyChange:
-    ; No requested hardware change.  INT intentionally follows release 0.3.3
-    ; persistent authoritative unchanged behavior.
+    ; No requested hardware change.  An unchanged INT request retains the
+    ; persistent-authoritative behavior described above.
     mov     ax, [cfg_txn_change_flags]
     and     ax, CFG_TXN_COMMIT_MASK
     jnz     @@Preflight
@@ -7681,7 +7679,7 @@ ENDP Cfg_Revalidate_Selected
 
 ; ISA deactivation core recovered from original sub_335.
 ; Input SI = selected ID record.  D8h plus tag selects it, C0h deactivates it.
-; Release 0.3.4 CONFIGURE calls this only for a selected ID tagged record.
+; The transaction calls this only for a selected ID-tagged record.
 PROC Cfg_Id_Deactivate_Selected NEAR
     push    ax
     push    dx
@@ -7710,7 +7708,7 @@ ENDP Cfg_Id_Deactivate_Selected
 
 ; ISA activation core recovered from original sub_334 and sub_335 reactivation.
 ; Input SI = selected record.  Uses its existing tag and active I O base.
-; Release 0.3.4 CONFIGURE calls this only for a selected ID tagged record.
+; The transaction calls this only for a selected ID-tagged record.
 PROC Cfg_Id_Activate_Selected NEAR
     push    ax
     push    bx

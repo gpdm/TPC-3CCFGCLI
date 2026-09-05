@@ -20,7 +20,7 @@
 ;     first matching record only and does not claim strong hardware
 ;     equivalence for that case.
 ; ---------------------------------------------------------------------------
-; ID-port scratch state classification (see PRIMARY NEXT GOAL item 10):
+; ID-port scratch state classification:
 ;
 ;   Per-adapter hardware state (already lives in the MCK v3 record, not in
 ;   global scratch): MCK3R_ID_STATE, MCK3R_TAG, MCK3R_ID_SHIFT,
@@ -48,10 +48,8 @@
 ;   SAME 255-byte LFSR stream identically): mock_id_sequence_expected,
 ;   mock_id_sequence_count, mock_id_zero_count, mock_id_command_ready.
 ;
-;   This split already matches the current implementation; no fields were
-;   moved as part of this pass.  Do not mechanically relocate the "shared
-;   ID-bus state" items into the per-record structure: they describe the
-;   bus/host session, not an individual chip's storage.
+;   Keep the "shared ID-bus state" items out of the per-record structure: they
+;   describe the bus/host session, not an individual chip's storage.
 ; ---------------------------------------------------------------------------
 
 MOCK_STATE_SIZE EQU 256
@@ -798,13 +796,11 @@ ENDP Mock_Eeprom_Read_Command
 ; Window 0 EEPROM command decoder.  Program operations require explicit
 ; enable, erase writes ones, and write operations can only clear bits.
 ;
-; Reachable-code audit (see PRIMARY NEXT GOAL item 11): 3CCFGCLI, 3CSEED,
-; and Nic_EEPROM_Read only ever exercise READ (EEPROM_CMD_READ), Write
+; Reachable EEPROM access paths require READ (EEPROM_CMD_READ), Write
 ; Enable/Disable (EEPROM_CMD_WRITE_ENABLE / bits 5:4 clear), ERASE WORD
 ; (EEPROM_CMD_ERASE), and WRITE WORD (EEPROM_CMD_WRITE).  ERASE ALL, WRITE
-; ALL, and an explicit EWDS-distinct-from-plain-disable variant are not
-; used by any reachable path, so they are deliberately not implemented;
-; this keeps Stage 1 scoped to what is actually exercised.
+; ALL, and an explicit EWDS-distinct-from-plain-disable variant are not used
+; by the supported EEPROM access paths, so the mock leaves them unimplemented.
 PROC Mock_Eeprom_Write_Command NEAR
     push    bx
     push    cx
