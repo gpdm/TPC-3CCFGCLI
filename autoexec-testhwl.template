@@ -1,3 +1,7 @@
+[dosbox]
+fastbioslogo     = true
+startbanner      = false
+
 [cpu]
 cputype = 8086
 core    = normal

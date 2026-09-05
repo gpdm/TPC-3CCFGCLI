@@ -1,3 +1,7 @@
+[dosbox]
+fastbioslogo     = true
+startbanner      = false
+
 [cpu]
 cycles=max limit 50000
 
