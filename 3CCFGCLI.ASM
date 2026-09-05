@@ -597,6 +597,10 @@ cfg_txn_capability_valid  DW 0
 ; Boot ROM + TR transaction reads EEPROM_ADDR_CFG only once.
 cfg_txn_verify_word08       DW 0
 cfg_txn_verify_word08_valid DW 0
+; Shared raw EEPROM word 0Dh verify readback for MODEM, FULLDUPLEX,
+; and OPTIMIZE checks inside Cfg_Txn_Verify.
+cfg_txn_verify_word0d       DW 0
+cfg_txn_verify_word0d_valid DW 0
 
 ; Central CONFIGURE transaction state.  Current state is snapshotted before any
 ; hardware modification.  Prospective state starts as an exact copy and is then
@@ -6236,6 +6240,7 @@ PROC Cfg_Txn_Verify NEAR
     push    si
 
     mov     [cfg_txn_verify_word08_valid], 0
+    mov     [cfg_txn_verify_word0d_valid], 0
 
     test    [cfg_txn_change_flags], CFG_TXN_COMMIT_MASK
     jnz     @@Start
@@ -6405,11 +6410,17 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@FDPersistent
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jz      @@FDPersistent
+    cmp     [cfg_txn_verify_word0d_valid], 1
+    je      @@MODEMHaveWord0D
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
     jc      @@MODEMVerifyFail
+    mov     [cfg_txn_verify_word0d], ax
+    mov     [cfg_txn_verify_word0d_valid], 1
+@@MODEMHaveWord0D:
+    mov     ax, [cfg_txn_verify_word0d]
     cmp     ax, [cfg_txn_new_word0d]
     jne     @@MODEMVerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
@@ -6423,11 +6434,17 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@OptimizePersistent
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jz      @@OptimizePersistent
+    cmp     [cfg_txn_verify_word0d_valid], 1
+    je      @@FDHaveWord0D
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
     jc      @@FDVerifyFail
+    mov     [cfg_txn_verify_word0d], ax
+    mov     [cfg_txn_verify_word0d_valid], 1
+@@FDHaveWord0D:
+    mov     ax, [cfg_txn_verify_word0d]
     ; Verify the undocumented persistent Full Duplex policy bit only.
     and     ax, 8000h
     mov     bx, [cfg_txn_new_word0d]
@@ -6445,11 +6462,17 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@BootRomPersistent
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jz      @@BootRomPersistent
+    cmp     [cfg_txn_verify_word0d_valid], 1
+    je      @@OptimizeHaveWord0D
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
     jc      @@OptimizeVerifyFail
+    mov     [cfg_txn_verify_word0d], ax
+    mov     [cfg_txn_verify_word0d_valid], 1
+@@OptimizeHaveWord0D:
+    mov     ax, [cfg_txn_verify_word0d]
     cmp     ax, [cfg_txn_new_word0d]
     jne     @@OptimizeVerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
