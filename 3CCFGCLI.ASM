@@ -1992,7 +1992,7 @@ PROC Save_Build_Command NEAR
     jc      @@Fail
 @@Optimize:
     mov     ax, [save_word0d]
-    mov     cl, 4
+    mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
     shr     ax, cl
     and     ax, 0003h
     cmp     al, 1
@@ -2021,7 +2021,7 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     jc      @@Fail
     mov     ax, [save_word0d]
-    mov     cl, 4
+    mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
     shr     ax, cl
     and     ax, 0003h
     cmp     al, 1
@@ -3204,11 +3204,11 @@ PROC Cfg_Probe_Boot_ROM NEAR
     call    Nic_Rom_Set_Page
 
     call    Nic_Rom_Read_Byte
-    cmp     al, 55h
+    cmp     al, ROM_SIGNATURE_0
     jne     @@Invalid
     inc     bx
     call    Nic_Rom_Read_Byte
-    cmp     al, 0AAh
+    cmp     al, ROM_SIGNATURE_1
     jne     @@Invalid
     inc     bx
     call    Nic_Rom_Read_Byte
@@ -6850,7 +6850,7 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     ah, 09h
     int     21h
     mov     ax, [cfg_txn_old_word0d]
-    mov     cl, 4
+    mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
     shr     ax, cl
     and     al, 03h
     call    Decode_Optimize_Value
@@ -6944,7 +6944,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     mov     ah, 09h
     int     21h
     mov     ax, [cfg_txn_new_word0d]
-    mov     cl, 4
+    mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
     shr     ax, cl
     and     al, 03h
     call    Decode_Optimize_Value
@@ -8141,7 +8141,7 @@ PROC Print_Optimize_Value NEAR
     mov     ax, [ext_software_info]
     cmp     ax, 0FFFFh
     je      @@Unavailable
-    mov     cl, 4
+    mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
     shr     ax, cl
     and     al, 03h
     call    Decode_Optimize_Value

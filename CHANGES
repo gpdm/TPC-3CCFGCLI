@@ -72,6 +72,17 @@ Changelog 0.7.4
     MODEM, FULLDUPLEX, and OPTIMIZE verification, avoiding duplicate Software
     Information reads in combined transactions while preserving each
     property's existing comparison and error reporting.
+  - Minor source cleanup: replaced literal `mov cl, 4` shifts with
+    EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT in the OPTIMIZE decode paths,
+    switched Build_Checksum's secondary checksum start to
+    EEPROM_SECONDARY_VITAL_START, expressed
+    W0_CONFIG_CONTROL_3C509B_DEFAULT in terms of W0_CONFIG_CONTROL_ENA and
+    W0_CONFIG_CONTROL_TP_PRESENT, replaced the Boot ROM signature literals
+    in Cfg_Probe_Boot_ROM with ROM_SIGNATURE_0/ROM_SIGNATURE_1, and removed
+    several unreferenced EQU constants (EEPROM_CMD_WRITE_DISABLE,
+    W0_ADDRESS_CFG_WRITABLE, W0_RESOURCE_CFG_WRITABLE, MCK_ID_AUTOINIT,
+    MCK_ID_ACTIVE, MCK3R_ID_SEQUENCE_POS), leaving the v3 mock record's
+    0Ah-0Bh field documented as reserved.
 
 
 Changelog 0.7.3

@@ -1721,7 +1721,7 @@ PROC Build_Checksum NEAR
 
     ; Secondary high checksum: words 10h-12h and 20h-3Fh.
     xor     bx, bx
-    mov     si, EEPROM_CAPABILITY
+    mov     si, EEPROM_SECONDARY_VITAL_START
 @@SecondaryHighA:
     call    EEPROM_Read_SI
     xor     bl, al
