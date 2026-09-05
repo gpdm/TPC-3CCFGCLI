@@ -5,14 +5,20 @@ set -u
 BUILD_LOG="BUILD.LOG"
 DOSBOX_BIN=${DOSBOX_BIN:-/Applications/DOSBox-X.app/Contents/MacOS/dosbox-x}
 
+# clear BUILD.LOG
+[ -f ${BUILD_LOG} ] && rm ${BUILD_LOG}
+[ ! -f ${BUILD_LOG} ] && touch ${BUILD_LOG}
+
+# Agent doesn't like if there's no output for prolonged time.
+# Let's simply tail the log continuosly to the terminal
+tail -f ${BUILD_LOG} &
+TAIL_PID=$!
+
 echo Dispatching Build to DOSBox-X ...
 "${DOSBOX_BIN}" -conf autoexec-build > /dev/null 2>&1
 
-echo ------------------
-echo "${BUILD_LOG} follows:"
-echo ------------------
-cat "${BUILD_LOG}"
-echo ------------------
+# kill tail running in background
+kill -INT $TAIL_PID 2>&1 >/dev/null
 
 
 # build summary
@@ -37,7 +43,7 @@ ERRORS=$(awk '
 ' "$BUILD_LOG")
 
 
-cat <<EOF | tee >(cat >> "$BUILD_LOG")
+cat <<EOF | tee >> "$BUILD_LOG"
 
 Build summary
 =============

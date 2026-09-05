@@ -24,6 +24,7 @@ all: 3ccfgcli 3chwmock seed
 seed: $(BINDIR)\3CSEED.EXE
 
 prep:
+    # MAKEFILE deliberately does not clear BUILD.LOG - this is handled by build.sh
 	@if not exist $(BINDIR)\NUL md $(BINDIR)
 	@if not exist $(PKLDIR)\NUL md $(PKLDIR)
 	@if not exist $(OBJDIR)\NUL md $(OBJDIR)

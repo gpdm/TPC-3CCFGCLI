@@ -11,6 +11,12 @@ TEST_MK="TEST.MK"
 ARTIFACT_DIR=${ARTIFACT:-ARTIFACT}
 SAVE_MAX_BATCH_LINE=128
 
+
+# clear TEST.LOG
+[ -f ${TEST_LOG} ] && rm ${TEST_LOG}
+[ ! -f ${TEST_LOG} ] && touch ${TEST_LOG}
+
+
 # General Regression Tests
 #
 test_regressions() {
@@ -79,18 +85,28 @@ test_hwlimits() {
 }
 
 
+# Agent doesn't like if there's no output for prolonged time.
+# Let's simply tail the log continuosly to the terminal
+tail -f ${TEST_LOG} &
+TAIL_PID=$!
+
+
 # run tests in sequence
 # chaining only on successful assertion of previous tests
 #
 test_regressions && test_saveconfig_line_lengths && test_hwlimits
 
 
+# kill tail running in background
+kill -INT $TAIL_PID 2>&1 >/dev/null
+
+
 # always print TEST.LOG on exit
 #
-echo ${TEST_LOG} follows:
-echo -----------------
-cat ${TEST_LOG}
-echo -----------------
+#echo ${TEST_LOG} follows:
+#echo -----------------
+#cat ${TEST_LOG}
+#echo -----------------
 
 
 # test summary
@@ -112,7 +128,7 @@ TESTS_EXECUTED=$(grep -Ec '\[t[0-9]{4}\]' "$TEST_LOG")
 TESTS_FAILED=$(( TESTS_DEFINED != TESTS_EXECUTED ))
 
 
-cat <<EOF | tee >(cat >> "$TEST_LOG")
+cat <<EOF | tee >> "$TEST_LOG"
 
 Test summary
 ============
