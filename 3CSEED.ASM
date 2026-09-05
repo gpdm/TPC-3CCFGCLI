@@ -46,6 +46,8 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  ROM16K       INIT profile with 16 KB synthetic Boot ROM.', 0Dh, 0Ah
              DB '  ROM32K       INIT profile with 32 KB synthetic Boot ROM.', 0Dh, 0Ah
              DB '  ROMNONE      INIT profile with no Boot ROM installed.', 0Dh, 0Ah
+             DB '  COMBOROM16   Combo profile with 16 KB synthetic Boot ROM.', 0Dh, 0Ah
+             DB '  COMBONONE    Combo profile with no Boot ROM installed.', 0Dh, 0Ah
              DB '  ROMMETASET   INIT profile with Boot ROM Size Valid metadata set.', 0Dh, 0Ah
              DB '  ROMMETACLEAR Verify cleared Boot ROM metadata and secondary checksum.', 0Dh, 0Ah
              DB '  ROMMETAVALID Verify preserved Boot ROM metadata and secondary checksum.', 0Dh, 0Ah
@@ -73,6 +75,8 @@ msg_ok_rom8k    DB 'Seed file created (ROM8K).', 0Dh, 0Ah, '$'
 msg_ok_rom16k   DB 'Seed file created (ROM16K).', 0Dh, 0Ah, '$'
 msg_ok_rom32k   DB 'Seed file created (ROM32K).', 0Dh, 0Ah, '$'
 msg_ok_romnone  DB 'Seed file created (ROMNONE).', 0Dh, 0Ah, '$'
+msg_ok_comborom16 DB 'Seed file created (COMBOROM16).', 0Dh, 0Ah, '$'
+msg_ok_combonone DB 'Seed file created (COMBONONE).', 0Dh, 0Ah, '$'
 msg_ok_rommetaset DB 'Seed file created (ROMMETASET).', 0Dh, 0Ah, '$'
 msg_ok_rommetaclear DB 'Boot ROM metadata cleared; secondary checksum valid.', 0Dh, 0Ah, '$'
 msg_ok_rommetavalid DB 'Boot ROM metadata preserved; secondary checksum valid.', 0Dh, 0Ah, '$'
@@ -109,6 +113,8 @@ kw_rom8k     DB 'ROM8K', 0
 kw_rom16k    DB 'ROM16K', 0
 kw_rom32k    DB 'ROM32K', 0
 kw_romnone   DB 'ROMNONE', 0
+kw_comborom16 DB 'COMBOROM16', 0
+kw_combonone DB 'COMBONONE', 0
 kw_rommetaset DB 'ROMMETASET', 0
 kw_rommetaclear DB 'ROMMETACLEAR', 0
 kw_rommetavalid DB 'ROMMETAVALID', 0
@@ -279,6 +285,12 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_romnone
     call    Match_Token
     jnc     @@DoRomNone
+    mov     dx, OFFSET kw_comborom16
+    call    Match_Token
+    jnc     @@DoComboRom16
+    mov     dx, OFFSET kw_combonone
+    call    Match_Token
+    jnc     @@DoComboNone
     mov     dx, OFFSET kw_rommetaset
     call    Match_Token
     jnc     @@DoRomMetaSet
@@ -495,6 +507,22 @@ PROC Parse_And_Run NEAR
     call    Seed_RomNone
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_romnone
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoComboRom16:
+    call    Seed_ComboRom16
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_comborom16
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@DoComboNone:
+    call    Seed_ComboNone
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_combonone
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -1431,6 +1459,28 @@ PROC Seed_RomNone NEAR
     stc
     ret
 ENDP Seed_RomNone
+
+PROC Seed_ComboRom16 NEAR
+    call    Seed_Model_Combo
+    jc      @@Fail
+    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCK3R_ROM_SIZE], MCK_ROM_16K
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_ComboRom16
+
+PROC Seed_ComboNone NEAR
+    call    Seed_Model_Combo
+    jc      @@Fail
+    mov     [BYTE state_blob + MCK_HEADER_SIZE + MCK3R_ROM_SIZE], MCK_ROM_NONE
+    call    Write_State_File
+    ret
+@@Fail:
+    stc
+    ret
+ENDP Seed_ComboNone
 
 PROC Seed_RomMetaSet NEAR
     call    Seed_Init

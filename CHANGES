@@ -38,6 +38,12 @@ Changelog 0.7.4
   - Boot ROM CONFIGURE now clears EEPROM word 14h Boot ROM Size Valid bit,
     reuses the capability-gate read as transaction-local state, and updates
     the EEPROM word 17h secondary checksum low byte when that metadata changes.
+  - Enabled Boot ROM requests are now physically probed before EEPROM commit;
+    an invalid ROM skips only the Boot ROM change while preserving unrelated
+    CONFIGURE changes, with dedicated rejection reporting.
+  - Added ASSERTERS framework to `ASSERTRS`, with 'NFIND.BAT` being the first
+    helper for negative assertions, essentially inverting DOS's `FIND` command
+    return codes.
 
 
 Changelog 0.7.3

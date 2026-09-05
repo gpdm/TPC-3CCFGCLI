@@ -407,6 +407,8 @@ msg_cfg_baddress_eeprom_write_fail DB "EEPROM write timed out while writing Boot
 msg_cfg_baddress_verified DB "EEPROM Boot ROM base address verified.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_verify_fail DB "Boot ROM base address configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_not_capable DB "This adapter does not support Boot ROM configuration.", 0Dh, 0Ah, '$'
+msg_cfg_bootrom_not_detected DB "No valid Boot ROM detected at the requested address.", 0Dh, 0Ah
+                             DB "Boot ROM configuration was skipped.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_eeprom_read_fail DB "EEPROM read timed out while reading Boot ROM size configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_eeprom_write_fail DB "EEPROM write timed out while writing Boot ROM size configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verified DB "EEPROM Boot ROM size verified.", 0Dh, 0Ah, '$'
@@ -615,6 +617,7 @@ cfg_txn_live_irq          DB 0
 cfg_txn_change_flags      DW 0
 cfg_txn_checksum          DB 0
 cfg_txn_activation_needed DB 0
+cfg_bootrom_rejected      DB 0
 
 cfg_wait_start_lo     DW 0
 cfg_wait_start_hi     DW 0
@@ -5365,6 +5368,109 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     ret
 ENDP Cfg_Prepare_Boot_ROM
 
+; Temporarily map and validate an enabled prospective Boot ROM.  The adapter
+; remains reachable at its current I/O base because only Boot ROM bits 13:8
+; are merged into the current live Address Configuration value.
+PROC Cfg_Txn_Probe_Boot_ROM NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+    push    es
+
+    mov     [cfg_bootrom_rejected], 0
+    cmp     [cfg_bsize_disabled], 1
+    je      @@Success
+
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Nic_Get_Current_Window
+    mov     di, ax
+    xor     al, al
+    call    Nic_Select_Window
+
+    mov     ax, [cfg_txn_old_live06]
+    and     ax, 0C0FFh
+    mov     bx, [cfg_txn_new_live06]
+    and     bx, 3F00h
+    or      ax, bx
+    mov     bx, EL3_W0_ADDRESS_CFG
+    call    Nic_Reg_Write_Word
+
+    xor     ax, ax
+    mov     al, [cfg_baddress_value]
+    mov     cl, 9
+    shl     ax, cl
+    add     ax, 0C000h
+    mov     es, ax
+    xor     bx, bx
+    mov     cx, 2000h
+    cmp     [cfg_bsize_value], 0
+    je      @@Probe
+    mov     cx, 4000h
+    cmp     [cfg_bsize_value], 1
+    je      @@Probe
+    mov     cx, 8000h
+@@Probe:
+    call    Cfg_Probe_Boot_ROM
+    pushf
+
+    mov     bx, EL3_W0_ADDRESS_CFG
+    mov     ax, [cfg_txn_old_live06]
+    call    Nic_Reg_Write_Word
+    call    Nic_Reg_Read_Word
+    cmp     ax, [cfg_txn_old_live06]
+    jne     @@RestoreFail
+    mov     ax, di
+    call    Nic_Select_Window
+    popf
+    jnc     @@Success
+
+    mov     ax, [cfg_txn_new_word08]
+    and     ax, 0C0FFh
+    mov     bx, [cfg_txn_old_word08]
+    and     bx, 3F00h
+    or      ax, bx
+    mov     [cfg_txn_new_word08], ax
+    mov     ax, [cfg_txn_new_live06]
+    and     ax, 0C0FFh
+    mov     bx, [cfg_txn_old_live06]
+    and     bx, 3F00h
+    or      ax, bx
+    mov     [cfg_txn_new_live06], ax
+    mov     ax, [cfg_txn_new_word14]
+    and     ax, NOT EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
+    mov     bx, [cfg_txn_old_word14]
+    and     bx, EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
+    or      ax, bx
+    mov     [cfg_txn_new_word14], ax
+    mov     [cfg_bootrom_rejected], 1
+    mov     dx, OFFSET msg_cfg_bootrom_not_detected
+    mov     ah, 09h
+    int     21h
+
+@@Success:
+    clc
+    jmp     @@Done
+@@RestoreFail:
+    add     sp, 2
+    mov     ax, di
+    call    Nic_Select_Window
+    mov     [cfg_last_error], CFG_ERR_LIVE_UPDATE
+    stc
+@@Done:
+    pop     es
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Txn_Probe_Boot_ROM
+
 ; Merge only the transceiver selection into the prospective EEPROM word 08h
 ; image.  AUTO (sentinel 0FFh) clears bits 15:14 and sets bit 7.  TP/AUI/COAX
 ; clear bit 7 and write the raw value into bits 15:14.  All other bits preserved.
@@ -6820,6 +6926,7 @@ PROC Cfg_Txn_Execute NEAR
 
     mov     [cfg_last_error], CFG_ERR_NONE
     mov     [cfg_timeout_latched], 0
+    mov     [cfg_bootrom_rejected], 0
 
     ; Adapter selection detail is global transaction output, not property output.
     test    [cli_flags], CLI_FLAG_VERBOSE
@@ -7203,6 +7310,11 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Validate_FD_Transceiver
     jc      @@Done
 @@DetectChanges:
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
+    jz      @@DetectChangesNow
+    call    Cfg_Txn_Probe_Boot_ROM
+    jc      @@Done
+@@DetectChangesNow:
     call    Cfg_Txn_Detect_Changes
     call    Cfg_Txn_Report_Prospective
 
@@ -7259,6 +7371,8 @@ PROC Cfg_Txn_Execute NEAR
 @@CheckBAddressUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@CheckBSizeUnchanged
+    cmp     [cfg_bootrom_rejected], 1
+    je      @@CheckBSizeUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jnz     @@CheckBSizeUnchanged
     mov     dx, OFFSET msg_cfg_baddress_unchanged
@@ -7268,6 +7382,8 @@ PROC Cfg_Txn_Execute NEAR
 @@CheckBSizeUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jz      @@CheckTRUnchanged
+    cmp     [cfg_bootrom_rejected], 1
+    je      @@CheckTRUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jnz     @@CheckTRUnchanged
     mov     dx, OFFSET msg_cfg_bsize_unchanged
@@ -7324,6 +7440,12 @@ PROC Cfg_Txn_Execute NEAR
     mov     al, [cfg_int_value]
     mov     [BYTE si + NIC_IRQ_VAL], al
 @@ReportSuccess:
+    cmp     [cfg_bootrom_rejected], 1
+    jne     @@PrintSuccess
+    mov     ax, [cfg_txn_change_flags]
+    and     ax, CFG_TXN_COMMIT_MASK
+    jz      @@Done
+@@PrintSuccess:
     call    Cfg_Txn_Report_Success
     mov     [cfg_last_error], CFG_ERR_NONE
 

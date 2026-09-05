@@ -2102,7 +2102,7 @@ PROC Nic_Rom_Read_Byte NEAR
 @@CalcBase:
     ; Compute base segment = 0C000h + (DI * 200h)
     mov     ax, di
-    mov     cl, 5                   ; DI * 200h in segment units = DI * 20h
+    mov     cl, 9                   ; DI * 2000h in bytes = DI * 200h in segments
     shl     ax, cl
     add     ax, 0C000h
     mov     dx, ax                  ; DX = base segment
