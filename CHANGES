@@ -58,6 +58,12 @@ Changelog 0.7.4
   - Added focused Boot ROM live-verification tests: accepted 8K/16K/32K
     commits, combined /BADDRESS+/BSIZE+/IOBASE migration, /TR coexistence,
     /BSIZE:DISABLED live-bit clearing, and rejected-request skip coverage.
+  - OPT7: Cfg_Txn_Execute now takes a single combined capability snapshot
+    (Nic_Read_Capabilities) up front when any of /PNP, /FULLDUPLEX, or /TR
+    is requested, and the PNP, FULLDUPLEX, and TR gates reuse it instead of
+    each calling Nic_Read_Capabilities independently, eliminating redundant
+    reads on combined transactions. Per-property validity and error
+    semantics are unchanged.
 
 
 Changelog 0.7.3

@@ -587,6 +587,10 @@ cfg_bsize_disabled    DB 0
 cfg_txn_later_card    DB 0
 ; cfg_tr_value: 0=TP, 1=AUI, 3=COAX, 0FFh=AUTO sentinel.
 cfg_tr_value          DB 0
+; OPT7: single capability snapshot shared by the PNP/FULLDUPLEX/TR gates in
+; Cfg_Txn_Execute, so a combined transaction reads capabilities only once.
+cfg_txn_capabilities      DW 0
+cfg_txn_capability_valid  DW 0
 
 ; Central CONFIGURE transaction state.  Current state is snapshotted before any
 ; hardware modification.  Prospective state starts as an exact copy and is then
@@ -6994,7 +6998,7 @@ PROC Cfg_Txn_Execute NEAR
 
     ; Adapter selection detail is global transaction output, not property output.
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@GatePNP
+    jz      @@CapabilitySnapshot
     mov     dx, OFFSET msg_cfg_adapter_prefix
     mov     ah, 09h
     int     21h
@@ -7012,13 +7016,26 @@ PROC Cfg_Txn_Execute NEAR
 ; The Prepare phase below only stages values; every capability gate has already
 ; passed by the time it runs.
 ; ----------------------------------------------------------------------------
+@@CapabilitySnapshot:
+    ; OPT7: take one combined capability snapshot up front if any of the
+    ; PNP/FULLDUPLEX/TR gates below will need it, instead of each gate
+    ; calling Nic_Read_Capabilities independently. Validity bits (BX) are
+    ; independent per property, so a failure to obtain one property's data
+    ; (e.g. connectors) does not affect another property's validity (e.g. PNP).
+    test    [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_FULLDUPLEX + CFG_PARSE_TR
+    jz      @@GatePNP
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Nic_Read_Capabilities
+    mov     [cfg_txn_capabilities], ax
+    mov     [cfg_txn_capability_valid], bx
+
 @@GatePNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@GateFULLDUPLEX
     ; EEPROM_CAPABILITY bit 0 is the authoritative PNP capability source.
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Nic_Read_Capabilities
+    mov     ax, [cfg_txn_capabilities]
+    mov     bx, [cfg_txn_capability_valid]
     test    bx, NIC_CAP_VALID_PNP
     jz      @@PNPCapReadFail
     test    ax, NIC_CAP_PNP
@@ -7034,9 +7051,8 @@ PROC Cfg_Txn_Execute NEAR
 @@GateFULLDUPLEX:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@GateBootRom
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Nic_Read_Capabilities
+    mov     ax, [cfg_txn_capabilities]
+    mov     bx, [cfg_txn_capability_valid]
     test    bx, NIC_CAP_VALID_FULLDUPLEX
     jz      @@FDCapReadFail
     test    ax, NIC_CAP_FULLDUPLEX
@@ -7103,9 +7119,8 @@ PROC Cfg_Txn_Execute NEAR
 @@GateTR:
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@GateTR_Pass
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Nic_Read_Capabilities
+    mov     ax, [cfg_txn_capabilities]
+    mov     bx, [cfg_txn_capability_valid]
     test    bx, NIC_CAP_VALID_CONNECTORS
     jz      @@TRCapabilityReadFail
     cmp     [cfg_tr_value], 0
