@@ -7,6 +7,7 @@ set -u
 
 DOSBOX_BIN=${DOSBOX_BIN:-/Applications/DOSBox-X.app/Contents/MacOS/dosbox-x}
 TEST_LOG="TEST.LOG"
+TEST_MK="TEST.MK"
 ARTIFACT_DIR=${ARTIFACT:-ARTIFACT}
 SAVE_MAX_BATCH_LINE=128
 
@@ -90,3 +91,40 @@ test_regressions && test_saveconfig_line_lengths && test_hwlimits
 echo ${TEST_LOG} follows:
 echo -----------------
 cat ${TEST_LOG}
+echo -----------------
+
+
+# test summary
+#
+# assume fail by default, and only clear the fail flags if the tests pass.
+SMOKE_FAIL=1
+SAVECONFIG_FAIL=1
+HWLIMIT_FAIL=1
+
+# run completed usually means success, but there may be exceptions
+grep -q '^Smoke test: run completed$' "$TEST_LOG" && SMOKE_FAIL=0
+grep -q '^SAVECONFIG: run completed$' "$TEST_LOG" && SAVECONFIG_FAIL=0
+grep -q '^Hardware Limit test: run completed$' "$TEST_LOG" && HWLIMIT_FAIL=0
+
+# check defined vs. executed tests and see if we anyway
+# had a delta, which would indicate a failure.
+TESTS_DEFINED=$(grep -Ec '^t[0-9]{4}:' "$TEST_MK")
+TESTS_EXECUTED=$(grep -Ec '\[t[0-9]{4}\]' "$TEST_LOG")
+TESTS_FAILED=$(( TESTS_DEFINED != TESTS_EXECUTED ))
+
+
+echo
+echo "Test summary"
+echo "============"
+
+printf "Smoke Test            : %s\n" $( [ ${SMOKE_FAIL} -eq 0 -a ${TESTS_FAILED} -eq 0 ] && echo SUCCESS || echo FAILED)
+printf "    Defined Tests     : %d\n" "${TESTS_DEFINED}"
+printf "    Executed Tests    : %d\n" "${TESTS_EXECUTED}"
+printf "    Failed Tests      : %s\n" $( [ ${TESTS_FAILED} -eq 0 ] && echo NONE || echo OBSERVED)
+printf "SAVECONFIG Test       : %s\n" $( [ ${SAVECONFIG_FAIL} -eq 0 ] && echo SUCCESS || echo FAILED)
+printf "Hardware Limit Test   : %s\n" $( [ ${HWLIMIT_FAIL} -eq 0 ] && echo SUCCESS || echo FAILED)
+
+
+# emmit return code based on assertions of the individual tests.
+#
+exit $(( SMOKE_FAIL + SAVECONFIG_FAIL + HWLIMIT_FAIL + TESTS_FAILED > 0 ))
