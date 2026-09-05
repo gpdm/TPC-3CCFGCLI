@@ -1,4 +1,11 @@
 Changelog 0.7.4
+  - Fixed SAVECONFIG Boot ROM address decoding: it previously converted the
+    raw EEPROM word 08h base selector directly into C0000h + selector*2000h,
+    ignoring the hardware's address aliasing, so a 16K ROM configured at
+    C0000h was incorrectly exported as /BADDRESS:C2000 /BSIZE:16. SAVECONFIG
+    now normalizes the selector with the same rule LIST already applies in
+    Print_Boot_Rom_Value (factored into the shared Normalize_Boot_Rom_Selector
+    routine), so both commands decode identically.
   - ID port discovery now rejects an adapter whose EEPROM Address
     Configuration selector (word 08h, bits 4:0) is 1Fh (EISA slot specific
     addressing), which this ISA-only utility does not support.
@@ -83,6 +90,8 @@ Changelog 0.7.4
     W0_ADDRESS_CFG_WRITABLE, W0_RESOURCE_CFG_WRITABLE, MCK_ID_AUTOINIT,
     MCK_ID_ACTIVE, MCK3R_ID_SEQUENCE_POS), leaving the v3 mock record's
     0Ah-0Bh field documented as reserved.
+  - Added regression tests t1623-t1625 covering the SAVECONFIG Boot ROM
+    selector normalization fix for 16K/32K/8K configurations.
 
 
 Changelog 0.7.3

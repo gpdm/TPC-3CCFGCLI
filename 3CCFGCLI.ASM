@@ -719,6 +719,7 @@ save_word08     DW  0
 save_word09     DW  0
 save_word0d     DW  0
 save_word13     DW  0
+save_word14     DW  0FFFFh
 save_configure_suffix DB ' CONFIGURE', 0
 save_adapternum DB  ' /ADAPTERNUM:', 0
 save_int        DB  ' /INT:', 0
@@ -1278,6 +1279,10 @@ PROC Cmd_SaveConfig NEAR
     call    Nic_EEPROM_Read
     jc      @@ReadFail
     mov     [save_word13], ax
+    mov     al, EEPROM_REVISION_INFO
+    call    Nic_EEPROM_Read
+    jc      @@ReadFail
+    mov     [save_word14], ax
 
     mov     ax, [current_card]
     inc     ax
@@ -1868,6 +1873,7 @@ PROC Save_Build_Command NEAR
     push    cx
     push    dx
     push    si
+    push    di
     call    Save_Begin_Command
     jc      @@Fail
 
@@ -2049,22 +2055,40 @@ PROC Save_Build_Command NEAR
     mov     ax, [save_word08]
     and     ax, 3F00h              ; Base (bits 11:8) and size (bits 13:12).
     jz      @@NoRom
+
+    ; Decode the raw selector (bits 11:8) and size code (bits 13:12) into
+    ; BX/DI, then normalize the selector the same way Print_Boot_Rom_Value
+    ; does, so the emitted /BADDRESS matches what LIST would display.
+    mov     bx, [save_word08]
+    and     bx, 0F00h
+    mov     cl, 8
+    shr     bx, cl
     mov     ax, [save_word08]
     and     ax, 3000h
     mov     cl, 12
     shr     ax, cl
+    mov     di, 8
     or      ax, ax
-    jz      @@Size8Length
+    jz      @@HaveSizeK
+    mov     di, 16
     cmp     ax, 1
-    je      @@Size16Length
-    mov     ax, 32
-    jmp     @@SizeLengthDone
-@@Size8Length:
-    mov     ax, 8
-    jmp     @@SizeLengthDone
-@@Size16Length:
-    mov     ax, 16
-@@SizeLengthDone:
+    je      @@HaveSizeK
+    mov     di, 32
+@@HaveSizeK:
+    mov     ax, [save_word14]
+    cmp     ax, 0FFFFh
+    je      @@NotLater
+    and     ax, 00FFh
+    cmp     ax, 1
+    jb      @@NotLater
+    mov     ch, 1
+    jmp     @@HaveLaterFlag
+@@NotLater:
+    xor     ch, ch
+@@HaveLaterFlag:
+    call    Normalize_Boot_Rom_Selector
+
+    mov     ax, di
     call    Save_Dec_Word_Length
     add     cx, SAVE_LEN_BADDRESS + 5 + SAVE_LEN_BSIZE
     call    Save_Ensure_Option_Length
@@ -2073,44 +2097,31 @@ PROC Save_Build_Command NEAR
     mov     si, OFFSET save_baddress
     call    Save_Append_String
     jc      @@Fail
-    mov     ax, [save_word08]
-    and     ax, 0F00h
-    mov     cl, 8
-    shr     ax, cl
-    mov     cl, 13
-    shl     ax, cl
-    mov     dl, 0Ch
+
+    ; Build the full 20-bit address exactly as Print_Boot_Rom_Value does,
+    ; so any hi-nibble overflow behavior stays identical between LIST and
+    ; SAVECONFIG.
+    mov     ax, bx
+    mov     cx, 2000h
+    mul     cx
+    add     dx, 000Ch
+    push    ax
     mov     al, dl
     call    Save_Append_Hex_Nibble
-    jc      @@Fail
-    mov     ax, [save_word08]
-    and     ax, 0F00h
-    mov     cl, 5
-    shl     ax, cl
+    jc      @@AddrFail
+    pop     ax
     call    Save_Append_Hex_Word
     jc      @@Fail
     mov     si, OFFSET save_bsize
     call    Save_Append_String
     jc      @@Fail
-    mov     ax, [save_word08]
-    and     ax, 3000h
-    mov     cl, 12
-    shr     ax, cl
-    or      ax, ax
-    jz      @@Size8
-    cmp     ax, 1
-    je      @@Size16
-    mov     ax, 32
-    jmp     @@SizeDone
-@@Size8:
-    mov     ax, 8
-    jmp     @@SizeDone
-@@Size16:
-    mov     ax, 16
-@@SizeDone:
+    mov     ax, di
     call    Save_Append_Dec_Word
     jc      @@Fail
     jmp     @@Tr
+@@AddrFail:
+    pop     ax
+    jmp     @@Fail
 @@NoRom:
     ; The original utility does not accept /BADDRESS:NONE; disabling the
     ; Boot ROM is expressed with /BSIZE:DISABLED alone.
@@ -2179,6 +2190,7 @@ PROC Save_Build_Command NEAR
 @@Fail:
     stc
 @@Done:
+    pop     di
     pop     si
     pop     dx
     pop     cx
@@ -8348,6 +8360,26 @@ PROC Print_Link_Status_Value NEAR
     ret
 ENDP Print_Link_Status_Value
 
+; Normalize the raw Boot ROM base selector (EEPROM word 08h bits 11:8) to
+; collapse the hardware address aliases, so the decoded /BADDRESS matches
+; the selector's real C0000-DE000 base.  Shared by LIST (Print_Boot_Rom_Value)
+; and SAVECONFIG (Save_Build_Command) so the two cannot diverge.
+; Input:  BX = raw selector, DI = size in KB (8/16/32), CH = later-card flag
+;         (1 = later card, from Extended_Is_Later_Card).
+; Output: BX = normalized selector.  AX, CX, DX clobbered.
+PROC Normalize_Boot_Rom_Selector NEAR
+    cmp     di, 8
+    je      @@Done
+    and     bx, 000Eh
+    or      ch, ch
+    jnz     @@Done
+    cmp     di, 32
+    jne     @@Done
+    and     bx, 000Ch
+@@Done:
+    ret
+ENDP Normalize_Boot_Rom_Selector
+
 PROC Print_Boot_Rom_Value NEAR
     push    ax
     push    bx
@@ -8399,15 +8431,7 @@ PROC Print_Boot_Rom_Value NEAR
     mov     di, 32
 @@HaveSizeK:
 
-    cmp     di, 8
-    je      @@CheckOld32K
-    and     bx, 000Eh
-@@CheckOld32K:
-    or      ch, ch
-    jnz     @@BuildAddress
-    cmp     di, 32
-    jne     @@BuildAddress
-    and     bx, 000Ch
+    call    Normalize_Boot_Rom_Selector
 
 @@BuildAddress:
     mov     ax, bx
