@@ -7141,9 +7141,8 @@ PROC Cfg_Txn_Execute NEAR
 
 @@BootRomCapabilityGate:
     ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration when
-    ; the card is also "later" (PnP-capable per EEPROM word 14h).  Mirrors
-    ; the same gate already used by Print_Boot_Rom_Value/Extended_Is_Later_Card
-    ; for LIST display.
+    ; the card is also a later revision, as classified by the original utility
+    ; from EEPROM word 14h low byte.
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_REVISION_INFO
