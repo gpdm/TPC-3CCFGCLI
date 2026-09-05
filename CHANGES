@@ -67,6 +67,7 @@ Changelog 0.7.4
     during the Boot ROM persistent check and reuses it for the TR persistent
     check, so a combined Boot ROM + /TR transaction reads EEPROM_ADDR_CFG
     only once.
+  - Reduced redundant later-card detection during Boot ROM LIST rendering.
 
 
 Changelog 0.7.3

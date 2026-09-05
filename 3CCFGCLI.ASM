@@ -8337,6 +8337,7 @@ PROC Print_Boot_Rom_Value NEAR
     je      @@Unavailable
 
     call    Extended_Is_Later_Card
+    mov     ch, al
     or      al, al
     jz      @@CheckBase
     mov     ax, [WORD si + NIC_PRODUCT_ID]
@@ -8379,8 +8380,7 @@ PROC Print_Boot_Rom_Value NEAR
     je      @@CheckOld32K
     and     bx, 000Eh
 @@CheckOld32K:
-    call    Extended_Is_Later_Card
-    or      al, al
+    or      ch, ch
     jnz     @@BuildAddress
     cmp     di, 32
     jne     @@BuildAddress
