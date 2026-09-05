@@ -55,62 +55,62 @@ clean-test:
 # ####################
 
 # Base: 0100
-LISTING: t0100 t0101 t0102
+LISTING: t01xx t0101 t0102
 
 # Base: 0200
-IRQ_CHANGE: t0200 t0201 t0202 t0203 t0204
+IRQ_CHANGE: t02xx t0201 t0202 t0203 t0204
 
 # Base: 0300
-DEFAULT_NIC_SELECTION: t0300 t0301 t0302
+DEFAULT_NIC_SELECTION: t03xx t0301 t0302
 
 # Base: 0400
-IOBASE_CHANGE: t0400 t0401 t0402 t0403 t0404 t0405 t0406 t0407 t0408 t0409
+IOBASE_CHANGE: t04xx t0401 t0402 t0403 t0404 t0405 t0406 t0407 t0408 t0409
 
 # Base: 0500
-PNP_CHANGE: t0500 t0501 t0502 t0503 t0504 t0505
+PNP_CHANGE: t05xx t0501 t0502 t0503 t0504 t0505
 
 # Base: 0600
-MODEM_CHANGE: t0600 t0601 t0602 t0603 t0604 t0605 t0606 t0607 t0608 t0609 t0610
+MODEM_CHANGE: t06xx t0601 t0602 t0603 t0604 t0605 t0606 t0607 t0608 t0609 t0610
 
 # Base: 0700
-FD_CHANGE: t0700 t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0709 t0710 t0711 t0712 t0713 t0714
+FD_CHANGE: t07xx t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0709 t0710 t0711 t0712 t0713 t0714
 
 # Base: 0800
-CAPABILITY_GATES: t0800 t0801 t0802 t0803
+CAPABILITY_GATES: t08xx t0801 t0802 t0803
 
 # Base: 0900
-OPTIMIZE_CHANGE: t0900 t0901 t0902 t0903 t0904
+OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904
 
 # Base: 1000
-LINK_STATUS: t1000 t1001 t1002
+LINK_STATUS: t10xx t1001 t1002
 
 # Base: 1100
-BOOTROM_CHANGE: t1100 t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111
+BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118
 
 # Base: 1200
-XCVR_CHANGE: t1200 t1201 t1202 t1203 t1204 t1205 t1206 t1207 t1208 t1209 t1210 t1211 t1212 t1213
+XCVR_CHANGE: t12xx t1201 t1202 t1203 t1204 t1205 t1206 t1207 t1208 t1209 t1210 t1211 t1212 t1213
 
 # Base: 1300
-CLI_PARSER: t1300 t1301 t1302 t1303 t1304 t1305 t1306 t1307 t1308 t1309 t1310
+CLI_PARSER: t13xx t1301 t1302 t1303 t1304 t1305 t1306 t1307 t1308 t1309 t1310
 
 # Base: 1400
-COMBINED_TRANSACTIONS: t1400 t1401 t1402 t1403 t1404 t1405 t1406 t1407
+COMBINED_TRANSACTIONS: t14xx t1401 t1402 t1403 t1404 t1405 t1406 t1407
 
 # Base: 1500
-MULTI_NIC: t1500 t1501 t1502 t1503 t1504 t1505
+MULTI_NIC: t15xx t1501 t1502 t1503 t1504 t1505
 
 # Base: 1600
-SAVECONFIG_TEST: t1600 t1601 t1602 t1603 t1604 t1605 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622
+SAVECONFIG_TEST: t16xx t1601 t1602 t1603 t1604 t1605 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622
 
 # Base: 1700
-VERIFICATION_CONTROL_FLOW: t1700 t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708 t1709 t1710 t1711 t1712 t1713 t1714
+VERIFICATION_CONTROL_FLOW: t17xx t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708 t1709 t1710 t1711 t1712 t1713 t1714
 
 
 
 # Test Case Definitions
 # #####################
 
-t0100:
+t01xx:
    @echo [t01xx] LISTING: Verify general card listing behaviour ... >> TEST.LOG
 
 t0101:
@@ -130,7 +130,7 @@ t0102:
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0102.LOG > NUL
    FIND "Plug and Play = enabled" $(ARTIFACTS)\T0102.LOG > NUL
 
-t0200:
+t02xx:
    @echo [t02xx] IRQ_CHANGE: Verify IRQ change behaviour ... >> TEST.LOG
 
 t0201:
@@ -163,7 +163,7 @@ t0204:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0204.LOG
    FIND "IRQ = 9" $(ARTIFACTS)\T0204.LOG > NUL
 
-t0300:
+t03xx:
    @echo [t03xx] DEFAULT_NIC_SELECTION: Verify default NIC selection behaviour ... >> TEST.LOG
 
 t0301:
@@ -182,7 +182,7 @@ t0302:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0302.LOG
    FIND "IRQ = 9" $(ARTIFACTS)\T0302.LOG > NUL
 
-t0400:
+t04xx:
    @echo [t04xx] IOBASE_CHANGE: Verify IO base change behaviour ... >> TEST.LOG
 
 t0401:
@@ -256,7 +256,7 @@ t0409:
    FIND "IOBASE = 03E0" $(ARTIFACTS)\T0409.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T0409.LOG
 
-t0500:
+t05xx:
    @echo [t05xx] PNP_CHANGE: Verify PNP property change behaviour ... >> TEST.LOG
 
 t0501:
@@ -304,7 +304,7 @@ t0505:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0505.LOG
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0505.LOG > NUL
 
-t0600:
+t06xx:
    @echo [t06xx] MODEM_CHANGE: Verify MODEM property change behaviour ... >> TEST.LOG
 
 t0601:
@@ -431,7 +431,7 @@ t0610:
    FIND "MODEM:NONE" $(ARTIFACTS)\M1200U.BAT > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T0610.LOG
 
-t0700:
+t07xx:
    @echo [t07xx] FD_CHANGE: Verify FULLDUPLEX property behaviour ... >> TEST.LOG
 
 t0701:
@@ -569,7 +569,7 @@ t0714:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0714.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T0714.LOG
 
-t0800:
+t08xx:
    @echo [t08xx] CAPABILITY_GATES: Verify capability gates behaviour ... >> TEST.LOG
 
 t0801:
@@ -604,7 +604,7 @@ t0803:
    FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0803.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T0803.LOG
 
-t0900:
+t09xx:
    @echo [t09xx] OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour ... >> TEST.LOG
 
 t0901:
@@ -637,7 +637,7 @@ t0904:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0904.LOG
    FIND "Optimization = DOS" $(ARTIFACTS)\T0904.LOG > NUL
 
-t1000:
+t10xx:
    @echo [t10xx] LINK_STATUS: Verify LINKBEAT reporting ... >> TEST.LOG
 
 t1001:
@@ -656,7 +656,7 @@ t1002:
    FIND "Link Status = not connected" $(ARTIFACTS)\T1002.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T1002.LOG
 
-t1100:
+t11xx:
    @echo [t11xx] BOOTROM_CHANGE: Verify boot ROM change behaviour ... >> TEST.LOG
 
 t1101:
@@ -668,11 +668,11 @@ t1101:
 
 
 t1102:
-   @echo [t1102] Testing mock CONFIGURE /BADDRESS+/BSIZE enable together... >> TEST.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE > $(ARTIFACTS)\T1102.LOG
+   @echo [t1102] Testing mock CONFIGURE /BSIZE then /BADDRESS ordering... >> TEST.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:16 /BADDRESS:C0000 > $(ARTIFACTS)\T1102.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1102.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1102.LOG
-   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1102.LOG > NUL
+   FIND "Boot ROM = 16K at C0000H" $(ARTIFACTS)\T1102.LOG > NUL
 
 
 t1103:
@@ -732,11 +732,9 @@ t1109:
 
 
 t1110:
-   @echo [t1110] Testing mock CONFIGURE /BADDRESS combined with /BSIZE:DISABLED is ignored... >> TEST.LOG
+   @echo [t1110] Testing /BADDRESS combined with /BSIZE:DISABLED is rejected... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:DISABLED > $(ARTIFACTS)\T1110.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1110.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1110.LOG
-   FIND "Boot ROM = disabled" $(ARTIFACTS)\T1110.LOG > NUL
+   FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1110.LOG > NUL
 
 
 t1111:
@@ -747,8 +745,49 @@ t1111:
    FIND "This adapter does not support Boot ROM configuration." $(ARTIFACTS)\T1111.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T1111.LOG
 
+t1112:
+   @echo [t1112] Testing mock CONFIGURE /BSIZE:8 alone is rejected... >> TEST.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:8 > $(ARTIFACTS)\T1112.LOG
+   FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1112.LOG > NUL
 
-t1200:
+t1113:
+   @echo [t1113] Testing mock CONFIGURE /BSIZE:32 alone is rejected... >> TEST.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:32 > $(ARTIFACTS)\T1113.LOG
+   FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1113.LOG > NUL
+
+t1114:
+   @echo [t1114] Testing mock CONFIGURE 8K at C0000 is rejected... >> TEST.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:8 > $(ARTIFACTS)\T1114.LOG
+   FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1114.LOG > NUL
+
+t1115:
+   @echo [t1115] Testing mock CONFIGURE 8K at C2000... >> TEST.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 > $(ARTIFACTS)\T1115.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1115.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1115.LOG
+   FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1115.LOG > NUL
+
+t1116:
+   @echo [t1116] Testing mock CONFIGURE 16K at C2000 is rejected... >> TEST.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:16 > $(ARTIFACTS)\T1116.LOG
+   FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1116.LOG > NUL
+
+t1117:
+   @echo [t1117] Testing mock CONFIGURE 32K 3C509B at C4000... >> TEST.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C4000 /BSIZE:32 > $(ARTIFACTS)\T1117.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1117.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1117.LOG
+   FIND "Boot ROM = 32K at C4000H" $(ARTIFACTS)\T1117.LOG > NUL
+
+t1118:
+   @echo [t1118] Testing mock CONFIGURE 32K 3C509B at DC000... >> TEST.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:DC000 /BSIZE:32 > $(ARTIFACTS)\T1118.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1118.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1118.LOG
+   FIND "Boot ROM = 32K at DC000H" $(ARTIFACTS)\T1118.LOG > NUL
+
+
+t12xx:
    @echo [t12xx] XCVR_CHANGE: Verify transceiver change behaviour ... >> TEST.LOG
 
 t1201:
@@ -863,7 +902,7 @@ t1213:
    FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1213.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T1213.LOG
 
-t1300:
+t13xx:
    @echo [t13xx] CLI_PARSER: Verify CLI parser behaviour ... >> TEST.LOG
 
 t1301:
@@ -953,7 +992,7 @@ t1310:
    $(BINAPP) CONFIGUR >> $(ARTIFACTS)\T1310.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1310.LOG > NUL
 
-t1400:
+t14xx:
    @echo [t14xx] COMBINED_TRANSACTIONS: Verify combined transactions ... >> TEST.LOG
 
 t1401:
@@ -1045,7 +1084,7 @@ t1407:
    FIND "IRQ = 5" $(ARTIFACTS)\T1407.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T1407.LOG
 
-t1500:
+t15xx:
    @echo [t15xx] MULTI_NIC: Verify multi-NIC behaviour ... >> TEST.LOG
 
 t1501:
@@ -1103,7 +1142,7 @@ t1505:
    FIND "Selected adapter has no active IOBASE" $(ARTIFACTS)\T1505.LOG > NUL
    ${SEEDAPP} CLEAR >> $(ARTIFACTS)\T1505.LOG
 
-t1600:
+t16xx:
    @echo [t16xx] SAVECONFIG_TEST: Verify save configuration behaviour ... >> TEST.LOG
 
 t1601:
@@ -1325,7 +1364,7 @@ t1622:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /EXECFILE:FOO.EXE > $(ARTIFACTS)\T1622.LOG
    FIND "Invalid CONFIGURE option." $(ARTIFACTS)\T1622.LOG > NUL
 
-t1700:
+t17xx:
    @echo [t17xx] VERIFICATION_CONTROL_FLOW: verify transaction chain behaviour ... >> TEST.LOG
 
 t1701:

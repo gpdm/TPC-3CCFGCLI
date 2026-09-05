@@ -31,6 +31,10 @@ Changelog 0.7.4
     declared size, full checksum, and 32 KB page traversal with aperture wrap.
   - Adapted build and test harness to include consise summaries at the end
     of each run. Also implement exit codes, to be clear on SUCCESS or FAIL states.
+  - Corrected Boot ROM CONFIGURE staging: /BADDRESS and /BSIZE are now
+    strictly paired, DISABLED is standalone only, requested addresses use
+    size- and adapter-generation-aware canonical selectors, and EEPROM word
+    08h Boot ROM fields are merged and verified from the prospective image.
 
 
 Changelog 0.7.3

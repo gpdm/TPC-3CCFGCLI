@@ -388,7 +388,7 @@ msg_cfg_fd_live_update_fail DB "Live full duplex hardware update failed.", 0Dh, 
 msg_cfg_fd_live_verify_fail DB "Live full duplex hardware verification failed.", 0Dh, 0Ah, '$'
 
 ; /BADDRESS and /BSIZE diagnostics.  Both share EEPROM word 08h (bits 11:8
-; and 13:12) with /IOBASE (bits 4:0); see Cfg_Prepare_BADDRESS/BSIZE.
+; and 13:12) with /IOBASE (bits 4:0); see Cfg_Prepare_Boot_ROM.
 msg_cfg_bad_baddress DB "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps.", 0Dh, 0Ah, '$'
 msg_cfg_bad_bsize DB "Invalid /BSIZE parameter. Use 8, 16, 32, or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_incomplete DB "/BADDRESS and /BSIZE must be specified together (or use /BSIZE:DISABLED alone to disable).", 0Dh, 0Ah, '$'
@@ -580,6 +580,7 @@ cfg_optimize_value    DB 0
 cfg_baddress_value    DB 0
 cfg_bsize_value       DB 0
 cfg_bsize_disabled    DB 0
+cfg_txn_later_card    DB 0
 ; cfg_tr_value: 0=TP, 1=AUI, 3=COAX, 0FFh=AUTO sentinel.
 cfg_tr_value          DB 0
 
@@ -3086,8 +3087,7 @@ PROC Cfg_Handle_BSIZE NEAR
 
     mov     [cfg_bsize_disabled], 0
 
-    ; DISABLED turns off the Boot ROM; /BADDRESS may accompany it but is
-    ; then ignored.
+    ; DISABLED turns off the Boot ROM and is valid only without /BADDRESS.
     cmp     cx, 8
     jne     @@ParseSize
     cmp     [BYTE si], 'D'
@@ -5275,69 +5275,83 @@ PROC Cfg_Prepare_OPTIMIZE NEAR
     ret
 ENDP Cfg_Prepare_OPTIMIZE
 
-; Merge only the staged Boot ROM base address field into the prospective
-; EEPROM word 08h image.  Bits 11:8 are owned by BADDRESS; bits 4:0
-; (IOBASE), 13:12 (BSIZE) and 15:14 (media, reserved for /XCVR) are
-; preserved.  The raw requested index is written as-is; any alignment
-; "rounding" for a given size is a read-side hardware/display concern
-; already handled faithfully by Print_Boot_Rom_Value, not enforced here.
-; Merge only the staged Boot ROM base field into the prospective EEPROM
-; word 08h image.  Bits 11:8 are owned by BADDRESS; all other bits preserved.
-; If /BSIZE:DISABLED is also staged, Cfg_Prepare_BSIZE runs afterwards and
-; clears this field again, so an /BADDRESS given alongside DISABLED is
-; effectively ignored.
-PROC Cfg_Prepare_BADDRESS NEAR
+; Validate and merge the complete staged Boot ROM request into both persistent
+; and prospective live Address Configuration images. Enabled C0000h uses
+; selector 1 because selector zero disables the Boot ROM.
+PROC Cfg_Prepare_Boot_ROM NEAR
     push    ax
     push    bx
     push    cx
 
-    mov     ax, [cfg_txn_new_word08]
-    and     ax, 0F0FFh
-    xor     bx, bx
-    mov     bl, [cfg_baddress_value]
-    mov     cl, 8
-    shl     bx, cl
-    or      ax, bx
-    mov     [cfg_txn_new_word08], ax
-
-    pop     cx
-    pop     bx
-    pop     ax
-    ret
-ENDP Cfg_Prepare_BADDRESS
-
-; Merge the staged Boot ROM size field into the prospective EEPROM word 08h
-; image.  Bits 13:12 are owned by BSIZE; all other bits preserved.  When
-; /BSIZE:DISABLED was staged, both the size and base fields are cleared
-; instead, overriding any /BADDRESS staged earlier in the same transaction.
-PROC Cfg_Prepare_BSIZE NEAR
-    push    ax
-    push    bx
-    push    cx
-
-    mov     ax, [cfg_txn_new_word08]
     cmp     [cfg_bsize_disabled], 1
     je      @@Disable
 
-    and     ax, 0CFFFh
+    mov     bl, [cfg_baddress_value]
+    cmp     [cfg_bsize_value], 0
+    jne     @@Check16K
+    or      bl, bl
+    jz      @@Invalid
+    jmp     @@Encode
+@@Check16K:
+    cmp     [cfg_bsize_value], 1
+    jne     @@Check32K
+    test    bl, 1
+    jnz     @@Invalid
+    jmp     @@Encode
+@@Check32K:
+    cmp     [cfg_txn_later_card], 1
+    je      @@Check32KLater
+    mov     al, bl
+    and     al, 3
+    jnz     @@Invalid
+    jmp     @@Encode
+@@Check32KLater:
+    test    bl, 1
+    jnz     @@Invalid
+
+@@Encode:
+    mov     al, bl
+    or      al, al
+    jnz     @@HaveSelector
+    inc     al
+@@HaveSelector:
     xor     bx, bx
-    mov     bl, [cfg_bsize_value]
-    mov     cl, 12
+    mov     bl, al
+    mov     cl, 8
     shl     bx, cl
+    xor     ax, ax
+    mov     al, [cfg_bsize_value]
+    mov     cl, 12
+    shl     ax, cl
     or      ax, bx
-    mov     [cfg_txn_new_word08], ax
-    jmp     @@Done
+    mov     bx, ax
+    jmp     @@Merge
 
 @@Disable:
+    xor     bx, bx
+
+@@Merge:
+    mov     ax, [cfg_txn_new_word08]
     and     ax, 0C0FFh
+    or      ax, bx
     mov     [cfg_txn_new_word08], ax
+    mov     ax, [cfg_txn_new_live06]
+    and     ax, 0C0FFh
+    or      ax, bx
+    mov     [cfg_txn_new_live06], ax
+    clc
+    jmp     @@Done
+
+@@Invalid:
+    mov     [cfg_last_error], CFG_ERR_BAD_BADDRESS
+    stc
 
 @@Done:
     pop     cx
     pop     bx
     pop     ax
     ret
-ENDP Cfg_Prepare_BSIZE
+ENDP Cfg_Prepare_Boot_ROM
 
 ; Merge only the transceiver selection into the prospective EEPROM word 08h
 ; image.  AUTO (sentinel 0FFh) clears bits 15:14 and sets bit 7.  TP/AUI/COAX
@@ -5421,8 +5435,8 @@ PROC Cfg_Txn_Detect_Changes NEAR
     je      @@NoW08
     or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
 @@NoW08:
-    ; Live register sync and I/O migration only apply to /IOBASE; Boot ROM
-    ; fields (/BADDRESS, /BSIZE) have no live-register or migration component.
+    ; Boot ROM fields are staged in prospective live06 so an I/O migration
+    ; restores the complete image. They do not independently trigger a live write.
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@INT
     mov     ax, [cfg_txn_old_live06]
@@ -6268,35 +6282,16 @@ PROC Cfg_Txn_Verify NEAR
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Read
     jc      @@BootRomVerifyFail
-    mov     bx, ax                  ; BX = word08 as read back
-
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jz      @@BSizeVerify
-    cmp     [cfg_bsize_disabled], 1
-    je      @@BSizeVerify        ; BADDRESS is ignored/cleared by BSIZE:DISABLED.
-    mov     ax, bx
-    and     ax, 0F00h
-    mov     cl, 8
-    shr     ax, cl
-    cmp     al, [cfg_baddress_value]
+    and     ax, 3F00h
+    mov     bx, [cfg_txn_new_word08]
+    and     bx, 3F00h
+    cmp     ax, bx
     jne     @@BootRomVerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@BSizeVerify
+    jz      @@TRPersistent
     mov     dx, OFFSET msg_cfg_baddress_verified
     mov     ah, 09h
     int     21h
-
-@@BSizeVerify:
-    test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jz      @@TRPersistent
-    mov     ax, bx
-    and     ax, 3000h
-    mov     cl, 12
-    shr     ax, cl
-    cmp     al, [cfg_bsize_value]
-    jne     @@BootRomVerifyFail
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@TRPersistent
     mov     dx, OFFSET msg_cfg_bsize_verified
     mov     ah, 09h
     int     21h
@@ -6838,13 +6833,16 @@ PROC Cfg_Txn_Execute NEAR
     jz      @@Requested
 
 @@BootRomRequested:
-    ; Pairing rule: /BSIZE:DISABLED may be given alone (any /BADDRESS given
-    ; alongside is then ignored) to disable the Boot ROM.  Otherwise
+    ; Pairing rule: /BSIZE:DISABLED may be given only alone.  Otherwise
     ; /BADDRESS and /BSIZE:8|16|32 must both be specified.
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jz      @@BootRomIncomplete
     cmp     [cfg_bsize_disabled], 1
-    je      @@BootRomCapabilityGate
+    jne     @@BootRomEnabled
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
+    jnz     @@BootRomIncomplete
+    jmp     @@BootRomCapabilityGate
+@@BootRomEnabled:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@BootRomIncomplete
     jmp     @@BootRomCapabilityGate
@@ -6863,8 +6861,10 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Eeprom_Read
     jc      @@BootRomCapReadFail
     and     ax, 00FFh
+    mov     [cfg_txn_later_card], 0
     cmp     ax, 1
     jb      @@Requested
+    mov     [cfg_txn_later_card], 1
     mov     si, [cfg_selected_ptr]
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     cmp     ax, PRODUCT_3C509_TPO
@@ -7128,11 +7128,14 @@ PROC Cfg_Txn_Execute NEAR
     ; above; stage only.
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@PrepareBSizeOnly
-    call    Cfg_Prepare_BADDRESS
+    call    Cfg_Prepare_Boot_ROM
+    jc      @@Done
+    jmp     @@PrepareTR
 @@PrepareBSizeOnly:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jz      @@PrepareTR
-    call    Cfg_Prepare_BSIZE
+    call    Cfg_Prepare_Boot_ROM
+    jc      @@Done
 @@PrepareTR:
     ; Capability gate already passed in the gate phase above; stage only.
     test    [cfg_parse_flags], CFG_PARSE_TR
