@@ -86,7 +86,7 @@ OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904
 LINK_STATUS: t10xx t1001 t1002
 
 # Base: 1100
-BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1121 t1122 t1123 t1124 t1125 t1126
+BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1121 t1122 t1123 t1124 t1125 t1126 t1127 t1128 t1129 t1130 t1131 t1132 t1133
 
 # Base: 1200
 XCVR_CHANGE: t12xx t1201 t1202 t1203 t1204 t1205 t1206 t1207 t1208 t1209 t1210 t1211 t1212 t1213
@@ -863,6 +863,78 @@ t1126:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1126.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1126.LOG > NUL
    FIND "Transceiver = external" $(ARTIFACTS)\T1126.LOG > NUL
+
+t1127:
+   @echo [t1127] Testing final live Boot ROM verification after accepted 8K commit... >> TEST.LOG
+   ${SEEDAPP} ROM8K > $(ARTIFACTS)\T1127.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 /VERBOSE >> $(ARTIFACTS)\T1127.LOG
+   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1127.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1127.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1127.LOG
+   FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1127.LOG > NUL
+
+t1128:
+   @echo [t1128] Testing final live Boot ROM verification after accepted 16K commit... >> TEST.LOG
+   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1128.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T1128.LOG
+   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1128.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1128.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1128.LOG
+   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1128.LOG > NUL
+
+t1129:
+   @echo [t1129] Testing final live Boot ROM verification after accepted 32K commit... >> TEST.LOG
+   ${SEEDAPP} ROM32K > $(ARTIFACTS)\T1129.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:32 /VERBOSE >> $(ARTIFACTS)\T1129.LOG
+   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1129.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1129.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1129.LOG
+   FIND "Boot ROM = 32K at C8000H" $(ARTIFACTS)\T1129.LOG > NUL
+
+t1130:
+   @echo [t1130] Testing live Boot ROM verification uses final IOBASE after migration... >> TEST.LOG
+   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1130.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /IOBASE:0280 /VERBOSE >> $(ARTIFACTS)\T1130.LOG
+   FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T1130.LOG > NUL
+   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1130.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1130.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1130.LOG
+   FIND "IOBASE = 0280" $(ARTIFACTS)\T1130.LOG > NUL
+   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1130.LOG > NUL
+
+t1131:
+   @echo [t1131] Testing accepted Boot ROM with /TR leaves transceiver state undisturbed... >> TEST.LOG
+   ${SEEDAPP} COMBOROM16 > $(ARTIFACTS)\T1131.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T1131.LOG
+   FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1131.LOG > NUL
+   FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1131.LOG > NUL
+   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1131.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1131.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1131.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T1131.LOG > NUL
+   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1131.LOG > NUL
+
+t1132:
+   @echo [t1132] Testing /BSIZE:DISABLED verifies final live Boot ROM bits are disabled... >> TEST.LOG
+   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1132.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1132.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1132.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED /VERBOSE >> $(ARTIFACTS)\T1132.LOG
+   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1132.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1132.LOG
+   FIND "Boot ROM = disabled" $(ARTIFACTS)\T1132.LOG > NUL
+
+t1133:
+   @echo [t1133] Testing rejected Boot ROM skips final live verification... >> TEST.LOG
+   ${SEEDAPP} ROMNONE > $(ARTIFACTS)\T1133.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /INT:5 /VERBOSE >> $(ARTIFACTS)\T1133.LOG
+   FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1133.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1133.LOG > NUL
+   FIND "EEPROM IRQ verified: 5" $(ARTIFACTS)\T1133.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "Live Boot ROM configuration verified." $(ARTIFACTS)\T1133.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1133.LOG
+   FIND "Boot ROM = disabled" $(ARTIFACTS)\T1133.LOG > NUL
+   FIND "IRQ = 5" $(ARTIFACTS)\T1133.LOG > NUL
 
 
 t12xx:

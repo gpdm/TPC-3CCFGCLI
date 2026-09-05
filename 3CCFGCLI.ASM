@@ -412,6 +412,7 @@ msg_cfg_bootrom_not_detected DB "No valid Boot ROM detected at the requested add
 msg_cfg_bsize_eeprom_read_fail DB "EEPROM read timed out while reading Boot ROM size configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_eeprom_write_fail DB "EEPROM write timed out while writing Boot ROM size configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verified DB "EEPROM Boot ROM size verified.", 0Dh, 0Ah, '$'
+msg_cfg_bootrom_live_verified DB "Live Boot ROM configuration verified.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verify_fail DB "Boot ROM size configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_not_capable DB "This adapter does not support Boot ROM configuration.", 0Dh, 0Ah, '$'
 
@@ -5554,7 +5555,8 @@ PROC Cfg_Txn_Detect_Changes NEAR
     or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
 @@NoW08:
     ; Boot ROM fields are staged in prospective live06 so an I/O migration
-    ; restores the complete image. They do not independently trigger a live write.
+    ; restores the complete image and Cfg_Txn_Write_Live can synchronize an
+    ; accepted Boot ROM mapping.  They still do not set CHG_LIVE06 here.
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@INT
     mov     ax, [cfg_txn_old_live06]
@@ -6105,6 +6107,9 @@ ENDP Cfg_Txn_Write_EEPROM
 ; Synchronize changed live fields after the persistent commit.  A migration
 ; repeats the Address Configuration write here because original sub_334 restores
 ; it during activation and sub_342 writes it again after EEPROM configuration.
+; An accepted Boot ROM change without a migration also writes the staged Address
+; Configuration word here so the committed Boot ROM mapping takes effect without
+; an adapter reset; Cfg_Txn_Verify then verifies its bits 13:8 read-only.
 PROC Cfg_Txn_Write_Live NEAR
     push    ax
     push    bx
@@ -6116,6 +6121,14 @@ PROC Cfg_Txn_Write_Live NEAR
     test    [cfg_txn_change_flags], CFG_TXN_LIVE06_MASK
     jnz     @@Need
     test    [cfg_txn_change_flags], CFG_TXN_INT_CHANGED
+    jnz     @@Need
+    ; An accepted Boot ROM change also synchronizes its staged live mapping.
+    ; A rejected request keeps the previously active live mapping untouched.
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    jz      @@Success
+    cmp     [cfg_bootrom_rejected], 1
+    je      @@Success
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jz      @@Success
 @@Need:
     test    [cli_flags], CLI_FLAG_VERBOSE
@@ -6131,7 +6144,7 @@ PROC Cfg_Txn_Write_Live NEAR
     call    Nic_Select_Window
 
     test    [cfg_txn_change_flags], CFG_TXN_LIVE06_MASK
-    jz      @@INT
+    jz      @@BootRomLive06
     mov     ax, [cfg_txn_new_live06]
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Write_Word
@@ -6140,6 +6153,23 @@ PROC Cfg_Txn_Write_Live NEAR
     and     al, 01Fh
     cmp     al, [cfg_txn_io_selector]
     jne     @@IOFail
+    jmp     @@INT
+
+@@BootRomLive06:
+    ; The migration path above already wrote the complete staged word.  An
+    ; accepted Boot ROM change without a migration writes the same staged
+    ; image here; shared fields are preserved because the staged word began
+    ; as an exact snapshot copy.  Readback verification of the Boot ROM bits
+    ; is performed read-only by Cfg_Txn_Verify.
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    jz      @@INT
+    cmp     [cfg_bootrom_rejected], 1
+    je      @@INT
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
+    jz      @@INT
+    mov     ax, [cfg_txn_new_live06]
+    mov     bx, EL3_W0_ADDRESS_CFG
+    call    Nic_Reg_Write_Word
 
 @@INT:
     test    [cfg_txn_change_flags], CFG_TXN_INT_CHANGED
@@ -6184,7 +6214,10 @@ ENDP Cfg_Txn_Write_Live
 ; test.  ASIC revision was already checked by Cfg_Revalidate_Selected and, when
 ; activation occurred, by Cfg_Txn_Activate_If_Needed.  It is not a configured
 ; property and should not turn successful EEPROM and live field readback into a
-; false IOBASE verification failure.
+; false IOBASE verification failure.  An accepted Boot ROM request additionally
+; read-back verifies the live Window 0 Address Configuration Boot ROM bits 13:8
+; against the staged image at the final active I/O base; a request rejected by
+; the pre-commit probe is skipped.  ROM contents are never re-probed here.
 PROC Cfg_Txn_Verify NEAR
     push    ax
     push    bx
@@ -6422,7 +6455,7 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@TRPersistent
 @@BootRomNeedsRead:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08 + CFG_TXN_CHG_WORD14
-    jz      @@TRPersistent
+    jz      @@BootRomLive
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
     jz      @@BootRomWord08
     mov     si, [cfg_selected_ptr]
@@ -6434,7 +6467,7 @@ PROC Cfg_Txn_Verify NEAR
     jne     @@BootRomVerifyFail
 @@BootRomWord08:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
-    jz      @@TRPersistent
+    jz      @@BootRomLive
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_ADDR_CFG
@@ -6446,11 +6479,44 @@ PROC Cfg_Txn_Verify NEAR
     cmp     ax, bx
     jne     @@BootRomVerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@TRPersistent
+    jz      @@BootRomLive
     mov     dx, OFFSET msg_cfg_baddress_verified
     mov     ah, 09h
     int     21h
     mov     dx, OFFSET msg_cfg_bsize_verified
+    mov     ah, 09h
+    int     21h
+
+@@BootRomLive:
+    ; Final live readback for an accepted Boot ROM request.  Only the Boot ROM
+    ; owned bits 13:8 of the live Window 0 Address Configuration are compared
+    ; against the staged prospective image; I/O base, transceiver, and other
+    ; shared fields of the same register are deliberately excluded.  A request
+    ; rejected by the pre-commit probe kept its previous live mapping and is
+    ; not verified again here.  The caller's register window is restored.
+    cmp     [cfg_bootrom_rejected], 1
+    je      @@TRPersistent
+    push    di
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Nic_Get_Current_Window
+    mov     di, ax
+    xor     al, al
+    call    Nic_Select_Window
+    mov     bx, EL3_W0_ADDRESS_CFG
+    call    Nic_Reg_Read_Word
+    mov     bx, ax
+    mov     ax, di
+    call    Nic_Select_Window
+    pop     di
+    and     bx, 3F00h
+    mov     ax, [cfg_txn_new_live06]
+    and     ax, 3F00h
+    cmp     bx, ax
+    jne     @@BootRomVerifyFail
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@TRPersistent
+    mov     dx, OFFSET msg_cfg_bootrom_live_verified
     mov     ah, 09h
     int     21h
 

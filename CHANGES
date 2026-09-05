@@ -41,9 +41,23 @@ Changelog 0.7.4
   - Enabled Boot ROM requests are now physically probed before EEPROM commit;
     an invalid ROM skips only the Boot ROM change while preserving unrelated
     CONFIGURE changes, with dedicated rejection reporting.
+  - Accepted Boot ROM commits now synchronize the staged live Window 0 Address
+    Configuration mapping so the committed Boot ROM state takes effect without
+    an adapter reset; rejected requests keep the previous live mapping.
+  - Added final live Boot ROM verification to Cfg_Txn_Verify: after a
+    successful commit with an accepted Boot ROM request, the live Window 0
+    Address Configuration bits 13:8 are read back read-only at the adapter's
+    final active I/O base and compared against the staged prospective image;
+    mismatches are fatal and reported as CFG_ERR_BADDRESS_VERIFY or
+    CFG_ERR_BSIZE_VERIFY.  /BSIZE:DISABLED verifies the live bits are clear.
+    The caller's register window is restored and ROM contents are never
+    re-probed during final verification.
   - Added ASSERTERS framework to `ASSERTRS`, with 'NFIND.BAT` being the first
     helper for negative assertions, essentially inverting DOS's `FIND` command
     return codes.
+  - Added focused Boot ROM live-verification tests: accepted 8K/16K/32K
+    commits, combined /BADDRESS+/BSIZE+/IOBASE migration, /TR coexistence,
+    /BSIZE:DISABLED live-bit clearing, and rejected-request skip coverage.
 
 
 Changelog 0.7.3

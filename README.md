@@ -1,13 +1,13 @@
 # 3CCFG CLI
 
-```
+```text
 +-----------------------------------------------------------------------------------+
 |                                                                                   |
-|  EXPERIMENTAL RELEASE — LIMITED HARDWARE TESTING                                  |
+|  EXPERIMENTAL RELEASE, LIMITED HARDWARE TESTING                                   |
 |                                                                                   |
 |  This release has only undergone limited testing on physical hardware.            |
 |  Bugs and unexpected behaviors may be present.                                    |
-|  GENERALLY CONSIDERED UNSAFE ARE /BADDR and /BSIZE OPERATIONS, REST SHOULD WORK   |
+|  GENERALLY CONSIDERED UNSAFE ARE /BADDR AND /BSIZE OPERATIONS, REST SHOULD WORK   |
 |  USE ENTIRELY AT YOUR OWN RISK.                                                   |
 |                                                                                   |
 +-----------------------------------------------------------------------------------+
@@ -15,126 +15,133 @@
 
 ## Overview
 
-This project is a compact CLI-only reimplementation of the 3Com EtherLink III
-configuration utility for early DOS systems, especially 8-bit ISA machines
-with 8086/8088-class CPUs.
+This project is a compact CLI only reimplementation of the 3Com EtherLink III
+configuration utility for early DOS systems, especially 8 bit ISA machines
+with 8086 and 8088 class CPUs.
 
-The goal is not a literal code port. Instead, a new codebase was built from
-analysis of the original 3Com EtherLink III Configuration Utility v3.2.
+It was created to fill a remaining gap in the effort to make the 3Com
+EtherLink III 3C509B useful in original IBM PC, XT, and compatible systems.
 
-On many authentic retro systems, the original utility was still too heavy:
-even though it was eventually adapted to run also on 8086/8088 CPUs,
-the bundled text-mode UI and its memory footprint pushed the RAM
-requirement beyond 256 KB RAM.
+The work documented in [3C509B nestor](https://github.com/hackerb9/3C509B-nestor)
+demonstrated that the 3C509B itself can operate in an 8 bit ISA slot and
+provided an 8086 compatible packet driver. The original 3Com configuration
+software was also adapted so that it could run on 8086 and 8088 processors.
 
-This becomes a problem for retro collectors and enthusiasts who prefer to
-not expand their original systems to the limit.
+That solved the CPU compatibility problem, but not the memory requirement.
 
-The practical workaround is to preconfigure the network card on a different system
-using the stock `3C5x9CFG.EXE` utility, then move the adapter into the target machine.
+The original 3Com EtherLink III Configuration Utility was designed around a
+large text mode user interface. Even when invoked from the command line, the
+entire program loads into memory, making it impractical on systems with
+256 KB of RAM or less.
 
+The usual workaround is to install the card in a newer computer, configure it
+there using the original `3C5X9CFG.EXE` or adapted `3CCFG.EXE` utility, and
+then move the configured adapter back into the target system.
 
-## Rationale
+`3CCFGCLI` was created to remove that limitation.
 
-- Keep the reimplemented utility small enough to run in 256 KB or less of RAM
-- Focus on CLI behavior only; No text-mode UI
-- Preserve the configuration-related CLI verbs
-- Support development and verification through a mock backend.
+Rather than attempting to strip down the original program, it is a purpose
+built reimplementation based on analysis of the original 3Com
+`3C5X9CFG.EXE` v3.2. It retains the configuration functionality needed for
+ISA EtherLink III adapters while deliberately omitting the text mode interface
+and other unnecessary functionality.
 
+The implementation history, reverse engineering approach, design decisions,
+and validation methodology behind `3CCFGCLI` are documented separately in
+[DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Implementation status
 
-This reimplementation is intentionally CLI-only. It does not aim to reproduce the
-original text UI, nor all CLI verbs supported by the original `3C5x9CFG.EXE` utility.
-Therefore it does not include other functions like the `echo server` by intention.
+Current task notes and open follow ups are tracked in [TODO.md](TODO.md).
 
-Current task notes and open follow-ups are tracked in [TODO.md](TODO.md).
+The implementation currently provides:
 
-The new implementation currently covers:
-
-- `HELP`
-- `LIST`
-- `CONFIGURE`
-- `SAVECONFIG` (exports a restore batch file for all installed adapters)
+* `HELP`
+* `LIST`
+* `CONFIGURE`
+* `SAVECONFIG`, exports a restore batch file for all installed adapters
 
 Supported `CONFIGURE` subverbs include:
 
-- `/ADAPTERNUM`
-- `/INT`
-- `/IOBASE`
-- `/PNP`
-- `/FULLDUPLEX`
-- `/TR`
-- `/XCVR`
-- `/MODEM`
-- `/OPTIMIZE`
-- `/BADDRESS`
-- `/BSIZE`
+* `/ADAPTERNUM`
+* `/INT`
+* `/IOBASE`
+* `/PNP`
+* `/FULLDUPLEX`
+* `/TR`
+* `/XCVR`
+* `/MODEM`
+* `/OPTIMIZE`
+* `/BADDRESS`
+* `/BSIZE`
 
 Supported global CLI options, valid with any command verb:
 
-- `/VERBOSE` (new enhancement)
+* `/VERBOSE`, new enhancement
 
 ## Where 3CCFGCLI differs
 
-`3CCFGCLI` saw some changes and extensions compared to the reference implementation,
-or skipped reimplementation of some features altogether.
-
+`3CCFGCLI` intentionally differs from the reference implementation in several
+areas, including deliberately omitted functionality and a small number of
+extensions.
 
 ### Not Implemented Features
 
-The orignal `3C5C9CFG.EXE` implemented many more features that those found in the
-current reimplementations.
-The following list of features and functionalities were deliberately skipped in the implementation.
+The following functionality of the original `3C5X9CFG.EXE` was deliberately
+omitted:
 
-- MEWEL-based Text-mode UI
-- EISA and MCA support (including /SLOT configuration subverb)
-- `/LANGUAGE` CLI verb
-- `/ECHOSERVER` CLI verb
-- `/RUN` CLI verb
+* MEWEL based text mode UI
+* EISA and MCA support, including the `/SLOT` configuration subverb
+* `/LANGUAGE` CLI verb
+* `/ECHOSERVER` CLI verb
+* `/RUN` CLI verb
 
 ### /LINKBEAT configuration verb
 
 `CONFIGURE /LINKBEAT` was investigated across the available reference utility
-versions. Version 3.2 still lists both `/LINKBEAT in its HELP text, but doesn't branch into actual code. Version 3.0 has the same behavior.
-Version 2.1 contains an active `/LINKBEAT` parser branch.
+versions.
 
-It's now documented how in [3C509DEF.INC](3C509DEV.INC) how LINKBEAT, which
-essentially is considered a driver-policy, would be implemented.
+Versions 3.2 and 3.0 advertise `/LINKBEAT` in their HELP text, but neither
+branches into an actual implementation. Version 2.1 still contains an active
+`/LINKBEAT` parser path.
 
-However, as necessity of the Hardware Compliance Testing implementation,
-I implemented the `SAVECONFIG` verb, which creates a config restore file.
+The associated EEPROM behavior is documented in
+[3C509DEF.INC](3C509DEF.INC), including how the setting could be implemented.
+LINKBEAT is effectively treated as driver policy rather than an adapter
+configuration requirement.
 
-Since the latest `3C5X9CFG` 3.2 is the latest version available,
-I targeted compatibility with this specific release.
-Consequentally, as it doesn't support the `/LINKBEAT` word, I decided
-to not implement it at all.
-
+Because `3CCFGCLI` targets compatibility with the latest available
+`3C5X9CFG.EXE` v3.2 behavior, `/LINKBEAT` is intentionally not implemented.
 
 ### /SYNCREADY configuration verb
 
-Version 3.x and 2.1 of `3C5X9CFG.EXE` advertise also a `/SYNCREADY` configuration verb in its HELP text. Like the `/LINKBEAT` verb it doesn't branch into actual code.
+Versions 3.x and 2.1 of `3C5X9CFG.EXE` also advertise a `/SYNCREADY`
+configuration verb in their HELP text, but no corresponding implementation
+path was found.
 
-For the sake of the same compatibility requirements to the latest `3C5X9CFG` 3.2,
-I decided to not implement this feature.
-
+For compatibility with the targeted `3C5X9CFG.EXE` v3.2 behavior,
+`/SYNCREADY` is not implemented.
 
 ### /CONFIGPORT configuration verb
 
-`/CONFIGPORT` is an ISA-only workaround parameter in the original utility. Per
-its HELP text, it is used only if the program has trouble running on the
-target machine, and accepts an I/O address in the 100h-1E0h range (in
-increments of 10h) to relocate the adapter's ID port used during EEPROM/ISA
-probing. It does not configure a persistent adapter setting.
+`/CONFIGPORT` is an ISA specific workaround parameter in the original utility.
 
-`CONFIGURE /CONFIGPORT` is not implemented in `3CCFGCLI` at this time.
+According to its HELP text, it is intended for systems where the program has
+trouble operating through the default adapter ID port. It accepts an I/O
+address in the `100h` through `1E0h` range, in increments of `10h`, and
+relocates the ID port used during EEPROM and ISA probing.
 
+It does not configure a persistent adapter setting.
+
+`CONFIGURE /CONFIGPORT` is not currently implemented in `3CCFGCLI`.
 
 ### /VERBOSE global CLI option
 
-`/VERBOSE` is a new global CLI option owned by the common command parser,
-which recognizes and consumes it before dispatching to the selected command verb.
-It may therefore be given with any supported verb.
+`/VERBOSE` is a new global option handled by the common command parser before
+dispatch to the selected command verb. It may therefore be supplied with any
+supported command.
+
+Examples:
 
 ```text
 LIST /VERBOSE
@@ -143,29 +150,39 @@ SAVECONFIG /VERBOSE
 SAVECONFIG /OUTPUTFILE:BACKUP.BAT /VERBOSE
 ```
 
-It takes no value and may be given only once; a duplicate `/VERBOSE` is
-rejected.
+It takes no value and may be supplied only once. Duplicate `/VERBOSE`
+arguments are rejected.
 
-`/VERBOSE` is a diagnostic aid. It prints additional EEPROM and live-register
-read/write detail so transactions can be traced while debugging hardware
-behavior, mock-state issues, or parser/transaction sequencing. Those
-diagnostics are currently implemented for `CONFIGURE`.
+`/VERBOSE` is intended as a diagnostic aid. For `CONFIGURE`, it prints
+additional EEPROM and live register read and write details so transactions can
+be traced while investigating hardware behavior, mock state, or parser and
+transaction sequencing.
 
-`LIST` and `SAVECONFIG` accept the global flag but do not yet produce additional diagnostic detail.
+`LIST` and `SAVECONFIG` accept the global option but do not currently produce
+additional diagnostic output.
 
 ### SAVECONFIG command verb
 
 `SAVECONFIG [/OUTPUTFILE:file] [/EXECFILE:program]` reads the persistent
 configuration of every installed adapter with an active IOBASE and writes a
-batch file with one `program CONFIGURE /ADAPTERNUM:N ...` restore line per
-adapter.
+batch file containing restore commands.
 
-Both options are optional and may be given in any order. Each option may be
-supplied only once; duplicates and unknown options are rejected. The old
-positional filename form (`SAVECONFIG FILE.BAT`) is no longer accepted.
+One or more `program CONFIGURE /ADAPTERNUM:N ...` lines are generated for each
+adapter as required.
 
-`file` defaults to `RESTORE.BAT`. `/OUTPUTFILE:` requires a non-empty value;
-the default is used only when the option is omitted entirely.
+Both options are optional and may appear in either order. Each may be supplied
+only once. Duplicate and unknown options are rejected.
+
+The old positional filename form:
+
+```text
+SAVECONFIG FILE.BAT
+```
+
+is not accepted.
+
+`file` defaults to `RESTORE.BAT`. `/OUTPUTFILE:` requires a nonempty value.
+The default is used only when the option is omitted entirely.
 
 Examples:
 
@@ -177,31 +194,37 @@ SAVECONFIG /OUTPUTFILE:BACKUP.BAT /EXECFILE:3CCFGCLI.EXE
 SAVECONFIG /EXECFILE:3CCFGCLI.EXE /OUTPUTFILE:BACKUP.BAT
 ```
 
-`program` defaults to `3CCFGCLI.EXE`. `/EXECFILE:%1` is the only supported
-batch placeholder form and is emitted literally. Other `/EXECFILE` values are
-literal executable paths; percent expansion is not supported, and the referenced
-file must exist before the restore batch is created.
+`program` defaults to `3CCFGCLI.EXE`.
 
-Restore lines are split dynamically before they exceed the practical 128-byte
-DOS batch command-line limit. The budget is the reserved executable length,
-plus one separating space, plus the emitted `CONFIGURE ...` argument text. The
-default executable reserves its actual length; `%1` reserves 64 bytes because
-the caller supplies the runtime executable path later; literal paths reserve the
-actual supplied path length.
-It exports the implemented persistent settings only and does not modify any
-adapter. This is handy for storing your last configuration, but is mainly used
-internally for the standalone hardware conformance tests.
+`/EXECFILE:%1` is the only supported batch placeholder form and is emitted
+literally. Other `/EXECFILE` values are interpreted as literal executable
+paths. General percent expansion is not supported, and the referenced file
+must exist before the restore batch is created.
 
+Restore commands are split dynamically before exceeding the practical
+128 byte DOS batch command line limit. The available line budget consists of
+the reserved executable length, one separating space, and the generated
+`CONFIGURE ...` argument text.
 
+The default executable reserves its actual length. `%1` reserves 64 bytes
+because the caller supplies the executable path at runtime. Literal executable
+paths reserve their actual supplied length.
+
+`SAVECONFIG` exports only persistent settings supported by the current
+implementation and does not modify any adapter.
+
+It can be used to preserve a known configuration and is also used internally
+by the standalone hardware conformance tests.
 
 ### Enhanced LIST verb
 
-The `LIST` verb was also extended beyond the original implementation.
-Because the text-mode UI is intentionally absent, the `LIST` display now
-includes additional configuration and status details, including current `Link Status`
-("Link Beat").
+The `LIST` verb extends the original command line output with additional
+configuration and status information that would otherwise have been available
+through the original text mode interface.
 
-Here's an example:
+This includes the current Link Status, also known as Link Beat.
+
+Example:
 
 ```text
 3Com EtherLink III CLI Configuration Program v0.7.1
@@ -232,70 +255,107 @@ Number                       Description
 
 ## How it works
 
-The code is split into several assembly modules. The CLI logic stays in one place, hardware access and an equivalent mock interface are isolated behind generic interfaces.
-A mock-state seeder utility is supplied to mimic the hardware EEPROM and live registers
-for smoke testing.
+The implementation is split into several assembly modules.
 
-| File | Explanation |
-| --- | --- |
-| [3CCFGCLI.ASM](3CCFGCLI.ASM) | Reduced-scope CLI reimplementation. |
-| [3CHWIF.ASM](3CHWIF.ASM) | Real hardware interface. |
-| [3CMOCKIF.ASM](3CMOCKIF.ASM) | Persistent mock backend for development and tests. |
-| [3CSEED.ASM](3CSEED.ASM) | Mock-state seeder used to create test fixtures. |
-| [TEST.MK](TEST.MK) | Smoke-test suite orchestration. |
-| [TESTHWL.MK](TESTHWL.MK) | Test run on emulated IBM PC-alike constrained system, with 64/128/256 K of RAM. |
-| [TESTHWC.MK](TESTiHWC.MK) | Limited EEPROM Read/Write Hardware Compliance Test |
+CLI behavior is kept separate from hardware access. Real hardware access and
+the equivalent mock interface are exposed through common interfaces, allowing
+the same main program logic to operate against either backend.
+
+A mock state seeder is supplied to create deterministic EEPROM and live
+register state for automated testing.
+
+| File                         | Explanation                                                                                   |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| [3CCFGCLI.ASM](3CCFGCLI.ASM) | Reduced scope CLI reimplementation.                                                           |
+| [3CHWIF.ASM](3CHWIF.ASM)     | Real hardware interface.                                                                      |
+| [3CMOCKIF.ASM](3CMOCKIF.ASM) | Persistent mock backend for development and tests.                                            |
+| [3CSEED.ASM](3CSEED.ASM)     | Mock state seeder used to create deterministic test fixtures.                                 |
+| [TEST.MK](TEST.MK)           | Smoke test suite orchestration.                                                               |
+| [TESTHWL.MK](TESTHWL.MK)     | Test run on an emulated IBM PC compatible constrained system with 64, 128, and 256 KB of RAM. |
+| [TESTHWC.MK](TESTHWC.MK)     | Limited EEPROM read and write Hardware Compliance Test.                                       |
 
 ## Build
 
-Builds are driven through DOSBox-X so the original Borland/TASM toolchain can
+Builds are driven through DOSBox X so the original Borland TASM toolchain can
 run in a DOS environment.
 
-This utility was developed on macOS, so that's what's currently expected.
-If your host setup differs, set `DOSBOX_BIN` to your DOSBox-X executable path
+This utility was developed on macOS, so that is the currently expected host
+environment.
+
+If your host setup differs, set `DOSBOX_BIN` to your DOSBox X executable path
 when running [build.sh](build.sh), [test.sh](test.sh), or
 [interactive.sh](interactive.sh).
 
 Example:
 
-`DOSBOX_BIN=/custom/path/dosbox-x ./test.sh`
-
+```sh
+DOSBOX_BIN=/custom/path/dosbox-x ./test.sh
+```
 
 ### Prerequisites
 
-- DOSBox-X installed.
-- Wrapper scripts default to
+* DOSBox-X installed.
+
+* Wrapper scripts default to
   `/Applications/DOSBox-X.app/Contents/MacOS/dosbox-x` and can be overridden
   by setting `DOSBOX_BIN`.
-- The repository contains a local `./TASM` placeholder directory.
-- TASM/TLINK/MAKE are **not** bundled with this repository; install them yourself.
-- DOSBox-X maps the current working directory as `C:`, so `./TASM` on the host
-  corresponds to `\TASM` in DOSBox-X.
-- Ensure `MAKE.EXE` is available at `\TASM\BIN\MAKE` (plus `TASM.EXE` and
-  `TLINK.EXE` in the same toolchain tree).
-- For interactive installation, run [interactive.sh](interactive.sh), which
-  starts DOSBox-X with `C:` mapped to the current working directory.
-  This allows running the Borland TASM installer directly from floppy disk images.
-- Alternatively, just copy `TASM.EXE`, `TLINK.EXE`, `MAKE.EXE`, `32RTM.EXE` and
+
+* The repository contains a local `./TASM` placeholder directory.
+
+* TASM, TLINK, and MAKE are not bundled with this repository. Install them
+  separately. The project was built around TASM 5.0, that's what I recommened.
+
+* DOSBox X maps the current working directory as `C:`, so `./TASM` on the host
+  corresponds to `\TASM` inside DOSBox X.
+
+* For interactive installation, run [interactive.sh](interactive.sh), which
+  starts DOSBox X with `C:` mapped to the current working directory. This
+  allows the Borland TASM installer to be run directly from floppy disk
+  images and install to `C:\TASM`.
+
+* Alternatively, copy `TASM.EXE`, `TLINK.EXE`, `MAKE.EXE`, `32RTM.EXE`, and
   `DPMI32VM.OVL` into `./TASM/BIN`.
 
+* The repository contains a local `./PKLITE` placeholder directory.
+
+* PKLITE is not bundled with this repository. Install it separately.
+
+* Simply drop PKLITE binaries into `./PKLITE` (`C:\PKLITE` inside DOSBox-X)
+
+* BUILD's MAKEFILE will automatically check for `C:\PKLITE\PKLITE.EXE` and
+  create compress the main `3CCFGCLI.EXE` binary.
+ 
 
 ### Build flow
 
 1. Run `./build.sh`.
-2. [build.sh](build.sh) starts DOSBox-X with [autoexec-build](autoexec-build).
-3. [autoexec-build](autoexec-build) mounts `C:` from the current working directory
-   then runs `BUILD.BAT`.
-4. [BUILD.BAT](BUILD.BAT) deletes old `BUILD.LOG`, runs
-   `\TASM\BIN\MAKE ALL >> BUILD.LOG`, then exits DOSBox-X.
+
+2. [build.sh](build.sh) starts DOSBox X with
+   [autoexec-build](autoexec-build).
+
+3. [autoexec-build](autoexec-build) mounts `C:` from the current working
+   directory, then runs `BUILD.BAT`.
+
+4. [BUILD.BAT](BUILD.BAT) deletes the old `BUILD.LOG`, runs:
+
+```text
+\TASM\BIN\MAKE ALL >> BUILD.LOG
+```
+
+then exits DOSBox X.
+
 5. [MAKEFILE](MAKEFILE) builds:
-   - `BIN\3CCFGCLI.EXE` (`/dREALHW`)
-   - `BIN\3CHWMOCK.EXE` (`/dMOCKHW`)
-   - `BIN\3CSEED.EXE`
-6. `build.sh` prints `BUILD.LOG` after DOSBox-X exits.
+
+   * `BIN\3CCFGCLI.EXE`, using `/dREALHW`
+   * `BIN\3CHWMOCK.EXE`, using `/dMOCKHW`
+   * `BIN\3CSEED.EXE`
 
 
-### Interactive DOSBox-X session
+6. If PKLITE is available, `BIN\3CCFGCLI.EXE` will automatically be compressed to `BIN\PKLITE\3CCFGCLI.EXE`
+
+7. `build.sh` prints `BUILD.LOG` and a build summary after DOSBox X exits.
+
+### Interactive DOSBox X session
 
 For manual or incremental build and test work, run:
 
@@ -303,11 +363,12 @@ For manual or incremental build and test work, run:
 ./interactive.sh
 ```
 
-This starts DOSBox-X with [autoexec-interactive](autoexec-interactive), mounts
-the repository root as `C:`, and leaves you at a DOS prompt instead of running
-an automatic build or test command.
+This starts DOSBox X with
+[autoexec-interactive](autoexec-interactive), mounts the repository root as
+`C:`, and leaves you at a DOS prompt instead of running an automatic build or
+test command.
 
-From there you can invoke the Borland/TASM tools directly, for example:
+From there you can invoke the Borland and TASM tools directly, for example:
 
 ```text
 \TASM\BIN\MAKE -f MAKEFILE all
@@ -315,7 +376,8 @@ From there you can invoke the Borland/TASM tools directly, for example:
 \TASM\BIN\MAKE -f TEST.MK IRQ_CHANGE
 ```
 
-Or more conveniently, use the included batch files, which are also used for BUILD and TEST automation:
+Or use the included batch files, which are also used for build and test
+automation:
 
 ```text
 \BUILD.BAT
@@ -323,70 +385,80 @@ Or more conveniently, use the included batch files, which are also used for BUIL
 \TEST.BAT IRQ_CHANGE
 ```
 
-This is useful when iterating on one area and avoiding a full host-side
+This is useful when iterating on one area and avoiding a complete host side
 `./build.sh` or `./test.sh` cycle.
-
 
 ## Test
 
-Tests use the same DOSBox-X pattern and run:
+Tests use the same DOSBox X environment.
 
-- the regular smoke suite in [TEST.MK](TEST.MK)
-- a hardware-limit follow-up pass (64 KB, 128 KB, 256 KB)
+The normal test run consists of:
+
+* the regular smoke suite in [TEST.MK](TEST.MK)
+* `SAVECONFIG` line length validation
+* memory constrained execution with 64, 128, and 256 KB of RAM
 
 ### Seeder usage in tests
 
 [3CSEED.ASM](3CSEED.ASM) exists mainly to support deterministic testing. It
-prepares mock NIC state (`3C509B.MCK`) so smoke tests can start from known card
-profiles, capability overrides, and cleanup states.
+prepares mock NIC state in `3C509B.MCK` so tests can begin from known card
+profiles, capability overrides, configuration values, and cleanup states.
 
-| Verb | Description |
-|------|-------------|
-| `INIT` | Deterministic 3C509B-TP profile (IRQ 10, base 0x0300). Default for most tests. |
-| `CLEAR` | Deletes `3C509B.MCK`. |
-| `3C509B-TP` | Product 9050h, media=TP. |
-| `3C509B-COMBO` | Product 9150h, media=AUI. |
-| `3C509B-C` | Product 9450h, media=TP. |
-| `3C509B-TPO` | Product 9550h, media=TP. |
-| `3C509B-TPC` | Product 9850h, media=coax. |
-| `NOPNP` | INIT + EEPROM Capability PNP bit clear; preserves the other capability bits. |
-| `PNPREV0` | INIT + `EEPROM_REVISION_INFO=0`; retains EEPROM PNP capability for independence tests. |
-| `NOFD` | INIT + live TP connector capability clear; the B-class revision remains valid. |
-| `TPAUI` | TP product ID + live TP/AUI connector capabilities, for Product-ID mismatch tests. |
-| `TRI` | TP product ID + live TP/AUI/BNC connector capabilities. |
-| `MODEMFIELDS` | INIT + non-MODEM Software Information fields set for preservation tests. |
-| `M1200US` | INIT + MODEM raw value `2Fh` (1200 microseconds), for serialization tests. |
-| `NOLINKBEAT` | INIT + `EEPROM_SOFTWARE_INFO` bit 14 set for MODEM preservation tests. |
-
+| Verb           | Description                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------- |
+| `INIT`         | Deterministic 3C509B TP profile, IRQ 10, base 0x0300. Default for most tests.               |
+| `CLEAR`        | Deletes `3C509B.MCK`.                                                                       |
+| `3C509B-TP`    | Product 9050h, media TP.                                                                    |
+| `3C509B-COMBO` | Product 9150h, media AUI.                                                                   |
+| `3C509B-C`     | Product 9450h, media TP.                                                                    |
+| `3C509B-TPO`   | Product 9550h, media TP.                                                                    |
+| `3C509B-TPC`   | Product 9850h, media coax.                                                                  |
+| `NOPNP`        | INIT plus EEPROM Capability PNP bit clear, preserving the other capability bits.            |
+| `PNPREV0`      | INIT plus `EEPROM_REVISION_INFO=0`, retaining EEPROM PNP capability for independence tests. |
+| `NOFD`         | INIT plus live TP connector capability clear, while retaining a valid B class revision.     |
+| `TPAUI`        | TP product ID plus live TP and AUI connector capabilities, for Product ID mismatch tests.   |
+| `TRI`          | TP product ID plus live TP, AUI, and BNC connector capabilities.                            |
+| `MODEMFIELDS`  | INIT plus non MODEM Software Information fields set for preservation tests.                 |
+| `M1200US`      | INIT plus MODEM raw value `2Fh`, 1200 microseconds, for serialization tests.                |
+| `NOLINKBEAT`   | INIT plus `EEPROM_SOFTWARE_INFO` bit 14 set for MODEM preservation tests.                   |
 
 ### Test flow
 
 1. Run `./test.sh`.
-2. [test.sh](test.sh) starts DOSBox-X with [autoexec-test](autoexec-test).
-3. [autoexec-test](autoexec-test) mounts `C:` from the current working directory,
-   then runs `TEST`.
-4. [TEST.BAT](TEST.BAT) invokes `\TASM\BIN\MAKE -f TEST.MK smoke`.
+
+2. [test.sh](test.sh) starts DOSBox X with
+   [autoexec-test](autoexec-test).
+
+3. [autoexec-test](autoexec-test) mounts `C:` from the current working
+   directory, then runs `TEST`.
+
+4. [TEST.BAT](TEST.BAT) invokes:
+
+```text
+\TASM\BIN\MAKE -f TEST.MK smoke
+```
+
 5. [TEST.MK](TEST.MK) runs the smoke groups, writing:
-   - summary log: `TEST.LOG`
-   - per-test logs: `ARTIFACT/T0xx.LOG`
-6. [test.sh](test.sh) then runs a specific line-length check on the generated `RESTORE.BAT` files
-   to ensure individual lines in the BATCH file don't exceed the maximum 128 PSP length for DOS.
-7. [test.sh](test.sh) then runs hardware-limit checks using
+
+   * summary log, `TEST.LOG`
+   * individual test logs, `ARTIFACT/T0xx.LOG`
+
+6. [test.sh](test.sh) validates the generated `RESTORE.BAT` files and ensures
+   that individual batch commands do not exceed the practical 128 byte DOS
+   command line limit.
+
+7. [test.sh](test.sh) then performs hardware limit checks using
    [autoexec-testhwl](autoexec-testhwl), generating:
-   - `ARTIFACT/HWL64.LOG`
-   - `ARTIFACT/HWL128.LOG`
-   - `ARTIFACT/HWL256.LOG`
-   and appending progress lines to `TEST.LOG`.
 
+   * `ARTIFACT/HWL64.LOG`
+   * `ARTIFACT/HWL128.LOG`
+   * `ARTIFACT/HWL256.LOG`
 
-Notes:
+   Progress and result information is also appended to `TEST.LOG`.
 
-The smoke target exercises `BIN\3CHWMOCK.EXE` by default, as there's currently no
-emulation of a 3Com EtherLink III in DOSBox-X, neither in 86Box or pcem.
-The hardware-limit phase is fail-fast: it stops immediately on the first memory
-step that does not report a PASS marker.
-
-To run the test suite against real hardware, see next section.
+The smoke suite exercises `BIN\3CHWMOCK.EXE` by default because there is
+currently no suitable emulation of a 3Com EtherLink III in DOSBox X, 86Box,
+or PCem.
 
 
 ### Running selected test targets
@@ -397,8 +469,8 @@ To run the test suite against real hardware, see next section.
 TEST
 ```
 
-It also accepts one optional argument and forwards it as the [TEST.MK](TEST.MK)
-target:
+It also accepts one optional argument and forwards it as the
+[TEST.MK](TEST.MK) target:
 
 ```text
 TEST IRQ_CHANGE
@@ -406,40 +478,61 @@ TEST SAVECONFIG_TEST
 TEST t0203
 ```
 
-This allows direct dispatch into any target defined in [TEST.MK](TEST.MK),
+This allows direct execution of any target defined in [TEST.MK](TEST.MK),
 including symbolic test groups such as `LISTING`, `IRQ_CHANGE`,
 `SAVECONFIG_TEST`, or individual test cases such as `t0101`.
 
-When running targets directly, remember that some tests depend on seeded mock
-state. The full `smoke` target starts with `prep` and runs groups in the
-intended order; isolated targets are mainly intended for manual/debug
-iteration.
+Some tests depend on previously seeded mock state. The complete `smoke` target
+begins with `prep` and executes the groups in their intended order.
 
+Individual targets are therefore primarily intended for manual debugging and
+development work.
 
 ### Running tests against real hardware
 
-You can run the same smoke suite against the real-hardware binary by invoking
-the specific `real` target from vanilla DOS instead:
+The same smoke suite can be executed against the real hardware binary from
+vanilla DOS using:
 
-`\TASM\BIN\MAKE -f TEST.MK real`
+```text
+\TASM\BIN\MAKE -f TEST.MK real
+```
 
-For this to work on the target system you must have:
+The target system must provide:
 
-- `MAKE.EXE` available at `\TASM\BIN\MAKE`.
-- `TEST.MK` present in the current working directory.
-- `3CCFGCLI.EXE` available at `\BIN\3CCFGCLI.EXE`.
+* `MAKE.EXE` at `\TASM\BIN\MAKE`
+* `TEST.MK` in the current working directory
+* `3CCFGCLI.EXE` at `\BIN\3CCFGCLI.EXE`
 
-If your executable is not in the default path expected by
-[TEST.MK](TEST.MK), you can't run `make real`.
-In this case, use an explicit override as shown below:
+If the executable is stored elsewhere, the default `real` target cannot be
+used directly.
 
-`\TASM\BIN\MAKE -f TEST.MK BINAPP=\CLI\3CCFGCLI.EXE smoke`
+Supply `BINAPP` explicitly instead:
 
+```text
+\TASM\BIN\MAKE -f TEST.MK BINAPP=\CLI\3CCFGCLI.EXE smoke
+```
+
+## AI Development Transparency
+
+This project was developed with assistance from large language models.
+
+AI tools were used for code review, reasoning about 8086 and 8088 assembly,
+comparison with the original 3Com utility, identification of possible defects
+and cleanup opportunities, preparation of implementation plans, and review of
+proposed changes.
+
+Development remains human directed. Design decisions, compatibility goals,
+feature scope, implementation choices, and acceptance of changes remain under
+the control of the maintainer. AI generated suggestions are treated as
+engineering and review aids, not as substitutes for verification.
+
+More details about the development and validation process are available in
+[DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## References
 
-- [Project context and upstream ideas](https://github.com/hackerb9/3C509B-nestor)
-- Wikipedia: [3Com Etherlink III](https://en.wikipedia.org/wiki/3Com_3c509)
-- [3Com EtherLink III User's Guide](https://archive.org/details/09-1310-000)
-- [3Com EtherLink III technical reference](https://www.janwagemakers.be/PIC18F452_3COM_3C509B_Ethernet/3c5x9b.pdf)
-- Original [3Com 3C509 configuration utilities](3C5X9CFG)
+* [3C509B nestor, project context and upstream ideas](https://github.com/hackerb9/3C509B-nestor)
+* Wikipedia, [3Com EtherLink III](https://en.wikipedia.org/wiki/3Com_3c509)
+* [3Com EtherLink III User's Guide](https://archive.org/details/09-1310-000)
+* [3Com EtherLink III technical reference](https://www.janwagemakers.be/PIC18F452_3COM_3C509B_Ethernet/3c5x9b.pdf)
+* [Original 3Com 3C509 configuration utilities](3C5X9CFG)
