@@ -104,6 +104,7 @@ CFG_TXN_IOBASE_CHANGED   EQU 20h
 CFG_TXN_INT_CHANGED      EQU 40h
 CFG_TXN_CHG_WORD13       EQU 80h
 CFG_TXN_CHG_WORD0D       EQU 0100h
+CFG_TXN_CHG_WORD14       EQU 0200h
 ; Widened to also require the hardware transaction pipeline for /BADDRESS,
 ; /BSIZE, and /TR (bits 0100h/0200h/0400h), which share EEPROM word 08h
 ; with /IOBASE.
@@ -111,15 +112,15 @@ CFG_PARSE_HW_MASK        EQU 07FAh
 CFG_TXN_IO_DETECT_MASK   EQU 15h
 CFG_TXN_WORD09_INT_MASK  EQU 42h
 ; Persistent property changes only; derived checksum writes have no flags.
-CFG_TXN_EEPROM_MASK      EQU 0183h
+CFG_TXN_EEPROM_MASK      EQU 0383h
 CFG_TXN_LIVE06_MASK      EQU 14h
 CFG_TXN_PRIMARY_CHECKSUM_MASK EQU 0103h ; WORD08, WORD09, WORD0D
-CFG_TXN_SECONDARY_CHECKSUM_MASK EQU 0080h ; WORD13
+CFG_TXN_SECONDARY_CHECKSUM_MASK EQU 0280h ; WORD13, WORD14
 ; WORD08 (bit 0) is included directly so a /BADDRESS or /BSIZE change (which
 ; has no IOBASE_CHANGED-style composite signal of its own) still triggers
 ; the write/verify/success pipeline. This mirrors how WORD0D and WORD13 are
 ; included directly for MODEM/FULLDUPLEX/PNP/OPTIMIZE.
-CFG_TXN_COMMIT_MASK      EQU 01F1h
+CFG_TXN_COMMIT_MASK      EQU 03F1h
 CFG_TXN_INT_MIGRATE_MASK EQU 50h
 
 ; Normalized physical NIC capabilities.  These bits are a shared software
@@ -597,6 +598,8 @@ cfg_txn_old_word0d        DW 0
 cfg_txn_new_word0d        DW 0
 cfg_txn_old_word13        DW 0
 cfg_txn_new_word13        DW 0
+cfg_txn_old_word14        DW 0
+cfg_txn_new_word14        DW 0
 cfg_txn_old_live06        DW 0
 cfg_txn_new_live06        DW 0
 cfg_txn_old_live08        DW 0
@@ -5005,6 +5008,12 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_word13], 0
 @@Word13Done:
 
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    jnz     @@Word14Done
+@@NoWord14:
+    mov     [cfg_txn_old_word14], 0
+@@Word14Done:
+
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jnz     @@ReadWord0D
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
@@ -5126,6 +5135,8 @@ PROC Cfg_Txn_Init_Prospective NEAR
     mov     [cfg_txn_new_word0d], ax
     mov     ax, [cfg_txn_old_word13]
     mov     [cfg_txn_new_word13], ax
+    mov     ax, [cfg_txn_old_word14]
+    mov     [cfg_txn_new_word14], ax
     mov     ax, [cfg_txn_old_word0f]
     mov     [cfg_txn_new_word0f], ax
     mov     ax, [cfg_txn_old_live06]
@@ -5339,6 +5350,7 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     and     ax, 0C0FFh
     or      ax, bx
     mov     [cfg_txn_new_live06], ax
+    and     [cfg_txn_new_word14], NOT EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
     clc
     jmp     @@Done
 
@@ -5479,11 +5491,19 @@ PROC Cfg_Txn_Detect_Changes NEAR
 
 @@PNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
-    jz      @@MODEM
+    jz      @@BootRom
     mov     ax, [cfg_txn_old_word13]
     cmp     ax, [cfg_txn_new_word13]
-    je      @@MODEM
+    je      @@BootRom
     or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
+
+@@BootRom:
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    jz      @@MODEM
+    mov     ax, [cfg_txn_old_word14]
+    cmp     ax, [cfg_txn_new_word14]
+    je      @@MODEM
+    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
 
 @@MODEM:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
@@ -5812,7 +5832,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 
 @@Word13:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
-    jz      @@Checksums
+    jz      @@Word14
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     bx, [cfg_txn_new_word13]
@@ -5820,10 +5840,20 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     call    Cfg_Eeprom_Write
     jc      @@Write13Fail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Checksums
+    jz      @@Word14
     mov     dx, OFFSET msg_cfg_pnp_word_written
     mov     ah, 09h
     int     21h
+
+@@Word14:
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
+    jz      @@Checksums
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     bx, [cfg_txn_new_word14]
+    mov     al, EEPROM_REVISION_INFO
+    call    Cfg_Eeprom_Write
+    jc      @@Write14Fail
 
 @@Checksums:
     test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
@@ -5941,6 +5971,16 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_WRITE
+    jmp     @@Fail
+@@Write14Fail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
+    je      @@Fail
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
+    jnz     @@Write14FailBAddress
+    mov     [cfg_last_error], CFG_ERR_BSIZE_EEPROM_WRITE
+    jmp     @@Fail
+@@Write14FailBAddress:
+    mov     [cfg_last_error], CFG_ERR_BADDRESS_EEPROM_WRITE
     jmp     @@Fail
 @@ChecksumWriteFail:
 @@ChecksumFail:
@@ -6275,6 +6315,18 @@ PROC Cfg_Txn_Verify NEAR
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jz      @@TRPersistent
 @@BootRomNeedsRead:
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08 + CFG_TXN_CHG_WORD14
+    jz      @@TRPersistent
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
+    jz      @@BootRomWord08
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_REVISION_INFO
+    call    Cfg_Eeprom_Read
+    jc      @@BootRomVerifyFail
+    cmp     ax, [cfg_txn_new_word14]
+    jne     @@BootRomVerifyFail
+@@BootRomWord08:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jz      @@TRPersistent
     mov     si, [cfg_selected_ptr]
@@ -6860,6 +6912,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Read
     jc      @@BootRomCapReadFail
+    mov     [cfg_txn_old_word14], ax
     and     ax, 00FFh
     mov     [cfg_txn_later_card], 0
     cmp     ax, 1

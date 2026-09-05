@@ -35,6 +35,9 @@ Changelog 0.7.4
     strictly paired, DISABLED is standalone only, requested addresses use
     size- and adapter-generation-aware canonical selectors, and EEPROM word
     08h Boot ROM fields are merged and verified from the prospective image.
+  - Boot ROM CONFIGURE now clears EEPROM word 14h Boot ROM Size Valid bit,
+    reuses the capability-gate read as transaction-local state, and updates
+    the EEPROM word 17h secondary checksum low byte when that metadata changes.
 
 
 Changelog 0.7.3
