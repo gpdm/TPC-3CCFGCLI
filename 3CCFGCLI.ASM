@@ -592,6 +592,12 @@ cfg_tr_value          DB 0
 cfg_txn_capabilities      DW 0
 cfg_txn_capability_valid  DW 0
 
+; Shared raw EEPROM word 08h readback captured during Cfg_Txn_Verify's Boot
+; ROM persistent check, reused by the TR persistent check so a combined
+; Boot ROM + TR transaction reads EEPROM_ADDR_CFG only once.
+cfg_txn_verify_word08       DW 0
+cfg_txn_verify_word08_valid DW 0
+
 ; Central CONFIGURE transaction state.  Current state is snapshotted before any
 ; hardware modification.  Prospective state starts as an exact copy and is then
 ; modified only by Cfg_Prepare_*** routines.
@@ -6229,6 +6235,8 @@ PROC Cfg_Txn_Verify NEAR
     push    dx
     push    si
 
+    mov     [cfg_txn_verify_word08_valid], 0
+
     test    [cfg_txn_change_flags], CFG_TXN_COMMIT_MASK
     jnz     @@Start
     jmp     @@Success
@@ -6475,6 +6483,8 @@ PROC Cfg_Txn_Verify NEAR
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Read
     jc      @@BootRomVerifyFail
+    mov     [cfg_txn_verify_word08], ax
+    mov     [cfg_txn_verify_word08_valid], 1
     and     ax, 3F00h
     mov     bx, [cfg_txn_new_word08]
     and     bx, 3F00h
@@ -6527,11 +6537,16 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@Success
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jz      @@Success
+    cmp     [cfg_txn_verify_word08_valid], 1
+    je      @@TRHaveWord08
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Read
     jc      @@TRVerifyFail
+    mov     [cfg_txn_verify_word08], ax
+@@TRHaveWord08:
+    mov     ax, [cfg_txn_verify_word08]
     xor     ax, [cfg_txn_new_word08]
     test    ax, W0_ADDRESS_CFG_XCVR_MASK OR W0_ADDRESS_CFG_AUTO_SELECT
     jnz     @@TRVerifyFail
