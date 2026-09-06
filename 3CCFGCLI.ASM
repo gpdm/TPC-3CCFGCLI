@@ -213,6 +213,9 @@ CFG_ERR_FD_TRANSCEIVER      EQU 74
 CFG_ERR_FD_LIVE_UPDATE      EQU 75
 CFG_ERR_FD_LIVE_VERIFY      EQU 76
 CFG_ERR_FD_UNSUPPORTED_CARD EQU 77
+CFG_ERR_PNP_UNSUPPORTED_CARD EQU 78
+CFG_ERR_TR_AUTO_UNSUPPORTED_CARD EQU 79
+CFG_ERR_BOOTROM_UNSUPPORTED_CARD EQU 80
 
 DATASEG
 
@@ -372,6 +375,7 @@ msg_cfg_optimize_eeprom_write_fail DB "EEPROM write timed out while writing opti
 msg_cfg_optimize_verified DB "EEPROM optimize mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_verify_fail DB "Optimize mode configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_not_capable DB "This adapter does not support Plug and Play configuration.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_unsupported_card DB "PNP is not supported for this card type.", 0Dh, 0Ah, '$'
 msg_cfg_bad_fullduplex DB "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_fullduplex_ok DB "FULLDUPLEX parameter accepted. Requested mode: ", '$'
 msg_cfg_fd_unchanged DB 0Dh, 0Ah, "Full duplex mode is already configured to the requested value.", 0Dh, 0Ah
@@ -417,12 +421,14 @@ msg_cfg_bsize_verified DB "EEPROM Boot ROM size verified.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_live_verified DB "Live Boot ROM configuration verified.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verify_fail DB "Boot ROM size configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_not_capable DB "This adapter does not support Boot ROM configuration.", 0Dh, 0Ah, '$'
+msg_cfg_bootrom_unsupported_card DB "Boot ROM configuration requires a 3C509B-generation adapter.", 0Dh, 0Ah, '$'
 
 ; /TR (/XCVR) diagnostics.  Transceiver selection shares EEPROM word 08h
 ; bits 15:14 (and bit 7 for AUTO) with /IOBASE, /BADDRESS, and /BSIZE.
 msg_cfg_bad_tr DB "Invalid /TR parameter. Use TP, AUI, COAX, or AUTO.", 0Dh, 0Ah, '$'
 msg_cfg_tr_inactive DB "Selected adapter has no active IOBASE for /TR configuration.", 0Dh, 0Ah, '$'
 msg_cfg_tr_not_capable DB "This adapter does not support the requested transceiver type.", 0Dh, 0Ah, '$'
+msg_cfg_tr_auto_unsupported_card DB "AUTO transceiver selection requires a 3C509B-generation adapter.", 0Dh, 0Ah, '$'
 msg_cfg_tr_capability_read_fail DB "Hardware connector capability data is unavailable for transceiver configuration.", 0Dh, 0Ah, '$'
 msg_cfg_tr_ok DB "TR parameter accepted. Requested transceiver: ", '$'
 msg_cfg_tr_unchanged DB 0Dh, 0Ah, "Transceiver type is already configured to the requested value.", 0Dh, 0Ah
@@ -720,6 +726,9 @@ save_word13     DW  0
 ; Cached ASIC revision of the adapter currently being exported, copied from
 ; the NIC record because Save_Build_Command reuses SI for output strings.
 save_asic_rev   DB  0FFh
+; Cached product ID of the adapter currently being exported, copied from the
+; NIC record for the same reason as save_asic_rev.
+save_product_id DW  0
 save_configure_suffix DB ' CONFIGURE', 0
 save_adapternum DB  ' /ADAPTERNUM:', 0
 save_int        DB  ' /INT:', 0
@@ -858,6 +867,9 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_fd_live_update_fail           ; 75 CFG_ERR_FD_LIVE_UPDATE
     DW      OFFSET msg_cfg_fd_live_verify_fail           ; 76 CFG_ERR_FD_LIVE_VERIFY
     DW      OFFSET msg_cfg_fd_unsupported_card           ; 77 CFG_ERR_FD_UNSUPPORTED_CARD
+    DW      OFFSET msg_cfg_pnp_unsupported_card          ; 78 CFG_ERR_PNP_UNSUPPORTED_CARD
+    DW      OFFSET msg_cfg_tr_auto_unsupported_card      ; 79 CFG_ERR_TR_AUTO_UNSUPPORTED_CARD
+    DW      OFFSET msg_cfg_bootrom_unsupported_card      ; 80 CFG_ERR_BOOTROM_UNSUPPORTED_CARD
 LABEL cfg_error_messages_end WORD
 
 CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2
@@ -1276,12 +1288,27 @@ PROC Cmd_SaveConfig NEAR
     call    Nic_EEPROM_Read
     jc      @@ReadFail
     mov     [save_word0d], ax
+
+    ; Cache the record's generation and product identity for the export.
+    ; Word 13h carries 3C509B Internal Configuration semantics and is read
+    ; only for a known revision 2 or later.  Other generations neither read
+    ; nor interpret it; a harmless placeholder keeps stale data from a
+    ; previously exported adapter out of the export.
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    mov     [save_asic_rev], al
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    mov     [save_product_id], ax
+    mov     [save_word13], 0
+    mov     al, [save_asic_rev]
+    cmp     al, 0FFh
+    je      @@Word13Done
+    cmp     al, 2
+    jb      @@Word13Done
     mov     al, EEPROM_CONFIG_CONTROL
     call    Nic_EEPROM_Read
     jc      @@ReadFail
     mov     [save_word13], ax
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    mov     [save_asic_rev], al
+@@Word13Done:
 
     mov     ax, [current_card]
     inc     ax
@@ -1908,6 +1935,14 @@ PROC Save_Build_Command NEAR
     call    Save_Append_Hex_Word
     jc      @@Fail
 
+    ; /PNP is exported only for the known 3C509B generation.  Word 13h was
+    ; deliberately not read for other generations and is never interpreted
+    ; here, so no stale value can leak into the export.
+    mov     al, [save_asic_rev]
+    cmp     al, 0FFh
+    je      @@SkipPnp
+    cmp     al, 2
+    jb      @@SkipPnp
     mov     ax, [save_word13]
     and     ax, 000Ch
     cmp     ax, 0004h
@@ -1934,7 +1969,15 @@ PROC Save_Build_Command NEAR
 @@PnpDone:
     call    Save_Append_String
     jc      @@Fail
+@@SkipPnp:
 
+    ; Word 0Dh bit 15 is the utility's Full Duplex policy only on the known
+    ; 3C509B generation; other generations export no /FULLDUPLEX option.
+    mov     al, [save_asic_rev]
+    cmp     al, 0FFh
+    je      @@SkipFd
+    cmp     al, 2
+    jb      @@SkipFd
     mov     ax, [save_word0d]
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jz      @@FdOffLength
@@ -1959,6 +2002,7 @@ PROC Save_Build_Command NEAR
 @@FdDone:
     call    Save_Append_String
     jc      @@Fail
+@@SkipFd:
 
     mov     ax, [save_word0d]
     and     ax, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
@@ -2051,6 +2095,18 @@ PROC Save_Build_Command NEAR
 @@OptDone:
     call    Save_Append_String
     jc      @@Fail
+
+    ; Boot ROM options are exported only where CONFIGURE can restore them:
+    ; a known 3C509B-generation adapter, excluding the 3C509B-TPO.  Every
+    ; other generation or product skips directly to transceiver export.
+    mov     al, [save_asic_rev]
+    cmp     al, 0FFh
+    je      @@Tr
+    cmp     al, 2
+    jb      @@Tr
+    mov     ax, [save_product_id]
+    cmp     ax, PRODUCT_3C509_TPO
+    je      @@Tr
     mov     ax, [save_word08]
     and     ax, 3F00h              ; Base (bits 11:8) and size (bits 13:12).
     jz      @@NoRom
@@ -2134,35 +2190,23 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     jc      @@Fail
 @@Tr:
+    ; AUTO is the 3C509B meaning of Address Configuration bit 7.  Original
+    ; 3C509 and unknown-generation adapters cannot restore /TR:AUTO, so they
+    ; ignore bit 7 and export the explicit media selection from bits 15:14.
+    ; The value string and its option length are decoded exactly once here
+    ; so length accounting and emission cannot diverge.
     mov     ax, [save_word08]
     test    ax, 0080h
-    jnz     @@TrAutoLength
-    mov     cl, 14
-    shr     ax, cl
-    cmp     al, 1
-    je      @@TrAuiLength
-    cmp     al, 3
-    je      @@TrCoaxLength
-    mov     cx, SAVE_LEN_TR + SAVE_LEN_TP
-    jmp     @@TrLengthDone
-@@TrAutoLength:
+    jz      @@TrExplicit
+    mov     bl, [save_asic_rev]
+    cmp     bl, 0FFh
+    je      @@TrExplicit
+    cmp     bl, 2
+    jb      @@TrExplicit
+    mov     si, OFFSET save_auto
     mov     cx, SAVE_LEN_TR + SAVE_LEN_AUTO
-    jmp     @@TrLengthDone
-@@TrAuiLength:
-    mov     cx, SAVE_LEN_TR + SAVE_LEN_AUI
-    jmp     @@TrLengthDone
-@@TrCoaxLength:
-    mov     cx, SAVE_LEN_TR + SAVE_LEN_COAX
-@@TrLengthDone:
-    call    Save_Ensure_Option_Length
-    jc      @@Fail
-    call    Save_Commit_Option_Length
-    mov     si, OFFSET save_tr
-    call    Save_Append_String
-    jc      @@Fail
-    mov     ax, [save_word08]
-    test    ax, 0080h
-    jnz     @@TrAuto
+    jmp     @@TrEmit
+@@TrExplicit:
     mov     cl, 14
     shr     ax, cl
     cmp     al, 1
@@ -2170,16 +2214,24 @@ PROC Save_Build_Command NEAR
     cmp     al, 3
     je      @@TrCoax
     mov     si, OFFSET save_tp
-    jmp     @@TrDone
-@@TrAuto:
-    mov     si, OFFSET save_auto
-    jmp     @@TrDone
+    mov     cx, SAVE_LEN_TR + SAVE_LEN_TP
+    jmp     @@TrEmit
 @@TrAui:
     mov     si, OFFSET save_aui
-    jmp     @@TrDone
+    mov     cx, SAVE_LEN_TR + SAVE_LEN_AUI
+    jmp     @@TrEmit
 @@TrCoax:
     mov     si, OFFSET save_coax
-@@TrDone:
+    mov     cx, SAVE_LEN_TR + SAVE_LEN_COAX
+@@TrEmit:
+    call    Save_Ensure_Option_Length
+    jc      @@Fail
+    call    Save_Commit_Option_Length
+    push    si
+    mov     si, OFFSET save_tr
+    call    Save_Append_String
+    pop     si
+    jc      @@Fail
     call    Save_Append_String
     jc      @@Fail
     call    Save_Flush_Command
@@ -5347,11 +5399,13 @@ ENDP Cfg_Prepare_OPTIMIZE
 ; Validate and merge the complete staged Boot ROM request into both persistent
 ; and prospective live Address Configuration images. Enabled C0000h uses
 ; selector 1 because selector zero disables the Boot ROM.
+; Reachable only for known 3C509B-generation adapters; the centralized Boot
+; ROM capability gate rejects original 3C509 and unknown-generation adapters
+; before staging, so no original-3C509 alignment rules remain here.
 PROC Cfg_Prepare_Boot_ROM NEAR
     push    ax
     push    bx
     push    cx
-    push    si
 
     cmp     [cfg_bsize_disabled], 1
     je      @@Disable
@@ -5369,20 +5423,8 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     jnz     @@Invalid
     jmp     @@Encode
 @@Check32K:
-    ; ASIC revision 1 is the original 3C509; revision 2 or later is the
-    ; 3C509B generation.  FFh means unknown and keeps the original rules.
-    mov     si, [cfg_selected_ptr]
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
-    je      @@Check32KOriginal
-    cmp     al, 2
-    jae     @@Check32KLater
-@@Check32KOriginal:
-    mov     al, bl
-    and     al, 3
-    jnz     @@Invalid
-    jmp     @@Encode
-@@Check32KLater:
+    ; Only known 3C509B-generation adapters reach this routine, so the
+    ; 3C509B 32K alignment rule applies without another ASIC check.
     test    bl, 1
     jnz     @@Invalid
 
@@ -5425,7 +5467,6 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     stc
 
 @@Done:
-    pop     si
     pop     cx
     pop     bx
     pop     ax
@@ -7120,6 +7161,15 @@ PROC Cfg_Txn_Execute NEAR
 @@GatePNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@GateFULLDUPLEX
+    ; PNP configuration requires the 3C509B generation.  An unknown ASIC
+    ; revision falls through to the capability checks below instead.
+    mov     si, [cfg_selected_ptr]
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@PNPCheckCapability
+    cmp     al, 2
+    jb      @@PNPUnsupportedCard
+@@PNPCheckCapability:
     ; EEPROM_CAPABILITY bit 0 is the authoritative PNP capability source.
     mov     ax, [cfg_txn_capabilities]
     mov     bx, [cfg_txn_capability_valid]
@@ -7128,6 +7178,9 @@ PROC Cfg_Txn_Execute NEAR
     test    ax, NIC_CAP_PNP
     jz      @@PNPNotCapable
     jmp     @@GateFULLDUPLEX
+@@PNPUnsupportedCard:
+    mov     [cfg_last_error], CFG_ERR_PNP_UNSUPPORTED_CARD
+    jmp     @@Done
 @@PNPCapReadFail:
     mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_READ
     jmp     @@Done
@@ -7189,27 +7242,31 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@Done
 
 @@BootRomCapabilityGate:
-    ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration.
-    ; Word 14h is still snapshotted here as Boot ROM transaction state, but
-    ; the generation decision comes from the cached ASIC revision.
+    ; The Boot ROM write path is intentionally supported only on known
+    ; 3C509B-generation adapters (ASIC revision 2 or later).  An original
+    ; 3C509 (revision 1) or an unknown/unreadable generation (FFh) is
+    ; rejected here, before EEPROM word 14h is read as Boot ROM transaction
+    ; state and before any Boot ROM staging begins.
     mov     si, [cfg_selected_ptr]
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@BootRomUnsupportedCard
+    cmp     al, 2
+    jb      @@BootRomUnsupportedCard
+    ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration.
+    ; Word 14h is snapshotted here as Boot ROM transaction state.
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Read
     jc      @@BootRomCapReadFail
     mov     [cfg_txn_old_word14], ax
-    ; ASIC revision 1 is the original 3C509; revision 2 or later is the
-    ; 3C509B generation.  FFh means unknown and is not treated as 3C509B.
-    mov     si, [cfg_selected_ptr]
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
-    je      @@Requested
-    cmp     al, 2
-    jb      @@Requested
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     cmp     ax, PRODUCT_3C509_TPO
     jne     @@Requested
     mov     [cfg_last_error], CFG_ERR_BADDRESS_NOT_CAPABLE
+    jmp     @@Done
+@@BootRomUnsupportedCard:
+    mov     [cfg_last_error], CFG_ERR_BOOTROM_UNSUPPORTED_CARD
     jmp     @@Done
 @@BootRomCapReadFail:
     mov     [cfg_last_error], CFG_ERR_BADDRESS_EEPROM_READ
@@ -7219,6 +7276,17 @@ PROC Cfg_Txn_Execute NEAR
 @@GateTR:
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@GateTR_Pass
+    ; Auto Select is the 3C509B meaning of Address Configuration bit 7, so
+    ; AUTO requires a known revision 2 or later before any capability data is
+    ; consulted.  Explicit TP/AUI/COAX stay generation independent.
+    cmp     [cfg_tr_value], 0FFh
+    jne     @@GateTR_Capabilities
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
+    je      @@TRAutoUnsupportedCard
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jb      @@TRAutoUnsupportedCard
+@@GateTR_Capabilities:
     mov     ax, [cfg_txn_capabilities]
     mov     bx, [cfg_txn_capability_valid]
     test    bx, NIC_CAP_VALID_CONNECTORS
@@ -7248,6 +7316,9 @@ PROC Cfg_Txn_Execute NEAR
     jnz     @@GateTR_Pass
 @@TRNotCapable:
     mov     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
+    jmp     @@Done
+@@TRAutoUnsupportedCard:
+    mov     [cfg_last_error], CFG_ERR_TR_AUTO_UNSUPPORTED_CARD
     jmp     @@Done
 @@TRCapabilityReadFail:
     mov     [cfg_last_error], CFG_ERR_TR_CAPABILITY_READ

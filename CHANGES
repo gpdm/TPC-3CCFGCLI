@@ -6,6 +6,12 @@ Changelog 0.7.5
   - LIST now handles generation-specific capabilities correctly on original
     3C509 adapters.
   - CONFIGURE now rejects Full Duplex settings on original 3C509 adapters.
+  - CONFIGURE now rejects PNP settings on original 3C509 adapters.
+  - CONFIGURE now restricts automatic transceiver selection to 3C509B-generation
+    adapters.
+  - Boot ROM configuration is now restricted to 3C509B-generation adapters.
+  - SAVECONFIG now omits generation-specific settings that cannot be
+    restored on original 3C509 adapters.
 
 Changelog 0.7.4
   - Fixed SAVECONFIG Boot ROM address decoding: it previously converted the
