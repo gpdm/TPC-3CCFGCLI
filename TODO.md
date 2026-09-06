@@ -5,29 +5,6 @@ This file documents pending items, in no particular order or priority.
 
 ## Bugs
 
-- [Bug] Boot ROM Activation:
-
-  Boot ROM (/BADDRESS & /BSIZE) seem to probe if a ROM is actually socketed.
-  The original utility prevents configuration via the CLI if it doesn't find
-  a Boot ROM installed.
-  The MEWEL Text-UI on the other hand offers to option to configure anyway.
-
-  Though I suspect this would lead to a reboot / POST init loop of some sorts,
-  and I shouldn't enforce activation of the Boot ROM if none is equipped.
-
-  In general, this should be tested as well with real hardware and ROMs
-  equipped, to fully validate the proper functionality.
-
-  Secondly, a gate must be implemented, which prevents enabling it if
-  the probing fails.
-
-  Thirdly: Figure out, how the probing fails.
-  To my current understanding, the original utility probes the ROM window,
-  if it finds a valid signature.
-
-  So apparently, also the MOCKIF would need to be extended to mimic the
-  signature in an identical way how the actual hardware does it.
-
 - Pending Clarification/Compatibility] t1505 duplicate active IOBASE conflict:
 
   The hardware-faithful mock currently rejects a targeted IOBASE migration
