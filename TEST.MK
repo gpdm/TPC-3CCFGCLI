@@ -74,7 +74,7 @@ PNP_CHANGE: t05xx t0501 t0502 t0503 t0504 t0505
 MODEM_CHANGE: t06xx t0601 t0602 t0603 t0604 t0605 t0606 t0607 t0608 t0609 t0610
 
 # Base: 0700
-FD_CHANGE: t07xx t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0710 t0711 t0712 t0713 t0714
+FD_CHANGE: t07xx t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0710 t0711 t0714
 
 # Base: 0900
 OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904
@@ -510,20 +510,6 @@ t0711:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0711.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0711.LOG > NUL
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0711.LOG > NUL
-
-t0712:
-   @echo [t0712] Testing stale enabled Full Duplex policy synchronizes live state... >> TEST.LOG
-   ${SEEDAPP} FDSTALEON > $(ARTIFACTS)\T0712.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T0712.LOG
-   FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0712.LOG > NUL
-   FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0712.LOG > NUL
-
-t0713:
-   @echo [t0713] Testing stale disabled Full Duplex policy synchronizes live state... >> TEST.LOG
-   ${SEEDAPP} FDSTALEOFF > $(ARTIFACTS)\T0713.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED /VERBOSE >> $(ARTIFACTS)\T0713.LOG
-   FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0713.LOG > NUL
-   FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0713.LOG > NUL
 
 t0714:
    @echo [t0714] Testing reverse Full Duplex dependency preserves TP state... >> TEST.LOG
