@@ -724,14 +724,13 @@ VALID_IOBASE_MAX        EQU 03E0h
 VALID_IOBASE_STEP       EQU 0010h
 
 ; ---------------------------------------------------------------------------
-; 3C509B.MCK file layout (v3, register-accurate multi-record; see the
+; 3C509B.MCK file layout (v4, register-accurate multi-record; see the
 ; MCK3R_* device image below)
 ; ---------------------------------------------------------------------------
 MCK_MAGIC_0             EQU '3'
 MCK_MAGIC_1             EQU 'C'
 MCK_MAGIC_2             EQU '5'
 MCK_MAGIC_3             EQU 'M'
-MCK_VERSION_V1          EQU 0001h
 MCK_VERSION             EQU 0004h  ; v4: MCK3R_ASIC_REV (0Ah) is now mandatory
 ; Multi-record mock state is designed to preserve the CLI-visible contract for
 ; normal distinct-base adapter discovery/configuration.  Same-active-IOBASE
@@ -750,7 +749,7 @@ MCK_RECORD_SIZE         EQU 256
 MCK_FILE_SIZE           EQU MCK_HEADER_SIZE + (MCK_MAX_RECORDS * MCK_RECORD_SIZE)
 
 ; ---------------------------------------------------------------------------
-; 3C509B.MCK v3 device image.  The image represents powered hardware: live
+; 3C509B.MCK v4 device image.  The image represents powered hardware: live
 ; state survives separate DOS processes and changes only through emulated I/O
 ; or an explicit reset.  EEPROM is persistent storage, not a register mirror.
 ; ---------------------------------------------------------------------------

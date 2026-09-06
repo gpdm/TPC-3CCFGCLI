@@ -22,7 +22,7 @@
 ; ---------------------------------------------------------------------------
 ; ID-port scratch state classification:
 ;
-;   Per-adapter hardware state (already lives in the MCK v3 record, not in
+;   Per-adapter hardware state (already lives in the MCK v4 record, not in
 ;   global scratch): MCK3R_ID_STATE, MCK3R_TAG, MCK3R_ID_SHIFT,
 ;   MCK3R_ID_BITS_LEFT (per-record contention shift registers used by
 ;   Mock_Id_Start_Contention_Read / Mock_Id_Read_Contention_Bit so that
@@ -68,7 +68,7 @@ mock_tag DB 0
 mock_active DB 0
 mock_w4_netdiag DW 0000h
 mock_w4_media_status DW 0000h
-; Decoded ASIC revision of the currently loaded adapter record (1=original
+; Decoded ASIC revision of the currently loaded adapter record (1=3C509,
 ; 3C509, 2=3C509B).  Mirrors MCK3R_ASIC_REV; drives the Window 4 Network
 ; Diagnostic bits 5:1 the same way real hardware exposes its ASIC revision.
 mock_asic_rev DB 2
@@ -647,17 +647,8 @@ PROC Load_State NEAR
 
     mov     ax, [WORD mock_file_state + MCK_OFF_VERSION]
     cmp     ax, MCK_VERSION
-    je      @@VersionOk
-    cmp     ax, MCK_VERSION_V1
     jne     @@Invalid
-@@VersionOk:
     mov     al, [BYTE mock_file_state + MCK_OFF_RECORD_COUNT]
-    cmp     [WORD mock_file_state + MCK_OFF_VERSION], MCK_VERSION_V1
-    jne     @@Clamp
-    or      al, al
-    jne     @@Clamp
-    mov     al, 1
-@@Clamp:
     cmp     al, MCK_MAX_RECORDS
     jbe     @@CountOk
     mov     al, MCK_MAX_RECORDS
@@ -1251,7 +1242,7 @@ PROC Mock_Automatic_Configuration NEAR
     mov     ax, [word mock_state + 40h + bx]
     mov     [word mock_state + EL3_W0_RESOURCE_CFG], ax
     cmp     [byte mock_asic_rev], 2
-    jl      @@Rev1NoInternalConfig
+    jb      @@Rev1NoInternalConfig
     mov     bx, EEPROM_INTERNAL_CONFIG_LO * 2
     mov     ax, [word mock_state + 40h + bx]
     mov     [word mock_w3_config_lo], ax
@@ -2024,7 +2015,7 @@ PROC Nic_Init_Id_Port NEAR
     mov     [byte mock_loaded_index], 0FFh
     mov     [byte mock_state_dirty], 0
 
-    ; Loading the MCK v3 powered-device image is side-effect free.  In
+    ; Loading the MCK v4 powered-device image is side-effect free.  In
     ; particular, it does not clear tags or alter ID state merely because a
     ; DOS process opened the backend.  Any such transition must instead be
     ; caused by the modeled ID-port sequence/commands.

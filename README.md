@@ -474,7 +474,7 @@ profiles, capability overrides, configuration values, and cleanup states.
 | `3C509B-C`     | Product 9450h, media TP.                                                                    |
 | `3C509B-TPO`   | Product 9550h, media TP.                                                                    |
 | `3C509B-TPC`   | Product 9850h, media coax.                                                                  |
-| `3C509-TP`     | Original 3C509-TP, ASIC revision 1, product 9050h, TP + AUI connectors, no B-specific PNP/Full Duplex/AUTO/Boot ROM CONFIGURE semantics. |
+| `3C509-TP`     | 3C509-TP, ASIC revision 1, product 9050h, TP + AUI connectors, no B-specific PNP/Full Duplex/AUTO/Boot ROM CONFIGURE semantics. |
 | `NOPNP`        | INIT plus EEPROM Capability PNP bit clear, preserving the other capability bits.            |
 | `NOFD`         | INIT plus live TP connector capability clear, while retaining a valid B class revision.     |
 | `TPAUI`        | TP product ID plus live TP and AUI connector capabilities, for Product ID mismatch tests.   |

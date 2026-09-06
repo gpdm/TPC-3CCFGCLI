@@ -13,6 +13,7 @@ Changelog 0.7.5
   - SAVECONFIG now omits generation-specific settings that cannot be
     restored on original 3C509 adapters.
   - Removed PNP Rev1 test fixture now that we have proper gating for 3c509 adapters.
+  - Mock hardware backend now rejects mock state files older than format v4.
 
 Changelog 0.7.4
   - Fixed SAVECONFIG Boot ROM address decoding: it previously converted the

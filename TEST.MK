@@ -1719,6 +1719,7 @@ t1801:
    FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\T1801.LOG > NUL
    FIND "Full Duplex = not supported" $(ARTIFACTS)\T1801.LOG > NUL
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1801.LOG > NUL
+   FIND "Connectors = TP, AUI" $(ARTIFACTS)\T1801.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "auto select" $(ARTIFACTS)\T1801.LOG
 
 t1802:

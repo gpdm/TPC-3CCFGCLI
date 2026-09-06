@@ -30,7 +30,7 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  3C509B-C     Seed as 3C509B-C    (product 9450h, twisted-pair).', 0Dh, 0Ah
              DB '  3C509B-TPO   Seed as 3C509B-TPO  (product 9550h, twisted-pair).', 0Dh, 0Ah
              DB '  3C509B-TPC   Seed as 3C509B-TPC  (product 9850h, coax).', 0Dh, 0Ah
-             DB '  3C509-TP     Seed as original 3C509-TP (ASIC revision 1, TP + AUI).', 0Dh, 0Ah
+             DB '  3C509-TP     Seed as 3C509-TP (ASIC revision 1, TP + AUI).', 0Dh, 0Ah
              DB '  NOPNP        Seed as non-PNP-capable card (gate test).', 0Dh, 0Ah
              DB '  NOFD         Seed as B-class card without TP capability.', 0Dh, 0Ah
              DB '  TPAUI        Seed TP product with live TP+AUI capabilities.', 0Dh, 0Ah
@@ -943,17 +943,8 @@ PROC Load_State_File NEAR
 
     mov     ax, [WORD state_blob + MCK_OFF_VERSION]
     cmp     ax, MCK_VERSION
-    je      @@VersionOk
-    cmp     ax, MCK_VERSION_V1
     jne     @@Reset
-@@VersionOk:
     mov     al, [BYTE state_blob + MCK_OFF_RECORD_COUNT]
-    cmp     [WORD state_blob + MCK_OFF_VERSION], MCK_VERSION_V1
-    jne     @@Clamp
-    or      al, al
-    jne     @@Clamp
-    mov     al, 1
-@@Clamp:
     cmp     al, MCK_MAX_RECORDS
     jbe     @@CountOk
     mov     al, MCK_MAX_RECORDS
@@ -1263,10 +1254,10 @@ PROC Seed_Model_TPC NEAR
     ret
 ENDP Seed_Model_TPC
 
-; 3C509-TP: original 3C509-TP, ASIC revision 1, TP + AUI connectors.  Product ID
+; 3C509-TP: 3C509-TP, ASIC revision 1, TP + AUI connectors.  Product ID
 ; is the same 9050h family value as 3C509B-TP; the ASIC revision (obtained
 ; through the normal Window 4 Network Diagnostic register path, not by any
-; mock-only shortcut) is what distinguishes the original generation.  EEPROM
+; mock-only shortcut) is what distinguishes the 3C509 generation.  EEPROM
 ; words 10h/13h/14h/17h receive deterministic non-B-semantics sentinel values
 ; (see the poison-value comments below) instead of 3C509B capability/Internal
 ; Configuration/secondary-checksum content.
@@ -1651,7 +1642,7 @@ PROC Build_Record_Current NEAR
     or      ax, bx
     cmp     [byte seed_asic_rev], 1
     jne     @@AddrCfgNoAuto
-    ; Original 3C509 (ASIC rev 1) regression fixture: set Address
+    ; 3C509 (ASIC rev 1) regression fixture: set Address
     ; Configuration bit 7 while keeping the explicit TP transceiver
     ; selector above, so LIST/CONFIGURE/SAVECONFIG can prove bit 7 is
     ; ignored as a B-only Auto Select field on revision 1.
@@ -1692,7 +1683,7 @@ PROC Build_Record_Current NEAR
     jmp     @@ChecksumWord0F
 
 @@Seed509NMD:
-    ; ASIC revision 1 (original 3C509): words 10h/13h/14h are ordinary
+    ; ASIC revision 1 (3C509): words 10h/13h/14h are ordinary
     ; Network Management Data, not 3C509B capability/Internal Configuration/
     ; revision metadata.  Deterministic nonzero poison values are seeded so a
     ; regression that mistakenly applies 3C509B semantics to these words is
@@ -1721,7 +1712,7 @@ PROC Build_Record_Current NEAR
 
     cmp     [byte seed_asic_rev], 1
     jne     @@ChecksumDone
-    ; Original 3C509: word 17h is ordinary Network Management Data.  Seed a
+    ; 3C509: word 17h is ordinary Network Management Data.  Seed a
     ; recognizable non-checksum sentinel instead of a B secondary checksum,
     ; and do not let Build_Checksum (called above) compute one; see
     ; Build_Checksum's own ASIC-revision gate.
