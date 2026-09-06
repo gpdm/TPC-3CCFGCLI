@@ -320,7 +320,10 @@ the equivalent mock interface are exposed through common interfaces, allowing
 the same main program logic to operate against either backend.
 
 A mock state seeder is supplied to create deterministic EEPROM and live
-register state for automated testing.
+register state for automated testing. Each mock adapter record stores its own
+ASIC revision byte, exposed to the CLI only through the normal Window 4
+Network Diagnostic register (bits 5:1), the same path real hardware uses. The
+mock state file format is v4.
 
 | File                         | Explanation                                                                                   |
 | ---------------------------- | --------------------------------------------------------------------------------------------- |
@@ -471,6 +474,7 @@ profiles, capability overrides, configuration values, and cleanup states.
 | `3C509B-C`     | Product 9450h, media TP.                                                                    |
 | `3C509B-TPO`   | Product 9550h, media TP.                                                                    |
 | `3C509B-TPC`   | Product 9850h, media coax.                                                                  |
+| `3C509-TP`     | Original 3C509-TP, ASIC revision 1, product 9050h, TP + AUI connectors, no B-specific PNP/Full Duplex/AUTO/Boot ROM CONFIGURE semantics. |
 | `NOPNP`        | INIT plus EEPROM Capability PNP bit clear, preserving the other capability bits.            |
 | `NOFD`         | INIT plus live TP connector capability clear, while retaining a valid B class revision.     |
 | `TPAUI`        | TP product ID plus live TP and AUI connector capabilities, for Product ID mismatch tests.   |

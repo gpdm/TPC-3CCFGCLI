@@ -732,7 +732,7 @@ MCK_MAGIC_1             EQU 'C'
 MCK_MAGIC_2             EQU '5'
 MCK_MAGIC_3             EQU 'M'
 MCK_VERSION_V1          EQU 0001h
-MCK_VERSION             EQU 0003h
+MCK_VERSION             EQU 0004h  ; v4: MCK3R_ASIC_REV (0Ah) is now mandatory
 ; Multi-record mock state is designed to preserve the CLI-visible contract for
 ; normal distinct-base adapter discovery/configuration.  Same-active-IOBASE
 ; records remain a deliberate conflict-simulation case; see 3CMOCKIF.ASM.
@@ -763,7 +763,8 @@ MCK3R_CURRENT_WINDOW     EQU 06h    ; DB
 MCK3R_COMMAND_BUSY       EQU 07h    ; DB
 MCK3R_EEPROM_BUSY        EQU 08h    ; DB
 MCK3R_EEPROM_FLAGS       EQU 09h    ; DB
-; 0Ah through 0Bh reserved, formerly per record ID sequence position.
+MCK3R_ASIC_REV           EQU 0Ah    ; DB, decoded ASIC revision (1=3C509, 2=3C509B). Mandatory as of v4.
+; 0Bh reserved, formerly per record ID sequence position.
 MCK3R_ID_SHIFT           EQU 0Ch    ; DW
 MCK3R_ID_BITS_LEFT       EQU 0Eh    ; DB
 MCK3R_EEPROM_PENDING     EQU 0Fh    ; DB

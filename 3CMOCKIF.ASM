@@ -68,6 +68,10 @@ mock_tag DB 0
 mock_active DB 0
 mock_w4_netdiag DW 0000h
 mock_w4_media_status DW 0000h
+; Decoded ASIC revision of the currently loaded adapter record (1=original
+; 3C509, 2=3C509B).  Mirrors MCK3R_ASIC_REV; drives the Window 4 Network
+; Diagnostic bits 5:1 the same way real hardware exposes its ASIC revision.
+mock_asic_rev DB 2
 mock_eeprom_busy DB 0
 mock_eeprom_flags DB 0
 mock_eeprom_pending DB 0
@@ -129,6 +133,7 @@ PROC Mock_Clear_Scratch NEAR
     mov     [byte mock_active], 0
     mov     [word mock_w4_netdiag], 0
     mov     [word mock_w4_media_status], 0
+    mov     [byte mock_asic_rev], 2
     mov     [byte mock_eeprom_busy], 0
     mov     [byte mock_eeprom_flags], 0
     mov     [byte mock_eeprom_pending], 0
@@ -275,6 +280,8 @@ PROC Mock_Commit_Loaded_Record NEAR
     mov     [BYTE di + MCK3R_EEPROM_FLAGS], al
     mov     al, [byte mock_eeprom_pending]
     mov     [BYTE di + MCK3R_EEPROM_PENDING], al
+    mov     al, [byte mock_asic_rev]
+    mov     [BYTE di + MCK3R_ASIC_REV], al
     mov     ax, [word mock_w4_netdiag]
     mov     [WORD di + MCK3R_W4_NET_DIAG_WRITE], ax
     mov     ax, [word mock_state + 30h]
@@ -371,6 +378,8 @@ PROC Mock_Load_Record_By_Index NEAR
     mov     [byte mock_eeprom_flags], al
     mov     al, [BYTE di + MCK3R_EEPROM_PENDING]
     mov     [byte mock_eeprom_pending], al
+    mov     al, [BYTE di + MCK3R_ASIC_REV]
+    mov     [byte mock_asic_rev], al
     mov     ax, [WORD di + MCK3R_W4_NET_DIAG_WRITE]
     mov     [word mock_w4_netdiag], ax
     mov     ax, [WORD di + MCK3R_W4_MEDIA_WRITE]
@@ -883,7 +892,11 @@ PROC Mock_Reg_Read_Word NEAR
 @@NetDiag:
     mov     ax, [word mock_w4_netdiag]
     and     ax, 0F000h
-    or      ax, W4_NET_DIAG_ASIC_REV
+    mov     dl, [byte mock_asic_rev]
+    xor     dh, dh
+    shl     dx, 1
+    and     dx, 003Eh          ; constrain to ASIC revision field (bits 5:1)
+    or      ax, dx
     jmp     @@Done
 @@Window0:
     cmp     bx, EL3_W0_EEPROM_COMMAND
@@ -1237,12 +1250,23 @@ PROC Mock_Automatic_Configuration NEAR
     mov     bx, EEPROM_RESOURCE_CFG * 2
     mov     ax, [word mock_state + 40h + bx]
     mov     [word mock_state + EL3_W0_RESOURCE_CFG], ax
+    cmp     [byte mock_asic_rev], 2
+    jl      @@Rev1NoInternalConfig
     mov     bx, EEPROM_INTERNAL_CONFIG_LO * 2
     mov     ax, [word mock_state + 40h + bx]
     mov     [word mock_w3_config_lo], ax
     mov     bx, EEPROM_CONFIG_CONTROL * 2
     mov     ax, [word mock_state + 40h + bx]
     mov     [word mock_w3_config_hi], ax
+    jmp     @@InternalConfigDone
+@@Rev1NoInternalConfig:
+    ; ASIC revision < 2 (3C509, not 3C509B): words 12h/13h are ordinary
+    ; Network Management Data, not 3C509B Internal Configuration. Use a
+    ; neutral reset value instead of interpreting the seeded sentinel
+    ; words as B-generation state.
+    mov     [word mock_w3_config_lo], 0
+    mov     [word mock_w3_config_hi], 0
+@@InternalConfigDone:
     mov     [byte mock_current_window], 0
     mov     [word mock_w4_netdiag], 0
     and     [word mock_w4_media_status], NOT W4_MEDIA_STATUS_WRITABLE

@@ -390,19 +390,35 @@ Tests in `TEST.MK` are grouped by feature and use numbered test identifiers.
 
 New or changed behavior should normally include appropriate positive and negative coverage.
 
-Tests must explicitly establish prerequisite mock state rather than depend accidentally on state left by an unrelated test.
+Each test must explicitly establish its own required mock state at the start of that test, using the appropriate `3CSEED` operation, rather than depend on state left behind by a preceding test.
 
 Tests use explicit `3CSEED` state to remain deterministic.
 
-A test that changes persistent mock state must leave subsequent tests with a defined state.
+A test must not rely on a following test to seed the state it needs, and must not depend on state left behind by an unrelated preceding test.
 
-After temporary capability or configuration overrides, restore the required state using the appropriate `INIT` or `CLEAR` operation.
+A test does not need to reset or restore mock state at its own end merely for the sake of the next test. Do not add a trailing `3CSEED` call whose only purpose is to leave a defined state for a later test; instead, have that later test establish its own prerequisite state at its own start.
 
 The complete `3CSEED` command reference is documented in `README.md`.
 
 Do not weaken an existing assertion merely to make a changed implementation pass unless the expected behavior itself is intentionally being changed.
 
-## 7. Line Ending Requirements
+## 7. DOS Toolchain Constraints in `TEST.MK` and `MAKEFILE`
+
+Borland MAKE and the DOS command interpreter running under DOSBox-X impose real-mode DOS limits that do not exist on the host shell. Recipe lines that look correct by ordinary shell standards can still fail inside DOS.
+
+DOS command lines (the PSP command tail) are limited to 128 bytes. This limit applies per invoked command line, including the expanded text of the command itself and any redirection targets, not merely to arguments a human would count.
+
+A `MAKE` recipe line such as `@echo ... >> TEST.LOG` or a long `FIND "..." file > NUL` can silently exceed this limit. When it does, `MAKE` fails immediately with `Fatal: Command arguments too long` before running or logging anything for that target. No banner, partial log, or partial output is produced for the failing target; the run simply stops after the last target that completed successfully.
+
+If a `test.sh` run stops emitting further `[tNNNN]` banners partway through with no error visibly tied to a specific test, first investigate it as a normal regression, the same as any other failed or missing test output. A genuine code or test-logic regression is the far more common cause and should remain the default assumption.
+
+Only if that investigation finds no plausible regression in the next target's own logic, also consider a command-tail-length failure in that target's recipe lines as a possible cause. Check the length of `@echo` banners and `FIND` assertion lines in that case.
+
+Keep `TEST.MK` recipe lines well under the ~128 byte limit. Prefer shorter `@echo` banner text over descriptive completeness.
+
+DOS `FIND` treats a `/` character in its search string as a switch introducer, not as literal text. A `FIND "/SOMETHING" file` style assertion is parsed incorrectly. Do not include a `FIND` search string with `/`; rephrase the assertion text or search on a substring that does not include a `/`.
+
+## 8. Line Ending Requirements
 
 Files consumed directly by DOS tooling require CRLF line endings in the working tree:
 
