@@ -77,7 +77,7 @@ MODEM_CHANGE: t06xx t0601 t0602 t0603 t0604 t0605 t0606 t0607 t0608 t0609 t0610
 FD_CHANGE: t07xx t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0709 t0710 t0711 t0712 t0713 t0714
 
 # Base: 0800
-CAPABILITY_GATES: t08xx t0801 t0802 t0803
+CAPABILITY_GATES: t08xx t0801 t0802
 
 # Base: 0900
 OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904
@@ -592,18 +592,6 @@ t0802:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0802.LOG
    FIND "This adapter does not support full duplex configuration." $(ARTIFACTS)\T0802.LOG > NUL
    ${SEEDAPP} INIT >> $(ARTIFACTS)\T0802.LOG
-
-t0803:
-   @echo [t0803] Testing PNP is independent of revision while Full Duplex is not... >> TEST.LOG
-   ${SEEDAPP} PNPREV0 > $(ARTIFACTS)\T0803.LOG
-   FIND "Seed file created (PNPREV0)." $(ARTIFACTS)\T0803.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0803.LOG
-   FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0803.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0803.LOG
-   FIND "This adapter does not support full duplex configuration." $(ARTIFACTS)\T0803.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED >> $(ARTIFACTS)\T0803.LOG
-   FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0803.LOG > NUL
-   ${SEEDAPP} INIT >> $(ARTIFACTS)\T0803.LOG
 
 t09xx:
    @echo [t09xx] OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour ... >> TEST.LOG

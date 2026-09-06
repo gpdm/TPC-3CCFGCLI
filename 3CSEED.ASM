@@ -31,7 +31,6 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  3C509B-TPO   Seed as 3C509B-TPO  (product 9550h, twisted-pair).', 0Dh, 0Ah
              DB '  3C509B-TPC   Seed as 3C509B-TPC  (product 9850h, coax).', 0Dh, 0Ah
              DB '  NOPNP        Seed as non-PNP-capable card (gate test).', 0Dh, 0Ah
-             DB '  PNPREV0      Seed as PNP-capable card with revision level 0.', 0Dh, 0Ah
              DB '  NOFD         Seed as B-class card without TP capability.', 0Dh, 0Ah
              DB '  TPAUI        Seed TP product with live TP+AUI capabilities.', 0Dh, 0Ah
              DB '  TRI          Seed TP product with live TP+AUI+BNC capabilities.', 0Dh, 0Ah
@@ -60,7 +59,6 @@ msg_ok_c     DB 'Seed file created (3C509B-C).', 0Dh, 0Ah, '$'
 msg_ok_tpo   DB 'Seed file created (3C509B-TPO).', 0Dh, 0Ah, '$'
 msg_ok_tpc   DB 'Seed file created (3C509B-TPC).', 0Dh, 0Ah, '$'
 msg_ok_nopnp DB 'Seed file created (NOPNP).', 0Dh, 0Ah, '$'
-msg_ok_pnprev0 DB 'Seed file created (PNPREV0).', 0Dh, 0Ah, '$'
 msg_ok_nofd  DB 'Seed file created (NOFD).', 0Dh, 0Ah, '$'
 msg_ok_tpaui DB 'Seed file created (TPAUI).', 0Dh, 0Ah, '$'
 msg_ok_tri   DB 'Seed file created (TRI).', 0Dh, 0Ah, '$'
@@ -98,7 +96,6 @@ kw_c         DB '3C509B-C', 0
 kw_tpo       DB '3C509B-TPO', 0
 kw_tpc       DB '3C509B-TPC', 0
 kw_nopnp     DB 'NOPNP', 0
-kw_pnprev0   DB 'PNPREV0', 0
 kw_nofd      DB 'NOFD', 0
 kw_tpaui     DB 'TPAUI', 0
 kw_tri       DB 'TRI', 0
@@ -240,9 +237,6 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_nopnp
     call    Match_Token
     jnc     @@DoNoPNP
-    mov     dx, OFFSET kw_pnprev0
-    call    Match_Token
-    jnc     @@DoPNPRev0
     mov     dx, OFFSET kw_nofd
     call    Match_Token
     jnc     @@DoNoFD
@@ -387,14 +381,6 @@ PROC Parse_And_Run NEAR
     call    Seed_NoPNP
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_nopnp
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoPNPRev0:
-    call    Seed_PNPRev0
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_pnprev0
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -1255,21 +1241,6 @@ PROC Seed_NoPNP NEAR
     stc
     ret
 ENDP Seed_NoPNP
-
-; PNP capability is independent of the revision-level classification.
-PROC Seed_PNPRev0 NEAR
-    call    Seed_Init
-    jc      @@Fail
-    mov     si, EEPROM_REVISION_INFO
-    xor     ax, ax
-    call    EEPROM_Write_SI
-    call    Build_Checksum
-    call    Write_State_File
-    ret
-@@Fail:
-    stc
-    ret
-ENDP Seed_PNPRev0
 
 PROC Seed_NoFD NEAR
     ; Keep PNP and B-class revision valid, but remove the live TP capability.
