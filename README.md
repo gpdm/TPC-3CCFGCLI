@@ -118,7 +118,7 @@ Support for a Product ID does not imply that every configuration feature is avai
 | `/FULLDUPLEX:value`       |             No |    Yes | Full Duplex is a 3C509B-generation feature      |
 | `/PNP:value`              |             No |    Yes | ISA Plug and Play configuration is supported only on the 3C509B generation |
 | `/BADDRESS:value`         |             No |    Yes | Boot ROM currently only available for 3C509B adapters |
-| `/BSIZE:value`            |             No |    Yes | Boom ROM currently only available for 3C509B adapters |
+| `/BSIZE:value`            |             No |    Yes | Boot ROM currently only available for 3C509B adapters |
 | `SAVECONFIG`              |            Yes |    Yes | Exports supported configuration settings                                   |
 
 ### Boot ROM configuration
@@ -297,7 +297,7 @@ Number                       Description
        EtherLink III 16-bit ISA NIC
        ASIC Revision = 4
        Software Compatibility = failure level 0, warning level 0
-       Connectors = TP
+       Connectors = TP, AUI
        Full Duplex Capability = yes
        Plug and Play Capability = yes
        Link Status = connected
@@ -467,18 +467,14 @@ profiles, capability overrides, configuration values, and cleanup states.
 
 | Verb           | Description                                                                                 |
 | -------------- | ------------------------------------------------------------------------------------------- |
-| `INIT`         | Deterministic 3C509B TP profile, IRQ 10, base 0x0300. Default for most tests.               |
+| `INIT`         | Deterministic 3C509B-TP profile, Product 9050h, TP + AUI, IRQ 10, base 0x0300. Default for most tests. |
 | `CLEAR`        | Deletes `3C509B.MCK`.                                                                       |
-| `3C509B-TP`    | Product 9050h, media TP.                                                                    |
-| `3C509B-COMBO` | Product 9150h, media AUI.                                                                   |
-| `3C509B-C`     | Product 9450h, media TP.                                                                    |
-| `3C509B-TPO`   | Product 9550h, media TP.                                                                    |
+| `3C509B-TP`    | Product 9050h, TP + AUI.                                                                    |
+| `3C509B-COAX`  | Product 9150h, AUI + BNC.                                                                   |
+| `3C509B-COMBO` | Product 9450h, TP + AUI + BNC.                                                              |
+| `3C509B-TPO`   | Product 9550h, TP only.                                                                     |
 | `3C509B-TPC`   | Product 9850h, media coax.                                                                  |
 | `3C509-TP`     | 3C509-TP, ASIC revision 1, product 9050h, TP + AUI connectors, no B-specific PNP/Full Duplex/AUTO/Boot ROM CONFIGURE semantics. |
-| `NOPNP`        | INIT plus EEPROM Capability PNP bit clear, preserving the other capability bits.            |
-| `NOFD`         | INIT plus live TP connector capability clear, while retaining a valid B class revision.     |
-| `TPAUI`        | TP product ID plus live TP and AUI connector capabilities, for Product ID mismatch tests.   |
-| `TRI`          | TP product ID plus live TP, AUI, and BNC connector capabilities.                            |
 | `MODEMFIELDS`  | INIT plus non MODEM Software Information fields set for preservation tests.                 |
 | `M1200US`      | INIT plus MODEM raw value `2Fh`, 1200 microseconds, for serialization tests.                |
 | `NOLINKBEAT`   | INIT plus `EEPROM_SOFTWARE_INFO` bit 14 set for MODEM preservation tests.                   |
