@@ -212,6 +212,7 @@ CFG_ERR_FD_CAPABILITY_READ  EQU 73
 CFG_ERR_FD_TRANSCEIVER      EQU 74
 CFG_ERR_FD_LIVE_UPDATE      EQU 75
 CFG_ERR_FD_LIVE_VERIFY      EQU 76
+CFG_ERR_FD_UNSUPPORTED_CARD EQU 77
 
 DATASEG
 
@@ -383,6 +384,7 @@ msg_cfg_fd_live_verified DB "Live Network Diagnostic full duplex mode verified."
 msg_cfg_fd_verify_fail DB "Full duplex configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_fd_completed DB 0Dh, 0Ah, "Full duplex configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_fd_not_capable DB "This adapter does not support full duplex configuration.", 0Dh, 0Ah, '$'
+msg_cfg_fd_unsupported_card DB "Full duplex is not supported for this card type.", 0Dh, 0Ah, '$'
 msg_cfg_fd_capability_read_fail DB "Hardware capability data is unavailable for full duplex configuration.", 0Dh, 0Ah, '$'
 msg_cfg_fd_transceiver DB "Full duplex can only be enabled with the TP transceiver.", 0Dh, 0Ah, '$'
 msg_cfg_fd_live_update_fail DB "Live full duplex hardware update failed.", 0Dh, 0Ah, '$'
@@ -855,6 +857,7 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_fd_transceiver                ; 74 CFG_ERR_FD_TRANSCEIVER
     DW      OFFSET msg_cfg_fd_live_update_fail           ; 75 CFG_ERR_FD_LIVE_UPDATE
     DW      OFFSET msg_cfg_fd_live_verify_fail           ; 76 CFG_ERR_FD_LIVE_VERIFY
+    DW      OFFSET msg_cfg_fd_unsupported_card           ; 77 CFG_ERR_FD_UNSUPPORTED_CARD
 LABEL cfg_error_messages_end WORD
 
 CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2
@@ -7135,6 +7138,15 @@ PROC Cfg_Txn_Execute NEAR
 @@GateFULLDUPLEX:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@GateBootRom
+    ; Full duplex configuration requires the 3C509B generation.  An unknown
+    ; ASIC revision falls through to the capability checks below instead.
+    mov     si, [cfg_selected_ptr]
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@FDCheckCapability
+    cmp     al, 2
+    jb      @@FDUnsupportedCard
+@@FDCheckCapability:
     mov     ax, [cfg_txn_capabilities]
     mov     bx, [cfg_txn_capability_valid]
     test    bx, NIC_CAP_VALID_FULLDUPLEX
@@ -7142,6 +7154,9 @@ PROC Cfg_Txn_Execute NEAR
     test    ax, NIC_CAP_FULLDUPLEX
     jz      @@FDNotCapable
     jmp     @@GateBootRom
+@@FDUnsupportedCard:
+    mov     [cfg_last_error], CFG_ERR_FD_UNSUPPORTED_CARD
+    jmp     @@Done
 @@FDCapReadFail:
     mov     [cfg_last_error], CFG_ERR_FD_CAPABILITY_READ
     jmp     @@Done

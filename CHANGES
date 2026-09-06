@@ -5,6 +5,7 @@ Changelog 0.7.5
     omits the unused Software Compatibility line.
   - LIST now handles generation-specific capabilities correctly on original
     3C509 adapters.
+  - CONFIGURE now rejects Full Duplex settings on original 3C509 adapters.
 
 Changelog 0.7.4
   - Fixed SAVECONFIG Boot ROM address decoding: it previously converted the
