@@ -417,7 +417,7 @@
 ;
 ;     bits 3:0    Adapter Revision Level
 ;
-;                 0 = original 3C509-class hardware
+;                 0 = 3C509-class hardware
 ;                 1 = 3C509B-class hardware
 ;
 ; Adapter Revision Level identifies the hardware revision class.

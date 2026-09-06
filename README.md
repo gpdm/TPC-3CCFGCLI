@@ -86,12 +86,12 @@ Supported global CLI options, valid with any command verb:
 
 Adapter generation is determined from the hardware ASIC revision:
 
-* ASIC Revision 1: original 3C509 generation
+* ASIC Revision 1: 3C509 generation
 * ASIC Revision 2 or later: 3C509B generation
 
 The following Product IDs are recognized:
 
-| Product ID | Internal name         | Original 3C509 | 3C509B | Notes                     |
+| Product ID | Internal name         | 3C509 | 3C509B | Notes                     |
 | ---------- | --------------------- | -------------: | -----: | ------------------------- |
 | `9050h`    | `PRODUCT_3C509_TP`    |            Yes |    Yes | Twisted-pair variant      |
 | `9150h`    | `PRODUCT_3C509`       |            Yes |    Yes | 3C509 family variant      |
@@ -103,7 +103,7 @@ Support for a Product ID does not imply that every configuration feature is avai
 
 ## Command Support
 
-| Command / Option          | Original 3C509 | 3C509B | Notes                                                                      |
+| Command / Option          | 3C509 | 3C509B | Notes                                                                      |
 | ------------------------- | -------------: | -----: | -------------------------------------------------------------------------- |
 | `LIST`                    |            Yes |    Yes | Displays detected adapter and configuration information                    |
 | `CONFIGURE /ADAPTERNUM:n` |            Yes |    Yes | Selects the adapter to configure                                           |
@@ -132,10 +132,10 @@ But since I don't own a plain 3c509, I have disabled Boot ROM support until I ca
 
 3CCFGCLI is primarily designed for the 3Com EtherLink III 3C509B ISA (ASIC Revision 2) adapters.
 
-Because the original 3C509 and the 3C509B are closely related, the utility also supports the original 3C509 family where their hardware and configuration interfaces are compatible.
+Because the 3C509 and the 3C509B are closely related, the utility also supports the 3C509 family where their hardware and configuration interfaces are compatible.
 
 *This does not change the hardware limitations of the adapters themselves:*
-**The original 3C509 cannot operate in an 8-bit ISA slot. 8-bit ISA operation requires a 3C509B-generation adapter.**
+**The 3C509 cannot operate in an 8-bit ISA slot. 8-bit ISA operation requires a 3C509B-generation adapter.**
 
 ## Where 3CCFGCLI differs
 

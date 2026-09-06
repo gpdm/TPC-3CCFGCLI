@@ -2130,7 +2130,7 @@ PROC Save_Build_Command NEAR
     je      @@HaveSizeK
     mov     di, 32
 @@HaveSizeK:
-    ; ASIC revision 1 is the original 3C509; revision 2 or later is the
+    ; ASIC revision 1 is the 3C509; revision 2 or later is the
     ; 3C509B generation.  FFh means unknown and is not treated as 3C509B.
     xor     ch, ch
     mov     al, [save_asic_rev]
@@ -4299,7 +4299,7 @@ PROC Nic_Read_Capabilities NEAR
 @@ReadPnp:
     ; Window 0 connector presence above is generation independent, but EEPROM
     ; 10h and 14h only carry capability meanings on the 3C509B; on the
-    ; On an original 3C509 these words are Network Management Data. For an
+    ; 3C509 these words are Network Management Data. For an
     ; unknown ASIC revision, do not assume the 3C509B capability layout.
     pop     ax                      ; AH = cached ASIC revision
     cmp     ah, 0FFh
@@ -5400,8 +5400,8 @@ ENDP Cfg_Prepare_OPTIMIZE
 ; and prospective live Address Configuration images. Enabled C0000h uses
 ; selector 1 because selector zero disables the Boot ROM.
 ; Reachable only for known 3C509B-generation adapters; the centralized Boot
-; ROM capability gate rejects original 3C509 and unknown-generation adapters
-; before staging, so no original-3C509 alignment rules remain here.
+; ROM capability gate rejects 3C509 and unknown-generation adapters
+; before staging, so no 3C509-specific alignment rules remain here.
 PROC Cfg_Prepare_Boot_ROM NEAR
     push    ax
     push    bx
@@ -8035,7 +8035,7 @@ PROC Print_Transceiver_Value NEAR
     je      @@Unavailable
 
     ; Address Configuration bit 7 means Auto Select only on the 3C509B; on the
-    ; original 3C509 and on an unknown revision decode the configured media.
+    ; 3C509 and on an unknown revision decode the configured media.
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 0FFh
     je      @@ConfiguredMedia
@@ -8134,7 +8134,7 @@ PROC Print_Pnp_State_Value NEAR
     push    ax
     push    dx
 
-    ; The original 3C509 has no Plug and Play state to decode.
+    ; The 3C509 has no Plug and Play state to decode.
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 0FFh
     je      @@Unavailable
@@ -8535,7 +8535,7 @@ PROC Print_Boot_Rom_Value NEAR
     cmp     ax, 0FFFFh
     je      @@Unavailable
 
-    ; ASIC revision 1 is the original 3C509; revision 2 or later is the
+    ; ASIC revision 1 is the 3C509; revision 2 or later is the
     ; 3C509B generation.  FFh means unknown and is not treated as 3C509B.
     xor     ch, ch
     mov     al, [BYTE si + NIC_ASIC_REV]
