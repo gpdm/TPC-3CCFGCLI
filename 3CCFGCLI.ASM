@@ -470,14 +470,14 @@ msg_iobase      DB  "IOBASE = ", '$'
 msg_irq         DB  ", IRQ = ", '$'
 msg_no_io       DB  "unassigned", '$'
 
-msg_asic_label  DB  "ASIC Revision = ", '$'
+msg_asic_prefix DB  " (ASIC Revision ", '$'
+msg_asic_suffix DB  ")", '$'
 msg_xcvr_label  DB  "Transceiver = ", '$'
 msg_pnp_label   DB  "Plug and Play Capability = ", '$'
 msg_pnp_state_label DB "Plug and Play = ", '$'
 msg_connectors_label DB "Connectors = ", '$'
 msg_fd_capability_label DB "Full Duplex Capability = ", '$'
 msg_boot_label  DB  "Boot ROM = ", '$'
-msg_compat_label DB "Software Compatibility = failure level ", '$'
 msg_optimize_label DB "Optimization = ", '$'
 msg_modem_label DB "MODEM Interrupt Disable Time = ", '$'
 msg_modem_us DB " us", '$'
@@ -494,7 +494,6 @@ msg_optimize_reserved DB "Reserved", '$'
 msg_optimize_dos DB "DOS", '$'
 msg_optimize_windows_or_os2 DB "Windows or OS/2", '$'
 msg_optimize_server DB "Server", '$'
-msg_warn_label  DB  ", warning level ", '$'
 
 msg_enabled     DB  "enabled", '$'
 msg_disabled    DB  "disabled", '$'
@@ -536,7 +535,6 @@ id_resource_cfg DW  0
 ; These are deliberately separate from nic_table so the known good 16 byte
 ; enumeration record layout remains unchanged.
 ext_addr_cfg      DW 0FFFFh
-ext_compatibility DW 0FFFFh
 ext_config_ctrl   DW 0FFFFh
 ext_nic_capabilities DW 0FFFFh
 ext_nic_capability_valid DW 0
@@ -3778,6 +3776,23 @@ PROC Cmd_List NEAR
     int     21h
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     call    Select_Nic_Description
+    mov     ah, 09h
+    int     21h
+    mov     dx, OFFSET msg_asic_prefix
+    mov     ah, 09h
+    int     21h
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@AsicUnavailable
+    xor     ah, ah
+    call    Print_DecByte
+    jmp     @@AsicDone
+@@AsicUnavailable:
+    mov     dx, OFFSET msg_unavailable
+    mov     ah, 09h
+    int     21h
+@@AsicDone:
+    mov     dx, OFFSET msg_asic_suffix
     mov     ah, 09h
     int     21h
     mov     dx, OFFSET msg_crlf
@@ -7840,7 +7855,6 @@ PROC Read_Extended_Nic_Info NEAR
     push    dx
 
     mov     [ext_addr_cfg], 0FFFFh
-    mov     [ext_compatibility], 0FFFFh
     mov     [ext_config_ctrl], 0FFFFh
     mov     [ext_link_status], 0FFFFh
     mov     [ext_software_info], 0FFFFh
@@ -7862,13 +7876,6 @@ PROC Read_Extended_Nic_Info NEAR
     jc      @@SkipAddrCfg
     mov     [ext_addr_cfg], ax
 @@SkipAddrCfg:
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_COMPATIBILITY
-    call    Nic_EEPROM_Read
-    jc      @@SkipCompatibility
-    mov     [ext_compatibility], ax
-@@SkipCompatibility:
 
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_SOFTWARE_INFO
@@ -8481,55 +8488,6 @@ ENDP Print_HexAddress20
 PROC Print_Extended_Nic_Info NEAR
     push    ax
     push    dx
-
-    mov     dx, OFFSET msg_indent
-    mov     ah, 09h
-    int     21h
-    mov     dx, OFFSET msg_asic_label
-    mov     ah, 09h
-    int     21h
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
-    je      @@AsicUnavailable
-    xor     ah, ah
-    call    Print_DecByte
-    jmp     @@AsicDone
-@@AsicUnavailable:
-    mov     dx, OFFSET msg_unavailable
-    mov     ah, 09h
-    int     21h
-@@AsicDone:
-    mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
-
-    mov     dx, OFFSET msg_indent
-    mov     ah, 09h
-    int     21h
-    mov     dx, OFFSET msg_compat_label
-    mov     ah, 09h
-    int     21h
-    mov     ax, [ext_compatibility]
-    cmp     ax, 0FFFFh
-    je      @@CompatUnavailable
-    mov     al, ah
-    xor     ah, ah
-    call    Print_DecByte
-    mov     dx, OFFSET msg_warn_label
-    mov     ah, 09h
-    int     21h
-    mov     ax, [ext_compatibility]
-    and     ax, 00FFh
-    call    Print_DecByte
-    jmp     @@CompatDone
-@@CompatUnavailable:
-    mov     dx, OFFSET msg_unavailable
-    mov     ah, 09h
-    int     21h
-@@CompatDone:
-    mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
 
    mov     dx, OFFSET msg_indent
    call    Print_String
