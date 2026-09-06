@@ -4202,15 +4202,18 @@ ENDP Discover_Id_Port_Cards
 ; ============================================================================
 
 ; Read hardware capability sources independently.
-; Input DX = active I/O base.  Output AX = NIC_CAP_* values, BX =
-; NIC_CAP_VALID_* source-validity flags, CF always clear.  The current window
-; is restored.  A clear validity bit means that capability group is unavailable.
+; Input DX = active I/O base, SI = the corresponding NIC record.  Output AX =
+; NIC_CAP_* values, BX = NIC_CAP_VALID_* source-validity flags, CF always
+; clear.  The current window is restored.  A clear validity bit means that
+; capability group is unavailable.
 PROC Nic_Read_Capabilities NEAR
     push    cx
     push    dx
     push    si
     push    di
 
+    mov     ah, [BYTE si + NIC_ASIC_REV]
+    push    ax                      ; cached generation, consumed at @@ReadPnp
     mov     si, dx
     call    Nic_Get_Current_Window
     mov     di, ax
@@ -4239,6 +4242,16 @@ PROC Nic_Read_Capabilities NEAR
     or      cx, NIC_CAP_BNC
 
 @@ReadPnp:
+    ; Window 0 connector presence above is generation independent, but EEPROM
+    ; 10h and 14h only carry capability meanings on the 3C509B; on the
+    ; On an original 3C509 these words are Network Management Data. For an
+    ; unknown ASIC revision, do not assume the 3C509B capability layout.
+    pop     ax                      ; AH = cached ASIC revision
+    cmp     ah, 0FFh
+    je      @@Restore
+    cmp     ah, 2
+    jb      @@Restore
+
     mov     dx, si
     mov     al, EEPROM_CAPABILITY
     call    Nic_EEPROM_Read
@@ -7905,6 +7918,12 @@ PROC Read_Extended_Nic_Info NEAR
     pop     ax
     call    Nic_Select_Window
 
+    ; EEPROM word 13h only carries Plug and Play state on the 3C509B.
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@Done
+    cmp     al, 2
+    jb      @@Done
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_CONFIG_CONTROL
     call    Nic_EEPROM_Read
@@ -7928,6 +7947,14 @@ PROC Print_Transceiver_Value NEAR
     mov     ax, [ext_addr_cfg]
     cmp     ax, 0FFFFh
     je      @@Unavailable
+
+    ; Address Configuration bit 7 means Auto Select only on the 3C509B; on the
+    ; original 3C509 and on an unknown revision decode the configured media.
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@ConfiguredMedia
+    cmp     al, 2
+    jb      @@ConfiguredMedia
 
     mov     ax, [ext_addr_cfg]
     test    ax, 0080h
@@ -7984,6 +8011,14 @@ PROC Print_Pnp_Capability_Value NEAR
     push    ax
     push    dx
 
+    ; Plug and Play is a 3C509B feature; an unknown revision is not assumed
+    ; to be a 3C509B.
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@Unavailable
+    cmp     al, 2
+    jb      @@NotSupported
+
     mov     ax, [ext_nic_capabilities]
     cmp     ax, 0FFFFh
     je      @@Unavailable
@@ -7995,6 +8030,9 @@ PROC Print_Pnp_Capability_Value NEAR
     jmp     @@Print
 @@No:
     mov     dx, OFFSET msg_no
+    jmp     @@Print
+@@NotSupported:
+    mov     dx, OFFSET msg_not_supported
     jmp     @@Print
 @@Unavailable:
     mov     dx, OFFSET msg_unavailable
@@ -8010,6 +8048,13 @@ PROC Print_Pnp_State_Value NEAR
     push    ax
     push    dx
 
+    ; The original 3C509 has no Plug and Play state to decode.
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@Unavailable
+    cmp     al, 2
+    jb      @@NotSupported
+
     mov     ax, [ext_config_ctrl]
     cmp     ax, 0FFFFh
     je      @@Unavailable
@@ -8020,6 +8065,9 @@ PROC Print_Pnp_State_Value NEAR
     jmp     @@Print
 @@Disabled:
     mov     dx, OFFSET msg_disabled
+    jmp     @@Print
+@@NotSupported:
+    mov     dx, OFFSET msg_not_supported
     jmp     @@Print
 @@Unavailable:
     mov     dx, OFFSET msg_unavailable
@@ -8084,6 +8132,14 @@ PROC Print_Full_Duplex_Capability NEAR
     push    ax
     push    dx
 
+    ; Full Duplex is a 3C509B feature; an unknown revision is not assumed
+    ; to be a 3C509B.
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@Unavailable
+    cmp     al, 2
+    jb      @@NotSupported
+
     test    [ext_nic_capability_valid], NIC_CAP_VALID_FULLDUPLEX
     jz      @@Unavailable
     mov     ax, [ext_nic_capabilities]
@@ -8093,6 +8149,9 @@ PROC Print_Full_Duplex_Capability NEAR
     jmp     @@Print
 @@No:
     mov     dx, OFFSET msg_no
+    jmp     @@Print
+@@NotSupported:
+    mov     dx, OFFSET msg_not_supported
     jmp     @@Print
 @@Unavailable:
     mov     dx, OFFSET msg_unavailable
@@ -8293,6 +8352,13 @@ ENDP Print_Modem_Value
 PROC Print_Full_Duplex_Value NEAR
     push    ax
     push    dx
+
+    ; The persistent Full Duplex policy bit only exists on the 3C509B.
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@Unavailable
+    cmp     al, 2
+    jb      @@NotSupported
 
     test    [ext_nic_capability_valid], NIC_CAP_VALID_FULLDUPLEX
     je      @@Unavailable
