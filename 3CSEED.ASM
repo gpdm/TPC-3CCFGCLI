@@ -25,16 +25,12 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  INIT         Create deterministic one-card seed (3C509B-TP profile).', 0Dh, 0Ah
              DB '  ADD model [io] [irq]  Append one card; defaults pick next free I/O.', 0Dh, 0Ah
              DB '  CLEAR        Delete 3C509B.MCK.', 0Dh, 0Ah
-             DB '  3C509B-TP    Seed as 3C509B-TP  (product 9050h, twisted-pair).', 0Dh, 0Ah
-             DB '  3C509B-COMBO Seed as 3C509B      (product 9150h, combo/AUI).', 0Dh, 0Ah
-             DB '  3C509B-C     Seed as 3C509B-C    (product 9450h, twisted-pair).', 0Dh, 0Ah
-             DB '  3C509B-TPO   Seed as 3C509B-TPO  (product 9550h, twisted-pair).', 0Dh, 0Ah
+             DB '  3C509B-TP    Seed as 3C509B-TP  (product 9050h, TP + AUI).', 0Dh, 0Ah
+             DB '  3C509B-COAX  Seed as 3C509B-COAX (product 9150h, AUI + BNC).', 0Dh, 0Ah
+             DB '  3C509B-COMBO Seed as 3C509B-COMBO (product 9450h, TP + AUI + BNC).', 0Dh, 0Ah
+             DB '  3C509B-TPO   Seed as 3C509B-TPO  (product 9550h, TP only).', 0Dh, 0Ah
              DB '  3C509B-TPC   Seed as 3C509B-TPC  (product 9850h, coax).', 0Dh, 0Ah
              DB '  3C509-TP     Seed as 3C509-TP (ASIC revision 1, TP + AUI).', 0Dh, 0Ah
-             DB '  NOPNP        Seed as non-PNP-capable card (gate test).', 0Dh, 0Ah
-             DB '  NOFD         Seed as B-class card without TP capability.', 0Dh, 0Ah
-             DB '  TPAUI        Seed TP product with live TP+AUI capabilities.', 0Dh, 0Ah
-             DB '  TRI          Seed TP product with live TP+AUI+BNC capabilities.', 0Dh, 0Ah
              DB '  FDSTALEON    Seed enabled FD policy with live FD_ENABLE clear.', 0Dh, 0Ah
              DB '  FDSTALEOFF   Seed disabled FD policy with live FD_ENABLE set.', 0Dh, 0Ah
              DB '  MODEMFIELDS  Seed non-MODEM word 0Dh fields for preservation tests.', 0Dh, 0Ah
@@ -56,14 +52,10 @@ msg_ok_init  DB 'Seed file created (INIT).', 0Dh, 0Ah, '$'
 msg_ok_clear DB 'Seed file deleted (or already absent).', 0Dh, 0Ah, '$'
 msg_ok_tp    DB 'Seed file created (3C509B-TP).', 0Dh, 0Ah, '$'
 msg_ok_combo DB 'Seed file created (3C509B-COMBO).', 0Dh, 0Ah, '$'
-msg_ok_c     DB 'Seed file created (3C509B-C).', 0Dh, 0Ah, '$'
+msg_ok_coax  DB 'Seed file created (3C509B-COAX).', 0Dh, 0Ah, '$'
 msg_ok_tpo   DB 'Seed file created (3C509B-TPO).', 0Dh, 0Ah, '$'
 msg_ok_tpc   DB 'Seed file created (3C509B-TPC).', 0Dh, 0Ah, '$'
 msg_ok_509tp DB 'Seed file created (3C509-TP).', 0Dh, 0Ah, '$'
-msg_ok_nopnp DB 'Seed file created (NOPNP).', 0Dh, 0Ah, '$'
-msg_ok_nofd  DB 'Seed file created (NOFD).', 0Dh, 0Ah, '$'
-msg_ok_tpaui DB 'Seed file created (TPAUI).', 0Dh, 0Ah, '$'
-msg_ok_tri   DB 'Seed file created (TRI).', 0Dh, 0Ah, '$'
 msg_ok_fdstaleon DB 'Seed file created (FDSTALEON).', 0Dh, 0Ah, '$'
 msg_ok_fdstaleoff DB 'Seed file created (FDSTALEOFF).', 0Dh, 0Ah, '$'
 msg_ok_modemfields DB 'Seed file created (MODEMFIELDS).', 0Dh, 0Ah, '$'
@@ -94,14 +86,10 @@ kw_add       DB 'ADD', 0
 kw_clear     DB 'CLEAR', 0
 kw_tp        DB '3C509B-TP', 0
 kw_combo     DB '3C509B-COMBO', 0
-kw_c         DB '3C509B-C', 0
+kw_coax      DB '3C509B-COAX', 0
 kw_tpo       DB '3C509B-TPO', 0
 kw_tpc       DB '3C509B-TPC', 0
 kw_509tp     DB '3C509-TP', 0
-kw_nopnp     DB 'NOPNP', 0
-kw_nofd      DB 'NOFD', 0
-kw_tpaui     DB 'TPAUI', 0
-kw_tri       DB 'TRI', 0
 kw_fdstaleon DB 'FDSTALEON', 0
 kw_fdstaleoff DB 'FDSTALEOFF', 0
 kw_modemfields DB 'MODEMFIELDS', 0
@@ -128,7 +116,7 @@ seed_product DW PRODUCT_3C509_TP
 seed_base    DW 0300h
 seed_irq     DB 10
 seed_media   DB 0
-seed_config_control DW W0_CONFIG_CONTROL_3C509B_DEFAULT
+seed_config_control DW W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
 seed_asic_rev DB 2
 
 factory_mac  DB 6 DUP (0)
@@ -229,9 +217,9 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_combo
     call    Match_Token
     jnc     @@DoCombo
-    mov     dx, OFFSET kw_c
+    mov     dx, OFFSET kw_coax
     call    Match_Token
-    jnc     @@DoC
+    jnc     @@DoCoax
     mov     dx, OFFSET kw_tpo
     call    Match_Token
     jnc     @@DoTPO
@@ -241,18 +229,6 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_509tp
     call    Match_Token
     jnc     @@Do509TP
-    mov     dx, OFFSET kw_nopnp
-    call    Match_Token
-    jnc     @@DoNoPNP
-    mov     dx, OFFSET kw_nofd
-    call    Match_Token
-    jnc     @@DoNoFD
-    mov     dx, OFFSET kw_tpaui
-    call    Match_Token
-    jnc     @@DoTpAui
-    mov     dx, OFFSET kw_tri
-    call    Match_Token
-    jnc     @@DoTri
     mov     dx, OFFSET kw_fdstaleon
     call    Match_Token
     jnc     @@DoFDStaleOn
@@ -360,10 +336,10 @@ PROC Parse_And_Run NEAR
     int     21h
     jmp     @@Done
 
-@@DoC:
-    call    Seed_Model_C
+@@DoCoax:
+    call    Seed_Model_Coax
     jc      @@IoFail
-    mov     dx, OFFSET msg_ok_c
+    mov     dx, OFFSET msg_ok_coax
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -388,38 +364,6 @@ PROC Parse_And_Run NEAR
     call    Seed_Model_509TP
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_509tp
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoNoPNP:
-    call    Seed_NoPNP
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_nopnp
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoNoFD:
-    call    Seed_NoFD
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_nofd
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoTpAui:
-    call    Seed_TpAui
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_tpaui
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoTri:
-    call    Seed_Tri
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_tri
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -654,9 +598,9 @@ PROC Parse_Model_Token NEAR
     mov     dx, OFFSET kw_combo
     call    Match_Token
     jnc     @@Combo
-    mov     dx, OFFSET kw_c
+    mov     dx, OFFSET kw_coax
     call    Match_Token
-    jnc     @@C
+    jnc     @@Coax
     mov     dx, OFFSET kw_tpo
     call    Match_Token
     jnc     @@TPO
@@ -673,25 +617,28 @@ PROC Parse_Model_Token NEAR
 @@TP:
     mov     [seed_product], PRODUCT_3C509_TP
     mov     [seed_media], 0
-    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
-    mov     [byte seed_asic_rev], 2
-    call    Consume_Token
-    pop     dx
-    clc
-    ret
-@@Combo:
-    mov     [seed_product], PRODUCT_3C509
-    mov     [seed_media], 1
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
     mov     [byte seed_asic_rev], 2
     call    Consume_Token
     pop     dx
     clc
     ret
-@@C:
+@@Coax:
+    mov     [seed_product], PRODUCT_3C509
+    mov     [seed_media], 3
+    mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT
+    and     ax, NOT W0_CONFIG_CONTROL_TP_PRESENT
+    or      ax, W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
+    mov     [seed_config_control], ax
+    mov     [byte seed_asic_rev], 2
+    call    Consume_Token
+    pop     dx
+    clc
+    ret
+@@Combo:
     mov     [seed_product], PRODUCT_3C509_COMBO
     mov     [seed_media], 0
-    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
     mov     [byte seed_asic_rev], 2
     call    Consume_Token
     pop     dx
@@ -1054,9 +1001,8 @@ ENDP Set_Default_Macs_For_Index
 
 ; Deterministic baseline seed.  seed_product/seed_media are intentionally NOT
 ; set here: the DATASEG defaults (PRODUCT_3C509_TP / media 0) apply for a bare
-; INIT call, while Seed_Model_TP/Combo/C/TPO/TPC set seed_product/seed_media
-; to their SKU-specific values BEFORE calling this proc and rely on them being
-; preserved.  NOPNP/NOFD also call this directly and expect the TP defaults.
+; INIT call, while model helpers set seed_product/seed_media to their SKU-specific
+; values BEFORE calling this proc and rely on them being preserved.
 PROC Seed_Init NEAR
     mov     [BYTE factory_mac+0], 02h
     mov     [BYTE factory_mac+1], 60h
@@ -1205,34 +1151,37 @@ ENDP Seed_Clear
 ; ---------------------------------------------------------------------------
 
 PROC Seed_Model_TP NEAR
-    ; 3C509B-TP: product 9050h, twisted-pair (media 0).
+    ; 3C509B-TP: product 9050h, TP + AUI connectors.
     mov     [seed_product], PRODUCT_3C509_TP
     mov     [seed_media], 0
-    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
     mov     [byte seed_asic_rev], 2
     call    Seed_Init
     ret
 ENDP Seed_Model_TP
 
-PROC Seed_Model_Combo NEAR
-    ; 3C509B (Combo): product 9150h, AUI/external (media 1).
+PROC Seed_Model_Coax NEAR
+    ; 3C509B-COAX: product 9150h, AUI + BNC connectors.
     mov     [seed_product], PRODUCT_3C509
-    mov     [seed_media], 1
-    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
+    mov     [seed_media], 3
+    mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT
+    and     ax, NOT W0_CONFIG_CONTROL_TP_PRESENT
+    or      ax, W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
+    mov     [seed_config_control], ax
+    mov     [byte seed_asic_rev], 2
+    call    Seed_Init
+    ret
+ENDP Seed_Model_Coax
+
+PROC Seed_Model_Combo NEAR
+    ; 3C509B-COMBO: product 9450h, TP + AUI + BNC connectors.
+    mov     [seed_product], PRODUCT_3C509_COMBO
+    mov     [seed_media], 0
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
     mov     [byte seed_asic_rev], 2
     call    Seed_Init
     ret
 ENDP Seed_Model_Combo
-
-PROC Seed_Model_C NEAR
-    ; 3C509B-C: product 9450h, twisted-pair (media 0).
-    mov     [seed_product], PRODUCT_3C509_COMBO
-    mov     [seed_media], 0
-    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
-    mov     [byte seed_asic_rev], 2
-    call    Seed_Init
-    ret
-ENDP Seed_Model_C
 
 PROC Seed_Model_TPO NEAR
     ; 3C509B-TPO: product 9550h, twisted-pair (media 0).
@@ -1269,62 +1218,6 @@ PROC Seed_Model_509TP NEAR
     call    Seed_Init
     ret
 ENDP Seed_Model_509TP
-
-PROC Seed_NoPNP NEAR
-    ; INIT profile with the authoritative EEPROM_CAPABILITY PNP bit clear.
-    call    Seed_Init
-    jc      @@Fail
-    mov     si, EEPROM_CAPABILITY
-    mov     ax, EEPROM_CAPABILITY_3C509B
-    and     ax, NOT EEPROM_CAPABILITY_PNP
-    call    EEPROM_Write_SI
-    call    Build_Checksum
-    call    Write_State_File
-    ret
-@@Fail:
-    stc
-    ret
-ENDP Seed_NoPNP
-
-PROC Seed_NoFD NEAR
-    ; Keep PNP and B-class revision valid, but remove the live TP capability.
-    call    Seed_Init
-    jc      @@Fail
-    mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT
-    and     ax, NOT W0_CONFIG_CONTROL_TP_PRESENT
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W0_CONFIG_CONTROL], ax
-    call    Write_State_File
-    ret
-@@Fail:
-    stc
-    ret
-ENDP Seed_NoFD
-
-; Product ID remains 3C509B-TP while live connector bits report TP+AUI.
-PROC Seed_TpAui NEAR
-    call    Seed_Init
-    jc      @@Fail
-    mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W0_CONFIG_CONTROL], ax
-    call    Write_State_File
-    ret
-@@Fail:
-    stc
-    ret
-ENDP Seed_TpAui
-
-; Product ID remains 3C509B-TP while live connector bits report all three.
-PROC Seed_Tri NEAR
-    call    Seed_Init
-    jc      @@Fail
-    mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
-    mov     [WORD state_blob + MCK_HEADER_SIZE + MCK3R_W0_CONFIG_CONTROL], ax
-    call    Write_State_File
-    ret
-@@Fail:
-    stc
-    ret
-ENDP Seed_Tri
 
 ; Persistent policy and live W4 state are intentionally initialized differently.
 PROC Seed_FDStaleOn NEAR

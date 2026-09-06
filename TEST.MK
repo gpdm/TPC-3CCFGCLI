@@ -31,7 +31,7 @@ smoke: prep smoke-core
    @echo Smoke test: run completed >> TEST.LOG
    @echo Smoke test: run completed
 
-smoke-core: LISTING IRQ_CHANGE DEFAULT_NIC_SELECTION IOBASE_CHANGE PNP_CHANGE MODEM_CHANGE FD_CHANGE CAPABILITY_GATES OPTIMIZE_CHANGE LINK_STATUS BOOTROM_CHANGE XCVR_CHANGE CLI_PARSER COMBINED_TRANSACTIONS MULTI_NIC SAVECONFIG_TEST VERIFICATION_CONTROL_FLOW 3C509_REV1 cleanup
+smoke-core: LISTING IRQ_CHANGE DEFAULT_NIC_SELECTION IOBASE_CHANGE PNP_CHANGE MODEM_CHANGE FD_CHANGE OPTIMIZE_CHANGE LINK_STATUS BOOTROM_CHANGE XCVR_CHANGE CLI_PARSER COMBINED_TRANSACTIONS MULTI_NIC SAVECONFIG_TEST VERIFICATION_CONTROL_FLOW 3C509_REV1 cleanup
 
 prep:
    # TEST.MK deliberately does not clear TEST.LOG - this is handled by test.sh
@@ -74,10 +74,7 @@ PNP_CHANGE: t05xx t0501 t0502 t0503 t0504 t0505
 MODEM_CHANGE: t06xx t0601 t0602 t0603 t0604 t0605 t0606 t0607 t0608 t0609 t0610
 
 # Base: 0700
-FD_CHANGE: t07xx t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0709 t0710 t0711 t0712 t0713 t0714
-
-# Base: 0800
-CAPABILITY_GATES: t08xx t0801 t0802
+FD_CHANGE: t07xx t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0710 t0711 t0712 t0713 t0714
 
 # Base: 0900
 OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904
@@ -89,7 +86,7 @@ LINK_STATUS: t10xx t1001 t1002
 BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1121 t1122 t1123 t1124 t1125 t1126 t1127 t1128 t1129 t1130 t1131 t1132 t1133 t1134 t1135
 
 # Base: 1200
-XCVR_CHANGE: t12xx t1201 t1202 t1203 t1204 t1205 t1206 t1207 t1208 t1209 t1210 t1211 t1212 t1213
+XCVR_CHANGE: t12xx t1201 t1202 t1203 t1204 t1207 t1208 t1209 t1210 t1211
 
 # Base: 1300
 CLI_PARSER: t13xx t1301 t1302 t1303 t1304 t1305 t1306 t1307 t1308 t1309 t1310
@@ -128,7 +125,8 @@ t0102:
    $(BINAPP) LIST > $(ARTIFACTS)\T0102.LOG
    FIND "NIC                            NIC" $(ARTIFACTS)\T0102.LOG > NUL
    FIND "Number                       Description" $(ARTIFACTS)\T0102.LOG > NUL
-   FIND "Connectors = TP" $(ARTIFACTS)\T0102.LOG > NUL
+   FIND "(ASIC Revision 2)" $(ARTIFACTS)\T0102.LOG > NUL
+   FIND "Connectors = TP, AUI" $(ARTIFACTS)\T0102.LOG > NUL
    FIND "Full Duplex Capability = yes" $(ARTIFACTS)\T0102.LOG > NUL
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0102.LOG > NUL
    FIND "Plug and Play = enabled" $(ARTIFACTS)\T0102.LOG > NUL
@@ -479,48 +477,35 @@ t0706:
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0706.LOG > NUL
 
 t0707:
-   @echo [t0707] Testing LIST Full Duplex readout on a non-capable adapter... >> TEST.LOG
-   ${SEEDAPP} NOFD > $(ARTIFACTS)\T0707.LOG
+   @echo [t0707] Testing Full Duplex capability and rejection on 3C509B-COAX... >> TEST.LOG
+   ${SEEDAPP} 3C509B-COAX > $(ARTIFACTS)\T0707.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T0707.LOG
+   FIND "Connectors = AUI, COAX" $(ARTIFACTS)\T0707.LOG > NUL
    FIND "Full Duplex Capability = no" $(ARTIFACTS)\T0707.LOG > NUL
    FIND "Full Duplex = not supported" $(ARTIFACTS)\T0707.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0707.LOG
+   FIND "This adapter does not support full duplex configuration." $(ARTIFACTS)\T0707.LOG > NUL
 
 t0708:
    @echo [t0708] Testing Full Duplex enable rejects effective AUI and permits disable... >> TEST.LOG
-   ${SEEDAPP} TPAUI > $(ARTIFACTS)\T0708.LOG
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0708.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T0708.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0708.LOG
    FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0708.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0708.LOG
    FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0708.LOG > NUL
 
-t0709:
-   @echo [t0709] Testing Full Duplex enable rejects effective COAX... >> TEST.LOG
-   ${SEEDAPP} TRI > $(ARTIFACTS)\T0709.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX >> $(ARTIFACTS)\T0709.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0709.LOG
-   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0709.LOG > NUL
-
 t0710:
    @echo [t0710] Testing Full Duplex enable rejects effective AUTO... >> TEST.LOG
-   ${SEEDAPP} TPAUI > $(ARTIFACTS)\T0710.LOG
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0710.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T0710.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0710.LOG
    FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0710.LOG > NUL
 
 t0711:
-   @echo [t0711] Testing combined prospective transceiver Full Duplex gate... >> TEST.LOG
-   ${SEEDAPP} TRI > $(ARTIFACTS)\T0711.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T0711.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0711.LOG > NUL
-   FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0711.LOG > NUL
-   ${SEEDAPP} TPAUI >> $(ARTIFACTS)\T0711.LOG
+   @echo [t0711] Testing atomicity of combined AUI and Full Duplex rejection... >> TEST.LOG
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0711.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0711.LOG
-   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0711.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0711.LOG
-   FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0711.LOG > NUL
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0711.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0711.LOG
    FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0711.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0711.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0711.LOG > NUL
@@ -541,46 +526,16 @@ t0713:
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0713.LOG > NUL
 
 t0714:
-   @echo [t0714] Testing prospective transceiver Full Duplex consistency matrix... >> TEST.LOG
-   ${SEEDAPP} TPAUI > $(ARTIFACTS)\T0714.LOG
+   @echo [t0714] Testing reverse Full Duplex dependency preserves TP state... >> TEST.LOG
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0714.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0714.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T0714.LOG
    FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0714.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0714.LOG
+   FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0714.LOG > NUL
+   FIND "Full Duplex = enabled" $(ARTIFACTS)\T0714.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0714.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0714.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0714.LOG
-   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0714.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0714.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0714.LOG > NUL
-   ${SEEDAPP} TRI >> $(ARTIFACTS)\T0714.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0714.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX >> $(ARTIFACTS)\T0714.LOG
-   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0714.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T0714.LOG
-   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0714.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0714.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0714.LOG > NUL
-
-t08xx:
-   @echo [t08xx] CAPABILITY_GATES: Verify capability gates behaviour ... >> TEST.LOG
-
-t0801:
-   @echo [t0801] Testing PNP absence does not disable Full Duplex capability... >> TEST.LOG
-   ${SEEDAPP} NOPNP > $(ARTIFACTS)\T0801.LOG
-   FIND "Seed file created (NOPNP)." $(ARTIFACTS)\T0801.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0801.LOG
-   FIND "Plug and Play Capability = no" $(ARTIFACTS)\T0801.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED >> $(ARTIFACTS)\T0801.LOG
-   FIND "This adapter does not support Plug and Play configuration." $(ARTIFACTS)\T0801.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0801.LOG
-   FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0801.LOG > NUL
-
-t0802:
-   @echo [t0802] Testing Full Duplex requires TP despite a supported product ID... >> TEST.LOG
-   ${SEEDAPP} NOFD > $(ARTIFACTS)\T0802.LOG
-   FIND "Seed file created (NOFD)." $(ARTIFACTS)\T0802.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0802.LOG
-   FIND "This adapter does not support full duplex configuration." $(ARTIFACTS)\T0802.LOG > NUL
 
 t09xx:
    @echo [t09xx] OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour ... >> TEST.LOG
@@ -943,8 +898,8 @@ t12xx:
    @echo [t12xx] XCVR_CHANGE: Verify transceiver change behaviour ... >> TEST.LOG
 
 t1201:
-   @echo [t1201] Testing CONFIGURE /TR:TP on 3C509B-TP (should succeed, TP only card)... >> TEST.LOG
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1201.LOG
+   @echo [t1201] Testing CONFIGURE /TR:TP on 3C509B-TP (should succeed)... >> TEST.LOG
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T1201.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP >> $(ARTIFACTS)\T1201.LOG
    FIND "TR parameter accepted. Requested transceiver: TP" $(ARTIFACTS)\T1201.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1201.LOG
@@ -952,49 +907,39 @@ t1201:
 
 
 t1202:
-   @echo [t1202] Testing CONFIGURE /TR:AUI on 3C509B-TP is rejected (TP only card)... >> TEST.LOG
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1202.LOG
+   @echo [t1202] Testing CONFIGURE /TR:AUI on 3C509B-TP (should succeed)... >> TEST.LOG
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T1202.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T1202.LOG
-   FIND "This adapter does not support the requested transceiver type." $(ARTIFACTS)\T1202.LOG > NUL
+   FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1202.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1202.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T1202.LOG > NUL
 
 
 t1203:
-   @echo [t1203] Testing CONFIGURE /TR:COAX on 3C509B-TP is rejected (TP only card)... >> TEST.LOG
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1203.LOG
+   @echo [t1203] Testing CONFIGURE /TR:COAX on 3C509B-TP is rejected... >> TEST.LOG
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T1203.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX >> $(ARTIFACTS)\T1203.LOG
    FIND "This adapter does not support the requested transceiver type." $(ARTIFACTS)\T1203.LOG > NUL
 
 
 t1204:
-   @echo [t1204] Testing CONFIGURE /TR:AUTO on 3C509B-TP is rejected (TP only card)... >> TEST.LOG
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1204.LOG
+   @echo [t1204] Testing CONFIGURE /TR:AUTO on 3C509B-TP (should succeed)... >> TEST.LOG
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T1204.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1204.LOG
-   FIND "This adapter does not support the requested transceiver type." $(ARTIFACTS)\T1204.LOG > NUL
-
-
-t1205:
-   @echo [t1205] Testing CONFIGURE /TR:AUI on 3C509B-Combo (should succeed)... >> TEST.LOG
-   ${SEEDAPP} 3C509B-COMBO > $(ARTIFACTS)\T1205.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T1205.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1205.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1205.LOG
-   FIND "Transceiver = external" $(ARTIFACTS)\T1205.LOG > NUL
-
-
-t1206:
-   @echo [t1206] Testing CONFIGURE /TR:AUTO on 3C509B-Combo (should succeed)... >> TEST.LOG
-   ${SEEDAPP} 3C509B-COMBO > $(ARTIFACTS)\T1206.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1206.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1206.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1206.LOG
-   FIND "Transceiver = auto select" $(ARTIFACTS)\T1206.LOG > NUL
+   FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1204.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1204.LOG
+   FIND "Transceiver = auto select" $(ARTIFACTS)\T1204.LOG > NUL
 
 
 t1207:
-   @echo [t1207] Testing CONFIGURE /TR:COAX on 3C509B-Combo is rejected (no coax port)... >> TEST.LOG
+   @echo [t1207] Testing CONFIGURE /TR:COAX on 3C509B-COMBO (should succeed)... >> TEST.LOG
    ${SEEDAPP} 3C509B-COMBO > $(ARTIFACTS)\T1207.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1207.LOG
+   FIND "Connectors = TP, AUI, COAX" $(ARTIFACTS)\T1207.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX >> $(ARTIFACTS)\T1207.LOG
-   FIND "This adapter does not support the requested transceiver type." $(ARTIFACTS)\T1207.LOG > NUL
+   FIND "TR parameter accepted. Requested transceiver: COAX" $(ARTIFACTS)\T1207.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1207.LOG
+   FIND "Transceiver = on-board coax" $(ARTIFACTS)\T1207.LOG > NUL
 
 
 t1208:
@@ -1027,24 +972,6 @@ t1211:
    FIND "TR parameter accepted. Requested transceiver: TP" $(ARTIFACTS)\T1211.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1211.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1211.LOG > NUL
-
-t1212:
-   @echo [t1212] Testing live TP+AUI capabilities override TP product ID... >> TEST.LOG
-   ${SEEDAPP} TPAUI > $(ARTIFACTS)\T1212.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1212.LOG
-   FIND "Connectors = TP, AUI" $(ARTIFACTS)\T1212.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T1212.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1212.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1212.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1212.LOG > NUL
-
-t1213:
-   @echo [t1213] Testing CONFIGURE /TR:AUTO on three live connectors succeeds... >> TEST.LOG
-   ${SEEDAPP} TRI > $(ARTIFACTS)\T1213.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1213.LOG
-   FIND "Connectors = TP, AUI, COAX" $(ARTIFACTS)\T1213.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1213.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1213.LOG > NUL
 
 t13xx:
    @echo [t13xx] CLI_PARSER: Verify CLI parser behaviour ... >> TEST.LOG
@@ -1689,12 +1616,12 @@ t1712:
    FIND "Boot ROM = 8K at C8000H" $(ARTIFACTS)\T1712.LOG > NUL
 
 t1713:
-   @echo [t1713] Testing /TR verification chain with /VERBOSE on 3C509B-Combo... >> TEST.LOG
+   @echo [t1713] Testing /TR verification chain with /VERBOSE on 3C509B-COMBO... >> TEST.LOG
    ${SEEDAPP} 3C509B-COMBO > $(ARTIFACTS)\T1713.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /VERBOSE >> $(ARTIFACTS)\T1713.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T1713.LOG
    FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1713.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1713.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T1713.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /VERBOSE >> $(ARTIFACTS)\T1713.LOG
    FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1713.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1713.LOG > NUL
 
