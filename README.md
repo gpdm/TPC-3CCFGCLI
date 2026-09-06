@@ -79,6 +79,64 @@ Supported global CLI options, valid with any command verb:
 
 * `/VERBOSE`, new enhancement
 
+
+## Supported Adapters
+
+3CCFGCLI supports 3Com EtherLink III ISA adapters from the 3C509 family.
+
+Adapter generation is determined from the hardware ASIC revision:
+
+* ASIC Revision 1: original 3C509 generation
+* ASIC Revision 2 or later: 3C509B generation
+
+The following Product IDs are recognized:
+
+| Product ID | Internal name         | Original 3C509 | 3C509B | Notes                     |
+| ---------- | --------------------- | -------------: | -----: | ------------------------- |
+| `9050h`    | `PRODUCT_3C509_TP`    |            Yes |    Yes | Twisted-pair variant      |
+| `9150h`    | `PRODUCT_3C509`       |            Yes |    Yes | 3C509 family variant      |
+| `9450h`    | `PRODUCT_3C509_COMBO` |            Yes |    Yes | Combo variant             |
+| `9550h`    | `PRODUCT_3C509_TPO`   |            Yes |    Yes | TPO variant               |
+| `9850h`    | `PRODUCT_3C509_TPC`   |             No |    Yes | 3C509B-generation variant |
+
+Support for a Product ID does not imply that every configuration feature is available on every adapter generation.
+
+## Command Support
+
+| Command / Option          | Original 3C509 | 3C509B | Notes                                                                      |
+| ------------------------- | -------------: | -----: | -------------------------------------------------------------------------- |
+| `LIST`                    |            Yes |    Yes | Displays detected adapter and configuration information                    |
+| `CONFIGURE /ADAPTERNUM:n` |            Yes |    Yes | Selects the adapter to configure                                           |
+| `/IOBASE:value`           |            Yes |    Yes | Changes the ISA I/O base address                                           |
+| `/INT:value`              |            Yes |    Yes | Changes the IRQ                                                            |
+| `/TR:TP`                  |            Yes |    Yes | Selects twisted pair                                                       |
+| `/TR:AUI`                 |            Yes |    Yes | Selects AUI                                                                |
+| `/TR:COAX`                |            Yes |    Yes | Selects BNC/coax                                                           |
+| `/TR:AUTO`                |             No |    Yes | Auto Select is a 3C509B-generation feature                                 |
+| `/MODEM:value`            |            Yes |    Yes | Configures maximum interrupt-disable time                                  |
+| `/OPTIMIZE:value`         |            Yes |    Yes | Configures software optimization                                           |
+| `/FULLDUPLEX:value`       |             No |    Yes | Full Duplex is a 3C509B-generation feature      |
+| `/PNP:value`              |             No |    Yes | ISA Plug and Play configuration is supported only on the 3C509B generation |
+| `/BADDRESS:value`         |             No |    Yes | Boot ROM currently only available for 3C509B adapters |
+| `/BSIZE:value`            |             No |    Yes | Boom ROM currently only available for 3C509B adapters |
+| `SAVECONFIG`              |            Yes |    Yes | Exports supported configuration settings                                   |
+
+### Boot ROM configuration
+
+Boot ROM configuration is supported on all 3C509-generation adapters.
+
+But since I don't own a plain 3c509, I have disabled Boot ROM support until I can test this myself.
+
+
+### No 8-Bit Bus Support for 3c509 (ASIC Revision 1)
+
+3CCFGCLI is primarily designed for the 3Com EtherLink III 3C509B ISA (ASIC Revision 2) adapters.
+
+Because the original 3C509 and the 3C509B are closely related, the utility also supports the original 3C509 family where their hardware and configuration interfaces are compatible.
+
+*This does not change the hardware limitations of the adapters themselves:*
+**The original 3C509 cannot operate in an 8-bit ISA slot. 8-bit ISA operation requires a 3C509B-generation adapter.**
+
 ## Where 3CCFGCLI differs
 
 `3CCFGCLI` intentionally differs from the reference implementation in several
