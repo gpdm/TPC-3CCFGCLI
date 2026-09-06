@@ -130,7 +130,7 @@ hwc003:
 	@echo [hwc003] Original /PNP writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /PNP:$(TEST_PNP) > $(ARTIFACTS)\HWC003.LOG
 	$(OBSERVERAPP) LIST >> $(ARTIFACTS)\HWC003.LOG
-	FIND "Plug and Play Capability = $(TEST_PNP_RESULT_STR)" $(ARTIFACTS)\HWC003.LOG > NUL
+	FIND "Plug and Play = $(TEST_PNP_RESULT_STR)" $(ARTIFACTS)\HWC003.LOG > NUL
 
 hwc004:
 	@echo [hwc004] Original /MODEM writer, 3CCFGCLI LIST observer... >> $(LOGFILE)
