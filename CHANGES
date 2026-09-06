@@ -1,3 +1,7 @@
+Changelog 0.7.5
+  - 3C509/3C509B generation classification now uses the detected ASIC revision
+    as the single source of truth instead of EEPROM word 14h.
+
 Changelog 0.7.4
   - Fixed SAVECONFIG Boot ROM address decoding: it previously converted the
     raw EEPROM word 08h base selector directly into C0000h + selector*2000h,

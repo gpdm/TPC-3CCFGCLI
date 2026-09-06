@@ -540,7 +540,6 @@ ext_compatibility DW 0FFFFh
 ext_config_ctrl   DW 0FFFFh
 ext_nic_capabilities DW 0FFFFh
 ext_nic_capability_valid DW 0
-ext_revision_info DW 0FFFFh
 ; Live link status (Window 4/Port 0Ah bit 11); 0 = not connected,
 ; 1 = connected, 0FFFFh = unavailable (adapter not active).
 ext_link_status   DW 0FFFFh
@@ -584,7 +583,6 @@ cfg_optimize_value    DB 0
 cfg_baddress_value    DB 0
 cfg_bsize_value       DB 0
 cfg_bsize_disabled    DB 0
-cfg_txn_later_card    DB 0
 ; cfg_tr_value: 0=TP, 1=AUI, 3=COAX, 0FFh=AUTO sentinel.
 cfg_tr_value          DB 0
 ; OPT7: single capability snapshot shared by the PNP/FULLDUPLEX/TR gates in
@@ -719,7 +717,9 @@ save_word08     DW  0
 save_word09     DW  0
 save_word0d     DW  0
 save_word13     DW  0
-save_word14     DW  0FFFFh
+; Cached ASIC revision of the adapter currently being exported, copied from
+; the NIC record because Save_Build_Command reuses SI for output strings.
+save_asic_rev   DB  0FFh
 save_configure_suffix DB ' CONFIGURE', 0
 save_adapternum DB  ' /ADAPTERNUM:', 0
 save_int        DB  ' /INT:', 0
@@ -1279,10 +1279,8 @@ PROC Cmd_SaveConfig NEAR
     call    Nic_EEPROM_Read
     jc      @@ReadFail
     mov     [save_word13], ax
-    mov     al, EEPROM_REVISION_INFO
-    call    Nic_EEPROM_Read
-    jc      @@ReadFail
-    mov     [save_word14], ax
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    mov     [save_asic_rev], al
 
     mov     ax, [current_card]
     inc     ax
@@ -2075,17 +2073,16 @@ PROC Save_Build_Command NEAR
     je      @@HaveSizeK
     mov     di, 32
 @@HaveSizeK:
-    mov     ax, [save_word14]
-    cmp     ax, 0FFFFh
-    je      @@NotLater
-    and     ax, 00FFh
-    cmp     ax, 1
-    jb      @@NotLater
-    mov     ch, 1
-    jmp     @@HaveLaterFlag
-@@NotLater:
+    ; ASIC revision 1 is the original 3C509; revision 2 or later is the
+    ; 3C509B generation.  FFh means unknown and is not treated as 3C509B.
     xor     ch, ch
-@@HaveLaterFlag:
+    mov     al, [save_asic_rev]
+    cmp     al, 0FFh
+    je      @@HaveGenerationFlag
+    cmp     al, 2
+    jb      @@HaveGenerationFlag
+    mov     ch, 1
+@@HaveGenerationFlag:
     call    Normalize_Boot_Rom_Selector
 
     mov     ax, di
@@ -5323,6 +5320,7 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     push    ax
     push    bx
     push    cx
+    push    si
 
     cmp     [cfg_bsize_disabled], 1
     je      @@Disable
@@ -5340,8 +5338,15 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     jnz     @@Invalid
     jmp     @@Encode
 @@Check32K:
-    cmp     [cfg_txn_later_card], 1
-    je      @@Check32KLater
+    ; ASIC revision 1 is the original 3C509; revision 2 or later is the
+    ; 3C509B generation.  FFh means unknown and keeps the original rules.
+    mov     si, [cfg_selected_ptr]
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@Check32KOriginal
+    cmp     al, 2
+    jae     @@Check32KLater
+@@Check32KOriginal:
     mov     al, bl
     and     al, 3
     jnz     @@Invalid
@@ -5389,6 +5394,7 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     stc
 
 @@Done:
+    pop     si
     pop     cx
     pop     bx
     pop     ax
@@ -7140,21 +7146,23 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@Done
 
 @@BootRomCapabilityGate:
-    ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration when
-    ; the card is also a later revision, as classified by the original utility
-    ; from EEPROM word 14h low byte.
+    ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration.
+    ; Word 14h is still snapshotted here as Boot ROM transaction state, but
+    ; the generation decision comes from the cached ASIC revision.
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Read
     jc      @@BootRomCapReadFail
     mov     [cfg_txn_old_word14], ax
-    and     ax, 00FFh
-    mov     [cfg_txn_later_card], 0
-    cmp     ax, 1
-    jb      @@Requested
-    mov     [cfg_txn_later_card], 1
+    ; ASIC revision 1 is the original 3C509; revision 2 or later is the
+    ; 3C509B generation.  FFh means unknown and is not treated as 3C509B.
     mov     si, [cfg_selected_ptr]
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@Requested
+    cmp     al, 2
+    jb      @@Requested
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     cmp     ax, PRODUCT_3C509_TPO
     jne     @@Requested
@@ -7834,7 +7842,6 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_addr_cfg], 0FFFFh
     mov     [ext_compatibility], 0FFFFh
     mov     [ext_config_ctrl], 0FFFFh
-    mov     [ext_revision_info], 0FFFFh
     mov     [ext_link_status], 0FFFFh
     mov     [ext_software_info], 0FFFFh
     mov     [ext_nic_capabilities], 0FFFFh
@@ -7898,12 +7905,6 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_config_ctrl], ax
 @@SkipConfigCtrl:
 
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_REVISION_INFO
-    call    Nic_EEPROM_Read
-    jc      @@Done
-    mov     [ext_revision_info], ax
-
 @@Done:
     pop     dx
     pop     cx
@@ -7911,21 +7912,6 @@ PROC Read_Extended_Nic_Info NEAR
     pop     ax
     ret
 ENDP Read_Extended_Nic_Info
-
-; Return AL = 1 if EEPROM word 14h identifies the later capability layout.
-PROC Extended_Is_Later_Card NEAR
-    mov     ax, [ext_revision_info]
-    cmp     ax, 0FFFFh
-    je      @@No
-    and     ax, 00FFh
-    cmp     ax, 1
-    jb      @@No
-    mov     al, 1
-    ret
-@@No:
-    xor     al, al
-    ret
-ENDP Extended_Is_Later_Card
 
 PROC Print_Transceiver_Value NEAR
     push    ax
@@ -8363,8 +8349,8 @@ ENDP Print_Link_Status_Value
 ; collapse the hardware address aliases, so the decoded /BADDRESS matches
 ; the selector's real C0000-DE000 base.  Shared by LIST (Print_Boot_Rom_Value)
 ; and SAVECONFIG (Save_Build_Command) so the two cannot diverge.
-; Input:  BX = raw selector, DI = size in KB (8/16/32), CH = later-card flag
-;         (1 = later card, from Extended_Is_Later_Card).
+; Input:  BX = raw selector, DI = size in KB (8/16/32),
+;         CH = 3C509B-generation flag derived from NIC_ASIC_REV (1 = 3C509B).
 ; Output: BX = normalized selector.  AX, CX, DX clobbered.
 PROC Normalize_Boot_Rom_Selector NEAR
     cmp     di, 8
@@ -8390,10 +8376,15 @@ PROC Print_Boot_Rom_Value NEAR
     cmp     ax, 0FFFFh
     je      @@Unavailable
 
-    call    Extended_Is_Later_Card
-    mov     ch, al
-    or      al, al
-    jz      @@CheckBase
+    ; ASIC revision 1 is the original 3C509; revision 2 or later is the
+    ; 3C509B generation.  FFh means unknown and is not treated as 3C509B.
+    xor     ch, ch
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@CheckBase
+    cmp     al, 2
+    jb      @@CheckBase
+    mov     ch, 1
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     cmp     ax, PRODUCT_3C509_TPO
     je      @@NotSupported
