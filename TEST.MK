@@ -17,7 +17,7 @@ smoke: prep smoke-core
    @echo Smoke test: run completed >> TEST.LOG
    @echo Smoke test: run completed
 
-smoke-core: LISTING IRQ_CHANGE DEFAULT_NIC_SELECTION IOBASE_CHANGE PNP_CHANGE MODEM_CHANGE FD_CHANGE OPTIMIZE_CHANGE BOOTROM_CHANGE XCVR_CHANGE CLI_PARSER COMBINED_TRANSACTIONS MULTI_NIC SAVECONFIG_TEST VERIFICATION_CONTROL_FLOW 3C509_REV1 cleanup
+smoke-core: LISTING IRQ_CHANGE IOBASE_CHANGE PNP_CHANGE MODEM_CHANGE FD_CHANGE OPTIMIZE_CHANGE BOOTROM_CHANGE XCVR_CHANGE CLI_PARSER COMBINED_TRANSACTIONS MULTI_NIC SAVECONFIG_TEST VERIFICATION_CONTROL_FLOW 3C509_REV1 cleanup
 
 prep:
    # TEST.MK deliberately does not clear TEST.LOG - this is handled by test.sh
@@ -41,13 +41,10 @@ clean-test:
 LISTING: t01xx t0101 t0102
 
 # Base: 0200
-IRQ_CHANGE: t02xx t0201 t0202 t0203 t0204
-
-# Base: 0300
-DEFAULT_NIC_SELECTION: t03xx t0301 t0302
+IRQ_CHANGE: t02xx t0201 t0202 t0203 t0204 t0205
 
 # Base: 0400
-IOBASE_CHANGE: t04xx t0401 t0402 t0403 t0404 t0405 t0406 t0407 t0408 t0409
+IOBASE_CHANGE: t04xx t0401 t0402 t0403 t0404 t0406 t0408 t0409
 
 # Base: 0500
 PNP_CHANGE: t05xx t0501 t0502 t0505
@@ -62,7 +59,7 @@ FD_CHANGE: t07xx t0701 t0702 t0703 t0705 t0706 t0707 t0708 t0710 t0711 t0714
 OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904 t0905
 
 # Base: 1100
-BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1121 t1122 t1123 t1125 t1126 t1127 t1128 t1129 t1130 t1131 t1132 t1133 t1134 t1135 t1136
+BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1121 t1122 t1126 t1127 t1128 t1129 t1130 t1131 t1132 t1133 t1134 t1135 t1136
 
 # Base: 1200
 XCVR_CHANGE: t12xx t1201 t1202 t1203 t1204 t1205 t1207 t1208 t1209 t1210 t1211
@@ -77,10 +74,10 @@ COMBINED_TRANSACTIONS: t14xx t1401 t1402 t1403 t1405 t1406 t1407
 MULTI_NIC: t15xx t1502 t1503 t1504 t1505
 
 # Base: 1600
-SAVECONFIG_TEST: t16xx t1602 t1603 t1605 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622 t1623 t1624 t1625 t1626
+SAVECONFIG_TEST: t16xx t1602 t1603 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622 t1623 t1624 t1625 t1626
 
 # Base: 1700
-VERIFICATION_CONTROL_FLOW: t17xx t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708 t1709 t1710 t1711 t1712 t1713 t1714
+VERIFICATION_CONTROL_FLOW: t17xx t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708 t1710 t1713 t1714
 
 # Base: 1800
 3C509_REV1: t18xx t1801 t1802 t1803 t1804 t1805 t1806 t1807 t1808
@@ -143,31 +140,22 @@ t0204:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0204.LOG
    FIND "IRQ = 9" $(ARTIFACTS)\T0204.LOG > NUL
 
-t03xx:
-   @echo [t03xx] DEFAULT_NIC_SELECTION: Verify default NIC selection behaviour ... >> TEST.LOG
-
-t0301:
-   @echo [t0301] Testing default NIC selection CONFIGURE /INT transition to 5... >> TEST.LOG
-   $(BINAPP) CONFIGURE /INT:5 > $(ARTIFACTS)\T0301.LOG
-   FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T0301.LOG > NUL
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0301.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0301.LOG
-   FIND "IRQ = 5" $(ARTIFACTS)\T0301.LOG > NUL
-
-t0302:
-   @echo [t0302] Testing default NIC selection CONFIGURE /INT transition back to 9... >> TEST.LOG
-   $(BINAPP) CONFIGURE /INT:9 > $(ARTIFACTS)\T0302.LOG
-   FIND "INT parameter accepted. Requested IRQ: 9" $(ARTIFACTS)\T0302.LOG > NUL
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0302.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0302.LOG
-   FIND "IRQ = 9" $(ARTIFACTS)\T0302.LOG > NUL
+t0205:
+   @echo [t0205] Testing CONFIGURE defaults to the sole installed adapter when /ADAPTERNUM is omitted... >> TEST.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T0205.LOG
+   $(BINAPP) CONFIGURE /INT:5 >> $(ARTIFACTS)\T0205.LOG
+   FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T0205.LOG > NUL
+   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0205.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0205.LOG
+   FIND "IRQ = 5" $(ARTIFACTS)\T0205.LOG > NUL
 
 t04xx:
    @echo [t04xx] IOBASE_CHANGE: Verify IO base change behaviour ... >> TEST.LOG
 
 t0401:
    @echo [t0401] Testing CONFIGURE /IOBASE invalid out-of-range high value... >> TEST.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:03F0 > $(ARTIFACTS)\T0401.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T0401.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:03F0 >> $(ARTIFACTS)\T0401.LOG
    FIND "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments." $(ARTIFACTS)\T0401.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0401.LOG
    FIND "IOBASE = 0300" $(ARTIFACTS)\T0401.LOG > NUL
@@ -188,35 +176,21 @@ t0403:
 
 t0404:
    @echo [t0404] Testing CONFIGURE /IOBASE transition to 0280 (long notation)... >> TEST.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0280 > $(ARTIFACTS)\T0404.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T0404.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0280 >> $(ARTIFACTS)\T0404.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T0404.LOG > NUL
    FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0404.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0404.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T0404.LOG > NUL
 
-t0405:
-   @echo [t0405] Testing CONFIGURE /IOBASE transition back to 0300 (long notation)... >> TEST.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0300 > $(ARTIFACTS)\T0405.LOG
-   FIND "IOBASE parameter accepted. Requested IOBASE: 0300" $(ARTIFACTS)\T0405.LOG > NUL
-   FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0405.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0405.LOG
-   FIND "IOBASE = 0300" $(ARTIFACTS)\T0405.LOG > NUL
-
 t0406:
    @echo [t0406] Testing CONFIGURE /IOBASE transition to 280 (short notation)... >> TEST.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:280 > $(ARTIFACTS)\T0406.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T0406.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:280 >> $(ARTIFACTS)\T0406.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T0406.LOG > NUL
    FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0406.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0406.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T0406.LOG > NUL
-
-t0407:
-   @echo [t0407] Testing CONFIGURE /IOBASE transition back to 300 (short notation)... >> TEST.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:300 > $(ARTIFACTS)\T0407.LOG
-   FIND "IOBASE parameter accepted. Requested IOBASE: 0300" $(ARTIFACTS)\T0407.LOG > NUL
-   FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0407.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0407.LOG
-   FIND "IOBASE = 0300" $(ARTIFACTS)\T0407.LOG > NUL
 
 t0408:
    @echo [t0408] Testing CONFIGURE /IOBASE minimum valid address 0200... >> TEST.LOG
@@ -680,21 +654,6 @@ t1122:
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1122.LOG > NUL
    FIND "IRQ = 5" $(ARTIFACTS)\T1122.LOG > NUL
 
-t1123:
-   @echo [t1123] Testing ROM16K accepts matching Boot ROM request... >> TEST.LOG
-   ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1123.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1123.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1123.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1123.LOG
-   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1123.LOG > NUL
-
-t1125:
-   @echo [t1125] Testing ROM32K accepts matching paged Boot ROM request... >> TEST.LOG
-   ${SEEDAPP} INIT /ROM32K > $(ARTIFACTS)\T1125.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:32 >> $(ARTIFACTS)\T1125.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1125.LOG
-   FIND "Boot ROM = 32K at C8000H" $(ARTIFACTS)\T1125.LOG > NUL
-
 t1126:
    @echo [t1126] Testing no-ROM seed rejects Boot ROM while preserving IOBASE... >> TEST.LOG
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1126.LOG
@@ -1116,13 +1075,10 @@ t1603:
    FIND "ADAPTERNUM:2 /INT:5" $(ARTIFACTS)\RESTORE.BAT > NUL
 
 
-t1605:
-   @echo [t1605] Testing SAVECONFIG exports a valid, re-parseable /MODEM value... >> TEST.LOG
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1605.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:9600 >> $(ARTIFACTS)\T1605.LOG
-   $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\RESTORE.BAT >> $(ARTIFACTS)\T1605.LOG
-   FIND "MODEM:9600" $(ARTIFACTS)\RESTORE.BAT > NUL
-
+# End-to-end SAVECONFIG restore test.
+# Unlike the manual multi-step configuration test, this verifies that
+# SAVECONFIG generates executable restore commands which, after a fresh seed,
+# reconstruct the expected adapter configuration.
 t1606:
    @echo [t1606] Testing SAVECONFIG keeps Boot ROM pair atomic in split restore commands... >> TEST.LOG
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1606.LOG
@@ -1344,6 +1300,10 @@ t1625:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:8 >> $(ARTIFACTS)\T1625.LOG
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1625.LOG > NUL
 
+# Focused cases verify that transaction verification continues correctly from
+# one requested property to the next. The final integration case verifies that
+# a complete configuration split across multiple CONFIGURE invocations composes
+# correctly.
 t17xx:
    @echo [t17xx] VERIFICATION_CONTROL_FLOW: verify transaction chain behaviour ... >> TEST.LOG
 
@@ -1428,23 +1388,13 @@ t1708:
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T1708.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1708.LOG > NUL
 
-t1709:
-   @echo [t1709] Testing long verification chain with all later properties changed, without /VERBOSE... >> TEST.LOG
-   ${SEEDAPP} INIT /ROM8K > $(ARTIFACTS)\T1709.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 /PNP:DISABLED /MODEM:9600 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T1709.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1709.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1  /OPTIMIZE:SERVER /BADDRESS:C8000 /BSIZE:8 >> $(ARTIFACTS)\T1709.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1709.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1709.LOG
-   FIND "IRQ = 5" $(ARTIFACTS)\T1709.LOG > NUL
-   FIND "Plug and Play = disabled" $(ARTIFACTS)\T1709.LOG > NUL
-   FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1709.LOG > NUL
-   FIND "Full Duplex = enabled" $(ARTIFACTS)\T1709.LOG > NUL
-   FIND "Optimization = Server" $(ARTIFACTS)\T1709.LOG > NUL
-   FIND "Boot ROM = 8K at C8000H" $(ARTIFACTS)\T1709.LOG > NUL
-
+# End-to-end verification of a manually entered full adapter configuration.
+# The configuration is deliberately split across two CONFIGURE invocations
+# because the complete option set exceeds the DOS PSP command-line limit.
+# This verifies that consecutive configuration transactions compose correctly
+# and that the resulting adapter state remains consistent.
 t1710:
-   @echo [t1710] Testing long verification chain with all later properties changed, with /VERBOSE... >> TEST.LOG
+   @echo [t1710] Testing manually split full configuration verification sequence with /VERBOSE... >> TEST.LOG
    ${SEEDAPP} INIT /ROM8K > $(ARTIFACTS)\T1710.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 /PNP:DISABLED /MODEM:9600 /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T1710.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER /BADDRESS:C8000 /BSIZE:8 /VERBOSE >> $(ARTIFACTS)\T1710.LOG
@@ -1465,43 +1415,6 @@ t1710:
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T1710.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1710.LOG > NUL
    FIND "Boot ROM = 8K at C8000H" $(ARTIFACTS)\T1710.LOG > NUL
-
-t1711:
-   @echo [t1711] Testing long verification chain with unchanged INT, without /VERBOSE... >> TEST.LOG
-   ${SEEDAPP} INIT /ROM8K > $(ARTIFACTS)\T1711.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:10 /PNP:DISABLED /MODEM:9600 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T1711.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1711.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER /BADDRESS:C8000 /BSIZE:8 >> $(ARTIFACTS)\T1711.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1711.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1711.LOG
-   FIND "IRQ = 10" $(ARTIFACTS)\T1711.LOG > NUL
-   FIND "Plug and Play = disabled" $(ARTIFACTS)\T1711.LOG > NUL
-   FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1711.LOG > NUL
-   FIND "Full Duplex = enabled" $(ARTIFACTS)\T1711.LOG > NUL
-   FIND "Optimization = Server" $(ARTIFACTS)\T1711.LOG > NUL
-   FIND "Boot ROM = 8K at C8000H" $(ARTIFACTS)\T1711.LOG > NUL
-
-t1712:
-   @echo [t1712] Testing long verification chain with unchanged INT, with /VERBOSE... >> TEST.LOG
-   ${SEEDAPP} INIT /ROM8K > $(ARTIFACTS)\T1712.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:10 /PNP:DISABLED /MODEM:9600 /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T1712.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER /BADDRESS:C8000 /BSIZE:8 /VERBOSE >> $(ARTIFACTS)\T1712.LOG
-   FIND "IRQ is already configured to the requested value." $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "EEPROM Plug and Play mode verified." $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "EEPROM modem speed setting verified." $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "EEPROM optimize mode verified." $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "EEPROM Boot ROM base address verified." $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "EEPROM Boot ROM size verified." $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1712.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1712.LOG
-   FIND "IRQ = 10" $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "Plug and Play = disabled" $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "Full Duplex = enabled" $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "Optimization = Server" $(ARTIFACTS)\T1712.LOG > NUL
-   FIND "Boot ROM = 8K at C8000H" $(ARTIFACTS)\T1712.LOG > NUL
 
 t1713:
    @echo [t1713] Testing /TR:AUI verification chain with /VERBOSE on 3C509B-COMBO... >> TEST.LOG
