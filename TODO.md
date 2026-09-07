@@ -5,7 +5,7 @@ This file documents pending items, in no particular order or priority.
 
 ## Bugs
 
-- Pending Clarification/Compatibility] t1505 duplicate active IOBASE conflict:
+- [Pending Clarification/Compatibility] t1505 duplicate active IOBASE conflict:
 
   The hardware-faithful mock currently rejects a targeted IOBASE migration
   when two active adapters decode the same IOBASE. The physical port response
@@ -18,7 +18,7 @@ This file documents pending items, in no particular order or priority.
   confirmed, retain the conservative failure expectation in t1505.
   
 
-- Pending Clarification/Compatibility] config restore fails
+- [Pending Clarification/Compatibility] config restore fails
 
   TESTHWC.MK includes config restoration via `RESTORE.BAT` as generated
   by `3CCFGCLI.EXE` during the compliance test.
@@ -38,11 +38,23 @@ This file documents pending items, in no particular order or priority.
 
 ## Enhancements
 
-### [Enhancement] Handle /VERBOSE flag for `SAVECONFIG` and `LIST` command
+### 3C509 (non-B) Boot ROM Support
 
-While these verbs accept the `/VERBOSE` flag, they don't produce extra diagnostics output.
+As noted in [README.md](README.md), Boot ROM support for 3C509 (non-B) is currently not implemented
+in this utility. I have no ROMs curently to even test the Boot ROM support for the 3c509B,
+but even more worse, I don't have a plain 3c509 on hand.
+
+I won't spend time on this feature for now until I have test gear on hand.
+
+
+
+### [Enhancement] Handle /VERBOSE flag for `SAVECONFIG`
+
+While the `SAVECONFIG` verb accepts the `/VERBOSE` flag, it doesn't produce extra diagnostics output.
 
 Right now, I don't have a need for that, but maybe it's worthwile implementing it.
+
+NOTE: For `LIST` it was implemented in the meantime.
 
 
 ### [Enhancement] Would be interesting to write a detection capability for 8-bit/16-bit bus.
@@ -51,41 +63,20 @@ Could be use to dynamically narrow-down the allowed IRQs for 8-bit bus systems.
 Not strictly needed, but nice to have.
 
 
+### [Enhancement] PnP-BIOS Detection
+
+At the time, since this utility is primarily intended for 8-bit bus systems,
+this is not necessary.
+
+But it would just generally be interesting in doing it.
+
+
 ### [Enhancement] Implement CLI Exit Codes
 
-Not strictly a bug, since the original utility does not emit return codes on the CLI either.
+The original utility does not emit return codes on the CLI either.
 
 But it could be useful anyway to emit return codes for success states, but also
 non-zero codes after command, hardware, and verification failures.
 
 Not a priority thing right now.
 
-Not to myself, a hypothetic example for `TEST.MK`:
-
-```text
-Txxx:
-  -3ccfgcli configure /INT:20
-  @if errorlevel 1 echo "Input Validation Error raised Exit Code 1"
-```
-
-
-## Limitations
-
-### EEPROM Transaction Safety / Non-rollback capability
-
-Once EEPROM modification starts, a later failure can leave partially changed persistent state.
-
-Given the historical hardware behavior and the dangers involved in trying to perform EEPROM rollback
-after an EEPROM failure, I still would not automatically implement rollback.
-
-The main reason is, that at this point, we wouldn't know why the EEPROM failed.
-
-- Was it just a write error, and a retry would solve it?
-- Was it a write error caused by a dying (or dead) EEPROM?
-
-I could certainly write a log of code around this, to try coping with the impossible,
-but I prefer to be pragmatic here.
-
-I would classify this as an architectural limitation.
-
-Potentially, error reporting could be clearer here.
