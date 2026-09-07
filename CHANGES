@@ -3,6 +3,8 @@ Changelog 0.7.5
     options such as /IOBASE:, /INT:, /ROM16K, and /LINKDOWN.
   - Migrated the regression suite to canonical Seeder syntax and removed legacy
     Seeder fixture verbs and positional ADD resources.
+  - Removed obsolete /NOLINKBEAT support; /MODEMPRESERVE covers the preservation case.
+  - Removed redundant /LINKUP support; connected link state is the default.
   - 3C509/3C509B generation classification now uses the detected ASIC revision
     as the single source of truth instead of EEPROM word 14h.
   - LIST now shows the ASIC revision alongside the adapter description and
@@ -27,6 +29,7 @@ Changelog 0.7.5
     model verbs and ADD model parsing.
   - Seeder internal model helper names now distinguish 3C509B from original
     3C509 profiles without changing public command syntax or behavior.
+  - Simplified Seeder link and preservation fixtures by removing obsolete options.
 
 Changelog 0.7.4
   - Fixed SAVECONFIG Boot ROM address decoding: it previously converted the

@@ -22,19 +22,25 @@ MOCK_STATE_FILE DB '3C509B.MCK', 0
 msg_banner_prefix DB '3CSEED - 3C509B mock state seeder v', '$'
 msg_banner_suffix DB 0Dh, 0Ah, '$'
 msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
-             DB '  INIT [options]       Create a 3C509B-TP seed.', 0Dh, 0Ah
+             DB '  INIT [options]       Create default 3C509B-TP seed (alias for 3C509B-TP).', 0Dh, 0Ah
              DB '  model [options]      Create one card using the selected model.', 0Dh, 0Ah
              DB '  ADD model [options]  Append one card; defaults pick next free I/O.', 0Dh, 0Ah
-             DB '  CLEAR        Delete 3C509B.MCK.', 0Dh, 0Ah
-             DB '  3C509B-TP    Seed as 3C509B-TP  (product 9050h, TP + AUI).', 0Dh, 0Ah
-             DB '  3C509B-COAX  Seed as 3C509B-COAX (product 9150h, AUI + BNC).', 0Dh, 0Ah
-             DB '  3C509B-COMBO Seed as 3C509B-COMBO (product 9450h, TP + AUI + BNC).', 0Dh, 0Ah
-             DB '  3C509B-TPO   Seed as 3C509B-TPO  (product 9550h, TP only).', 0Dh, 0Ah
-             DB '  3C509B-TPC   Seed as 3C509B-TPC  (product 9850h, coax).', 0Dh, 0Ah
-             DB '  3C509-TP     Seed as 3C509-TP (ASIC revision 1, TP + AUI).', 0Dh, 0Ah
-             DB '  /IOBASE:value /INT:value  Resource attributes.', 0Dh, 0Ah
-             DB '  /MODEMPRESERVE /M1200US /NOLINKBEAT', 0Dh, 0Ah
-             DB '  /LINKUP /LINKDOWN /ROM8K /ROM16K /ROM32K /ROMNONE', 0Dh, 0Ah
+             DB '  CLEAR                Delete 3C509B.MCK.', 0Dh, 0Ah
+             DB '  3C509B-TP            Product 9050h, Rev 2, TP + AUI.', 0Dh, 0Ah
+             DB '  3C509B-COAX          Product 9150h, Rev 2, AUI + BNC.', 0Dh, 0Ah
+             DB '  3C509B-COMBO         Product 9450h, Rev 2, TP + AUI + BNC.', 0Dh, 0Ah
+             DB '  3C509B-TPO           Product 9550h, Rev 2, TP only.', 0Dh, 0Ah
+             DB '  3C509B-TPC           Product 9850h, Rev 2, BNC.', 0Dh, 0Ah
+             DB '  3C509-TP             Product 9050h, Rev 1, TP + AUI.', 0Dh, 0Ah
+             DB '  /IOBASE:value        Set the initial I/O base address.', 0Dh, 0Ah
+             DB '  /INT:value           Set the initial IRQ.', 0Dh, 0Ah
+             DB '  /MODEMPRESERVE       Seed EEPROM word 0Dh preservation-test fields.', 0Dh, 0Ah
+             DB '  /M1200US             Seed the 1200 us MODEM timing fixture.', 0Dh, 0Ah
+             DB '  /LINKDOWN            Seed with live link not connected.', 0Dh, 0Ah
+             DB '  /ROM8K               Attach an 8 KB mock Boot ROM.', 0Dh, 0Ah
+             DB '  /ROM16K              Attach a 16 KB mock Boot ROM.', 0Dh, 0Ah
+             DB '  /ROM32K              Attach a 32 KB mock Boot ROM.', 0Dh, 0Ah
+             DB '  /ROMNONE             Seed without a physical Boot ROM.', 0Dh, 0Ah
              DB '$'
 msg_ok_init  DB 'Seed file created (INIT).', 0Dh, 0Ah, '$'
 msg_ok_clear DB 'Seed file deleted (or already absent).', 0Dh, 0Ah, '$'
@@ -63,8 +69,6 @@ kw_opt_iobase DB '/IOBASE:', 0
 kw_opt_int DB '/INT:', 0
 kw_opt_modempreserve DB '/MODEMPRESERVE', 0
 kw_opt_m1200us DB '/M1200US', 0
-kw_opt_nolinkbeat DB '/NOLINKBEAT', 0
-kw_opt_linkup DB '/LINKUP', 0
 kw_opt_linkdown DB '/LINKDOWN', 0
 kw_opt_rom8k DB '/ROM8K', 0
 kw_opt_rom16k DB '/ROM16K', 0
@@ -455,12 +459,6 @@ PROC Parse_Seed_Options NEAR
     mov     dx, OFFSET kw_opt_m1200us
     call    Match_Token
     jnc     @@M1200
-    mov     dx, OFFSET kw_opt_nolinkbeat
-    call    Match_Token
-    jnc     @@NoLinkBeat
-    mov     dx, OFFSET kw_opt_linkup
-    call    Match_Token
-    jnc     @@LinkUp
     mov     dx, OFFSET kw_opt_linkdown
     call    Match_Token
     jnc     @@LinkDown
@@ -504,19 +502,6 @@ PROC Parse_Seed_Options NEAR
     jne     @@Bad
     mov     [BYTE seed_sw_selected], 1
     mov     [WORD seed_software_info], 2F00h OR EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
-    call    Consume_Token
-    jmp     @@Next
-@@NoLinkBeat:
-    cmp     [BYTE seed_sw_selected], 0
-    jne     @@Bad
-    mov     [BYTE seed_sw_selected], 1
-    mov     [WORD seed_software_info], EEPROM_SOFTWARE_INFO_LINKBEAT_DISABLE OR EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
-    call    Consume_Token
-    jmp     @@Next
-@@LinkUp:
-    cmp     [BYTE seed_link_state], 2
-    je      @@Bad
-    mov     [BYTE seed_link_state], 1
     call    Consume_Token
     jmp     @@Next
 @@LinkDown:

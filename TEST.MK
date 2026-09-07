@@ -71,7 +71,7 @@ IOBASE_CHANGE: t04xx t0401 t0402 t0403 t0404 t0405 t0406 t0407 t0408 t0409
 PNP_CHANGE: t05xx t0501 t0502 t0503 t0504 t0505
 
 # Base: 0600
-MODEM_CHANGE: t06xx t0601 t0602 t0603 t0604 t0605 t0606 t0607 t0608 t0609 t0610
+MODEM_CHANGE: t06xx t0601 t0602 t0603 t0604 t0605 t0607 t0608 t0609 t0610
 
 # Base: 0700
 FD_CHANGE: t07xx t0701 t0702 t0703 t0704 t0705 t0706 t0707 t0708 t0710 t0711 t0714
@@ -339,17 +339,6 @@ t0605:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:NONE /VERBOSE >> $(ARTIFACTS)\T0605.LOG
    FIND "Modem speed setting is already configured to the requested value." $(ARTIFACTS)\T0605.LOG > NUL
 
-t0606:
-   @echo [t0606] Testing /MODEM preserves EEPROM Link Beat Disable policy... >> TEST.LOG
-   ${SEEDAPP} INIT /NOLINKBEAT > $(ARTIFACTS)\T0606.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /VERBOSE >> $(ARTIFACTS)\T0606.LOG
-   FIND "Current EEPROM word 0Dh: 4010" $(ARTIFACTS)\T0606.LOG > NUL
-   FIND "New EEPROM word 0Dh: 7310" $(ARTIFACTS)\T0606.LOG > NUL
-   FIND "Modem speed configuration completed successfully." $(ARTIFACTS)\T0606.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /VERBOSE >> $(ARTIFACTS)\T0606.LOG
-   FIND "Current EEPROM word 0Dh: 7310" $(ARTIFACTS)\T0606.LOG > NUL
-   FIND "Modem speed setting is already configured to the requested value." $(ARTIFACTS)\T0606.LOG > NUL
-
 t0607:
    @echo [t0607] Testing LIST MODEM interrupt-disable timing readout... >> TEST.LOG
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0607.LOG
@@ -560,8 +549,8 @@ t10xx:
    @echo [t10xx] LINK_STATUS: Verify LINKBEAT reporting ... >> TEST.LOG
 
 t1001:
-   @echo [t1001] Testing LIST Link Status: LINKUP seed reports connected... >> TEST.LOG
-   ${SEEDAPP} INIT /LINKUP > $(ARTIFACTS)\T1001.LOG
+   @echo [t1001] Testing LIST Link Status: default seed reports connected... >> TEST.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1001.LOG
    FIND "Seed file created (INIT)." $(ARTIFACTS)\T1001.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1001.LOG
    FIND "Link Status = connected" $(ARTIFACTS)\T1001.LOG > NUL
