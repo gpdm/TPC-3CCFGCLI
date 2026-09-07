@@ -36,7 +36,6 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  /INT:value           Set the initial IRQ.', 0Dh, 0Ah
              DB '  /MODEMPRESERVE       Seed EEPROM word 0Dh preservation-test fields.', 0Dh, 0Ah
              DB '  /M1200US             Seed the 1200 us MODEM timing fixture.', 0Dh, 0Ah
-             DB '  /LINKDOWN            Seed with live link not connected.', 0Dh, 0Ah
              DB '  /ROM8K               Attach an 8 KB mock Boot ROM.', 0Dh, 0Ah
              DB '  /ROM16K              Attach a 16 KB mock Boot ROM.', 0Dh, 0Ah
              DB '  /ROM32K              Attach a 32 KB mock Boot ROM.', 0Dh, 0Ah
@@ -69,7 +68,6 @@ kw_opt_iobase DB '/IOBASE:', 0
 kw_opt_int DB '/INT:', 0
 kw_opt_modempreserve DB '/MODEMPRESERVE', 0
 kw_opt_m1200us DB '/M1200US', 0
-kw_opt_linkdown DB '/LINKDOWN', 0
 kw_opt_rom8k DB '/ROM8K', 0
 kw_opt_rom16k DB '/ROM16K', 0
 kw_opt_rom32k DB '/ROM32K', 0
@@ -88,7 +86,6 @@ seed_config_control DW W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI
 seed_asic_rev DB 2
 seed_rom_size DB MCK_ROM_NONE
 seed_rom_selected DB 0
-seed_link_state DB 1
 seed_software_info DW EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
 seed_sw_selected DB 0
 seed_base_explicit DB 0
@@ -429,7 +426,6 @@ PROC Reset_Seed_Attributes NEAR
     mov     [BYTE seed_base_explicit], 0
     mov     [BYTE seed_rom_size], MCK_ROM_NONE
     mov     [BYTE seed_rom_selected], 0
-    mov     [BYTE seed_link_state], 0
     mov     [BYTE seed_sw_selected], 0
     mov     [WORD seed_software_info], EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
     ret
@@ -459,9 +455,6 @@ PROC Parse_Seed_Options NEAR
     mov     dx, OFFSET kw_opt_m1200us
     call    Match_Token
     jnc     @@M1200
-    mov     dx, OFFSET kw_opt_linkdown
-    call    Match_Token
-    jnc     @@LinkDown
     mov     dx, OFFSET kw_opt_rom8k
     call    Match_Token
     jnc     @@Rom8K
@@ -502,12 +495,6 @@ PROC Parse_Seed_Options NEAR
     jne     @@Bad
     mov     [BYTE seed_sw_selected], 1
     mov     [WORD seed_software_info], 2F00h OR EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
-    call    Consume_Token
-    jmp     @@Next
-@@LinkDown:
-    cmp     [BYTE seed_link_state], 1
-    je      @@Bad
-    mov     [BYTE seed_link_state], 2
     call    Consume_Token
     jmp     @@Next
 @@Rom8K:
@@ -1161,15 +1148,7 @@ PROC Build_Record_Current NEAR
     mov     ax, [seed_base]
     mov     [WORD state_blob + di + MCK3R_ACTIVE_BASE], ax
  
-    ; The deterministic diagnostic input supplies the read-only reserved-one
-    ; and valid-link-beat bits.  Driver-controlled media bits start clear.
-    cmp     [BYTE seed_link_state], 2
-    jne     @@LinkUp
     mov     [WORD state_blob + di + MCK3R_W4_MEDIA_INPUT], W4_MEDIA_STATUS_RESERVED_ONE
-    jmp     @@LinkDone
-@@LinkUp:
-    mov     [WORD state_blob + di + MCK3R_W4_MEDIA_INPUT], W4_MEDIA_STATUS_LINK_UP
-@@LinkDone:
  
     mov     si, EEPROM_MFG_ID
     mov     ax, EEPROM_MFG_ID_3COM

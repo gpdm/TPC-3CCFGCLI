@@ -499,7 +499,6 @@ msg_modem_1200 DB " (1200 bd)", '$'
 msg_modem_none DB " (NONE)", '$'
 msg_modem_not_representable DB " (not representable by CLI)", '$'
 msg_fullduplex_label DB "Full Duplex = ", '$'
-msg_link_status_label DB "Link Status = ", '$'
 msg_optimize_reserved DB "Reserved", '$'
 msg_optimize_dos DB "DOS", '$'
 msg_optimize_windows_or_os2 DB "Windows or OS/2", '$'
@@ -514,8 +513,6 @@ msg_invalid     DB  "invalid", '$'
 msg_none        DB  "none", '$'
 msg_not_supported DB "not supported", '$'
 msg_unavailable DB  "unavailable", '$'
-msg_link_connected     DB "connected", '$'
-msg_link_not_connected DB "not connected", '$'
 msg_invalid_cfg DB  "invalid configuration", '$'
 msg_onboard_tp  DB  "on-board TP", '$'
 msg_external    DB  "external", '$'
@@ -550,9 +547,6 @@ ext_addr_cfg      DW 0FFFFh
 ext_config_ctrl   DW 0FFFFh
 ext_nic_capabilities DW 0FFFFh
 ext_nic_capability_valid DW 0
-; Live link status (Window 4/Port 0Ah bit 11); 0 = not connected,
-; 1 = connected, 0FFFFh = unavailable (adapter not active).
-ext_link_status   DW 0FFFFh
 ; Raw EEPROM_SOFTWARE_INFO (word 0Dh), shared by the LIST
 ; MODEM, OPTIMIZE, and FULLDUPLEX decoders.
 ext_software_info DW 0FFFFh
@@ -8007,7 +8001,6 @@ PROC Read_Extended_Nic_Info NEAR
 
     mov     [ext_addr_cfg], 0FFFFh
     mov     [ext_config_ctrl], 0FFFFh
-    mov     [ext_link_status], 0FFFFh
     mov     [ext_software_info], 0FFFFh
     mov     [ext_nic_capabilities], 0FFFFh
     mov     [ext_nic_capability_valid], 0
@@ -8036,27 +8029,6 @@ PROC Read_Extended_Nic_Info NEAR
     jc      @@SkipSoftwareInfo
     mov     [ext_software_info], ax
 @@SkipSoftwareInfo:
-
-    ; Read the live Media Type and Status register (Window 4/Port 0Ah) to
-    ; surface the dynamic "Valid link beat detected" bit (bit 11) in LIST.
-    ; This is a live register, not an EEPROM field; the current window is
-    ; saved (on the stack) and restored around the switch to window 4.
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Nic_Get_Current_Window
-    push    ax
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, 4
-    call    Nic_Select_Window
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     bx, EL3_W4_MEDIA_STATUS
-    call    Nic_Reg_Read_Word
-    mov     cl, 11
-    shr     ax, cl
-    and     ax, 0001h
-    mov     [ext_link_status], ax
-    mov     dx, [WORD si + NIC_IO_BASE]
-    pop     ax
-    call    Nic_Select_Window
 
     ; EEPROM word 13h only carries Plug and Play state on the 3C509B.
     mov     al, [BYTE si + NIC_ASIC_REV]
@@ -8571,34 +8543,6 @@ PROC Print_Full_Duplex_Value NEAR
     ret
 ENDP Print_Full_Duplex_Value
 
-; Prints the live link status ("connected"/"not connected") read from the
-; Media Type and Status register (Window 4/Port 0Ah bit 11), or
-; "unavailable" if the adapter is not active.  See Read_Extended_Nic_Info.
-PROC Print_Link_Status_Value NEAR
-    push    ax
-    push    dx
-
-    mov     ax, [ext_link_status]
-    cmp     ax, 0FFFFh
-    je      @@Unavailable
-    or      ax, ax
-    jz      @@NotConnected
-
-    mov     dx, OFFSET msg_link_connected
-    jmp     @@Print
-@@NotConnected:
-    mov     dx, OFFSET msg_link_not_connected
-    jmp     @@Print
-@@Unavailable:
-    mov     dx, OFFSET msg_unavailable
-@@Print:
-    mov     ah, 09h
-    int     21h
-    pop     dx
-    pop     ax
-    ret
-ENDP Print_Link_Status_Value
-
 ; Normalize the raw Boot ROM base selector (EEPROM word 08h bits 11:8) to
 ; collapse the hardware address aliases, so the decoded /BADDRESS matches
 ; the selector's real C0000-DE000 base.  Shared by LIST (Print_Boot_Rom_Value)
@@ -8762,12 +8706,6 @@ PROC Print_Extended_Nic_Info NEAR
 
    mov     dx, OFFSET msg_indent
    call    Print_String
-   mov     dx, OFFSET msg_link_status_label
-   call    Print_String
-   call    Print_Link_Status_Value
-    mov     dx, OFFSET msg_crlf
-   call    Print_String
-
    mov     dx, OFFSET msg_separator
    call    Print_String
 
