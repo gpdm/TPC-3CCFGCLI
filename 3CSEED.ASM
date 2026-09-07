@@ -44,17 +44,6 @@ msg_ok_coax  DB 'Seed file created (3C509B-COAX).', 0Dh, 0Ah, '$'
 msg_ok_tpo   DB 'Seed file created (3C509B-TPO).', 0Dh, 0Ah, '$'
 msg_ok_tpc   DB 'Seed file created (3C509B-TPC).', 0Dh, 0Ah, '$'
 msg_ok_509tp DB 'Seed file created (3C509-TP).', 0Dh, 0Ah, '$'
-msg_ok_modempreserve DB 'Seed file created (MODEMPRESERVE).', 0Dh, 0Ah, '$'
-msg_ok_m1200us DB 'Seed file created (M1200US).', 0Dh, 0Ah, '$'
-msg_ok_nolinkbeat DB 'Seed file created (NOLINKBEAT).', 0Dh, 0Ah, '$'
-msg_ok_linkup   DB 'Seed file created (LINKUP).', 0Dh, 0Ah, '$'
-msg_ok_linkdown DB 'Seed file created (LINKDOWN).', 0Dh, 0Ah, '$'
-msg_ok_rom8k    DB 'Seed file created (ROM8K).', 0Dh, 0Ah, '$'
-msg_ok_rom16k   DB 'Seed file created (ROM16K).', 0Dh, 0Ah, '$'
-msg_ok_rom32k   DB 'Seed file created (ROM32K).', 0Dh, 0Ah, '$'
-msg_ok_romnone  DB 'Seed file created (ROMNONE).', 0Dh, 0Ah, '$'
-msg_ok_comborom16 DB 'Seed file created (COMBOROM16).', 0Dh, 0Ah, '$'
-msg_ok_combonone DB 'Seed file created (COMBONONE).', 0Dh, 0Ah, '$'
 msg_ok_add   DB 'Seed file updated (ADD).', 0Dh, 0Ah, '$'
 msg_fail_io  DB 'File I/O error.', 0Dh, 0Ah, '$'
 msg_bad_arg  DB 'Invalid command argument.', 0Dh, 0Ah, '$'
@@ -72,17 +61,6 @@ kw_coax      DB '3C509B-COAX', 0
 kw_tpo       DB '3C509B-TPO', 0
 kw_tpc       DB '3C509B-TPC', 0
 kw_509tp     DB '3C509-TP', 0
-kw_modempreserve DB 'MODEMPRESERVE', 0
-kw_m1200us   DB 'M1200US', 0
-kw_nolinkbeat DB 'NOLINKBEAT', 0
-kw_linkup    DB 'LINKUP', 0
-kw_linkdown  DB 'LINKDOWN', 0
-kw_rom8k     DB 'ROM8K', 0
-kw_rom16k    DB 'ROM16K', 0
-kw_rom32k    DB 'ROM32K', 0
-kw_romnone   DB 'ROMNONE', 0
-kw_comborom16 DB 'COMBOROM16', 0
-kw_combonone DB 'COMBONONE', 0
 kw_opt_iobase DB '/IOBASE:', 0
 kw_opt_int DB '/INT:', 0
 kw_opt_modempreserve DB '/MODEMPRESERVE', 0
@@ -112,7 +90,6 @@ seed_link_state DB 1
 seed_software_info DW EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
 seed_sw_selected DB 0
 seed_base_explicit DB 0
-seed_irq_explicit DB 0
 
 factory_mac  DB 6 DUP (0)
 oem_mac      DB 6 DUP (0)
@@ -224,40 +201,6 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_509tp
     call    Match_Token
     jnc     @@Do509TP
-    mov     dx, OFFSET kw_modempreserve
-    call    Match_Token
-    jnc     @@DoModemPreserve
-    mov     dx, OFFSET kw_m1200us
-    call    Match_Token
-    jnc     @@DoM1200us
-    mov     dx, OFFSET kw_nolinkbeat
-    call    Match_Token
-    jnc     @@DoNoLinkBeat
-    mov     dx, OFFSET kw_linkup
-    call    Match_Token
-    jnc     @@DoLinkUp
-    mov     dx, OFFSET kw_linkdown
-    call    Match_Token
-    jnc     @@DoLinkDown
-    mov     dx, OFFSET kw_rom8k
-    call    Match_Token
-    jnc     @@DoRom8K
-    mov     dx, OFFSET kw_rom16k
-    call    Match_Token
-    jnc     @@DoRom16K
-    mov     dx, OFFSET kw_rom32k
-    call    Match_Token
-    jnc     @@DoRom32K
-    mov     dx, OFFSET kw_romnone
-    call    Match_Token
-    jnc     @@DoRomNone
-    mov     dx, OFFSET kw_comborom16
-    call    Match_Token
-    jnc     @@DoComboRom16
-    mov     dx, OFFSET kw_combonone
-    call    Match_Token
-    jnc     @@DoComboNone
-
     mov     dx, OFFSET msg_bad_arg
     mov     ah, 09h
     int     21h
@@ -358,94 +301,6 @@ PROC Parse_And_Run NEAR
     call    Seed_Direct
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_509tp
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoModemPreserve:
-    call    Seed_ModemPreserve
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_modempreserve
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoM1200us:
-    call    Seed_M1200us
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_m1200us
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoNoLinkBeat:
-    call    Seed_NoLinkBeat
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_nolinkbeat
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoLinkUp:
-    call    Seed_LinkUp
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_linkup
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoLinkDown:
-    call    Seed_LinkDown
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_linkdown
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoRom8K:
-    call    Seed_Rom8K
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_rom8k
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoRom16K:
-    call    Seed_Rom16K
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_rom16k
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoRom32K:
-    call    Seed_Rom32K
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_rom32k
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoRomNone:
-    call    Seed_RomNone
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_romnone
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoComboRom16:
-    call    Seed_ComboRom16
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_comborom16
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoComboNone:
-    call    Seed_ComboNone
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_combonone
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -570,7 +425,6 @@ PROC Reset_Seed_Attributes NEAR
     mov     [seed_base], 0300h
     mov     [seed_irq], 10
     mov     [BYTE seed_base_explicit], 0
-    mov     [BYTE seed_irq_explicit], 0
     mov     [BYTE seed_rom_size], MCK_ROM_NONE
     mov     [BYTE seed_rom_selected], 0
     mov     [BYTE seed_link_state], 0
@@ -634,7 +488,6 @@ PROC Parse_Seed_Options NEAR
 @@IRQ:
     call    Parse_IRQ_Token
     jc      @@Bad
-    mov     [BYTE seed_irq_explicit], 1
     jmp     @@Next
 @@ModemPreserve:
     cmp     [BYTE seed_sw_selected], 0
@@ -1100,9 +953,9 @@ PROC Set_Default_Macs_For_Index NEAR
     ret
 ENDP Set_Default_Macs_For_Index
 
-; Deterministic baseline seed.  Model helpers establish SKU-specific fields
-; before calling this proc; Seed_Init preserves them while constructing the
-; shared fixed MAC/IRQ/base state.
+; The selected model setter establishes the SKU profile before this proc.
+; Seed_Direct resets seed attributes, parses slash options, then builds and
+; persists the complete state.
 PROC Seed_Direct NEAR
     call    Reset_Seed_Attributes
     call    Parse_Seed_Options
@@ -1126,32 +979,6 @@ PROC Seed_Direct NEAR
     stc
     ret
 ENDP Seed_Direct
-
-PROC Seed_Init NEAR
-    call    Reset_Seed_Attributes
-    call    Seed_Build_Default
-    ret
-ENDP Seed_Init
-
-PROC Seed_Build_Default NEAR
-    mov     [BYTE factory_mac+0], 02h
-    mov     [BYTE factory_mac+1], 60h
-    mov     [BYTE factory_mac+2], 8Ch
-    mov     [BYTE factory_mac+3], 12h
-    mov     [BYTE factory_mac+4], 34h
-    mov     [BYTE factory_mac+5], 56h
-
-    mov     [BYTE oem_mac+0], 02h
-    mov     [BYTE oem_mac+1], 60h
-    mov     [BYTE oem_mac+2], 8Ch
-    mov     [BYTE oem_mac+3], 65h
-    mov     [BYTE oem_mac+4], 43h
-    mov     [BYTE oem_mac+5], 21h
-
-    call    Build_State
-    call    Write_State_File
-    ret
-ENDP Seed_Build_Default
 
 PROC Seed_Add NEAR
     push    ax
@@ -1187,13 +1014,7 @@ PROC Seed_Add NEAR
     jz      @@PickDefaultBase
     cmp     al, '/'
     je      @@SlashOptions
-    call    Parse_IOBase_Token
-    jnc     @@MaybeIRQ
-    mov     dx, OFFSET msg_bad_iobase
-    mov     ah, 09h
-    int     21h
-    stc
-    jmp     @@Done
+    jmp     @@BadAddOptions
 
 @@SlashOptions:
     call    Parse_Seed_Options
@@ -1202,7 +1023,7 @@ PROC Seed_Add NEAR
     cmp     [BYTE si], 0
     jne     @@BadAddOptions
     cmp     [BYTE seed_base_explicit], 0
-    jne     @@MaybeIRQ
+    jne     @@Append
     jmp     @@PickDefaultBase
 
 @@BadAddOptions:
@@ -1214,31 +1035,8 @@ PROC Seed_Add NEAR
 
 @@PickDefaultBase:
     call    Choose_Default_Base
-    jnc     @@MaybeIRQ
+    jnc     @@Append
     mov     dx, OFFSET msg_no_free_iobase
-    mov     ah, 09h
-    int     21h
-    stc
-    jmp     @@Done
-
-@@MaybeIRQ:
-    call    Skip_Spaces
-    mov     al, [BYTE si]
-    or      al, al
-    jz      @@Append
-    call    Parse_IRQ_Token
-    jnc     @@CheckEnd
-    mov     dx, OFFSET msg_bad_irq
-    mov     ah, 09h
-    int     21h
-    stc
-    jmp     @@Done
-
-@@CheckEnd:
-    call    Skip_Spaces
-    cmp     [BYTE si], 0
-    je      @@Append
-    mov     dx, OFFSET msg_bad_arg
     mov     ah, 09h
     int     21h
     stc
@@ -1293,9 +1091,7 @@ PROC Seed_Clear NEAR
 ENDP Seed_Clear
 
 ; ---------------------------------------------------------------------------
-; Canonical model profile setters shared by standalone model verbs and ADD.
-; Seed_Model_* wrappers create deterministic one-card states by applying a
-; profile setter, then delegating to Seed_Init.
+; Canonical model profile setters shared by direct model commands and ADD.
 ; ---------------------------------------------------------------------------
 
 PROC Set_Model_509B_TP NEAR
@@ -1360,135 +1156,6 @@ PROC Set_Model_509_TP NEAR
     mov     [byte seed_asic_rev], 1
     ret
 ENDP Set_Model_509_TP
-
-PROC Seed_Model_509B_TP NEAR
-    call    Set_Model_509B_TP
-    call    Seed_Init
-    ret
-ENDP Seed_Model_509B_TP
-
-PROC Seed_Model_509B_Coax NEAR
-    call    Set_Model_509B_Coax
-    call    Seed_Init
-    ret
-ENDP Seed_Model_509B_Coax
-
-PROC Seed_Model_509B_Combo NEAR
-    call    Set_Model_509B_Combo
-    call    Seed_Init
-    ret
-ENDP Seed_Model_509B_Combo
-
-PROC Seed_Model_509B_TPO NEAR
-    call    Set_Model_509B_TPO
-    call    Seed_Init
-    ret
-ENDP Seed_Model_509B_TPO
-
-PROC Seed_Model_509B_TPC NEAR
-    call    Set_Model_509B_TPC
-    call    Seed_Init
-    ret
-ENDP Seed_Model_509B_TPC
-
-PROC Seed_Model_509_TP NEAR
-    call    Set_Model_509_TP
-    call    Seed_Init
-    ret
-ENDP Seed_Model_509_TP
-
-; Set every non-MODEM word 0Dh field while retaining a named MODEM encoding.
-PROC Seed_ModemPreserve NEAR
-    call    Reset_Seed_Attributes
-    mov     ax, EEPROM_MODEM_1200
-    or      ax, EEPROM_SOFTWARE_INFO_LINKBEAT_DISABLE
-    or      ax, EEPROM_SOFTWARE_INFO_RESERVED_MASK
-    or      ax, EEPROM_SOFTWARE_INFO_OPTIMIZE_MASK
-    or      ax, EEPROM_SOFTWARE_INFO_BOOT_PROTOCOL_MASK
-    mov     [seed_software_info], ax
-    call    Seed_Build_Default
-    ret
-ENDP Seed_ModemPreserve
-
-PROC Seed_M1200us NEAR
-    call    Reset_Seed_Attributes
-    mov     [seed_software_info], 2F00h OR EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
-    call    Seed_Build_Default
-    ret
-ENDP Seed_M1200us
-
-PROC Seed_NoLinkBeat NEAR
-    ; INIT profile, then set the persistent Link Beat Disable policy in
-    ; EEPROM_SOFTWARE_INFO word 0Dh bit 14.
-    call    Reset_Seed_Attributes
-    mov     [seed_software_info], EEPROM_SOFTWARE_INFO_LINKBEAT_DISABLE OR EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
-    call    Seed_Build_Default
-    ret
-ENDP Seed_NoLinkBeat
-
-PROC Seed_LinkUp NEAR
-    ; INIT profile with the live link status explicitly forced to
-    ; connected (Media Type and Status register, Window 4/Port 0Ah,
-    ; bit 11 set).  This is already the INIT default; the explicit
-    ; seed exists for test clarity and as the counterpart to LINKDOWN.
-    call    Reset_Seed_Attributes
-    mov     [BYTE seed_link_state], 1
-    call    Seed_Build_Default
-    ret
-ENDP Seed_LinkUp
-
-PROC Seed_LinkDown NEAR
-    ; INIT profile with bit 11 of the live Media Type and Status register
-    ; mirror cleared, so LIST reports "not connected".
-    call    Reset_Seed_Attributes
-    mov     [BYTE seed_link_state], 2
-    call    Seed_Build_Default
-    ret
-ENDP Seed_LinkDown
-
-PROC Seed_Rom8K NEAR
-    call    Reset_Seed_Attributes
-    mov     [BYTE seed_rom_size], MCK_ROM_8K
-    call    Seed_Build_Default
-    ret
-ENDP Seed_Rom8K
-
-PROC Seed_Rom16K NEAR
-    call    Reset_Seed_Attributes
-    mov     [BYTE seed_rom_size], MCK_ROM_16K
-    call    Seed_Build_Default
-    ret
-ENDP Seed_Rom16K
-
-PROC Seed_Rom32K NEAR
-    call    Reset_Seed_Attributes
-    mov     [BYTE seed_rom_size], MCK_ROM_32K
-    call    Seed_Build_Default
-    ret
-ENDP Seed_Rom32K
-
-PROC Seed_RomNone NEAR
-    call    Reset_Seed_Attributes
-    mov     [BYTE seed_rom_size], MCK_ROM_NONE
-    call    Seed_Build_Default
-    ret
-ENDP Seed_RomNone
-
-PROC Seed_ComboRom16 NEAR
-    call    Set_Model_509B_Combo
-    call    Reset_Seed_Attributes
-    mov     [BYTE seed_rom_size], MCK_ROM_16K
-    call    Seed_Build_Default
-    ret
-ENDP Seed_ComboRom16
-
-PROC Seed_ComboNone NEAR
-    call    Set_Model_509B_Combo
-    call    Reset_Seed_Attributes
-    mov     [BYTE seed_rom_size], MCK_ROM_NONE
-    call    Seed_Build_Default
-    ret
-ENDP Seed_ComboNone
 
 PROC Build_Record_Current NEAR
     push    ax
