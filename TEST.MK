@@ -2,8 +2,6 @@
 # Usage:
 #   MAKE -f TEST.MK test
 #   MAKE -f TEST.MK smoke
-#   MAKE -f TEST.MK test-build
-#   MAKE -f TEST.MK clean-test
 
 MAKEEXE = \TASM\BIN\MAKE
 ARTIFACTS = ARTIFACT
@@ -14,18 +12,6 @@ ASSERTERS = ASSERTRS
 # Aliases
 all: smoke
 test: smoke
-
-# Run against HW Mock (default)
-mock:
-   $(MAKEEXE) -f TEST.MK BINAPP=BIN\3CHWMOCK.EXE smoke
-
-# Run against real hardware
-real:
-   $(MAKEEXE) -f TEST.MK BINAPP=BIN\3CCFGCLI.EXE smoke
-
-test-build: prep build smoke-core
-   @echo Build and Smoke Test: run completed >> TEST.LOG
-   @echo Build and Smoke Test: run completed
 
 smoke: prep smoke-core
    @echo Smoke test: run completed >> TEST.LOG
@@ -38,19 +24,15 @@ prep:
    @if not exist $(ARTIFACTS) mkdir $(ARTIFACTS)
    @if exist $(ARTIFACTS)\*.LOG del $(ARTIFACTS)\*.LOG
 
-build:
-   @echo Building all targets via MAKEFILE... >> TEST.LOG
-   $(MAKEEXE) -f MAKEFILE all >> TEST.LOG
-
 cleanup:
    @echo Cleaning seed file... >> TEST.LOG
    $(SEEDAPP) CLEAR >> TEST.LOG
    @echo Smoke test complete. >> TEST.LOG
 
 clean-test:
-   @if exist TEST.LOG del TEST.LOG
+   # TEST.MK deliberately does not clear TEST.LOG - this is handled by test.sh
    @if exist $(ARTIFACTS)\*.LOG del $(ARTIFACTS)\*.LOG
-   @if exist $(ARTIFACTS)\RESTORE.BAT del $(ARTIFACTS)\RESTORE.BAT
+   @if exist $(ARTIFACTS)\*.BAT del $(ARTIFACTS)\*.BAT
 
 # Symbolic Test Groups
 # ####################
