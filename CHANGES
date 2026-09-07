@@ -19,6 +19,8 @@ Changelog 0.7.5
     EEPROM checksum validity; Boot ROM regression assertions now use LIST output.
   - removed stale ROMMETA* seeder verbs. Also renamed MODEMFIELDS to MODEMPRESERVE.
   - Seeder cleanup: removed duplicated code between INIT and 3C509-TP profile
+  - Seeder cleanup: shared canonical model profile setters between standalone
+    model verbs and ADD model parsing.
 
 Changelog 0.7.4
   - Fixed SAVECONFIG Boot ROM address decoding: it previously converted the
