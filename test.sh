@@ -34,6 +34,12 @@ test_saveconfig_line_lengths() {
   local result
   
   echo "SAVECONFIG: assertings line length limits ..." >> "${TEST_LOG}"
+
+  if [ ! -f "${ARTIFACT_DIR}/RESTORE.BAT" ]; then
+    echo "[SAVECONFIG] RESTORE.BAT: file is missing or unreadable" >> "${TEST_LOG}"
+    return 1
+  fi
+
   result=$(awk '{ if (length > max) max = length } END { print max }' "${ARTIFACT_DIR}/RESTORE.BAT")
 
   if [ "$result" -gt "$SAVE_MAX_BATCH_LINE" ]; then
