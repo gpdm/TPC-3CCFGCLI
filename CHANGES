@@ -21,6 +21,8 @@ Changelog 0.7.5
   - Seeder cleanup: removed duplicated code between INIT and 3C509-TP profile
   - Seeder cleanup: shared canonical model profile setters between standalone
     model verbs and ADD model parsing.
+  - Seeder internal model helper names now distinguish 3C509B from original
+    3C509 profiles without changing public command syntax or behavior.
 
 Changelog 0.7.4
   - Fixed SAVECONFIG Boot ROM address decoding: it previously converted the

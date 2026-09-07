@@ -265,7 +265,7 @@ PROC Parse_And_Run NEAR
     jmp     @@Help
 
 @@DoInit:
-    call    Seed_Model_TP
+    call    Seed_Model_509B_TP
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_init
     mov     ah, 09h
@@ -290,7 +290,7 @@ PROC Parse_And_Run NEAR
     jmp     @@Done
 
 @@DoTP:
-    call    Seed_Model_TP
+    call    Seed_Model_509B_TP
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_tp
     mov     ah, 09h
@@ -298,7 +298,7 @@ PROC Parse_And_Run NEAR
     jmp     @@Done
 
 @@DoCombo:
-    call    Seed_Model_Combo
+    call    Seed_Model_509B_Combo
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_combo
     mov     ah, 09h
@@ -306,7 +306,7 @@ PROC Parse_And_Run NEAR
     jmp     @@Done
 
 @@DoCoax:
-    call    Seed_Model_Coax
+    call    Seed_Model_509B_Coax
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_coax
     mov     ah, 09h
@@ -314,7 +314,7 @@ PROC Parse_And_Run NEAR
     jmp     @@Done
 
 @@DoTPO:
-    call    Seed_Model_TPO
+    call    Seed_Model_509B_TPO
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_tpo
     mov     ah, 09h
@@ -322,7 +322,7 @@ PROC Parse_And_Run NEAR
     jmp     @@Done
 
 @@DoTPC:
-    call    Seed_Model_TPC
+    call    Seed_Model_509B_TPC
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_tpc
     mov     ah, 09h
@@ -330,7 +330,7 @@ PROC Parse_And_Run NEAR
     jmp     @@Done
 
 @@Do509TP:
-    call    Seed_Model_509TP
+    call    Seed_Model_509_TP
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_509tp
     mov     ah, 09h
@@ -537,37 +537,37 @@ PROC Parse_Model_Token NEAR
     ret
 
 @@TP:
-    call    Set_Model_TP
+    call    Set_Model_509B_TP
     call    Consume_Token
     pop     dx
     clc
     ret
 @@Coax:
-    call    Set_Model_Coax
+    call    Set_Model_509B_Coax
     call    Consume_Token
     pop     dx
     clc
     ret
 @@Combo:
-    call    Set_Model_Combo
+    call    Set_Model_509B_Combo
     call    Consume_Token
     pop     dx
     clc
     ret
 @@TPO:
-    call    Set_Model_TPO
+    call    Set_Model_509B_TPO
     call    Consume_Token
     pop     dx
     clc
     ret
 @@TPC:
-    call    Set_Model_TPC
+    call    Set_Model_509B_TPC
     call    Consume_Token
     pop     dx
     clc
     ret
 @@P509TP:
-    call    Set_Model_509TP
+    call    Set_Model_509_TP
     call    Consume_Token
     pop     dx
     clc
@@ -1049,16 +1049,16 @@ ENDP Seed_Clear
 ; profile setter, then delegating to Seed_Init.
 ; ---------------------------------------------------------------------------
 
-PROC Set_Model_TP NEAR
+PROC Set_Model_509B_TP NEAR
     ; 3C509B-TP: product 9050h, TP + AUI connectors.
     mov     [seed_product], PRODUCT_3C509_TP
     mov     [seed_media], 0
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
     mov     [byte seed_asic_rev], 2
     ret
-ENDP Set_Model_TP
+ENDP Set_Model_509B_TP
 
-PROC Set_Model_Coax NEAR
+PROC Set_Model_509B_Coax NEAR
     ; 3C509B-COAX: product 9150h, AUI + BNC connectors.
     mov     [seed_product], PRODUCT_3C509
     mov     [seed_media], 3
@@ -1068,34 +1068,34 @@ PROC Set_Model_Coax NEAR
     mov     [seed_config_control], ax
     mov     [byte seed_asic_rev], 2
     ret
-ENDP Set_Model_Coax
+ENDP Set_Model_509B_Coax
 
-PROC Set_Model_Combo NEAR
+PROC Set_Model_509B_Combo NEAR
     ; 3C509B-COMBO: product 9450h, TP + AUI + BNC connectors.
     mov     [seed_product], PRODUCT_3C509_COMBO
     mov     [seed_media], 0
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
     mov     [byte seed_asic_rev], 2
     ret
-ENDP Set_Model_Combo
+ENDP Set_Model_509B_Combo
 
-PROC Set_Model_TPO NEAR
+PROC Set_Model_509B_TPO NEAR
     ; 3C509B-TPO: product 9550h, twisted-pair (media 0).
     mov     [seed_product], PRODUCT_3C509_TPO
     mov     [seed_media], 0
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
     mov     [byte seed_asic_rev], 2
     ret
-ENDP Set_Model_TPO
+ENDP Set_Model_509B_TPO
 
-PROC Set_Model_TPC NEAR
+PROC Set_Model_509B_TPC NEAR
     ; 3C509B-TPC: product 9850h, coax/BNC (media 3).
     mov     [seed_product], PRODUCT_3C509_TPC
     mov     [seed_media], 3
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_BNC_PRESENT
     mov     [byte seed_asic_rev], 2
     ret
-ENDP Set_Model_TPC
+ENDP Set_Model_509B_TPC
 
 ; 3C509-TP: 3C509-TP, ASIC revision 1, TP + AUI connectors.  Product ID
 ; is the same 9050h family value as 3C509B-TP; the ASIC revision (obtained
@@ -1104,49 +1104,49 @@ ENDP Set_Model_TPC
 ; words 10h/13h/14h/17h receive deterministic non-B-semantics sentinel values
 ; (see the poison-value comments below) instead of 3C509B capability/Internal
 ; Configuration/secondary-checksum content.
-PROC Set_Model_509TP NEAR
+PROC Set_Model_509_TP NEAR
     mov     [seed_product], PRODUCT_3C509_TP
     mov     [seed_media], 0
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
     mov     [byte seed_asic_rev], 1
     ret
-ENDP Set_Model_509TP
+ENDP Set_Model_509_TP
 
-PROC Seed_Model_TP NEAR
-    call    Set_Model_TP
+PROC Seed_Model_509B_TP NEAR
+    call    Set_Model_509B_TP
     call    Seed_Init
     ret
-ENDP Seed_Model_TP
+ENDP Seed_Model_509B_TP
 
-PROC Seed_Model_Coax NEAR
-    call    Set_Model_Coax
+PROC Seed_Model_509B_Coax NEAR
+    call    Set_Model_509B_Coax
     call    Seed_Init
     ret
-ENDP Seed_Model_Coax
+ENDP Seed_Model_509B_Coax
 
-PROC Seed_Model_Combo NEAR
-    call    Set_Model_Combo
+PROC Seed_Model_509B_Combo NEAR
+    call    Set_Model_509B_Combo
     call    Seed_Init
     ret
-ENDP Seed_Model_Combo
+ENDP Seed_Model_509B_Combo
 
-PROC Seed_Model_TPO NEAR
-    call    Set_Model_TPO
+PROC Seed_Model_509B_TPO NEAR
+    call    Set_Model_509B_TPO
     call    Seed_Init
     ret
-ENDP Seed_Model_TPO
+ENDP Seed_Model_509B_TPO
 
-PROC Seed_Model_TPC NEAR
-    call    Set_Model_TPC
+PROC Seed_Model_509B_TPC NEAR
+    call    Set_Model_509B_TPC
     call    Seed_Init
     ret
-ENDP Seed_Model_TPC
+ENDP Seed_Model_509B_TPC
 
-PROC Seed_Model_509TP NEAR
-    call    Set_Model_509TP
+PROC Seed_Model_509_TP NEAR
+    call    Set_Model_509_TP
     call    Seed_Init
     ret
-ENDP Seed_Model_509TP
+ENDP Seed_Model_509_TP
 
 ; Set every non-MODEM word 0Dh field while retaining a named MODEM encoding.
 PROC Seed_ModemPreserve NEAR
@@ -1271,7 +1271,7 @@ PROC Seed_RomNone NEAR
 ENDP Seed_RomNone
 
 PROC Seed_ComboRom16 NEAR
-    call    Seed_Model_Combo
+    call    Seed_Model_509B_Combo
     jc      @@Fail
     mov     [BYTE state_blob + MCK_HEADER_SIZE + MCK3R_ROM_SIZE], MCK_ROM_16K
     call    Write_State_File
@@ -1282,7 +1282,7 @@ PROC Seed_ComboRom16 NEAR
 ENDP Seed_ComboRom16
 
 PROC Seed_ComboNone NEAR
-    call    Seed_Model_Combo
+    call    Seed_Model_509B_Combo
     jc      @@Fail
     mov     [BYTE state_blob + MCK_HEADER_SIZE + MCK3R_ROM_SIZE], MCK_ROM_NONE
     call    Write_State_File
