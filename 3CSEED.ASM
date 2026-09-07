@@ -39,7 +39,6 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  /ROM8K               Attach an 8 KB mock Boot ROM.', 0Dh, 0Ah
              DB '  /ROM16K              Attach a 16 KB mock Boot ROM.', 0Dh, 0Ah
              DB '  /ROM32K              Attach a 32 KB mock Boot ROM.', 0Dh, 0Ah
-             DB '  /ROMNONE             Seed without a physical Boot ROM.', 0Dh, 0Ah
              DB '$'
 msg_ok_init  DB 'Seed file created (INIT).', 0Dh, 0Ah, '$'
 msg_ok_clear DB 'Seed file deleted (or already absent).', 0Dh, 0Ah, '$'
@@ -71,7 +70,6 @@ kw_opt_m1200us DB '/M1200US', 0
 kw_opt_rom8k DB '/ROM8K', 0
 kw_opt_rom16k DB '/ROM16K', 0
 kw_opt_rom32k DB '/ROM32K', 0
-kw_opt_romnone DB '/ROMNONE', 0
 
 cmd_buffer   DB 128 DUP (0)
 state_blob   DB MCK_FILE_SIZE DUP (0)
@@ -464,9 +462,6 @@ PROC Parse_Seed_Options NEAR
     mov     dx, OFFSET kw_opt_rom32k
     call    Match_Token
     jnc     @@Rom32K
-    mov     dx, OFFSET kw_opt_romnone
-    call    Match_Token
-    jnc     @@RomNone
     jmp     @@Bad
 
 @@IOBase:
@@ -516,13 +511,6 @@ PROC Parse_Seed_Options NEAR
     jne     @@Bad
     mov     [BYTE seed_rom_selected], 1
     mov     [BYTE seed_rom_size], MCK_ROM_32K
-    call    Consume_Token
-    jmp     @@Next
-@@RomNone:
-    cmp     [BYTE seed_rom_selected], 0
-    jne     @@Bad
-    mov     [BYTE seed_rom_selected], 1
-    mov     [BYTE seed_rom_size], MCK_ROM_NONE
     call    Consume_Token
     jmp     @@Next
 @@Bad:

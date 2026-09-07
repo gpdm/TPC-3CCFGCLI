@@ -31,6 +31,7 @@ Changelog 0.7.5
     3C509 profiles without changing public command syntax or behavior.
   - Simplified Seeder link and preservation fixtures by removing obsolete options.
   - Removed LIST Link Status reporting and the corresponding Seeder fixture and tests.
+  - Removed the redundant /ROMNONE Seeder option; the default seed has no Boot ROM.
 
 Changelog 0.7.4
   - Fixed SAVECONFIG Boot ROM address decoding: it previously converted the

@@ -574,7 +574,7 @@ t1103:
 
 t1104:
    @echo [t1104] Testing CONFIGURE /BSIZE:DISABLED disables Boot ROM... >> TEST.LOG
-   ${SEEDAPP} INIT /ROMNONE > $(ARTIFACTS)\T1104.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1104.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED > $(ARTIFACTS)\T1104.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1104.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1104.LOG
@@ -689,7 +689,7 @@ t1119:
 
 t1120:
    @echo [t1120] Testing rejected Boot ROM config reports Size Valid = no... >> TEST.LOG
-   ${SEEDAPP} INIT /ROMNONE > $(ARTIFACTS)\T1120.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1120.LOG
    $(BINAPP) CONFIGURE /VERBOSE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1120.LOG
    FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1120.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "already configured to the requested value" $(ARTIFACTS)\T1120.LOG
@@ -709,8 +709,8 @@ t1121:
    FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1121.LOG > NUL
 
 t1122:
-   @echo [t1122] Testing ROMNONE rejects Boot ROM while preserving INT... >> TEST.LOG
-   ${SEEDAPP} INIT /ROMNONE > $(ARTIFACTS)\T1122.LOG
+   @echo [t1122] Testing no-ROM seed rejects Boot ROM while preserving INT... >> TEST.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1122.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /INT:5 >> $(ARTIFACTS)\T1122.LOG
    FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1122.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1122.LOG > NUL
@@ -741,8 +741,8 @@ t1125:
    FIND "Boot ROM = 32K at C8000H" $(ARTIFACTS)\T1125.LOG > NUL
 
 t1126:
-   @echo [t1126] Testing ROMNONE rejects Boot ROM while preserving IOBASE... >> TEST.LOG
-   ${SEEDAPP} INIT /ROMNONE > $(ARTIFACTS)\T1126.LOG
+   @echo [t1126] Testing no-ROM seed rejects Boot ROM while preserving IOBASE... >> TEST.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1126.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /IOBASE:0280 >> $(ARTIFACTS)\T1126.LOG
    FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1126.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1126.LOG
@@ -750,8 +750,8 @@ t1126:
    FIND "IOBASE = 0280" $(ARTIFACTS)\T1126.LOG > NUL
 
 t1127:
-   @echo [t1127] Testing ROMNONE rejects Boot ROM while preserving TR... >> TEST.LOG
-   ${SEEDAPP} 3C509B-COMBO /ROMNONE > $(ARTIFACTS)\T1127.LOG
+   @echo [t1127] Testing no-ROM combo seed rejects Boot ROM while preserving TR... >> TEST.LOG
+   ${SEEDAPP} 3C509B-COMBO > $(ARTIFACTS)\T1127.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /TR:AUI >> $(ARTIFACTS)\T1127.LOG
    FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1127.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1127.LOG
@@ -820,7 +820,7 @@ t1133:
 
 t1134:
    @echo [t1134] Testing rejected Boot ROM skips final live verification... >> TEST.LOG
-   ${SEEDAPP} INIT /ROMNONE > $(ARTIFACTS)\T1134.LOG
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1134.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /INT:5 /VERBOSE >> $(ARTIFACTS)\T1134.LOG
    FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1134.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1134.LOG > NUL
