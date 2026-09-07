@@ -547,27 +547,28 @@ development work.
 
 ### Running tests against real hardware
 
+
+```text
+The following section is outdated as of release 0.7.5.
+TEST.MK is no longer the appropriate target for hardware regressions.
+
+New equivalent for hardware regression test is coming soon.
+The section is kept in place until the final implementation is available.
+```
+
 The same smoke suite can be executed against the real hardware binary from
 vanilla DOS using:
 
 ```text
-\TASM\BIN\MAKE -f TEST.MK real
+FIXME
 ```
 
 The target system must provide:
 
 * `MAKE.EXE` at `\TASM\BIN\MAKE`
 * `TEST.MK` in the current working directory
-* `3CCFGCLI.EXE` at `\BIN\3CCFGCLI.EXE`
+* `3CCFGCLI.EXE` at `\BIN\`
 
-If the executable is stored elsewhere, the default `real` target cannot be
-used directly.
-
-Supply `BINAPP` explicitly instead:
-
-```text
-\TASM\BIN\MAKE -f TEST.MK BINAPP=\CLI\3CCFGCLI.EXE smoke
-```
 
 ## AI Development Transparency
 
