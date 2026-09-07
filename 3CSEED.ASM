@@ -49,8 +49,6 @@ msg_fail_io  DB 'File I/O error.', 0Dh, 0Ah, '$'
 msg_bad_arg  DB 'Invalid command argument.', 0Dh, 0Ah, '$'
 msg_add_too_many DB 'Too many mock NIC records.', 0Dh, 0Ah, '$'
 msg_no_free_iobase DB 'No free default IOBASE remains.', 0Dh, 0Ah, '$'
-msg_bad_iobase DB 'Invalid IOBASE argument.', 0Dh, 0Ah, '$'
-msg_bad_irq  DB 'Invalid IRQ argument.', 0Dh, 0Ah, '$'
 
 kw_init      DB 'INIT', 0
 kw_add       DB 'ADD', 0
