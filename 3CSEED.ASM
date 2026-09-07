@@ -265,7 +265,7 @@ PROC Parse_And_Run NEAR
     jmp     @@Help
 
 @@DoInit:
-    call    Seed_Init
+    call    Seed_Model_TP
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_init
     mov     ah, 09h
@@ -920,10 +920,9 @@ PROC Set_Default_Macs_For_Index NEAR
     ret
 ENDP Set_Default_Macs_For_Index
 
-; Deterministic baseline seed.  seed_product/seed_media are intentionally NOT
-; set here: the DATASEG defaults (PRODUCT_3C509_TP / media 0) apply for a bare
-; INIT call, while model helpers set seed_product/seed_media to their SKU-specific
-; values BEFORE calling this proc and rely on them being preserved.
+; Deterministic baseline seed.  Model helpers establish SKU-specific fields
+; before calling this proc; Seed_Init preserves them while constructing the
+; shared fixed MAC/IRQ/base state.
 PROC Seed_Init NEAR
     mov     [BYTE factory_mac+0], 02h
     mov     [BYTE factory_mac+1], 60h
