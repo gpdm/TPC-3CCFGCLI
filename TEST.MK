@@ -135,21 +135,21 @@ t02xx:
    @echo [t02xx] IRQ_CHANGE: Verify IRQ change behaviour ... >> TEST.LOG
 
 t0201:
-   @echo [t0201] Testing mock CONFIGURE /INT invalid out-of-range value... >> TEST.LOG
+   @echo [t0201] Testing CONFIGURE /INT invalid out-of-range value... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:21 > $(ARTIFACTS)\T0201.LOG
    FIND "Invalid /INT parameter." $(ARTIFACTS)\T0201.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0201.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T0201.LOG > NUL
 
 t0202:
-   @echo [t0202] Testing mock CONFIGURE /INT invalid input... >> TEST.LOG
+   @echo [t0202] Testing CONFIGURE /INT invalid input... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:BADVALUE > $(ARTIFACTS)\T0202.LOG
    FIND "Invalid /INT parameter." $(ARTIFACTS)\T0202.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0202.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T0202.LOG > NUL
 
 t0203:
-   @echo [t0203] Testing mock CONFIGURE /INT transition to 5... >> TEST.LOG
+   @echo [t0203] Testing CONFIGURE /INT transition to 5... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 > $(ARTIFACTS)\T0203.LOG
    FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T0203.LOG > NUL
    FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0203.LOG > NUL
@@ -157,7 +157,7 @@ t0203:
    FIND "IRQ = 5" $(ARTIFACTS)\T0203.LOG > NUL
 
 t0204:
-   @echo [t0204] Testing mock CONFIGURE /INT transition back to 9... >> TEST.LOG
+   @echo [t0204] Testing CONFIGURE /INT transition back to 9... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 > $(ARTIFACTS)\T0204.LOG
    FIND "INT parameter accepted. Requested IRQ: 9" $(ARTIFACTS)\T0204.LOG > NUL
    FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0204.LOG > NUL
@@ -187,28 +187,28 @@ t04xx:
    @echo [t04xx] IOBASE_CHANGE: Verify IO base change behaviour ... >> TEST.LOG
 
 t0401:
-   @echo [t0401] Testing mock CONFIGURE /IOBASE invalid out-of-range high value... >> TEST.LOG
+   @echo [t0401] Testing CONFIGURE /IOBASE invalid out-of-range high value... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:03F0 > $(ARTIFACTS)\T0401.LOG
    FIND "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments." $(ARTIFACTS)\T0401.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0401.LOG
    FIND "IOBASE = 0300" $(ARTIFACTS)\T0401.LOG > NUL
 
 t0402:
-   @echo [t0402] Testing mock CONFIGURE /IOBASE invalid out-of-range low value... >> TEST.LOG
+   @echo [t0402] Testing CONFIGURE /IOBASE invalid out-of-range low value... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:01F0 > $(ARTIFACTS)\T0402.LOG
    FIND "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments." $(ARTIFACTS)\T0402.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0402.LOG
    FIND "IOBASE = 0300" $(ARTIFACTS)\T0402.LOG > NUL
 
 t0403:
-   @echo [t0403] Testing mock CONFIGURE /IOBASE arbitrary invalid input... >> TEST.LOG
+   @echo [t0403] Testing CONFIGURE /IOBASE arbitrary invalid input... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:BADVALUE > $(ARTIFACTS)\T0403.LOG
    FIND "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments." $(ARTIFACTS)\T0403.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0403.LOG
    FIND "IOBASE = 0300" $(ARTIFACTS)\T0403.LOG > NUL
 
 t0404:
-   @echo [t0404] Testing mock CONFIGURE /IOBASE transition to 0280 (long notation)... >> TEST.LOG
+   @echo [t0404] Testing CONFIGURE /IOBASE transition to 0280 (long notation)... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0280 > $(ARTIFACTS)\T0404.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T0404.LOG > NUL
    FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0404.LOG > NUL
@@ -216,7 +216,7 @@ t0404:
    FIND "IOBASE = 0280" $(ARTIFACTS)\T0404.LOG > NUL
 
 t0405:
-   @echo [t0405] Testing mock CONFIGURE /IOBASE transition back to 0300 (long notation)... >> TEST.LOG
+   @echo [t0405] Testing CONFIGURE /IOBASE transition back to 0300 (long notation)... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0300 > $(ARTIFACTS)\T0405.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0300" $(ARTIFACTS)\T0405.LOG > NUL
    FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0405.LOG > NUL
@@ -224,7 +224,7 @@ t0405:
    FIND "IOBASE = 0300" $(ARTIFACTS)\T0405.LOG > NUL
 
 t0406:
-   @echo [t0406] Testing mock CONFIGURE /IOBASE transition to 280 (short notation)... >> TEST.LOG
+   @echo [t0406] Testing CONFIGURE /IOBASE transition to 280 (short notation)... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:280 > $(ARTIFACTS)\T0406.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T0406.LOG > NUL
    FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0406.LOG > NUL
@@ -232,7 +232,7 @@ t0406:
    FIND "IOBASE = 0280" $(ARTIFACTS)\T0406.LOG > NUL
 
 t0407:
-   @echo [t0407] Testing mock CONFIGURE /IOBASE transition back to 300 (short notation)... >> TEST.LOG
+   @echo [t0407] Testing CONFIGURE /IOBASE transition back to 300 (short notation)... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:300 > $(ARTIFACTS)\T0407.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0300" $(ARTIFACTS)\T0407.LOG > NUL
    FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0407.LOG > NUL
@@ -259,7 +259,7 @@ t05xx:
    @echo [t05xx] PNP_CHANGE: Verify PNP property change behaviour ... >> TEST.LOG
 
 t0501:
-   @echo [t0501] Testing mock CONFIGURE /PNP transition to disabled... >> TEST.LOG
+   @echo [t0501] Testing CONFIGURE /PNP transition to disabled... >> TEST.LOG
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0501.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED /VERBOSE >> $(ARTIFACTS)\T0501.LOG
    FIND "PNP parameter accepted. Requested Plug and Play mode: disabled" $(ARTIFACTS)\T0501.LOG > NUL
@@ -272,7 +272,7 @@ t0501:
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T0501.LOG > NUL
 
 t0502:
-   @echo [t0502] Testing mock CONFIGURE /PNP transition back to enabled... >> TEST.LOG
+   @echo [t0502] Testing CONFIGURE /PNP transition back to enabled... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED /VERBOSE > $(ARTIFACTS)\T0502.LOG
    FIND "PNP parameter accepted. Requested Plug and Play mode: enabled" $(ARTIFACTS)\T0502.LOG > NUL
    FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0502.LOG > NUL
@@ -284,21 +284,21 @@ t0502:
    FIND "Plug and Play = enabled" $(ARTIFACTS)\T0502.LOG > NUL
 
 t0503:
-   @echo [t0503] Testing mock CONFIGURE /PNP rejects legacy numeric value... >> TEST.LOG
+   @echo [t0503] Testing CONFIGURE /PNP rejects legacy numeric value... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:1 > $(ARTIFACTS)\T0503.LOG
    FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0503.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0503.LOG
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0503.LOG > NUL
 
 t0504:
-   @echo [t0504] Testing mock CONFIGURE /PNP symbolic false value... >> TEST.LOG
+   @echo [t0504] Testing CONFIGURE /PNP symbolic false value... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:FALSE > $(ARTIFACTS)\T0504.LOG
    FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0504.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0504.LOG
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0504.LOG > NUL
 
 t0505:
-   @echo [t0505] Testing mock CONFIGURE /PNP arbitrary invalid input... >> TEST.LOG
+   @echo [t0505] Testing CONFIGURE /PNP arbitrary invalid input... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:OTHERINVALIDINPUT > $(ARTIFACTS)\T0505.LOG
    FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0505.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0505.LOG
@@ -308,32 +308,32 @@ t06xx:
    @echo [t06xx] MODEM_CHANGE: Verify MODEM property change behaviour ... >> TEST.LOG
 
 t0601:
-   @echo [t0601] Testing mock CONFIGURE /MODEM transition to 1200... >> TEST.LOG
+   @echo [t0601] Testing CONFIGURE /MODEM transition to 1200... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 > $(ARTIFACTS)\T0601.LOG
    FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T0601.LOG > NUL
    FIND "Modem speed configuration completed successfully." $(ARTIFACTS)\T0601.LOG > NUL
 
 t0602:
-   @echo [t0602] Testing mock CONFIGURE /MODEM unchanged transition at 1200... >> TEST.LOG
+   @echo [t0602] Testing CONFIGURE /MODEM unchanged transition at 1200... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /VERBOSE > $(ARTIFACTS)\T0602.LOG
    FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T0602.LOG > NUL
    FIND "Modem speed setting is already configured to the requested value." $(ARTIFACTS)\T0602.LOG > NUL
 
 t0603:
-   @echo [t0603] Testing mock CONFIGURE /MODEM transition to NONE... >> TEST.LOG
+   @echo [t0603] Testing CONFIGURE /MODEM transition to NONE... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:NONE > $(ARTIFACTS)\T0603.LOG
    FIND "MODEM parameter accepted. Requested setting: none" $(ARTIFACTS)\T0603.LOG > NUL
    FIND "Modem speed configuration completed successfully." $(ARTIFACTS)\T0603.LOG > NUL
 
 t0604:
-   @echo [t0604] Testing mock CONFIGURE /MODEM invalid symbolic input... >> TEST.LOG
+   @echo [t0604] Testing CONFIGURE /MODEM invalid symbolic input... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:FALSE > $(ARTIFACTS)\T0604.LOG
    FIND "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments." $(ARTIFACTS)\T0604.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:NONE /VERBOSE >> $(ARTIFACTS)\T0604.LOG
    FIND "Modem speed setting is already configured to the requested value." $(ARTIFACTS)\T0604.LOG > NUL
 
 t0605:
-   @echo [t0605] Testing mock CONFIGURE /MODEM invalid out-of-range step value... >> TEST.LOG
+   @echo [t0605] Testing CONFIGURE /MODEM invalid out-of-range step value... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:26 > $(ARTIFACTS)\T0605.LOG
    FIND "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments." $(ARTIFACTS)\T0605.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:NONE /VERBOSE >> $(ARTIFACTS)\T0605.LOG
@@ -362,7 +362,7 @@ t0607:
 
 t0608:
    @echo [t0608] Testing /MODEM:25 preserves all non-MODEM word 0Dh fields... >> TEST.LOG
-   ${SEEDAPP} MODEMFIELDS > $(ARTIFACTS)\T0608.LOG
+   ${SEEDAPP} MODEMPRESERVE > $(ARTIFACTS)\T0608.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:25 /VERBOSE >> $(ARTIFACTS)\T0608.LOG
    FIND "Current EEPROM word 0Dh: 73FF" $(ARTIFACTS)\T0608.LOG > NUL
    FIND "New EEPROM word 0Dh: 40FF" $(ARTIFACTS)\T0608.LOG > NUL
@@ -371,7 +371,7 @@ t0608:
 
 t0609:
    @echo [t0609] Testing /MODEM:1600 upper-bound field encoding... >> TEST.LOG
-   ${SEEDAPP} MODEMFIELDS > $(ARTIFACTS)\T0609.LOG
+   ${SEEDAPP} MODEMPRESERVE > $(ARTIFACTS)\T0609.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1600 /VERBOSE >> $(ARTIFACTS)\T0609.LOG
    FIND "Current EEPROM word 0Dh: 73FF" $(ARTIFACTS)\T0609.LOG > NUL
    FIND "New EEPROM word 0Dh: 7FFF" $(ARTIFACTS)\T0609.LOG > NUL
@@ -431,7 +431,7 @@ t07xx:
    @echo [t07xx] FD_CHANGE: Verify FULLDUPLEX property behaviour ... >> TEST.LOG
 
 t0701:
-   @echo [t0701] Testing mock CONFIGURE /FULLDUPLEX transition to enabled... >> TEST.LOG
+   @echo [t0701] Testing CONFIGURE /FULLDUPLEX transition to enabled... >> TEST.LOG
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0701.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T0701.LOG
    FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T0701.LOG > NUL
@@ -439,28 +439,28 @@ t0701:
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0701.LOG > NUL
 
 t0702:
-   @echo [t0702] Testing mock CONFIGURE /FULLDUPLEX unchanged transition at enabled... >> TEST.LOG
+   @echo [t0702] Testing CONFIGURE /FULLDUPLEX unchanged transition at enabled... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE > $(ARTIFACTS)\T0702.LOG
    FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T0702.LOG > NUL
    FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0702.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0702.LOG > NUL
 
 t0703:
-   @echo [t0703] Testing mock CONFIGURE /FULLDUPLEX transition to disabled... >> TEST.LOG
+   @echo [t0703] Testing CONFIGURE /FULLDUPLEX transition to disabled... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED /VERBOSE > $(ARTIFACTS)\T0703.LOG
    FIND "FULLDUPLEX parameter accepted. Requested mode: disabled" $(ARTIFACTS)\T0703.LOG > NUL
    FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0703.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0703.LOG > NUL
 
 t0704:
-   @echo [t0704] Testing mock CONFIGURE /FULLDUPLEX rejects legacy numeric value... >> TEST.LOG
+   @echo [t0704] Testing CONFIGURE /FULLDUPLEX rejects legacy numeric value... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:1 > $(ARTIFACTS)\T0704.LOG
    FIND "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0704.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED /VERBOSE >> $(ARTIFACTS)\T0704.LOG
    FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0704.LOG > NUL
 
 t0705:
-   @echo [t0705] Testing mock CONFIGURE /FULLDUPLEX invalid symbolic input... >> TEST.LOG
+   @echo [t0705] Testing CONFIGURE /FULLDUPLEX invalid symbolic input... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:TRUE > $(ARTIFACTS)\T0705.LOG
    FIND "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0705.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED /VERBOSE >> $(ARTIFACTS)\T0705.LOG
@@ -527,7 +527,7 @@ t09xx:
    @echo [t09xx] OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour ... >> TEST.LOG
 
 t0901:
-   @echo [t0901] Testing mock CONFIGURE /OPTIMIZE transition to OS/2... >> TEST.LOG
+   @echo [t0901] Testing CONFIGURE /OPTIMIZE transition to OS/2... >> TEST.LOG
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0901.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:OS/2 /VERBOSE >> $(ARTIFACTS)\T0901.LOG
    FIND "New EEPROM word 0Dh: Windows or OS/2" $(ARTIFACTS)\T0901.LOG > NUL
@@ -536,21 +536,21 @@ t0901:
    FIND "Optimization = Windows or OS/2" $(ARTIFACTS)\T0901.LOG > NUL
 
 t0902:
-   @echo [t0902] Testing mock CONFIGURE /OPTIMIZE invalid symbolic input... >> TEST.LOG
+   @echo [t0902] Testing CONFIGURE /OPTIMIZE invalid symbolic input... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:TRUE > $(ARTIFACTS)\T0902.LOG
    FIND "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER." $(ARTIFACTS)\T0902.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0902.LOG
    FIND "Optimization = Windows or OS/2" $(ARTIFACTS)\T0902.LOG > NUL
 
 t0903:
-   @echo [t0903] Testing mock CONFIGURE /OPTIMIZE transition to SERVER... >> TEST.LOG
+   @echo [t0903] Testing CONFIGURE /OPTIMIZE transition to SERVER... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER > $(ARTIFACTS)\T0903.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0903.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0903.LOG
    FIND "Optimization = Server" $(ARTIFACTS)\T0903.LOG > NUL
 
 t0904:
-   @echo [t0904] Testing mock CONFIGURE /OPTIMIZE transition to DOS... >> TEST.LOG
+   @echo [t0904] Testing CONFIGURE /OPTIMIZE transition to DOS... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:DOS >> $(ARTIFACTS)\T0904.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0904.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0904.LOG
@@ -577,7 +577,7 @@ t11xx:
    @echo [t11xx] BOOTROM_CHANGE: Verify boot ROM change behaviour ... >> TEST.LOG
 
 t1101:
-   @echo [t1101] Testing mock CONFIGURE /BADDRESS minimum valid address with /BSIZE:16... >> TEST.LOG
+   @echo [t1101] Testing CONFIGURE /BADDRESS minimum valid address with /BSIZE:16... >> TEST.LOG
    ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1101.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:16 > $(ARTIFACTS)\T1101.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1101.LOG > NUL
@@ -586,7 +586,7 @@ t1101:
 
 
 t1102:
-   @echo [t1102] Testing mock CONFIGURE /BSIZE then /BADDRESS ordering... >> TEST.LOG
+   @echo [t1102] Testing CONFIGURE /BSIZE then /BADDRESS ordering... >> TEST.LOG
    ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1102.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:16 /BADDRESS:C0000 > $(ARTIFACTS)\T1102.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1102.LOG > NUL
@@ -595,7 +595,7 @@ t1102:
 
 
 t1103:
-   @echo [t1103] Testing mock CONFIGURE /BADDRESS+/BSIZE reconfigure to a new pair... >> TEST.LOG
+   @echo [t1103] Testing CONFIGURE /BADDRESS+/BSIZE reconfigure to a new pair... >> TEST.LOG
    ${SEEDAPP} ROM32K > $(ARTIFACTS)\T1103.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:D0000 /BSIZE:32 > $(ARTIFACTS)\T1103.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1103.LOG > NUL
@@ -604,7 +604,7 @@ t1103:
 
 
 t1104:
-   @echo [t1104] Testing mock CONFIGURE /BSIZE:DISABLED disables Boot ROM... >> TEST.LOG
+   @echo [t1104] Testing CONFIGURE /BSIZE:DISABLED disables Boot ROM... >> TEST.LOG
    ${SEEDAPP} ROMNONE > $(ARTIFACTS)\T1104.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED > $(ARTIFACTS)\T1104.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1104.LOG > NUL
@@ -613,7 +613,7 @@ t1104:
 
 
 t1105:
-   @echo [t1105] Testing mock CONFIGURE /BADDRESS out-of-range address... >> TEST.LOG
+   @echo [t1105] Testing CONFIGURE /BADDRESS out-of-range address... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:E0000 /BSIZE:16 > $(ARTIFACTS)\T1105.LOG
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1105.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1105.LOG
@@ -621,7 +621,7 @@ t1105:
 
 
 t1106:
-   @echo [t1106] Testing mock CONFIGURE /BADDRESS non-aligned address... >> TEST.LOG
+   @echo [t1106] Testing CONFIGURE /BADDRESS non-aligned address... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C1000 /BSIZE:16 > $(ARTIFACTS)\T1106.LOG
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1106.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1106.LOG
@@ -629,7 +629,7 @@ t1106:
 
 
 t1107:
-   @echo [t1107] Testing mock CONFIGURE /BSIZE invalid value... >> TEST.LOG
+   @echo [t1107] Testing CONFIGURE /BSIZE invalid value... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:64 > $(ARTIFACTS)\T1107.LOG
    FIND "Invalid /BSIZE parameter. Use 8, 16, 32, or DISABLED." $(ARTIFACTS)\T1107.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1107.LOG
@@ -637,7 +637,7 @@ t1107:
 
 
 t1108:
-   @echo [t1108] Testing mock CONFIGURE /BSIZE alone (real size) is rejected (pairing rule)... >> TEST.LOG
+   @echo [t1108] Testing CONFIGURE /BSIZE alone (real size) is rejected (pairing rule)... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:16 > $(ARTIFACTS)\T1108.LOG
    FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1108.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1108.LOG
@@ -645,7 +645,7 @@ t1108:
 
 
 t1109:
-   @echo [t1109] Testing mock CONFIGURE /BADDRESS alone is rejected (pairing rule)... >> TEST.LOG
+   @echo [t1109] Testing CONFIGURE /BADDRESS alone is rejected (pairing rule)... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 > $(ARTIFACTS)\T1109.LOG
    FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1109.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1109.LOG
@@ -666,23 +666,23 @@ t1111:
    FIND "This adapter does not support Boot ROM configuration." $(ARTIFACTS)\T1111.LOG > NUL
 
 t1112:
-   @echo [t1112] Testing mock CONFIGURE /BSIZE:8 alone is rejected... >> TEST.LOG
+   @echo [t1112] Testing CONFIGURE /BSIZE:8 alone is rejected... >> TEST.LOG
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1112.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:8 >> $(ARTIFACTS)\T1112.LOG
    FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1112.LOG > NUL
 
 t1113:
-   @echo [t1113] Testing mock CONFIGURE /BSIZE:32 alone is rejected... >> TEST.LOG
+   @echo [t1113] Testing CONFIGURE /BSIZE:32 alone is rejected... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:32 > $(ARTIFACTS)\T1113.LOG
    FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1113.LOG > NUL
 
 t1114:
-   @echo [t1114] Testing mock CONFIGURE 8K at C0000 is rejected... >> TEST.LOG
+   @echo [t1114] Testing CONFIGURE 8K at C0000 is rejected... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:8 > $(ARTIFACTS)\T1114.LOG
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1114.LOG > NUL
 
 t1115:
-   @echo [t1115] Testing mock CONFIGURE 8K at C2000... >> TEST.LOG
+   @echo [t1115] Testing CONFIGURE 8K at C2000... >> TEST.LOG
    ${SEEDAPP} ROM8K > $(ARTIFACTS)\T1115.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 > $(ARTIFACTS)\T1115.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1115.LOG > NUL
@@ -690,12 +690,12 @@ t1115:
    FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1115.LOG > NUL
 
 t1116:
-   @echo [t1116] Testing mock CONFIGURE 16K at C2000 is rejected... >> TEST.LOG
+   @echo [t1116] Testing CONFIGURE 16K at C2000 is rejected... >> TEST.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:16 > $(ARTIFACTS)\T1116.LOG
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1116.LOG > NUL
 
 t1117:
-   @echo [t1117] Testing mock CONFIGURE 32K 3C509B at C4000... >> TEST.LOG
+   @echo [t1117] Testing CONFIGURE 32K 3C509B at C4000... >> TEST.LOG
    ${SEEDAPP} ROM32K > $(ARTIFACTS)\T1117.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C4000 /BSIZE:32 > $(ARTIFACTS)\T1117.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1117.LOG > NUL
@@ -703,7 +703,7 @@ t1117:
    FIND "Boot ROM = 32K at C4000H" $(ARTIFACTS)\T1117.LOG > NUL
 
 t1118:
-   @echo [t1118] Testing mock CONFIGURE 32K 3C509B at DC000... >> TEST.LOG
+   @echo [t1118] Testing CONFIGURE 32K 3C509B at DC000... >> TEST.LOG
    ${SEEDAPP} ROM32K > $(ARTIFACTS)\T1118.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:DC000 /BSIZE:32 > $(ARTIFACTS)\T1118.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1118.LOG > NUL
@@ -711,27 +711,29 @@ t1118:
    FIND "Boot ROM = 32K at DC000H" $(ARTIFACTS)\T1118.LOG > NUL
 
 t1119:
-   @echo [t1119] Testing INT configuration preserves Boot ROM Size Valid... >> TEST.LOG
-   ${SEEDAPP} ROMMETASET > $(ARTIFACTS)\T1119.LOG
+   @echo [t1119] Testing INT change not destroying Boot ROM Size Valid flag ... >> TEST.LOG
+   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1119.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 >> $(ARTIFACTS)\T1119.LOG
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1119.LOG
-   FIND "Boot ROM Size Valid = yes" $(ARTIFACTS)\T1119.LOG > NUL
+   FIND "Boot ROM Size Valid = no" $(ARTIFACTS)\T1119.LOG > NUL
    FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1119.LOG > NUL
 
 t1120:
-   @echo [t1120] Testing rejected Boot ROM configuration preserves Boot ROM Size Valid... >> TEST.LOG
-   ${SEEDAPP} ROMMETASET > $(ARTIFACTS)\T1120.LOG
+   @echo [t1120] Testing rejected Boot ROM config reports Size Valid = no... >> TEST.LOG
+   ${SEEDAPP} ROMNONE > $(ARTIFACTS)\T1120.LOG
    $(BINAPP) CONFIGURE /VERBOSE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1120.LOG
    FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1120.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "already configured to the requested value" $(ARTIFACTS)\T1120.LOG
    CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1120.LOG
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1120.LOG
-   FIND "Boot ROM Size Valid = yes" $(ARTIFACTS)\T1120.LOG > NUL
+   FIND "Boot ROM Size Valid = no" $(ARTIFACTS)\T1120.LOG > NUL
    FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1120.LOG > NUL
 
 t1121:
-   @echo [t1121] Testing /BSIZE:DISABLED clears Boot ROM Size Valid... >> TEST.LOG
-   ${SEEDAPP} ROMMETASET > $(ARTIFACTS)\T1121.LOG
+   @echo [t1121] Testing /BSIZE:DISABLED reports Boot ROM Size Valid = no... >> TEST.LOG
+   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1121.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1121.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1121.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\T1121.LOG
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1121.LOG
    FIND "Boot ROM Size Valid = no" $(ARTIFACTS)\T1121.LOG > NUL

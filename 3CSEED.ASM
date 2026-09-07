@@ -31,7 +31,7 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  3C509B-TPO   Seed as 3C509B-TPO  (product 9550h, TP only).', 0Dh, 0Ah
              DB '  3C509B-TPC   Seed as 3C509B-TPC  (product 9850h, coax).', 0Dh, 0Ah
              DB '  3C509-TP     Seed as 3C509-TP (ASIC revision 1, TP + AUI).', 0Dh, 0Ah
-             DB '  MODEMFIELDS  Seed non-MODEM word 0Dh fields for preservation tests.', 0Dh, 0Ah
+             DB '  MODEMPRESERVE Seed shared word 0Dh fields for MODEM preservation tests.', 0Dh, 0Ah
              DB '  M1200US      Seed MODEM raw 2Fh (1200 microseconds).', 0Dh, 0Ah
              DB '  NOLINKBEAT   INIT profile with EEPROM Link Beat Disable set.', 0Dh, 0Ah
              DB '  LINKUP       INIT profile with live Link Status forced connected.', 0Dh, 0Ah
@@ -42,9 +42,6 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  ROMNONE      INIT profile with no Boot ROM installed.', 0Dh, 0Ah
              DB '  COMBOROM16   Combo profile with 16 KB synthetic Boot ROM.', 0Dh, 0Ah
              DB '  COMBONONE    Combo profile with no Boot ROM installed.', 0Dh, 0Ah
-             DB '  ROMMETASET   INIT profile with Boot ROM Size Valid metadata set.', 0Dh, 0Ah
-             DB '  ROMMETACLEAR Verify cleared Boot ROM metadata and secondary checksum.', 0Dh, 0Ah
-             DB '  ROMMETAVALID Verify preserved Boot ROM metadata and secondary checksum.', 0Dh, 0Ah
              DB '$'
 msg_ok_init  DB 'Seed file created (INIT).', 0Dh, 0Ah, '$'
 msg_ok_clear DB 'Seed file deleted (or already absent).', 0Dh, 0Ah, '$'
@@ -54,7 +51,7 @@ msg_ok_coax  DB 'Seed file created (3C509B-COAX).', 0Dh, 0Ah, '$'
 msg_ok_tpo   DB 'Seed file created (3C509B-TPO).', 0Dh, 0Ah, '$'
 msg_ok_tpc   DB 'Seed file created (3C509B-TPC).', 0Dh, 0Ah, '$'
 msg_ok_509tp DB 'Seed file created (3C509-TP).', 0Dh, 0Ah, '$'
-msg_ok_modemfields DB 'Seed file created (MODEMFIELDS).', 0Dh, 0Ah, '$'
+msg_ok_modempreserve DB 'Seed file created (MODEMPRESERVE).', 0Dh, 0Ah, '$'
 msg_ok_m1200us DB 'Seed file created (M1200US).', 0Dh, 0Ah, '$'
 msg_ok_nolinkbeat DB 'Seed file created (NOLINKBEAT).', 0Dh, 0Ah, '$'
 msg_ok_linkup   DB 'Seed file created (LINKUP).', 0Dh, 0Ah, '$'
@@ -65,10 +62,6 @@ msg_ok_rom32k   DB 'Seed file created (ROM32K).', 0Dh, 0Ah, '$'
 msg_ok_romnone  DB 'Seed file created (ROMNONE).', 0Dh, 0Ah, '$'
 msg_ok_comborom16 DB 'Seed file created (COMBOROM16).', 0Dh, 0Ah, '$'
 msg_ok_combonone DB 'Seed file created (COMBONONE).', 0Dh, 0Ah, '$'
-msg_ok_rommetaset DB 'Seed file created (ROMMETASET).', 0Dh, 0Ah, '$'
-msg_ok_rommetaclear DB 'Boot ROM metadata cleared; secondary checksum valid.', 0Dh, 0Ah, '$'
-msg_ok_rommetavalid DB 'Boot ROM metadata preserved; secondary checksum valid.', 0Dh, 0Ah, '$'
-msg_fail_rommeta DB 'Boot ROM metadata or secondary checksum invalid.', 0Dh, 0Ah, '$'
 msg_ok_add   DB 'Seed file updated (ADD).', 0Dh, 0Ah, '$'
 msg_fail_io  DB 'File I/O error.', 0Dh, 0Ah, '$'
 msg_bad_arg  DB 'Invalid command argument.', 0Dh, 0Ah, '$'
@@ -86,7 +79,7 @@ kw_coax      DB '3C509B-COAX', 0
 kw_tpo       DB '3C509B-TPO', 0
 kw_tpc       DB '3C509B-TPC', 0
 kw_509tp     DB '3C509-TP', 0
-kw_modemfields DB 'MODEMFIELDS', 0
+kw_modempreserve DB 'MODEMPRESERVE', 0
 kw_m1200us   DB 'M1200US', 0
 kw_nolinkbeat DB 'NOLINKBEAT', 0
 kw_linkup    DB 'LINKUP', 0
@@ -97,9 +90,6 @@ kw_rom32k    DB 'ROM32K', 0
 kw_romnone   DB 'ROMNONE', 0
 kw_comborom16 DB 'COMBOROM16', 0
 kw_combonone DB 'COMBONONE', 0
-kw_rommetaset DB 'ROMMETASET', 0
-kw_rommetaclear DB 'ROMMETACLEAR', 0
-kw_rommetavalid DB 'ROMMETAVALID', 0
 
 cmd_buffer   DB 128 DUP (0)
 state_blob   DB MCK_FILE_SIZE DUP (0)
@@ -223,9 +213,9 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_509tp
     call    Match_Token
     jnc     @@Do509TP
-    mov     dx, OFFSET kw_modemfields
+    mov     dx, OFFSET kw_modempreserve
     call    Match_Token
-    jnc     @@DoModemFields
+    jnc     @@DoModemPreserve
     mov     dx, OFFSET kw_m1200us
     call    Match_Token
     jnc     @@DoM1200us
@@ -256,15 +246,6 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_combonone
     call    Match_Token
     jnc     @@DoComboNone
-    mov     dx, OFFSET kw_rommetaset
-    call    Match_Token
-    jnc     @@DoRomMetaSet
-    mov     dx, OFFSET kw_rommetaclear
-    call    Match_Token
-    jnc     @@DoRomMetaClear
-    mov     dx, OFFSET kw_rommetavalid
-    call    Match_Token
-    jnc     @@DoRomMetaValid
 
     mov     dx, OFFSET msg_bad_arg
     mov     ah, 09h
@@ -356,10 +337,10 @@ PROC Parse_And_Run NEAR
     int     21h
     jmp     @@Done
 
-@@DoModemFields:
-    call    Seed_ModemFields
+@@DoModemPreserve:
+    call    Seed_ModemPreserve
     jc      @@IoFail
-    mov     dx, OFFSET msg_ok_modemfields
+    mov     dx, OFFSET msg_ok_modempreserve
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -440,38 +421,6 @@ PROC Parse_And_Run NEAR
     call    Seed_ComboNone
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_combonone
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoRomMetaSet:
-    call    Seed_RomMetaSet
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_rommetaset
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoRomMetaClear:
-    xor     al, al
-    call    Check_Rom_Meta
-    jc      @@RomMetaFail
-    mov     dx, OFFSET msg_ok_rommetaclear
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoRomMetaValid:
-    mov     al, 1
-    call    Check_Rom_Meta
-    jc      @@RomMetaFail
-    mov     dx, OFFSET msg_ok_rommetavalid
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@RomMetaFail:
-    mov     dx, OFFSET msg_fail_rommeta
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -1192,7 +1141,7 @@ PROC Seed_Model_509TP NEAR
 ENDP Seed_Model_509TP
 
 ; Set every non-MODEM word 0Dh field while retaining a named MODEM encoding.
-PROC Seed_ModemFields NEAR
+PROC Seed_ModemPreserve NEAR
     call    Seed_Init
     jc      @@Fail
     mov     si, EEPROM_SOFTWARE_INFO
@@ -1208,7 +1157,7 @@ PROC Seed_ModemFields NEAR
 @@Fail:
     stc
     ret
-ENDP Seed_ModemFields
+ENDP Seed_ModemPreserve
 
 PROC Seed_M1200us NEAR
     call    Seed_Init
@@ -1335,74 +1284,6 @@ PROC Seed_ComboNone NEAR
     ret
 ENDP Seed_ComboNone
 
-PROC Seed_RomMetaSet NEAR
-    call    Seed_Init
-    jc      @@Fail
-    mov     si, EEPROM_REVISION_INFO
-    mov     ax, 00B1h
-    call    EEPROM_Write_SI
-    call    Build_Checksum
-    call    Write_State_File
-@@Fail:
-    ret
-ENDP Seed_RomMetaSet
-
-; Input AL: 0 expects Size Valid clear, 1 expects Size Valid set.
-; Also verifies the fixed profile's secondary checksum low byte and vital high byte.
-PROC Check_Rom_Meta NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    si
-
-    mov     bl, al
-    call    Load_State_File
-    cmp     [byte state_record_count], 1
-    jne     @@Fail
-    xor     al, al
-    call    Set_Record_Offset_By_Index
-    mov     si, EEPROM_REVISION_INFO
-    call    EEPROM_Read_SI
-    test    ax, EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
-    jz      @@Clear
-    cmp     bl, 1
-    jne     @@Fail
-    cmp     ax, 00B1h
-    jne     @@Fail
-    jmp     @@Checksum
-@@Clear:
-    or      bl, bl
-    jnz     @@Fail
-    cmp     ax, 00A1h
-    jne     @@Fail
-@@Checksum:
-    xor     bh, bh
-    mov     si, EEPROM_SECONDARY_CONFIG_START
-@@ChecksumLoop:
-    call    EEPROM_Read_SI
-    xor     bh, al
-    xor     bh, ah
-    inc     si
-    cmp     si, EEPROM_SECONDARY_CONFIG_END
-    jb      @@ChecksumLoop
-    mov     si, EEPROM_SECONDARY_CHECKSUM
-    call    EEPROM_Read_SI
-    cmp     al, bh
-    jne     @@Fail
-    cmp     ah, 0A3h
-    jne     @@Fail
-    clc
-    jmp     @@Done
-@@Fail:
-    stc
-@@Done:
-    pop     si
-    pop     cx
-    pop     bx
-    pop     ax
-    ret
-ENDP Check_Rom_Meta
-
 PROC Build_Record_Current NEAR
     push    ax
     push    bx
@@ -1523,12 +1404,11 @@ PROC Build_Record_Current NEAR
 @@Seed509NMD:
     ; ASIC revision 1 (3C509): words 10h/13h/14h are ordinary
     ; Network Management Data, not 3C509B capability/Internal Configuration/
-    ; revision metadata.  Deterministic nonzero poison values are seeded so a
+    ; revision-info content.  Deterministic nonzero poison values are seeded so a
     ; regression that mistakenly applies 3C509B semantics to these words is
     ; observable: word 10h bit 0 set would falsely read as PNP capability,
     ; word 13h looks like a plausible PNP/Internal-Configuration state, and
-    ; word 14h (00B1h) matches the pattern used elsewhere in this seeder for
-    ; a set Boot ROM Size Valid / B-revision metadata bit.
+    ; word 14h (00B1h) matches a pattern with a set Boot ROM Size Valid bit.
     mov     si, EEPROM_CAPABILITY
     mov     ax, 0001h
     call    EEPROM_Write_SI
