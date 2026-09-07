@@ -270,6 +270,38 @@ Boot ROM disabled
     Boot ROM Size Valid = 0
 ```
 
+## Link Status Not Reported (Removed Again From `LIST` verb)
+
+### Decision
+
+`3CCFGCLI` does not report a live Ethernet Link Status in `LIST` any longer.
+
+The Window 4 `Valid Link Beat Detected` indication is not treated as a generally valid adapter status value for configuration utility use.
+
+### Rationale
+
+The `Valid Link Beat Detected` bit in the Media Type and Status register applies specifically to the internal 10BASE T transceiver.
+
+A meaningful Link Beat result depends on the media path having first been initialized correctly. In particular, Link Beat is disabled after reset and must be enabled by software when the internal TP transceiver is used.
+
+The situation is additionally ambiguous when the adapter is configured for automatic transceiver selection. `AUTO SELECT` is software configuration information rather than an autonomous hardware media selection mechanism. The network driver is expected to examine the available media, select a connector during initialization, and update the active configuration accordingly.
+
+`3CCFGCLI` cannot assume that such driver initialization has occurred. A DOS configuration utility is expected to be usable without a loaded network driver, particularly because operations such as changing the I/O base address, IRQ, or transceiver configuration would invalidate assumptions made by an already active driver.
+
+Consequently, a cleared Link Beat indication cannot reliably distinguish between conditions such as no physical connection, an uninitialized TP transceiver, Link Beat not having been enabled, a different active transceiver, or unresolved automatic media selection.
+
+Reporting that value as a simple `connected` or `not connected` status would therefore imply information that the utility cannot reliably establish.
+
+### Resulting Behavior
+
+`LIST` does not display `Link Status` any longer. The previous implementation, as tempting as it was, was removed.
+
+`3CCFGCLI` reports configured transceiver state and supported hardware capabilities, but does not attempt to infer live network connectivity from the Window 4 Link Beat indication.
+
+Mock Seeder state and regression tests do not provide separate live link connected or disconnected fixtures solely for `LIST`.
+
+Determining actual network connectivity is considered a runtime driver responsibility rather than a configuration utility function.
+
 
 ## Hardware Capability Does Not Imply CLI Support
 
