@@ -21,7 +21,7 @@ SAVE_MAX_BATCH_LINE=128
 #
 test_regressions() {
   echo Dispatching regression tests to DOSBox-X ...
-  "$DOSBOX_BIN" -conf autoexec-test > /dev/null 2>&1
+  "${DOSBOX_BIN}" -conf "$( pwd )/autoexec-test" > /dev/null 2>&1
 
   grep -e "Smoke test: run completed" ${TEST_LOG} > /dev/null 2>&1 && return 0 || return 1
 }
@@ -60,13 +60,13 @@ test_hwlimits() {
   for memkb in 64 128 256; do
     local conf
     local log
-    conf=$(mktemp "/tmp/autoexec-testhwl-${memkb}.XXXXXX")
+    conf=$(mktemp "autoexec-testhwl-${memkb}.XXXXXX")
     log="${ARTIFACT_DIR}/HWL${memkb}.LOG"
 
     echo "Dispatching resource test with ${memkb} KB memory limit to DOSBox-X ..."
     echo "[HWL${memkb}] Testing 8086/8088 with ${memkb} KB memory limit..." >> "${TEST_LOG}"
-    sed "s/__MEMKB__/${memkb}/g" "$template" > "$conf"
-    "$DOSBOX_BIN" -conf "$conf" > /dev/null 2>&1
+    sed "s:__MEMKB__:${memkb}:g;s:__BUILD_DIR__:$( pwd ):g" "${template}" > "${conf}"
+    "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
     rm -f "$conf"
 
     grep -q "HWLIMIT PASS memsizekb=${memkb}" "$log" > /dev/null 2>&1
@@ -98,15 +98,7 @@ test_regressions && test_saveconfig_line_lengths && test_hwlimits
 
 
 # kill tail running in background
-kill -INT $TAIL_PID 2>&1 >/dev/null
-
-
-# always print TEST.LOG on exit
-#
-#echo ${TEST_LOG} follows:
-#echo -----------------
-#cat ${TEST_LOG}
-#echo -----------------
+kill -INT ${TAIL_PID} 2>&1 >/dev/null
 
 
 # test summary
@@ -117,9 +109,9 @@ SAVECONFIG_FAIL=1
 HWLIMIT_FAIL=1
 
 # run completed usually means success, but there may be exceptions
-grep -q '^Smoke test: run completed' "$TEST_LOG" && SMOKE_FAIL=0
-grep -q '^SAVECONFIG: run completed' "$TEST_LOG" && SAVECONFIG_FAIL=0
-grep -q '^Hardware Limit test: run completed' "$TEST_LOG" && HWLIMIT_FAIL=0
+grep -q '^Smoke test: run completed' "${TEST_LOG}" && SMOKE_FAIL=0
+grep -q '^SAVECONFIG: run completed' "${TEST_LOG}" && SAVECONFIG_FAIL=0
+grep -q '^Hardware Limit test: run completed' "${TEST_LOG}" && HWLIMIT_FAIL=0
 
 # check defined vs. executed tests and see if we anyway
 # had a delta, which would indicate a failure.
@@ -128,7 +120,7 @@ TESTS_EXECUTED=$(grep -Ec '\[t[0-9]{4}\]' "$TEST_LOG")
 TESTS_FAILED=$(( TESTS_DEFINED != TESTS_EXECUTED ))
 
 
-cat <<EOF | tee >> "$TEST_LOG"
+cat <<EOF | tee >> "${TEST_LOG}"
 
 Test summary
 ============

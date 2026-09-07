@@ -2,6 +2,11 @@
 fastbioslogo     = true
 startbanner      = false
 
+# mandatory for DOSBox-X 2026.08.31
+# to make relative paths work
+working directory option = default
+working directory default = .
+
 [cpu]
 cycles=max limit 50000
 

@@ -2,6 +2,11 @@
 fastbioslogo     = true
 startbanner      = false
 
+# mandatory for DOSBox-X 2026.08.31
+# to make relative paths work
+working directory option = default
+working directory default = .
+
 [cpu]
 cputype = 8086
 core    = normal
@@ -14,7 +19,7 @@ memsizekb = __MEMKB__
 [autoexec]
 @ECHO OFF
 CLS
-MOUNT C: . >NUL
+MOUNT C: __BUILD_DIR__ >NUL
 C:
 REM TESTHWL doesn't log itself, therefore forcing it through
 REM COMMAND /C invocation so we can capture the LOG from "outside"
