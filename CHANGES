@@ -1,4 +1,6 @@
 Changelog 0.7.5
+  - 3CSEED now supports model, resource, and fixture attributes through slash
+    options such as /IOBASE:, /INT:, /ROM16K, and /LINKDOWN.
   - 3C509/3C509B generation classification now uses the detected ASIC revision
     as the single source of truth instead of EEPROM word 14h.
   - LIST now shows the ASIC revision alongside the adapter description and
