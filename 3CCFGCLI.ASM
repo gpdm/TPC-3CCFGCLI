@@ -486,6 +486,8 @@ msg_pnp_state_label DB "Plug and Play = ", '$'
 msg_connectors_label DB "Connectors = ", '$'
 msg_fd_capability_label DB "Full Duplex Capability = ", '$'
 msg_boot_label  DB  "Boot ROM = ", '$'
+msg_boot_rom_size_valid_label DB "Boot ROM Size Valid = ", '$'
+msg_secondary_checksum_label DB "Secondary EEPROM checksum = ", '$'
 msg_optimize_label DB "Optimization = ", '$'
 msg_modem_label DB "MODEM Interrupt Disable Time = ", '$'
 msg_modem_us DB " us", '$'
@@ -507,6 +509,8 @@ msg_enabled     DB  "enabled", '$'
 msg_disabled    DB  "disabled", '$'
 msg_yes         DB  "yes", '$'
 msg_no          DB  "no", '$'
+msg_valid       DB  "valid", '$'
+msg_invalid     DB  "invalid", '$'
 msg_none        DB  "none", '$'
 msg_not_supported DB "not supported", '$'
 msg_unavailable DB  "unavailable", '$'
@@ -552,6 +556,10 @@ ext_link_status   DW 0FFFFh
 ; Raw EEPROM_SOFTWARE_INFO (word 0Dh), shared by the LIST
 ; MODEM, OPTIMIZE, and FULLDUPLEX decoders.
 ext_software_info DW 0FFFFh
+; 3C509B-only Boot ROM and secondary EEPROM diagnostics.  0FFFFh means
+; unavailable, zero means no/invalid, and one means yes/valid.
+ext_boot_rom_size_valid DW 0FFFFh
+ext_secondary_checksum_valid DW 0FFFFh
 ; Global CLI parser state.  cli_arg_ptrs holds pointers into cmd_buffer for
 ; the verb specific argument tokens that remain after global options have
 ; been consumed.  Argument text is never copied; each token is delimited in
@@ -4858,6 +4866,50 @@ PROC Cfg_Checksum_17_Low NEAR
     ret
 ENDP Cfg_Checksum_17_Low
 
+; Secondary high checksum: EEPROM words 10h-12h and 20h-3Fh.
+PROC Cfg_Checksum_17_High NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    xor     bx, bx
+    mov     si, EEPROM_SECONDARY_VITAL_START
+@@Vital:
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, EEPROM_SECONDARY_VITAL_END
+    jb      @@Vital
+
+    mov     si, EEPROM_SECONDARY_VITAL_PNP_START
+@@Pnp:
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, EEPROM_SECONDARY_VITAL_PNP_END
+    jb      @@Pnp
+
+    mov     al, bl
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Checksum_17_High
+
 ; ============================================================================
 ; /IOBASE hardware transaction
 ; ============================================================================
@@ -7959,6 +8011,8 @@ PROC Read_Extended_Nic_Info NEAR
     mov     [ext_software_info], 0FFFFh
     mov     [ext_nic_capabilities], 0FFFFh
     mov     [ext_nic_capability_valid], 0
+    mov     [ext_boot_rom_size_valid], 0FFFFh
+    mov     [ext_secondary_checksum_valid], 0FFFFh
 
     mov     dx, [WORD si + NIC_IO_BASE]
     or      dx, dx
@@ -8016,6 +8070,47 @@ PROC Read_Extended_Nic_Info NEAR
     jc      @@SkipConfigCtrl
     mov     [ext_config_ctrl], ax
 @@SkipConfigCtrl:
+
+    ; The additional EEPROM reads are verbose-only so normal LIST retains its
+    ; existing read behavior.  Word 14h bit 4 and the secondary checksum are
+    ; defined here only for the 3C509B generation.  The checksum is validated
+    ; from EEPROM data, rather than from any mock-only state.
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@Done
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 2
+    jb      @@Done
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_REVISION_INFO
+    call    Nic_EEPROM_Read
+    jc      @@SkipBootRomSizeValid
+    test    ax, EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
+    jz      @@BootRomSizeInvalid
+    mov     [ext_boot_rom_size_valid], 1
+    jmp     @@ReadSecondaryChecksum
+@@BootRomSizeInvalid:
+    mov     [ext_boot_rom_size_valid], 0
+@@ReadSecondaryChecksum:
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     al, EEPROM_SECONDARY_CHECKSUM
+    call    Nic_EEPROM_Read
+    jc      @@Done
+    mov     bx, ax
+    call    Cfg_Checksum_17_Low
+    jc      @@Done
+    cmp     al, bl
+    jne     @@SecondaryChecksumInvalid
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Cfg_Checksum_17_High
+    jc      @@Done
+    cmp     al, bh
+    jne     @@SecondaryChecksumInvalid
+    mov     [ext_secondary_checksum_valid], 1
+    jmp     @@Done
+@@SecondaryChecksumInvalid:
+    mov     [ext_secondary_checksum_valid], 0
+    jmp     @@Done
+@@SkipBootRomSizeValid:
 
 @@Done:
     pop     dx
@@ -8720,6 +8815,59 @@ PROC Print_Extended_Nic_Info NEAR
    call    Print_Boot_Rom_Value
    mov     dx, OFFSET msg_crlf
    call    Print_String
+
+   ; These EEPROM diagnostics are intentionally verbose-only and 3C509B-only.
+   test    [cli_flags], CLI_FLAG_VERBOSE
+   jz      @@SkipBootRomDiagnostics
+   mov     al, [BYTE si + NIC_ASIC_REV]
+   cmp     al, 0FFh
+   je      @@SkipBootRomDiagnostics
+   cmp     al, 2
+   jb      @@SkipBootRomDiagnostics
+
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_boot_rom_size_valid_label
+   call    Print_String
+   mov     ax, [ext_boot_rom_size_valid]
+   cmp     ax, 1
+   je      @@BootRomSizeValidYes
+   cmp     ax, 0
+   je      @@BootRomSizeValidNo
+   mov     dx, OFFSET msg_unavailable
+   jmp     @@PrintBootRomSizeValid
+@@BootRomSizeValidYes:
+   mov     dx, OFFSET msg_yes
+   jmp     @@PrintBootRomSizeValid
+@@BootRomSizeValidNo:
+   mov     dx, OFFSET msg_no
+@@PrintBootRomSizeValid:
+   call    Print_String
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
+
+   mov     dx, OFFSET msg_indent
+   call    Print_String
+   mov     dx, OFFSET msg_secondary_checksum_label
+   call    Print_String
+   mov     ax, [ext_secondary_checksum_valid]
+   cmp     ax, 1
+   je      @@SecondaryChecksumValid
+   cmp     ax, 0
+   je      @@SecondaryChecksumInvalid
+   mov     dx, OFFSET msg_unavailable
+   jmp     @@PrintSecondaryChecksum
+@@SecondaryChecksumValid:
+   mov     dx, OFFSET msg_valid
+   jmp     @@PrintSecondaryChecksum
+@@SecondaryChecksumInvalid:
+   mov     dx, OFFSET msg_invalid
+@@PrintSecondaryChecksum:
+   call    Print_String
+   mov     dx, OFFSET msg_crlf
+   call    Print_String
+
+@@SkipBootRomDiagnostics:
 
    mov     dx, OFFSET msg_indent
    call    Print_String

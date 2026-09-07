@@ -83,7 +83,7 @@ OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904
 LINK_STATUS: t10xx t1001 t1002
 
 # Base: 1100
-BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1121 t1122 t1123 t1124 t1125 t1126 t1127 t1128 t1129 t1130 t1131 t1132 t1133 t1134 t1135
+BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1121 t1122 t1123 t1124 t1125 t1126 t1127 t1128 t1129 t1130 t1131 t1132 t1133 t1134 t1135 t1136
 
 # Base: 1200
 XCVR_CHANGE: t12xx t1201 t1202 t1203 t1204 t1207 t1208 t1209 t1210 t1211
@@ -711,173 +711,180 @@ t1118:
    FIND "Boot ROM = 32K at DC000H" $(ARTIFACTS)\T1118.LOG > NUL
 
 t1119:
-   @echo [t1119] Testing rejected Boot ROM configuration preserves metadata... >> TEST.LOG
+   @echo [t1119] Testing INT configuration preserves Boot ROM Size Valid... >> TEST.LOG
    ${SEEDAPP} ROMMETASET > $(ARTIFACTS)\T1119.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 >> $(ARTIFACTS)\T1119.LOG
-   ${SEEDAPP} ROMMETAVALID >> $(ARTIFACTS)\T1119.LOG
-   FIND "Boot ROM metadata preserved; secondary checksum valid." $(ARTIFACTS)\T1119.LOG > NUL
-   $(BINAPP) CONFIGURE /VERBOSE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1119.LOG
-   FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1119.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "already configured to the requested value" $(ARTIFACTS)\T1119.LOG
-   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1119.LOG
-   ${SEEDAPP} ROMMETAVALID >> $(ARTIFACTS)\T1119.LOG
-   FIND "Boot ROM metadata preserved; secondary checksum valid." $(ARTIFACTS)\T1119.LOG > NUL
+   $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1119.LOG
+   FIND "Boot ROM Size Valid = yes" $(ARTIFACTS)\T1119.LOG > NUL
+   FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1119.LOG > NUL
 
 t1120:
-   @echo [t1120] Testing /BSIZE:DISABLED clears Boot ROM metadata... >> TEST.LOG
+   @echo [t1120] Testing rejected Boot ROM configuration preserves Boot ROM Size Valid... >> TEST.LOG
    ${SEEDAPP} ROMMETASET > $(ARTIFACTS)\T1120.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\T1120.LOG
-   ${SEEDAPP} ROMMETACLEAR >> $(ARTIFACTS)\T1120.LOG
-   FIND "Boot ROM metadata cleared; secondary checksum valid." $(ARTIFACTS)\T1120.LOG > NUL
+   $(BINAPP) CONFIGURE /VERBOSE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1120.LOG
+   FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1120.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "already configured to the requested value" $(ARTIFACTS)\T1120.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1120.LOG
+   $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1120.LOG
+   FIND "Boot ROM Size Valid = yes" $(ARTIFACTS)\T1120.LOG > NUL
+   FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1120.LOG > NUL
 
 t1121:
-   @echo [t1121] Testing ROMNONE rejects Boot ROM while preserving INT... >> TEST.LOG
-   ${SEEDAPP} ROMNONE > $(ARTIFACTS)\T1121.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /INT:5 >> $(ARTIFACTS)\T1121.LOG
-   FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1121.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1121.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1121.LOG
-   FIND "Boot ROM = disabled" $(ARTIFACTS)\T1121.LOG > NUL
-   FIND "IRQ = 5" $(ARTIFACTS)\T1121.LOG > NUL
+   @echo [t1121] Testing /BSIZE:DISABLED clears Boot ROM Size Valid... >> TEST.LOG
+   ${SEEDAPP} ROMMETASET > $(ARTIFACTS)\T1121.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\T1121.LOG
+   $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1121.LOG
+   FIND "Boot ROM Size Valid = no" $(ARTIFACTS)\T1121.LOG > NUL
+   FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1121.LOG > NUL
 
 t1122:
-   @echo [t1122] Testing ROM16K accepts matching Boot ROM request... >> TEST.LOG
-   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1122.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1122.LOG
+   @echo [t1122] Testing ROMNONE rejects Boot ROM while preserving INT... >> TEST.LOG
+   ${SEEDAPP} ROMNONE > $(ARTIFACTS)\T1122.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /INT:5 >> $(ARTIFACTS)\T1122.LOG
+   FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1122.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1122.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1122.LOG
-   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1122.LOG > NUL
+   FIND "Boot ROM = disabled" $(ARTIFACTS)\T1122.LOG > NUL
+   FIND "IRQ = 5" $(ARTIFACTS)\T1122.LOG > NUL
 
 t1123:
-   @echo [t1123] Testing ROM8K accepts matching Boot ROM request... >> TEST.LOG
-   ${SEEDAPP} ROM8K > $(ARTIFACTS)\T1123.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 >> $(ARTIFACTS)\T1123.LOG
+   @echo [t1123] Testing ROM16K accepts matching Boot ROM request... >> TEST.LOG
+   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1123.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1123.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1123.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1123.LOG
-   FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1123.LOG > NUL
+   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1123.LOG > NUL
 
 t1124:
-   @echo [t1124] Testing ROM32K accepts matching paged Boot ROM request... >> TEST.LOG
-   ${SEEDAPP} ROM32K > $(ARTIFACTS)\T1124.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:32 >> $(ARTIFACTS)\T1124.LOG
+   @echo [t1124] Testing ROM8K accepts matching Boot ROM request... >> TEST.LOG
+   ${SEEDAPP} ROM8K > $(ARTIFACTS)\T1124.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 >> $(ARTIFACTS)\T1124.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T1124.LOG
-   FIND "Boot ROM = 32K at C8000H" $(ARTIFACTS)\T1124.LOG > NUL
+   FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1124.LOG > NUL
 
 t1125:
-   @echo [t1125] Testing ROMNONE rejects Boot ROM while preserving IOBASE... >> TEST.LOG
-   ${SEEDAPP} ROMNONE > $(ARTIFACTS)\T1125.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /IOBASE:0280 >> $(ARTIFACTS)\T1125.LOG
-   FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1125.LOG > NUL
+   @echo [t1125] Testing ROM32K accepts matching paged Boot ROM request... >> TEST.LOG
+   ${SEEDAPP} ROM32K > $(ARTIFACTS)\T1125.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:32 >> $(ARTIFACTS)\T1125.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T1125.LOG
-   FIND "Boot ROM = disabled" $(ARTIFACTS)\T1125.LOG > NUL
-   FIND "IOBASE = 0280" $(ARTIFACTS)\T1125.LOG > NUL
+   FIND "Boot ROM = 32K at C8000H" $(ARTIFACTS)\T1125.LOG > NUL
 
 t1126:
-   @echo [t1126] Testing ROMNONE rejects Boot ROM while preserving TR... >> TEST.LOG
-   ${SEEDAPP} COMBONONE > $(ARTIFACTS)\T1126.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /TR:AUI >> $(ARTIFACTS)\T1126.LOG
+   @echo [t1126] Testing ROMNONE rejects Boot ROM while preserving IOBASE... >> TEST.LOG
+   ${SEEDAPP} ROMNONE > $(ARTIFACTS)\T1126.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /IOBASE:0280 >> $(ARTIFACTS)\T1126.LOG
    FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1126.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1126.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1126.LOG > NUL
-   FIND "Transceiver = external" $(ARTIFACTS)\T1126.LOG > NUL
+   FIND "IOBASE = 0280" $(ARTIFACTS)\T1126.LOG > NUL
 
 t1127:
-   @echo [t1127] Testing final live Boot ROM verification after accepted 8K commit... >> TEST.LOG
-   ${SEEDAPP} ROM8K > $(ARTIFACTS)\T1127.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 /VERBOSE >> $(ARTIFACTS)\T1127.LOG
-   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1127.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1127.LOG > NUL
+   @echo [t1127] Testing ROMNONE rejects Boot ROM while preserving TR... >> TEST.LOG
+   ${SEEDAPP} COMBONONE > $(ARTIFACTS)\T1127.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /TR:AUI >> $(ARTIFACTS)\T1127.LOG
+   FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1127.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1127.LOG
-   FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1127.LOG > NUL
+   FIND "Boot ROM = disabled" $(ARTIFACTS)\T1127.LOG > NUL
+   FIND "Transceiver = external" $(ARTIFACTS)\T1127.LOG > NUL
 
 t1128:
-   @echo [t1128] Testing final live Boot ROM verification after accepted 16K commit... >> TEST.LOG
-   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1128.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T1128.LOG
+   @echo [t1128] Testing final live Boot ROM verification after accepted 8K commit... >> TEST.LOG
+   ${SEEDAPP} ROM8K > $(ARTIFACTS)\T1128.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 /VERBOSE >> $(ARTIFACTS)\T1128.LOG
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1128.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1128.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1128.LOG
-   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1128.LOG > NUL
+   FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1128.LOG > NUL
 
 t1129:
-   @echo [t1129] Testing final live Boot ROM verification after accepted 32K commit... >> TEST.LOG
-   ${SEEDAPP} ROM32K > $(ARTIFACTS)\T1129.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:32 /VERBOSE >> $(ARTIFACTS)\T1129.LOG
+   @echo [t1129] Testing final live Boot ROM verification after accepted 16K commit... >> TEST.LOG
+   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1129.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T1129.LOG
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1129.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1129.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1129.LOG
-   FIND "Boot ROM = 32K at C8000H" $(ARTIFACTS)\T1129.LOG > NUL
+   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1129.LOG > NUL
 
 t1130:
-   @echo [t1130] Testing live Boot ROM verification uses final IOBASE after migration... >> TEST.LOG
-   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1130.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /IOBASE:0280 /VERBOSE >> $(ARTIFACTS)\T1130.LOG
-   FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T1130.LOG > NUL
+   @echo [t1130] Testing final live Boot ROM verification after accepted 32K commit... >> TEST.LOG
+   ${SEEDAPP} ROM32K > $(ARTIFACTS)\T1130.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:32 /VERBOSE >> $(ARTIFACTS)\T1130.LOG
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1130.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1130.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1130.LOG
-   FIND "IOBASE = 0280" $(ARTIFACTS)\T1130.LOG > NUL
-   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1130.LOG > NUL
+   FIND "Boot ROM = 32K at C8000H" $(ARTIFACTS)\T1130.LOG > NUL
 
 t1131:
-   @echo [t1131] Testing accepted Boot ROM with /TR leaves transceiver state undisturbed... >> TEST.LOG
-   ${SEEDAPP} COMBOROM16 > $(ARTIFACTS)\T1131.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T1131.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1131.LOG > NUL
-   FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1131.LOG > NUL
+   @echo [t1131] Testing live Boot ROM verification uses final IOBASE after migration... >> TEST.LOG
+   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1131.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /IOBASE:0280 /VERBOSE >> $(ARTIFACTS)\T1131.LOG
+   FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T1131.LOG > NUL
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1131.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1131.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1131.LOG
-   FIND "Transceiver = external" $(ARTIFACTS)\T1131.LOG > NUL
+   FIND "IOBASE = 0280" $(ARTIFACTS)\T1131.LOG > NUL
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1131.LOG > NUL
 
 t1132:
-   @echo [t1132] Testing /BSIZE:DISABLED verifies final live Boot ROM bits are disabled... >> TEST.LOG
-   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1132.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1132.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1132.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED /VERBOSE >> $(ARTIFACTS)\T1132.LOG
+   @echo [t1132] Testing accepted Boot ROM with /TR leaves transceiver state undisturbed... >> TEST.LOG
+   ${SEEDAPP} COMBOROM16 > $(ARTIFACTS)\T1132.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T1132.LOG
+   FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1132.LOG > NUL
+   FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1132.LOG > NUL
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1132.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1132.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1132.LOG
-   FIND "Boot ROM = disabled" $(ARTIFACTS)\T1132.LOG > NUL
+   FIND "Transceiver = external" $(ARTIFACTS)\T1132.LOG > NUL
+   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1132.LOG > NUL
 
 t1133:
-   @echo [t1133] Testing rejected Boot ROM skips final live verification... >> TEST.LOG
-   ${SEEDAPP} ROMNONE > $(ARTIFACTS)\T1133.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /INT:5 /VERBOSE >> $(ARTIFACTS)\T1133.LOG
-   FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1133.LOG > NUL
+   @echo [t1133] Testing /BSIZE:DISABLED verifies final live Boot ROM bits are disabled... >> TEST.LOG
+   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1133.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1133.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1133.LOG > NUL
-   FIND "EEPROM IRQ verified: 5" $(ARTIFACTS)\T1133.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "Live Boot ROM configuration verified." $(ARTIFACTS)\T1133.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED /VERBOSE >> $(ARTIFACTS)\T1133.LOG
+   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1133.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1133.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1133.LOG > NUL
-   FIND "IRQ = 5" $(ARTIFACTS)\T1133.LOG > NUL
-
 
 t1134:
-   @echo [t1134] Testing combined Boot ROM + /PNP transaction... >> TEST.LOG
-   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1134.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /PNP:DISABLED /VERBOSE >> $(ARTIFACTS)\T1134.LOG
+   @echo [t1134] Testing rejected Boot ROM skips final live verification... >> TEST.LOG
+   ${SEEDAPP} ROMNONE > $(ARTIFACTS)\T1134.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /INT:5 /VERBOSE >> $(ARTIFACTS)\T1134.LOG
+   FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1134.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1134.LOG > NUL
-   FIND "EEPROM Boot ROM base address verified." $(ARTIFACTS)\T1134.LOG > NUL
-   FIND "EEPROM Boot ROM size verified." $(ARTIFACTS)\T1134.LOG > NUL
-   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1134.LOG > NUL
-   FIND "EEPROM Plug and Play mode verified." $(ARTIFACTS)\T1134.LOG > NUL
-   FIND "EEPROM checksum updated." $(ARTIFACTS)\T1134.LOG > NUL
+   FIND "EEPROM IRQ verified: 5" $(ARTIFACTS)\T1134.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "Live Boot ROM configuration verified." $(ARTIFACTS)\T1134.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T1134.LOG
-   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1134.LOG > NUL
-   FIND "Plug and Play = disabled" $(ARTIFACTS)\T1134.LOG > NUL
+   FIND "Boot ROM = disabled" $(ARTIFACTS)\T1134.LOG > NUL
+   FIND "IRQ = 5" $(ARTIFACTS)\T1134.LOG > NUL
+
 
 t1135:
-   @echo [t1135] Testing idempotent Boot ROM re-request reports no changes... >> TEST.LOG
+   @echo [t1135] Testing combined Boot ROM + /PNP transaction... >> TEST.LOG
    ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1135.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1135.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /PNP:DISABLED /VERBOSE >> $(ARTIFACTS)\T1135.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1135.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T1135.LOG
-   FIND "Boot ROM base address is already configured to the requested value." $(ARTIFACTS)\T1135.LOG > NUL
-   FIND "Boot ROM size is already configured to the requested value." $(ARTIFACTS)\T1135.LOG > NUL
-   FIND "No hardware changes required." $(ARTIFACTS)\T1135.LOG > NUL
+   FIND "EEPROM Boot ROM base address verified." $(ARTIFACTS)\T1135.LOG > NUL
+   FIND "EEPROM Boot ROM size verified." $(ARTIFACTS)\T1135.LOG > NUL
+   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1135.LOG > NUL
+   FIND "EEPROM Plug and Play mode verified." $(ARTIFACTS)\T1135.LOG > NUL
+   FIND "EEPROM checksum updated." $(ARTIFACTS)\T1135.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1135.LOG
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1135.LOG > NUL
+   FIND "Plug and Play = disabled" $(ARTIFACTS)\T1135.LOG > NUL
+
+t1136:
+   @echo [t1136] Testing idempotent Boot ROM re-request reports no changes... >> TEST.LOG
+   ${SEEDAPP} ROM16K > $(ARTIFACTS)\T1136.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1136.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1136.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T1136.LOG
+   FIND "Boot ROM base address is already configured to the requested value." $(ARTIFACTS)\T1136.LOG > NUL
+   FIND "Boot ROM size is already configured to the requested value." $(ARTIFACTS)\T1136.LOG > NUL
+   FIND "No hardware changes required." $(ARTIFACTS)\T1136.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1136.LOG
+   FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1136.LOG > NUL
 
 
 t12xx:
