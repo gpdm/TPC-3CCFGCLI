@@ -1,0 +1,145 @@
+@ECHO OFF
+REM Default starter for 3CCFGCLI Hardware Compliance Read checks.
+REM
+REM It detects the installed EtherLink III model and dispatches
+REM the matching HWCREAD.MK or HWCWRITE.MK target.
+REM The complete test sequence stays in MAKE.
+REM ERRORLEVEL handling deliberately stays inside this batch file.
+
+
+REM initialization
+IF NOT EXIST ARTIFACT\NUL MD ARTIFACT
+IF EXIST ARTIFACT\NUL DEL ARTIFACT\HWCTEST.LOG
+
+
+REM Perform initial hardware scan
+3CCFGCLI.EXE LIST > ARTIFACT\HWCTEST.LOG
+
+REM Vars init
+SET DETECTED_NIC=UNKNOWN
+SET TARGET=
+
+REM CLI dispatch
+REM I know, it's superugly, but this make arguments work case-insensitive.
+REM And besides, it's just a bloody batch file, so who cares?
+GOTO O_%1
+
+:O_
+ECHO %0: Invalid command line argument.
+GOTO HELP
+
+:O_READ
+SET MKFILE=HWCREAD.MK
+SET TARGET=hwcr
+GOTO HWDETECT
+
+:O_READROM
+SET MKFILE=HWCREAD.MK
+SET TARGET=hwcr-rom
+GOTO HWDETECT
+
+:O_CONFIG
+SET MKFILE=HWCWRITE.MK
+SET TARGET=hwcw
+GOTO HWDETECT
+
+:O_ROMCONFIG
+SET MKFILE=HWCWRITE.MK
+SET TARGET=hwcw-rom
+GOTO HWDETECT
+
+
+:HELP
+ECHO.
+ECHO 3CCFGCLI Hardware Compliance Tests
+ECHO.
+ECHO Usage:
+ECHO   %0 READ 
+ECHO   %0 READROM
+ECHO   %0 CONFIG
+ECHO   %0 ROMCONFIG
+ECHO.
+ECHO Commands:
+ECHO   READ       3CCFGCLI observes while original 3C5X9CFG runs config commands.
+ECHO   READROM    same as READ, but only for Boot ROM tests
+ECHO   CONFIG     3CCFGCLI performs all configure commands and read-backs.
+ECHO   ROMCONFIG  Same as CONFIG, but only for Boot ROM tests
+ECHO.
+GOTO OK
+
+
+:HWDETECT
+ECHO 3Com EtherLink III card detection running ...
+
+FIND "3Com 3C509B-TPCoax:" ARTIFACT\HWCTEST.LOG > NUL
+IF NOT ERRORLEVEL 1 GOTO BTPC
+
+FIND "3Com 3C509B-TPO:" ARTIFACT\HWCTEST.LOG > NUL
+IF NOT ERRORLEVEL 1 GOTO BTPO
+
+FIND "3Com 3C509B-Combo:" ARTIFACT\HWCTEST.LOG > NUL
+IF NOT ERRORLEVEL 1 GOTO BCOMBO
+
+FIND "3Com 3C509B-TP:" ARTIFACT\HWCTEST.LOG > NUL
+IF NOT ERRORLEVEL 1 GOTO BTP
+
+FIND "3Com 3C509B:" ARTIFACT\HWCTEST.LOG > NUL
+IF NOT ERRORLEVEL 1 GOTO BCOAX
+
+FIND "3Com 3C509-TP:" ARTIFACT\HWCTEST.LOG > NUL
+IF NOT ERRORLEVEL 1 GOTO TP
+
+ECHO Unsupported EtherLink III model.
+GOTO FAIL
+
+
+:BTP
+ECHO Detected 3C509B-TP.
+SET DETECTED_NIC=btp
+GOTO RUN
+
+:BCOAX
+ECHO Detected 3C509B-COAX.
+SET DETECTED_NIC=bcoax
+GOTO RUN
+
+:BCOMBO
+ECHO Detected 3C509B-Combo.
+SET DETECTED_NIC=bcombo
+GOTO RUN
+
+:BTPO
+ECHO Detected 3C509B-TPO.
+SET DETECTED_NIC=btpo
+GOTO RUN
+
+:BTPC
+ECHO Detected 3C509B-TPCoax.
+SET DETECTED_NIC=btpc
+GOTO RUN
+
+:TP
+ECHO Detected 3C509-TP.
+SET DETECTED_NIC=tp
+GOTO RUN
+
+:RUN
+ECHO Running test target %TARGET% for detected NIC: %DETECTED_NIC%
+ECHO Running test target %TARGET% for detected NIC: %DETECTED_NIC% >> ARTIFACT\HWCTEST.LOG
+MAKE -fHWCREAD.MK %TARGET%-%DETECTED_NIC%
+GOTO CHECK
+
+:CHECK
+IF ERRORLEVEL 1 GOTO FAIL
+GOTO OK
+
+:FAIL
+REM Deliberately return a nonzero DOS ERRORLEVEL.
+FIND "HWC-FAILURE-SENTINEL" ARTIFACT\HWCTEST.LOG > NUL
+GOTO END
+
+:OK
+REM Reset ERRORLEVEL to zero using text known to exist in a successful LIST.
+FIND "3Com " ARTIFACT\HWCTEST.LOG > NUL
+
+:END
