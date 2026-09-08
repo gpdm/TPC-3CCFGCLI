@@ -12,6 +12,7 @@ cycles=max limit 50000
 
 [autoexec]
 @ECHO OFF
+SET PATH=%PATH%;C:\TASM\BIN;C:\PKLITE;C:\BIN
 CLS
 MOUNT C: . >NUL
 C:

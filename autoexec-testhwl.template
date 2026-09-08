@@ -19,6 +19,7 @@ memsizekb = __MEMKB__
 [autoexec]
 @ECHO OFF
 CLS
+SET PATH=%PATH%;C:\TASM\BIN;C:\PKLITE;C:\BIN
 MOUNT C: __BUILD_DIR__ >NUL
 C:
 REM TESTHWL doesn't log itself, therefore forcing it through

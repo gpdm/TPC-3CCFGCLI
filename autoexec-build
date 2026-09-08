@@ -13,6 +13,7 @@ cycles=max limit 50000
 [autoexec]
 @ECHO OFF
 CLS
+SET PATH=%PATH%;C:\TASM\BIN;C:\PKLITE;C:\BIN
 MOUNT C: . >NUL
 C:
 CALL BUILD
