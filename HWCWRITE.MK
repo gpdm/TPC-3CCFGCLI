@@ -333,35 +333,35 @@ hwcw-tp-vrfy: HWCW_VRFY_COMMON HWCW_VRFY_TR_EXTERNAL
 HWCW_VRFY_COMMON:
 	@echo [vrfy] Verifying common CONFIG values in 3C5X9CFG dump... >> $(LOGFILE)
 	@echo [vrfy] Verifying common CONFIG values in 3C5X9CFG dump...
-	$(ASSERTRS)\LFIND.BAT $(CFGDUMP) "base address:" "280"
-	$(ASSERTRS)\LFIND.BAT $(CFGDUMP) "Interrupt request level:" "3"
-	$(ASSERTRS)\LFIND.BAT $(CFGDUMP) "Network driver optimization:" "server"
-	$(ASSERTRS)\LFIND.BAT $(CFGDUMP) "Maximum interrupt disable time:" "1300 microseconds"
+	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "base address:" "280"
+	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Interrupt request level:" "3"
+	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Network driver optimization:" "server"
+	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Maximum interrupt disable time:" "1300 microseconds"
 
 HWCW_VRFY_PNP:
 	@echo [vrfy] Verifying Plug and Play state in 3C5X9CFG dump... >> $(LOGFILE)
 	@echo [vrfy] Verifying Plug and Play state in 3C5X9CFG dump...
-	$(ASSERTRS)\LFIND.BAT $(CFGDUMP) "Plug and Play Capability:" "disabled"
+	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Plug and Play Capability:" "disabled"
 
 HWCW_VRFY_FD:
 	@echo [vrfy] Verifying Full Duplex state in 3C5X9CFG dump... >> $(LOGFILE)
 	@echo [vrfy] Verifying Full Duplex state in 3C5X9CFG dump...
-	$(ASSERTRS)\LFIND.BAT $(CFGDUMP) "Full Duplex:" "disabled"
+	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Full Duplex:" "disabled"
 
 HWCW_VRFY_TR_TP:
 	@echo [vrfy] Verifying TP transceiver state in 3C5X9CFG dump... >> $(LOGFILE)
 	@echo [vrfy] Verifying TP transceiver state in 3C5X9CFG dump...
-	$(ASSERTRS)\LFIND.BAT $(CFGDUMP) "Transceiver type:" "on-board TP"
+	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Transceiver type:" "on-board TP"
 
 HWCW_VRFY_TR_COAX:
 	@echo [vrfy] Verifying coax transceiver state in 3C5X9CFG dump... >> $(LOGFILE)
 	@echo [vrfy] Verifying coax transceiver state in 3C5X9CFG dump...
-	$(ASSERTRS)\LFIND.BAT $(CFGDUMP) "Transceiver type:" "on-board coax"
+	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Transceiver type:" "on-board coax"
 
 HWCW_VRFY_TR_EXTERNAL:
 	@echo [vrfy] Verifying external transceiver state in 3C5X9CFG dump... >> $(LOGFILE)
 	@echo [vrfy] Verifying external transceiver state in 3C5X9CFG dump...
-	$(ASSERTRS)\LFIND.BAT $(CFGDUMP) "Transceiver type:" "external"
+	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Transceiver type:" "external"
 
 
 # ROMCONFIG vendor dump entry points.
@@ -389,45 +389,16 @@ hwcw-rom-btpc-vrfy: HWCW_ROM_VRFY_BOOT
 HWCW_ROM_VRFY_BOOT:
 	@echo [vrfy] Verifying Boot PROM state in 3C5X9CFG dump... >> $(LOGFILE)
 	@echo [vrfy] Verifying Boot PROM state in 3C5X9CFG dump...
-	$(ASSERTRS)\LFIND.BAT $(ROMDUMP) "Boot PROM size:" "16"
-	$(ASSERTRS)\LFIND.BAT $(ROMDUMP) "Boot PROM base address:" "C8000"
-
-
-# ROMCONFIG vendor dump entry points.
-#
-# The ROM write run starts from the deterministic baseline and changes only
-# Boot PROM address and size. Therefore the non-ROM fields below reflect that
-# baseline rather than the TEST values used by the normal CONFIG run.
-
-hwcw-rom-btp-vrfy: HWCW_ROM_VRFY_BOOT
-	@echo Vendor ROM configuration dump verification completed for 3C509B-TP. >> $(LOGFILE)
-	@echo Vendor ROM configuration dump verification completed for 3C509B-TP.
-
-hwcw-rom-bcoax-vrfy: HWCW_ROM_VRFY_BOOT
-	@echo Vendor ROM configuration dump verification completed for 3C509B-COAX. >> $(LOGFILE)
-	@echo Vendor ROM configuration dump verification completed for 3C509B-COAX.
-
-hwcw-rom-bcombo-vrfy: HWCW_ROM_VRFY_BOOT
-	@echo Vendor ROM configuration dump verification completed for 3C509B-Combo. >> $(LOGFILE)
-	@echo Vendor ROM configuration dump verification completed for 3C509B-Combo.
-
-hwcw-rom-btpc-vrfy: HWCW_ROM_VRFY_BOOT
-	@echo Vendor ROM configuration dump verification completed for 3C509B-TPCoax. >> $(LOGFILE)
-	@echo Vendor ROM configuration dump verification completed for 3C509B-TPCoax.
-
+	$(ASSERTERS)\LFIND.BAT $(ROMDUMP) "Boot PROM size:" "16"
+	$(ASSERTERS)\LFIND.BAT $(ROMDUMP) "Boot PROM base address:" "C8000"
 
 # Emit warnings for Boot ROM verification targets.
 # map unsupported and non-implemented cards.
 #
 hwcw-rom-btpo-vrfy: hwcw-rom-not-supported
+
 hwcw-rom-tp-vrfy: hwcw-rom-not-implemented
 hwcw-rom-tpo-vrfy: hwcw-rom-not-supported
 hwcw-rom-coax-vrfy: hwcw-rom-not-implemented
 hwcw-rom-combo-vrfy: hwcw-rom-not-implemented
 hwcw-rom-tpc-vrfy: hwcw-rom-not-implemented
-
-HWCW_ROM_VRFY_BOOT:
-	@echo [vrfy] Verifying Boot PROM state in 3C5X9CFG dump... >> $(LOGFILE)
-	@echo [vrfy] Verifying Boot PROM state in 3C5X9CFG dump...
-	$(ASSERTRS)\LFIND.BAT $(ROMDUMP) "Boot PROM size:" "16"
-	$(ASSERTRS)\LFIND.BAT $(ROMDUMP) "Boot PROM base address:" "C8000"
