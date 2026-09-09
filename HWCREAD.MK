@@ -70,6 +70,28 @@ hwcr-rom-bcoax: clean prep save-config hwcr001-bcoax set-default-bcoax hwcr010 r
 hwcr-rom-bcombo: clean prep save-config hwcr001-bcombo set-default-bcombo hwcr010 restore-config complete
 hwcr-rom-btpc: clean prep save-config hwcr001-btpc set-default-btpc hwcr010 restore-config complete
 
+# Emit warning for NICs which explicitely don't
+# have support for Network Boot ROM.
+hwcr-rom-btpo:
+	@echo Boot ROM is not supported on the 3C509B-TPO. >> $(LOGFILE)
+	@echo Boot ROM is not supported on the 3C509B-TPO.
+
+hwcr-rom-tpo:
+	@echo Boot ROM is not supported on the 3C509-TPO. >> $(LOGFILE)
+	@echo Boot ROM is not supported on the 3C509-TPO.
+
+
+# Emit warning for currently non-implemented ROM targets.
+hwcr-rom-not-implemented:
+	@echo Boot ROM testing is currently not enabled for this device type. >> $(LOGFILE)
+	@echo Boot ROM testing is currently not enabled for this device type.
+
+hwcr-rom-tp: hwcr-rom-not-implemented
+hwcr-rom-coax: hwcr-rom-not-implemented
+hwcr-rom-combo: hwcr-rom-not-implemented
+hwcr-rom-tpc: hwcr-rom-not-implemented
+
+
 # Common reader tests valid on all supported models.
 HWCR_COMMON: hwcr002 hwcr003 hwcr005 hwcr007
 

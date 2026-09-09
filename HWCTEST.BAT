@@ -10,6 +10,7 @@ REM ERRORLEVEL handling deliberately stays inside this batch file.
 REM initialization
 IF NOT EXIST ARTIFACT\NUL MD ARTIFACT
 IF EXIST ARTIFACT\NUL DEL ARTIFACT\HWCTEST.LOG
+IF EXIST ARTIFACT\NUL DEL ARTIFACT\*.SET
 
 
 REM Perform initial hardware scan
@@ -126,10 +127,24 @@ GOTO RUN
 :RUN
 ECHO Running test target %TARGET% for detected NIC: %DETECTED_NIC%
 ECHO Running test target %TARGET% for detected NIC: %DETECTED_NIC% >> ARTIFACT\HWCTEST.LOG
-MAKE -fHWCREAD.MK %TARGET%-%DETECTED_NIC%
-GOTO CHECK
+MAKE -f%MKFILE% %TARGET%-%DETECTED_NIC%
+IF ERRORLEVEL 1 GOTO FAIL
 
-:CHECK
+IF %TARGET%==hwcw GOTO PCVERIFIY
+IF %TARGET%==hwcw-rom GOTO PCVERIFIY
+GOTO OK
+
+REM Post-configurative verification using 3CCFGCLI
+REM runs only for hwcr and hwcr-rom targets and
+REM calls MAKE one more time to verify the results
+:PCVERIFIY
+ECHO Taking post-configuration dump using 3CCFGCLI >> ARTIFACT\HWCTEST.LOG
+ECHO Taking post-configuration dump using 3CCFGCLI
+stuffit 0
+stuffit +2 @62 +2 9 9 13 +2 9 13 +2 "ARTIFACT\%TARGET%.SET" +2 13 +1 27 27 13
+3c5x9cfg
+
+MAKE -f%MKFILE% %TARGET%-%DETECTED_NIC%-vrfy
 IF ERRORLEVEL 1 GOTO FAIL
 GOTO OK
 
