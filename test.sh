@@ -39,18 +39,21 @@ test_regressions() {
 test_saveconfig_line_lengths() {
   local result
   
-  echo "SAVECONFIG: assertings line length limits ..." >> "${TEST_LOG}"
+  echo "SAVECONFIG: inspecting RESTORE.BAT file ..." >> "${TEST_LOG}"
 
   if [ ! -f "${ARTIFACT_DIR}/RESTORE.BAT" ]; then
     echo "[SAVECONFIG] RESTORE.BAT: file is missing or unreadable" >> "${TEST_LOG}"
     return 1
   fi
 
+  echo "[SC0001]: Asserting max ${SAVE_MAX_BATCH_LINE} byte line length for DOS PSP not exceeded ..." 
   result=$(awk '{ if (length > max) max = length } END { print max }' "${ARTIFACT_DIR}/RESTORE.BAT")
 
   if [ "$result" -gt "$SAVE_MAX_BATCH_LINE" ]; then
-    echo "[SAVECONFIG] line length failure in RESTORE.BAT: max length exceed (${result} chars)" >> "${TEST_LOG}"
+    echo "[SC0001] FAILED (max length exceed: ${result} chars found)" >> "${TEST_LOG}"
     return 1
+  else
+    echo "[SC0001] PASSED"
   fi
 
   echo "SAVECONFIG: run completed" >> "${TEST_LOG}"
@@ -83,7 +86,7 @@ test_hwlimits() {
 
     grep -q "HWLIMIT PASS memsizekb=${memkb}" "$log" > /dev/null 2>&1
     if [ $? -eq 0 ]; then
-      echo "[HWL${memkb}] PASS" >> "${TEST_LOG}"
+      echo "[HWL${memkb}] PASSED" >> "${TEST_LOG}"
       continue
     fi
 
