@@ -72,7 +72,7 @@ test_hwlimits() {
   for memkb in 64 128 256; do
     local conf
     local log
-    conf=$(mktemp "autoexec-testhwl-${memkb}.XXXXXX")
+    conf=$(mktemp "/tmp/autoexec-testhwl-${memkb}.XXXXXX")
     log="${ARTIFACT_DIR}/HWL${memkb}.LOG"
 
     echo "Dispatching resource test with ${memkb} KB memory limit to DOSBox-X ..."
