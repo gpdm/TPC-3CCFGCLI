@@ -6,10 +6,16 @@
 set -u
 
 DOSBOX_BIN=${DOSBOX_BIN:-/Applications/DOSBox-X.app/Contents/MacOS/dosbox-x}
-TEST_LOG="TEST.LOG"
+LOGDIR=${LOGDIR:-./LOGS/TEST}
+TEST_LOG="${LOGDIR}/TEST.LOG"
 TEST_MK="TEST.MK"
-ARTIFACT_DIR=${ARTIFACT:-ARTIFACT}
+ARTIFACT_DIR="${LOGDIR}/ARTIFACT"
 SAVE_MAX_BATCH_LINE=128
+
+
+# ensure log directories exist
+[ ! -d "${LOGDIR}" ] && mkdir -p "${LOGDIR}"
+[ ! -d "${ARTIFACT_DIR}" ] && mkdir -p "${ARTIFACT_DIR}"
 
 
 # clear TEST.LOG
