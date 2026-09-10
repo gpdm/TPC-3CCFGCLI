@@ -1,4 +1,15 @@
 #!/usr/bin/env bash
+#
+# Create HWC Floppy Utility
+#
+# Since the Hardware Compliance Checks can only run on native hardware,
+# I need a way to create floppy images (or floppy disks for that sake)
+# containing the regression check utilities.
+#
+# What currently works is the disk image creation.
+# If I get the detection for real floppy disks properly set up,
+# I'll also support writing to target floppy disks using MTOOLS.
+#
 
 set -euo pipefail
 
@@ -153,13 +164,12 @@ copy_payload()
         "HWCREAD.MK" \
         "HWCTEST.BAT" \
         "HWCWRITE.MK" \
-        "ASSERTRS" \
+        "ASSERTRS/LFIND.BAT" \
         ::
 
     echo "Verifying filesystem..."
 
     mdir -i "$media" :: >/dev/null
-    mdir -i "$media" ::ASSERTRS >/dev/null
 }
 
 
@@ -454,6 +464,10 @@ then
     echo "All HWC test images created successfully."
 
 else
+    # not fully tested yet -- I'm bailing out right until I find more
+    # time to effectively test this part. It's just quick and dirty for now.
+    die "ERROR: Writing to vanilla floppies currently disabled for now."
+
     validate_floppy "$TARGET"
 
     echo
