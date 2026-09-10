@@ -101,6 +101,7 @@ t0101:
    $(SEEDAPP) CLEAR >> $(TESTLOG)
    $(BINAPP) LIST > $(ARTIFACTS)\T0101.LOG
    FIND "No EtherLink III NICs are installed in this computer." $(ARTIFACTS)\T0101.LOG > NUL
+   @echo "[t0101] PASSED"
 
 t0102:
    @echo [t0102] Seeding INIT profile and checking card listing... >> $(TESTLOG)
@@ -113,6 +114,7 @@ t0102:
    FIND "Full Duplex Capability = yes" $(ARTIFACTS)\T0102.LOG > NUL
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0102.LOG > NUL
    FIND "Plug and Play = enabled" $(ARTIFACTS)\T0102.LOG > NUL
+   @echo "[t0102] PASSED"
 
 t02xx:
    @echo [t02xx] IRQ_CHANGE: Verify IRQ change behaviour ... >> $(TESTLOG)
@@ -123,6 +125,7 @@ t0201:
    FIND "Invalid /INT parameter." $(ARTIFACTS)\T0201.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0201.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T0201.LOG > NUL
+   @echo "[t0201] PASSED"
 
 t0202:
    @echo [t0202] Testing CONFIGURE /INT invalid input... >> $(TESTLOG)
@@ -130,6 +133,7 @@ t0202:
    FIND "Invalid /INT parameter." $(ARTIFACTS)\T0202.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0202.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T0202.LOG > NUL
+   @echo "[t0202] PASSED"
 
 t0203:
    @echo [t0203] Testing CONFIGURE /INT transition to 5... >> $(TESTLOG)
@@ -138,6 +142,7 @@ t0203:
    FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0203.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0203.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T0203.LOG > NUL
+   @echo "[t0203] PASSED"
 
 t0204:
    @echo [t0204] Testing CONFIGURE /INT transition back to 9... >> $(TESTLOG)
@@ -146,6 +151,7 @@ t0204:
    FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0204.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0204.LOG
    FIND "IRQ = 9" $(ARTIFACTS)\T0204.LOG > NUL
+   @echo "[t0204] PASSED"
 
 t0205:
    @echo [t0205] Testing CONFIGURE single adapter fallback when /ADAPTERNUM is omitted... >> $(TESTLOG)
@@ -155,6 +161,7 @@ t0205:
    FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0205.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0205.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T0205.LOG > NUL
+   @echo "[t0205] PASSED"
 
 t04xx:
    @echo [t04xx] IOBASE_CHANGE: Verify IO base change behaviour ... >> $(TESTLOG)
@@ -166,6 +173,7 @@ t0401:
    FIND "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments." $(ARTIFACTS)\T0401.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0401.LOG
    FIND "IOBASE = 0300" $(ARTIFACTS)\T0401.LOG > NUL
+   @echo "[t0401] PASSED"
 
 t0402:
    @echo [t0402] Testing CONFIGURE /IOBASE invalid out-of-range low value... >> $(TESTLOG)
@@ -173,6 +181,7 @@ t0402:
    FIND "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments." $(ARTIFACTS)\T0402.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0402.LOG
    FIND "IOBASE = 0300" $(ARTIFACTS)\T0402.LOG > NUL
+   @echo "[t0402] PASSED"
 
 t0403:
    @echo [t0403] Testing CONFIGURE /IOBASE arbitrary invalid input... >> $(TESTLOG)
@@ -180,6 +189,7 @@ t0403:
    FIND "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments." $(ARTIFACTS)\T0403.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0403.LOG
    FIND "IOBASE = 0300" $(ARTIFACTS)\T0403.LOG > NUL
+   @echo "[t0403] PASSED"
 
 t0404:
    @echo [t0404] Testing CONFIGURE /IOBASE transition to 0280 (long notation)... >> $(TESTLOG)
@@ -189,6 +199,7 @@ t0404:
    FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0404.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0404.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T0404.LOG > NUL
+   @echo "[t0404] PASSED"
 
 t0406:
    @echo [t0406] Testing CONFIGURE /IOBASE transition to 280 (short notation)... >> $(TESTLOG)
@@ -198,6 +209,7 @@ t0406:
    FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0406.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0406.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T0406.LOG > NUL
+   @echo "[t0406] PASSED"
 
 t0408:
    @echo [t0408] Testing CONFIGURE /IOBASE minimum valid address 0200... >> $(TESTLOG)
@@ -206,6 +218,7 @@ t0408:
    FIND "IOBASE parameter accepted. Requested IOBASE: 0200" $(ARTIFACTS)\T0408.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0408.LOG
    FIND "IOBASE = 0200" $(ARTIFACTS)\T0408.LOG > NUL
+   @echo "[t0408] PASSED"
 
 t0409:
    @echo [t0409] Testing CONFIGURE /IOBASE maximum valid address 03E0... >> $(TESTLOG)
@@ -214,6 +227,7 @@ t0409:
    FIND "IOBASE parameter accepted. Requested IOBASE: 03E0" $(ARTIFACTS)\T0409.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0409.LOG
    FIND "IOBASE = 03E0" $(ARTIFACTS)\T0409.LOG > NUL
+   @echo "[t0409] PASSED"
 
 t05xx:
    @echo [t05xx] PNP_CHANGE: Verify PNP property change behaviour ... >> $(TESTLOG)
@@ -230,6 +244,7 @@ t0501:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0501.LOG
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0501.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T0501.LOG > NUL
+   @echo "[t0501] PASSED"
 
 t0502:
    @echo [t0502] Testing CONFIGURE /PNP transition back to enabled... >> $(TESTLOG)
@@ -242,11 +257,13 @@ t0502:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0502.LOG
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0502.LOG > NUL
    FIND "Plug and Play = enabled" $(ARTIFACTS)\T0502.LOG > NUL
+   @echo "[t0502] PASSED"
 
 t0505:
    @echo [t0505] Testing CONFIGURE /PNP arbitrary invalid input... >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:OTHERINVALIDINPUT > $(ARTIFACTS)\T0505.LOG
    FIND "Invalid /PNP parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0505.LOG > NUL
+   @echo "[t0505] PASSED"
 
 t06xx:
    @echo [t06xx] MODEM_CHANGE: Verify MODEM property change behaviour ... >> $(TESTLOG)
@@ -256,23 +273,27 @@ t0601:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 > $(ARTIFACTS)\T0601.LOG
    FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T0601.LOG > NUL
    FIND "Modem speed configuration completed successfully." $(ARTIFACTS)\T0601.LOG > NUL
+   @echo "[t0601] PASSED"
 
 t0602:
    @echo [t0602] Testing CONFIGURE /MODEM unchanged transition at 1200... >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /VERBOSE > $(ARTIFACTS)\T0602.LOG
    FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T0602.LOG > NUL
    FIND "Modem speed setting is already configured to the requested value." $(ARTIFACTS)\T0602.LOG > NUL
+   @echo "[t0602] PASSED"
 
 t0603:
    @echo [t0603] Testing CONFIGURE /MODEM transition to NONE... >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:NONE > $(ARTIFACTS)\T0603.LOG
    FIND "MODEM parameter accepted. Requested setting: none" $(ARTIFACTS)\T0603.LOG > NUL
    FIND "Modem speed configuration completed successfully." $(ARTIFACTS)\T0603.LOG > NUL
+   @echo "[t0603] PASSED"
 
 t0604:
    @echo [t0604] Testing CONFIGURE /MODEM invalid symbolic input... >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:FALSE > $(ARTIFACTS)\T0604.LOG
    FIND "Invalid /MODEM parameter." $(ARTIFACTS)\T0604.LOG > NUL
+   @echo "[t0604] PASSED"
 
 t0605:
    @echo [t0605] Testing CONFIGURE /MODEM invalid out-of-range step value... >> $(TESTLOG)
@@ -280,6 +301,7 @@ t0605:
    FIND "Invalid /MODEM parameter." $(ARTIFACTS)\T0605.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:NONE /VERBOSE >> $(ARTIFACTS)\T0605.LOG
    FIND "Modem speed setting is already configured to the requested value." $(ARTIFACTS)\T0605.LOG > NUL
+   @echo "[t0605] PASSED"
 
 t0607:
    @echo [t0607] Testing LIST MODEM interrupt-disable timing readout... >> $(TESTLOG)
@@ -290,6 +312,7 @@ t0607:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:NONE >> $(ARTIFACTS)\T0607.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T0607.LOG
    FIND "MODEM Interrupt Disable Time = 1600 us (NONE)" $(ARTIFACTS)\T0607.LOG > NUL
+   @echo "[t0607] PASSED"
 
 t0608:
    @echo [t0608] Testing /MODEM:25 preserves all non-MODEM word 0Dh fields... >> $(TESTLOG)
@@ -299,6 +322,7 @@ t0608:
    FIND "New EEPROM word 0Dh: 40FF" $(ARTIFACTS)\T0608.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0608.LOG
    FIND "Optimization = Server" $(ARTIFACTS)\T0608.LOG > NUL
+   @echo "[t0608] PASSED"
 
 t0609:
    @echo [t0609] Testing /MODEM:1600 upper-bound field encoding... >> $(TESTLOG)
@@ -306,6 +330,8 @@ t0609:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1600 /VERBOSE >> $(ARTIFACTS)\T0609.LOG
    FIND "Current EEPROM word 0Dh: 73FF" $(ARTIFACTS)\T0609.LOG > NUL
    FIND "New EEPROM word 0Dh: 7FFF" $(ARTIFACTS)\T0609.LOG > NUL
+   @echo "[t0609] PASSED"
+
 
 # All five named baud values are retained intentionally: CONFIGURE encoding and
 # SAVECONFIG/LIST alias decoding use explicit per-value mappings. Raw 1200 us is
@@ -354,6 +380,7 @@ t0610:
    FIND "MODEM Interrupt Disable Time = 1200 us (not representable by CLI)" $(ARTIFACTS)\T0610.LOG > NUL
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\M1200U.BAT >> $(ARTIFACTS)\T0610.LOG
    FIND "MODEM:NONE" $(ARTIFACTS)\M1200U.BAT > NUL
+   @echo "[t0610] PASSED"
 
 t07xx:
    @echo [t07xx] FD_CHANGE: Verify FULLDUPLEX property behaviour ... >> $(TESTLOG)
@@ -365,6 +392,7 @@ t0701:
    FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T0701.LOG > NUL
    FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0701.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0701.LOG > NUL
+   @echo "[t0701] PASSED"
 
 t0702:
    @echo [t0702] Testing CONFIGURE /FULLDUPLEX unchanged transition at enabled... >> $(TESTLOG)
@@ -372,6 +400,7 @@ t0702:
    FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T0702.LOG > NUL
    FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0702.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0702.LOG > NUL
+   @echo "[t0702] PASSED"
 
 t0703:
    @echo [t0703] Testing CONFIGURE /FULLDUPLEX transition to disabled... >> $(TESTLOG)
@@ -379,11 +408,13 @@ t0703:
    FIND "FULLDUPLEX parameter accepted. Requested mode: disabled" $(ARTIFACTS)\T0703.LOG > NUL
    FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0703.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0703.LOG > NUL
+   @echo "[t0703] PASSED"
 
 t0705:
    @echo [t0705] Testing CONFIGURE /FULLDUPLEX invalid symbolic input... >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:TRUE > $(ARTIFACTS)\T0705.LOG
    FIND "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0705.LOG > NUL
+   @echo "[t0705] PASSED"
 
 t0706:
    @echo [t0706] Testing LIST Full Duplex readout for enabled and disabled... >> $(TESTLOG)
@@ -394,6 +425,7 @@ t0706:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0706.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T0706.LOG
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0706.LOG > NUL
+   @echo "[t0706] PASSED"
 
 t0707:
    @echo [t0707] Testing Full Duplex capability and rejection on 3C509B-COAX... >> $(TESTLOG)
@@ -404,6 +436,7 @@ t0707:
    FIND "Full Duplex = not supported" $(ARTIFACTS)\T0707.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0707.LOG
    FIND "This adapter does not support full duplex configuration." $(ARTIFACTS)\T0707.LOG > NUL
+   @echo "[t0707] PASSED"
 
 t0708:
    @echo [t0708] Testing Full Duplex enable rejects effective AUI and permits disable... >> $(TESTLOG)
@@ -413,6 +446,7 @@ t0708:
    FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0708.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0708.LOG
    FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0708.LOG > NUL
+   @echo "[t0708] PASSED"
 
 t0710:
    @echo [t0710] Testing Full Duplex enable rejects effective AUTO... >> $(TESTLOG)
@@ -420,6 +454,7 @@ t0710:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T0710.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0710.LOG
    FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0710.LOG > NUL
+   @echo "[t0710] PASSED"
 
 t0711:
    @echo [t0711] Testing atomicity of combined AUI and Full Duplex rejection... >> $(TESTLOG)
@@ -433,6 +468,8 @@ t0711:
 # Full Duplex requires effective TP. A standalone change to AUI must therefore
 # fail without changing state; AUI+FULLDUPLEX:DISABLED is valid because the
 # combined prospective final state no longer has Full Duplex enabled.
+   @echo "[t0711] PASSED"
+
 t0714:
    @echo [t0714] Testing reverse Full Duplex dependency preserves TP state... >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0714.LOG
@@ -444,6 +481,7 @@ t0714:
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T0714.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0714.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0714.LOG > NUL
+   @echo "[t0714] PASSED"
 
 t09xx:
    @echo [t09xx] OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour ... >> $(TESTLOG)
@@ -456,6 +494,7 @@ t0901:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0901.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0901.LOG
    FIND "Optimization = Windows or OS/2" $(ARTIFACTS)\T0901.LOG > NUL
+   @echo "[t0901] PASSED"
 
 t0902:
    @echo [t0902] Testing CONFIGURE /OPTIMIZE invalid symbolic input... >> $(TESTLOG)
@@ -463,6 +502,7 @@ t0902:
    FIND "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER." $(ARTIFACTS)\T0902.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0902.LOG
    FIND "Optimization = Windows or OS/2" $(ARTIFACTS)\T0902.LOG > NUL
+   @echo "[t0902] PASSED"
 
 t0903:
    @echo [t0903] Testing CONFIGURE /OPTIMIZE transition to SERVER... >> $(TESTLOG)
@@ -470,6 +510,7 @@ t0903:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0903.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0903.LOG
    FIND "Optimization = Server" $(ARTIFACTS)\T0903.LOG > NUL
+   @echo "[t0903] PASSED"
 
 t0904:
    @echo [t0904] Testing CONFIGURE /OPTIMIZE transition to DOS... >> $(TESTLOG)
@@ -477,6 +518,7 @@ t0904:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0904.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0904.LOG
    FIND "Optimization = DOS" $(ARTIFACTS)\T0904.LOG > NUL
+   @echo "[t0904] PASSED"
 
 t0905:
    @echo [t0905] Testing unchanged CONFIGURE /OPTIMIZE:SERVER... >> $(TESTLOG)
@@ -485,6 +527,7 @@ t0905:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER /VERBOSE > $(ARTIFACTS)\T0905.LOG
    FIND "Optimize mode is already configured to the requested value." $(ARTIFACTS)\T0905.LOG > NUL
    FIND "No hardware changes required." $(ARTIFACTS)\T0905.LOG > NUL
+   @echo "[t0905] PASSED"
 
 t11xx:
    @echo [t11xx] BOOTROM_CHANGE: Verify boot ROM change behaviour ... >> $(TESTLOG)
@@ -496,7 +539,7 @@ t1101:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1101.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1101.LOG
    FIND "Boot ROM = 16K at C0000H" $(ARTIFACTS)\T1101.LOG > NUL
-
+   @echo "[t1101] PASSED"
 
 t1102:
    @echo [t1102] Testing CONFIGURE /BSIZE then /BADDRESS ordering... >> $(TESTLOG)
@@ -505,7 +548,7 @@ t1102:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1102.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1102.LOG
    FIND "Boot ROM = 16K at C0000H" $(ARTIFACTS)\T1102.LOG > NUL
-
+   @echo "[t1102] PASSED"
 
 t1103:
    @echo [t1103] Testing CONFIGURE /BADDRESS+/BSIZE reconfigure to a new pair... >> $(TESTLOG)
@@ -514,7 +557,7 @@ t1103:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1103.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1103.LOG
    FIND "Boot ROM = 32K at D0000H" $(ARTIFACTS)\T1103.LOG > NUL
-
+   @echo "[t1103] PASSED"
 
 t1104:
    @echo [t1104] Testing /BSIZE:DISABLED succeeds without a detected Boot ROM... >> $(TESTLOG)
@@ -523,7 +566,7 @@ t1104:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1104.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1104.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1104.LOG > NUL
-
+   @echo "[t1104] PASSED"
 
 t1105:
    @echo [t1105] Testing CONFIGURE /BADDRESS out-of-range address... >> $(TESTLOG)
@@ -531,7 +574,7 @@ t1105:
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1105.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1105.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1105.LOG > NUL
-
+   @echo "[t1105] PASSED"
 
 t1106:
    @echo [t1106] Testing CONFIGURE /BADDRESS non-aligned address... >> $(TESTLOG)
@@ -539,7 +582,7 @@ t1106:
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1106.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1106.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1106.LOG > NUL
-
+   @echo "[t1106] PASSED"
 
 t1107:
    @echo [t1107] Testing CONFIGURE /BSIZE invalid value... >> $(TESTLOG)
@@ -547,7 +590,7 @@ t1107:
    FIND "Invalid /BSIZE parameter. Use 8, 16, 32, or DISABLED." $(ARTIFACTS)\T1107.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1107.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1107.LOG > NUL
-
+   @echo "[t1107] PASSED"
 
 t1108:
    @echo [t1108] Testing CONFIGURE /BSIZE alone (real size) is rejected (pairing rule)... >> $(TESTLOG)
@@ -555,7 +598,7 @@ t1108:
    FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1108.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1108.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1108.LOG > NUL
-
+   @echo "[t1108] PASSED"
 
 t1109:
    @echo [t1109] Testing CONFIGURE /BADDRESS alone is rejected (pairing rule)... >> $(TESTLOG)
@@ -563,35 +606,39 @@ t1109:
    FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1109.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1109.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1109.LOG > NUL
-
+   @echo "[t1109] PASSED"
 
 t1110:
    @echo [t1110] Testing /BADDRESS combined with /BSIZE:DISABLED is rejected... >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:DISABLED > $(ARTIFACTS)\T1110.LOG
    FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1110.LOG > NUL
-
+   @echo "[t1110] PASSED"
 
 t1111:
    @echo [t1111] Testing Boot ROM capability gate: 3C509B-TPO rejects /BADDRESS+/BSIZE... >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TPO > $(ARTIFACTS)\T1111.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1111.LOG
    FIND "This adapter does not support Boot ROM configuration." $(ARTIFACTS)\T1111.LOG > NUL
+   @echo "[t1111] PASSED"
 
 t1112:
    @echo [t1112] Testing CONFIGURE /BSIZE:8 alone is rejected... >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1112.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:8 >> $(ARTIFACTS)\T1112.LOG
    FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1112.LOG > NUL
+   @echo "[t1112] PASSED"
 
 t1113:
    @echo [t1113] Testing CONFIGURE /BSIZE:32 alone is rejected... >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:32 > $(ARTIFACTS)\T1113.LOG
    FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1113.LOG > NUL
+   @echo "[t1113] PASSED"
 
 t1114:
    @echo [t1114] Testing CONFIGURE 8K at C0000 is rejected... >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:8 > $(ARTIFACTS)\T1114.LOG
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1114.LOG > NUL
+   @echo "[t1114] PASSED"
 
 t1115:
    @echo [t1115] Testing CONFIGURE 8K at C2000... >> $(TESTLOG)
@@ -600,11 +647,13 @@ t1115:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1115.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1115.LOG
    FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1115.LOG > NUL
+   @echo "[t1115] PASSED"
 
 t1116:
    @echo [t1116] Testing CONFIGURE 16K at C2000 is rejected... >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:16 > $(ARTIFACTS)\T1116.LOG
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1116.LOG > NUL
+   @echo "[t1116] PASSED"
 
 t1117:
    @echo [t1117] Testing CONFIGURE 32K 3C509B at C4000... >> $(TESTLOG)
@@ -613,6 +662,7 @@ t1117:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1117.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1117.LOG
    FIND "Boot ROM = 32K at C4000H" $(ARTIFACTS)\T1117.LOG > NUL
+   @echo "[t1117] PASSED"
 
 t1118:
    @echo [t1118] Testing CONFIGURE 32K 3C509B at DC000... >> $(TESTLOG)
@@ -621,6 +671,7 @@ t1118:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1118.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1118.LOG
    FIND "Boot ROM = 32K at DC000H" $(ARTIFACTS)\T1118.LOG > NUL
+   @echo "[t1118] PASSED"
 
 t1119:
    @echo [t1119] Testing INT change not destroying Boot ROM Size Valid flag ... >> $(TESTLOG)
@@ -629,6 +680,7 @@ t1119:
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1119.LOG
    FIND "Boot ROM Size Valid = no" $(ARTIFACTS)\T1119.LOG > NUL
    FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1119.LOG > NUL
+   @echo "[t1119] PASSED"
 
 t1120:
    @echo [t1120] Testing rejected Boot ROM config reports Size Valid = no... >> $(TESTLOG)
@@ -643,6 +695,8 @@ t1120:
 
 # A failed Boot ROM probe is non-fatal to unrelated properties in the same
 # transaction. These cases cover preservation/commit across INT, IOBASE, and TR.
+   @echo "[t1120] PASSED"
+
 t1122:
    @echo [t1122] Testing no-ROM seed rejects Boot ROM while preserving INT... >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1122.LOG
@@ -652,6 +706,7 @@ t1122:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1122.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1122.LOG > NUL
    FIND "IRQ = 5" $(ARTIFACTS)\T1122.LOG > NUL
+   @echo "[t1122] PASSED"
 
 t1126:
    @echo [t1126] Testing no-ROM seed rejects Boot ROM while preserving IOBASE... >> $(TESTLOG)
@@ -661,6 +716,7 @@ t1126:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1126.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1126.LOG > NUL
    FIND "IOBASE = 0280" $(ARTIFACTS)\T1126.LOG > NUL
+   @echo "[t1126] PASSED"
 
 t1127:
    @echo [t1127] Testing no-ROM combo seed rejects Boot ROM while preserving TR... >> $(TESTLOG)
@@ -670,6 +726,7 @@ t1127:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1127.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1127.LOG > NUL
    FIND "Transceiver = external" $(ARTIFACTS)\T1127.LOG > NUL
+   @echo "[t1127] PASSED"
 
 t1128:
    @echo [t1128] Testing final live Boot ROM verification after accepted 8K commit... >> $(TESTLOG)
@@ -679,6 +736,7 @@ t1128:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1128.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1128.LOG
    FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1128.LOG > NUL
+   @echo "[t1128] PASSED"
 
 t1129:
    @echo [t1129] Testing final live Boot ROM verification after accepted 16K commit... >> $(TESTLOG)
@@ -688,6 +746,7 @@ t1129:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1129.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1129.LOG
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1129.LOG > NUL
+   @echo "[t1129] PASSED"
 
 t1130:
    @echo [t1130] Testing final live Boot ROM verification after accepted 32K commit... >> $(TESTLOG)
@@ -697,6 +756,7 @@ t1130:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1130.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1130.LOG
    FIND "Boot ROM = 32K at C8000H" $(ARTIFACTS)\T1130.LOG > NUL
+   @echo "[t1130] PASSED"
 
 t1131:
    @echo [t1131] Testing live Boot ROM verification uses final IOBASE after migration... >> $(TESTLOG)
@@ -708,6 +768,7 @@ t1131:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1131.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T1131.LOG > NUL
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1131.LOG > NUL
+   @echo "[t1131] PASSED"
 
 t1132:
    @echo [t1132] Testing accepted Boot ROM with /TR leaves transceiver state undisturbed... >> $(TESTLOG)
@@ -723,6 +784,8 @@ t1132:
 
 # Canonical enabled-to-disabled Boot ROM transition test covering persistent
 # state, live state, diagnostics, and secondary EEPROM consistency.
+   @echo "[t1132] PASSED"
+
 t1133:
    @echo [t1133] Testing enabled Boot ROM can be fully disabled and verified... >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1133.LOG
@@ -734,7 +797,7 @@ t1133:
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1133.LOG > NUL
    FIND "Boot ROM Size Valid = no" $(ARTIFACTS)\T1133.LOG > NUL
    FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1133.LOG > NUL
-
+   @echo "[t1133] PASSED"
 
 t1134:
    @echo [t1134] Testing rejected Boot ROM skips final live verification... >> $(TESTLOG)
@@ -747,7 +810,7 @@ t1134:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1134.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1134.LOG > NUL
    FIND "IRQ = 5" $(ARTIFACTS)\T1134.LOG > NUL
-
+   @echo "[t1134] PASSED"
 
 t1135:
    @echo [t1135] Testing combined Boot ROM + /PNP transaction... >> $(TESTLOG)
@@ -762,6 +825,7 @@ t1135:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1135.LOG
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1135.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1135.LOG > NUL
+   @echo "[t1135] PASSED"
 
 t1136:
    @echo [t1136] Testing idempotent Boot ROM re-request reports no changes... >> $(TESTLOG)
@@ -774,7 +838,7 @@ t1136:
    FIND "No hardware changes required." $(ARTIFACTS)\T1136.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1136.LOG
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1136.LOG > NUL
-
+   @echo "[t1136] PASSED"
 
 t12xx:
    @echo [t12xx] XCVR_CHANGE: Verify transceiver change behaviour ... >> $(TESTLOG)
@@ -786,7 +850,7 @@ t1201:
    FIND "TR parameter accepted. Requested transceiver: TP" $(ARTIFACTS)\T1201.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1201.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1201.LOG > NUL
-
+   @echo "[t1201] PASSED"
 
 t1202:
    @echo [t1202] Testing CONFIGURE /TR:AUI on 3C509B-TP (should succeed)... >> $(TESTLOG)
@@ -795,14 +859,14 @@ t1202:
    FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1202.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1202.LOG
    FIND "Transceiver = external" $(ARTIFACTS)\T1202.LOG > NUL
-
+   @echo "[t1202] PASSED"
 
 t1203:
    @echo [t1203] Testing CONFIGURE /TR:COAX on 3C509B-TP is rejected... >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T1203.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX >> $(ARTIFACTS)\T1203.LOG
    FIND "This adapter does not support the requested transceiver type." $(ARTIFACTS)\T1203.LOG > NUL
-
+   @echo "[t1203] PASSED"
 
 t1204:
    @echo [t1204] Testing CONFIGURE /TR:AUTO on 3C509B-TP (should succeed)... >> $(TESTLOG)
@@ -811,6 +875,7 @@ t1204:
    FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1204.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1204.LOG
    FIND "Transceiver = auto select" $(ARTIFACTS)\T1204.LOG > NUL
+   @echo "[t1204] PASSED"
 
 t1205:
    @echo [t1205] Testing CONFIGURE /TR:AUI to /TR:TP transition on 3C509B-COMBO... >> $(TESTLOG)
@@ -821,7 +886,7 @@ t1205:
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1205.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1205.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1205.LOG > NUL
-
+   @echo "[t1205] PASSED"
 
 t1207:
    @echo [t1207] Testing CONFIGURE /TR:COAX on 3C509B-COMBO (should succeed)... >> $(TESTLOG)
@@ -832,7 +897,7 @@ t1207:
    FIND "TR parameter accepted. Requested transceiver: COAX" $(ARTIFACTS)\T1207.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1207.LOG
    FIND "Transceiver = on-board coax" $(ARTIFACTS)\T1207.LOG > NUL
-
+   @echo "[t1207] PASSED"
 
 t1208:
    @echo [t1208] Testing CONFIGURE /TR:COAX on 3C509B-TPC (should succeed)... >> $(TESTLOG)
@@ -841,21 +906,21 @@ t1208:
    FIND "TR parameter accepted. Requested transceiver: COAX" $(ARTIFACTS)\T1208.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1208.LOG
    FIND "Transceiver = on-board coax" $(ARTIFACTS)\T1208.LOG > NUL
-
+   @echo "[t1208] PASSED"
 
 t1209:
    @echo [t1209] Testing CONFIGURE /TR:AUTO on TP+BNC capabilities succeeds... >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TPC > $(ARTIFACTS)\T1209.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1209.LOG
    FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1209.LOG > NUL
-
+   @echo "[t1209] PASSED"
 
 t1210:
    @echo [t1210] Testing 3C509B-TPO /TR:AUTO rejected (TPO excluded from auto-select)... >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TPO > $(ARTIFACTS)\T1210.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1210.LOG
    FIND "This adapter does not support the requested transceiver type." $(ARTIFACTS)\T1210.LOG > NUL
-
+   @echo "[t1210] PASSED"
 
 t1211:
    @echo [t1211] Testing /XCVR alias: behaves identically to /TR:TP... >> $(TESTLOG)
@@ -864,6 +929,7 @@ t1211:
    FIND "TR parameter accepted. Requested transceiver: TP" $(ARTIFACTS)\T1211.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1211.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1211.LOG > NUL
+   @echo "[t1211] PASSED"
 
 t13xx:
    @echo [t13xx] CLI_PARSER: Verify CLI parser behaviour ... >> $(TESTLOG)
@@ -872,12 +938,13 @@ t1301:
    @echo [t1301] Testing HELP command prints CLI help screen... >> $(TESTLOG)
    $(BINAPP) HELP >> $(ARTIFACTS)\T1301.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1301.LOG > NUL
+   @echo "[t1301] PASSED"
 
 t1311:
    @echo [t1311] Testing empty command line prints help screen... >> $(TESTLOG)
    $(BINAPP) > $(ARTIFACTS)\T1311.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1311.LOG > NUL
-
+   @echo "[t1311] PASSED"
 
 t1302:
    @echo [t1302] Testing CONFIGURE parser accepts '-' switch introducers... >> $(TESTLOG)
@@ -887,6 +954,7 @@ t1302:
    FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1302.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1302.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1302.LOG > NUL
+   @echo "[t1302] PASSED"
 
 t1303:
    @echo [t1303] Testing CONFIGURE parser accepts '=' value separators... >> $(TESTLOG)
@@ -896,17 +964,20 @@ t1303:
    FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1303.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1303.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1303.LOG > NUL
+   @echo "[t1303] PASSED"
 
 t1304:
    @echo [t1304] Testing CONFIGURE with no property is rejected... >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1304.LOG
    $(BINAPP) CONFIGURE >> $(ARTIFACTS)\T1304.LOG
    FIND "No CONFIGURE property was specified." $(ARTIFACTS)\T1304.LOG > NUL
+   @echo "[t1304] PASSED"
 
 t1305:
    @echo [t1305] Testing invalid verb shows help screen... >> $(TESTLOG)
    $(BINAPP) HELPXYZ >> $(ARTIFACTS)\T1305.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1305.LOG > NUL
+   @echo "[t1305] PASSED"
 
 t1306:
    @echo [t1306] Testing LIST token boundaries... >> $(TESTLOG)
@@ -915,6 +986,7 @@ t1306:
    FIND "IOBASE = 0300" $(ARTIFACTS)\T1306.LOG > NUL
    $(BINAPP) LISTXYZ >> $(ARTIFACTS)\T1306.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1306.LOG > NUL
+   @echo "[t1306] PASSED"
 
 t1307:
    @echo [t1307] Testing SAVECONFIG token boundaries and arguments... >> $(TESTLOG)
@@ -929,6 +1001,7 @@ t1307:
    $(BINAPP) SAVECONFIGXYZ >> $(ARTIFACTS)\T1307.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1307.LOG > NUL
    @if exist RESTORE.BAT FIND "THIS FILE SHOULD NOT EXIST" RESTORE.BAT > NUL
+   @echo "[t1307] PASSED"
 
 t1308:
    @echo [t1308] Testing CONFIGURE token boundaries and arguments... >> $(TESTLOG)
@@ -937,6 +1010,7 @@ t1308:
    FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1308.LOG > NUL
    $(BINAPP) CONFIGUREXYZ >> $(ARTIFACTS)\T1308.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1308.LOG > NUL
+   @echo "[t1308] PASSED"
 
 t1309:
    @echo [t1309] Testing leading spaces and tabs before command verbs... >> $(TESTLOG)
@@ -944,11 +1018,13 @@ t1309:
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1309.LOG > NUL
    $(BINAPP)	LIST >> $(ARTIFACTS)\T1309.LOG
    FIND "IOBASE = 0300" $(ARTIFACTS)\T1309.LOG > NUL
+   @echo "[t1309] PASSED"
 
 t1310:
    @echo [t1310] Testing truncated verb shows help screen... >> $(TESTLOG)
    $(BINAPP) SAVECONFI >> $(ARTIFACTS)\T1310.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1310.LOG > NUL
+   @echo "[t1310] PASSED"
 
 t14xx:
    @echo [t14xx] COMBINED_TRANSACTIONS: Verify combined transactions ... >> $(TESTLOG)
@@ -966,6 +1042,8 @@ t1401:
 
 # MODEM, FULLDUPLEX, and OPTIMIZE share EEPROM word 0Dh. These combinations
 # verify that independently requested fields are merged without clobbering.
+   @echo "[t1401] PASSED"
+
 t1402:
    @echo [t1402] Testing combined CONFIGURE /MODEM+/FULLDUPLEX transaction... >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1402.LOG
@@ -974,6 +1052,7 @@ t1402:
    FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T1402.LOG > NUL
    FIND "New EEPROM word 0Dh: " $(ARTIFACTS)\T1402.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1402.LOG > NUL
+   @echo "[t1402] PASSED"
 
 t1403:
    @echo [t1403] Testing combined CONFIGURE /IOBASE+/TR on 3C509B-Combo... >> $(TESTLOG)
@@ -985,6 +1064,7 @@ t1403:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1403.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T1403.LOG > NUL
    FIND "Transceiver = external" $(ARTIFACTS)\T1403.LOG > NUL
+   @echo "[t1403] PASSED"
 
 t1405:
    @echo [t1405] Testing combined CONFIGURE /OPTIMIZE+/MODEM transaction... >> $(TESTLOG)
@@ -993,6 +1073,7 @@ t1405:
    FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T1405.LOG > NUL
    FIND "New EEPROM word 0Dh: Server" $(ARTIFACTS)\T1405.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1405.LOG > NUL
+   @echo "[t1405] PASSED"
 
 t1406:
    @echo [t1406] Testing combined CONFIGURE /TR:AUTO+/BADDRESS+/BSIZE on 3C509B-Combo... >> $(TESTLOG)
@@ -1003,6 +1084,7 @@ t1406:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1406.LOG
    FIND "Transceiver = auto select" $(ARTIFACTS)\T1406.LOG > NUL
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1406.LOG > NUL
+   @echo "[t1406] PASSED"
 
 t1407:
    @echo [t1407] Testing combined CONFIGURE /PNP+/INT checksum domains... >> $(TESTLOG)
@@ -1016,6 +1098,7 @@ t1407:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1407.LOG
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1407.LOG > NUL
    FIND "IRQ = 5" $(ARTIFACTS)\T1407.LOG > NUL
+   @echo "[t1407] PASSED"
 
 t15xx:
    @echo [t15xx] MULTI_NIC: Verify multi-NIC behaviour ... >> $(TESTLOG)
@@ -1027,6 +1110,7 @@ t1502:
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 /INT:5 >> $(ARTIFACTS)\T1502.LOG
    $(BINAPP) CONFIGURE /INT:7 >> $(ARTIFACTS)\T1502.LOG
    FIND "ADAPTERNUM is required when more than one adapter is installed." $(ARTIFACTS)\T1502.LOG > NUL
+   @echo "[t1502] PASSED"
 
 t1503:
    @echo [t1503] Testing multi-NIC adapter selection changes only the targeted NIC... >> $(TESTLOG)
@@ -1038,6 +1122,7 @@ t1503:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1503.LOG
    FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1503.LOG > NUL
    FIND "IOBASE = 0310, IRQ = 7" $(ARTIFACTS)\T1503.LOG > NUL
+   @echo "[t1503] PASSED"
 
 t1504:
    @echo [t1504] Testing multi-NIC /IOBASE conflict detection blocks duplicate base... >> $(TESTLOG)
@@ -1052,6 +1137,8 @@ t1504:
 
 # This deliberately creates an ambiguous hardware state with two adapters at
 # the same active IOBASE. The target must not be treated as safely addressable.
+   @echo "[t1504] PASSED"
+
 t1505:
    @echo [t1505] Testing duplicate active-IOBASE conflict rejects targeted migration... >> $(TESTLOG)
    ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1505.LOG
@@ -1062,6 +1149,7 @@ t1505:
    FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1505.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:0310 >> $(ARTIFACTS)\T1505.LOG
    FIND "Selected adapter has no active IOBASE" $(ARTIFACTS)\T1505.LOG > NUL
+   @echo "[t1505] PASSED"
 
 t16xx:
    @echo [t16xx] SAVECONFIG_TEST: Verify save configuration behaviour ... >> $(TESTLOG)
@@ -1071,6 +1159,7 @@ t1602:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1602.LOG
    $(BINAPP) SAVECONFIG /OUTPUTFILE: >> $(ARTIFACTS)\T1602.LOG
    FIND "SAVECONFIG /OUTPUTFILE requires a value." $(ARTIFACTS)\T1602.LOG > NUL
+   @echo "[t1602] PASSED"
 
 t1603:
    @echo [t1603] Testing SAVECONFIG exports one restore line per multi-NIC adapter... >> $(TESTLOG)
@@ -1087,6 +1176,8 @@ t1603:
 # Unlike the manual multi-step configuration test, this verifies that
 # SAVECONFIG generates executable restore commands which, after a fresh seed,
 # reconstruct the expected adapter configuration.
+   @echo "[t1603] PASSED"
+
 t1606:
    @echo [t1606] Testing SAVECONFIG keeps Boot ROM pair atomic in split restore commands... >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1606.LOG
@@ -1101,6 +1192,7 @@ t1606:
    FIND "IOBASE = 0280, IRQ = 5" $(ARTIFACTS)\T1606.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1606.LOG > NUL
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1606.LOG > NUL
+   @echo "[t1606] PASSED"
 
 t1607:
    @echo [t1607] Testing SAVECONFIG rejects unsupported percent EXECFILE forms... >> $(TESTLOG)
@@ -1117,6 +1209,7 @@ t1607:
    @if exist $(ARTIFACTS)\BADPATH.BAT FIND "THIS FILE SHOULD NOT EXIST" $(ARTIFACTS)\BADPATH.BAT > NUL
    @if exist $(ARTIFACTS)\BADMID.BAT FIND "THIS FILE SHOULD NOT EXIST" $(ARTIFACTS)\BADMID.BAT > NUL
    @if exist $(ARTIFACTS)\BADTAIL.BAT FIND "THIS FILE SHOULD NOT EXIST" $(ARTIFACTS)\BADTAIL.BAT > NUL
+   @echo "[t1607] PASSED"
 
 t1608:
    @echo [t1608] Testing SAVECONFIG rejects missing literal EXECFILE before creating output... >> $(TESTLOG)
@@ -1125,6 +1218,7 @@ t1608:
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\MISSING.BAT /EXECFILE:C:\DOESNOT\EXIST.EXE >> $(ARTIFACTS)\T1608.LOG
    FIND "SAVECONFIG /EXECFILE file not found." $(ARTIFACTS)\T1608.LOG > NUL
    @if exist $(ARTIFACTS)\MISSING.BAT FIND "THIS FILE SHOULD NOT EXIST" $(ARTIFACTS)\MISSING.BAT > NUL
+   @echo "[t1608] PASSED"
 
 t1609:
    @echo [t1609] Testing SAVECONFIG default EXECFILE dynamic splitting preserves options... >> $(TESTLOG)
@@ -1138,6 +1232,8 @@ t1609:
 
 # %1 has unknown expanded length when the restore file is generated, so line
 # packing deliberately reserves space conservatively and may split earlier.
+   @echo "[t1609] PASSED"
+
 t1610:
    @echo [t1610] Testing SAVECONFIG %%1 conservative EXECFILE reservation... >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1610.LOG
@@ -1147,6 +1243,7 @@ t1610:
    FIND "%1 CONFIGURE /ADAPTERNUM:1 /INT:10 /IOBASE:0300 /PNP:ENABLED" $(ARTIFACTS)\PCTREST.BAT > NUL
    FIND "%1 CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /MODEM:NONE" $(ARTIFACTS)\PCTREST.BAT > NUL
    FIND "%1 CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:DOS /BSIZE:DISABLED /TR:TP" $(ARTIFACTS)\PCTREST.BAT > NUL
+   @echo "[t1610] PASSED"
 
 t1611:
    @echo [t1611] Testing SAVECONFIG literal EXECFILE restore execution with disabled Boot ROM... >> $(TESTLOG)
@@ -1163,7 +1260,7 @@ t1611:
    FIND "Plug and Play = enabled" $(ARTIFACTS)\T1611.LOG > NUL
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T1611.LOG > NUL
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1611.LOG > NUL
-
+   @echo "[t1611] PASSED"
 
 t1612:
    @echo [t1612] Testing SAVECONFIG without options writes the default RESTORE.BAT... >> $(TESTLOG)
@@ -1173,6 +1270,7 @@ t1612:
    FIND "Configuration restore batch file created: RESTORE.BAT" $(ARTIFACTS)\T1612.LOG > NUL
    FIND "3CCFGCLI.EXE CONFIGURE" RESTORE.BAT > NUL
    @if exist RESTORE.BAT del RESTORE.BAT
+   @echo "[t1612] PASSED"
 
 t1613:
    @echo [t1613] Testing SAVECONFIG /EXECFILE alone uses the default output filename... >> $(TESTLOG)
@@ -1182,6 +1280,7 @@ t1613:
    FIND "Configuration restore batch file created: RESTORE.BAT" $(ARTIFACTS)\T1613.LOG > NUL
    FIND "BIN\3CHWMOCK.EXE CONFIGURE" RESTORE.BAT > NUL
    @if exist RESTORE.BAT del RESTORE.BAT
+   @echo "[t1613] PASSED"
 
 t1614:
    @echo [t1614] Testing SAVECONFIG accepts OUTPUTFILE and EXECFILE in either order... >> $(TESTLOG)
@@ -1192,6 +1291,7 @@ t1614:
    $(BINAPP) SAVECONFIG /EXECFILE:$(BINAPP) /OUTPUTFILE:$(ARTIFACTS)\ORDER2.BAT >> $(ARTIFACTS)\T1614.LOG
    FIND "Configuration restore batch file created: $(ARTIFACTS)\ORDER2.BAT" $(ARTIFACTS)\T1614.LOG > NUL
    FIND "BIN\3CHWMOCK.EXE CONFIGURE" $(ARTIFACTS)\ORDER2.BAT > NUL
+   @echo "[t1614] PASSED"
 
 t1615:
    @echo [t1615] Testing SAVECONFIG rejects duplicate options... >> $(TESTLOG)
@@ -1200,6 +1300,7 @@ t1615:
    FIND "Duplicate SAVECONFIG option." $(ARTIFACTS)\T1615.LOG > NUL
    $(BINAPP) SAVECONFIG /EXECFILE:$(BINAPP) /EXECFILE:BIN\3CCFGCLI.EXE > $(ARTIFACTS)\T1615.LOG
    FIND "Duplicate SAVECONFIG option." $(ARTIFACTS)\T1615.LOG > NUL
+   @echo "[t1615] PASSED"
 
 t1616:
    @echo [t1616] Testing SAVECONFIG rejects unknown options and the old positional syntax... >> $(TESTLOG)
@@ -1209,7 +1310,7 @@ t1616:
    $(BINAPP) SAVECONFIG $(ARTIFACTS)\OLDPOS.BAT > $(ARTIFACTS)\T1616.LOG
    FIND "Invalid SAVECONFIG option." $(ARTIFACTS)\T1616.LOG > NUL
    @if exist $(ARTIFACTS)\OLDPOS.BAT FIND "THIS FILE SHOULD NOT EXIST" $(ARTIFACTS)\OLDPOS.BAT > NUL
-
+   @echo "[t1616] PASSED"
 
 t1617:
    @echo [t1617] Testing SAVECONFIG /OUTPUTFILE alone keeps the default executable... >> $(TESTLOG)
@@ -1217,13 +1318,14 @@ t1617:
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\OUTONLY.BAT >> $(ARTIFACTS)\T1617.LOG
    FIND "Configuration restore batch file created: $(ARTIFACTS)\OUTONLY.BAT" $(ARTIFACTS)\T1617.LOG > NUL
    FIND "3CCFGCLI.EXE CONFIGURE /ADAPTERNUM:1" $(ARTIFACTS)\OUTONLY.BAT > NUL
-
+   @echo "[t1617] PASSED"
 
 t1618:
    @echo [t1618] Testing global /VERBOSE is accepted by LIST... >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1618.LOG
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1618.LOG
    FIND "IOBASE = 0300" $(ARTIFACTS)\T1618.LOG > NUL
+   @echo "[t1618] PASSED"
 
 t1619:
    @echo [t1619] Testing global /VERBOSE with bare SAVECONFIG uses RESTORE.BAT... >> $(TESTLOG)
@@ -1236,6 +1338,8 @@ t1619:
 
 # Two representative placements cover global /VERBOSE position handling because
 # it is consumed by the common argument scanner before SAVECONFIG parsing.
+   @echo "[t1619] PASSED"
+
 t1620:
    @echo [t1620] Testing global /VERBOSE position is not significant for SAVECONFIG... >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1620.LOG
@@ -1245,13 +1349,14 @@ t1620:
    $(BINAPP) SAVECONFIG /EXECFILE:$(BINAPP) /VERBOSE /OUTPUTFILE:$(ARTIFACTS)\VERBMID.BAT >> $(ARTIFACTS)\T1620.LOG
    FIND "Configuration restore batch file created: $(ARTIFACTS)\VERBMID.BAT" $(ARTIFACTS)\T1620.LOG > NUL
    FIND "BIN\3CHWMOCK.EXE CONFIGURE" $(ARTIFACTS)\VERBMID.BAT > NUL
+   @echo "[t1620] PASSED"
 
 t1621:
    @echo [t1621] Testing duplicate global /VERBOSE is rejected for LIST command... >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1621.LOG
    $(BINAPP) LIST /VERBOSE /VERBOSE > $(ARTIFACTS)\T1621.LOG
    FIND "Duplicate /VERBOSE option." $(ARTIFACTS)\T1621.LOG > NUL
-
+   @echo "[t1621] PASSED"
 
 t1626:
    @echo [t1626] Testing duplicate global /VERBOSE is rejected before SAVECONFIG output... >> $(TESTLOG)
@@ -1260,7 +1365,7 @@ t1626:
    $(BINAPP) SAVECONFIG /VERBOSE /OUTPUTFILE:$(ARTIFACTS)\DUPV.BAT /VERBOSE > $(ARTIFACTS)\T1626.LOG
    FIND "Duplicate /VERBOSE option." $(ARTIFACTS)\T1626.LOG > NUL
    @if exist $(ARTIFACTS)\DUPV.BAT FIND "THIS FILE SHOULD NOT EXIST" $(ARTIFACTS)\DUPV.BAT > NUL
-
+   @echo "[t1626] PASSED"
 
 t1622:
    @echo [t1622] Testing verb namespaces do not leak across CONFIGURE and SAVECONFIG... >> $(TESTLOG)
@@ -1272,6 +1377,8 @@ t1622:
 
 # 16K/32K Boot ROM selectors have alignment aliasing that SAVECONFIG must
 # canonicalize. The 8K case below is the unaliased counterexample.
+   @echo "[t1622] PASSED"
+
 t1623:
    @echo [t1623] Testing SAVECONFIG normalizes a 16K Boot ROM at C0000 (selector alias)... >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1623.LOG
@@ -1282,6 +1389,7 @@ t1623:
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1623.BAT /EXECFILE:$(BINAPP) >> $(ARTIFACTS)\T1623.LOG
    FIND "BADDRESS:C0000 /BSIZE:16" $(ARTIFACTS)\T1623.BAT > NUL
    CALL $(ASSERTERS)\NFIND.BAT "BADDRESS:C2000" $(ARTIFACTS)\T1623.BAT
+   @echo "[t1623] PASSED"
 
 t1624:
    @echo [t1624] Testing SAVECONFIG normalizes a 32K Boot ROM at C0000 (selector alias)... >> $(TESTLOG)
@@ -1292,6 +1400,7 @@ t1624:
    FIND "Boot ROM = 32K at C0000H" $(ARTIFACTS)\T1624.LOG > NUL
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1624.BAT /EXECFILE:$(BINAPP) >> $(ARTIFACTS)\T1624.LOG
    FIND "BADDRESS:C0000 /BSIZE:32" $(ARTIFACTS)\T1624.BAT > NUL
+   @echo "[t1624] PASSED"
 
 t1625:
    @echo [t1625] Testing SAVECONFIG still exports an unaliased 8K Boot ROM at C2000... >> $(TESTLOG)
@@ -1309,6 +1418,8 @@ t1625:
 # one requested property to the next. The final integration case verifies that
 # a complete configuration split across multiple CONFIGURE invocations composes
 # correctly.
+   @echo "[t1625] PASSED"
+
 t17xx:
    @echo [t17xx] VERIFICATION_CONTROL_FLOW: verify transaction chain behaviour ... >> $(TESTLOG)
 
@@ -1320,6 +1431,7 @@ t1701:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1701.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1701.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1701.LOG > NUL
+   @echo "[t1701] PASSED"
 
 t1702:
    @echo [t1702] Testing INT+PNP verification chain with /VERBOSE... >> $(TESTLOG)
@@ -1332,6 +1444,7 @@ t1702:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1702.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1702.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1702.LOG > NUL
+   @echo "[t1702] PASSED"
 
 t1703:
    @echo [t1703] Testing unchanged INT+PNP verification chain without /VERBOSE... >> $(TESTLOG)
@@ -1341,6 +1454,7 @@ t1703:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1703.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T1703.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1703.LOG > NUL
+   @echo "[t1703] PASSED"
 
 t1704:
    @echo [t1704] Testing unchanged INT+PNP verification chain with /VERBOSE... >> $(TESTLOG)
@@ -1352,6 +1466,7 @@ t1704:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1704.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T1704.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1704.LOG > NUL
+   @echo "[t1704] PASSED"
 
 t1705:
    @echo [t1705] Testing PNP+MODEM verification chain without /VERBOSE... >> $(TESTLOG)
@@ -1361,6 +1476,7 @@ t1705:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1705.LOG
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1705.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1705.LOG > NUL
+   @echo "[t1705] PASSED"
 
 t1706:
    @echo [t1706] Testing PNP+MODEM verification chain with /VERBOSE... >> $(TESTLOG)
@@ -1372,6 +1488,7 @@ t1706:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1706.LOG
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1706.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1706.LOG > NUL
+   @echo "[t1706] PASSED"
 
 t1707:
    @echo [t1707] Testing FULLDUPLEX+OPTIMIZE verification chain without /VERBOSE... >> $(TESTLOG)
@@ -1381,6 +1498,7 @@ t1707:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1707.LOG
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T1707.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1707.LOG > NUL
+   @echo "[t1707] PASSED"
 
 t1708:
    @echo [t1708] Testing FULLDUPLEX+OPTIMIZE verification chain with /VERBOSE... >> $(TESTLOG)
@@ -1398,6 +1516,8 @@ t1708:
 # because the complete option set exceeds the DOS PSP command-line limit.
 # This verifies that consecutive configuration transactions compose correctly
 # and that the resulting adapter state remains consistent.
+   @echo "[t1708] PASSED"
+
 t1710:
    @echo [t1710] Testing manually split full configuration verification sequence with /VERBOSE... >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM8K > $(ARTIFACTS)\T1710.LOG
@@ -1420,6 +1540,7 @@ t1710:
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T1710.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1710.LOG > NUL
    FIND "Boot ROM = 8K at C8000H" $(ARTIFACTS)\T1710.LOG > NUL
+   @echo "[t1710] PASSED"
 
 t1713:
    @echo [t1713] Testing /TR:AUI verification chain with /VERBOSE on 3C509B-COMBO... >> $(TESTLOG)
@@ -1427,12 +1548,14 @@ t1713:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T1713.LOG
    FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1713.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1713.LOG > NUL
+   @echo "[t1713] PASSED"
 
 t1714:
    @echo [t1714] Testing unchanged /TR with /VERBOSE on 3C509B-TP... >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1714.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /VERBOSE >> $(ARTIFACTS)\T1714.LOG
    FIND "Transceiver type is already configured to the requested value." $(ARTIFACTS)\T1714.LOG > NUL
+   @echo "[t1714] PASSED"
 
 t18xx:
    @echo [t18xx] 3C509_REV1: Verify 3C509 (ASIC revision 1) generation gates ... >> $(TESTLOG)
@@ -1450,6 +1573,7 @@ t1801:
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1801.LOG > NUL
    FIND "Connectors = TP, AUI" $(ARTIFACTS)\T1801.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "auto select" $(ARTIFACTS)\T1801.LOG
+   @echo "[t1801] PASSED"
 
 t1802:
    @echo [t1802] Testing /PNP rejection on 3C509-TP (ASIC revision 1)... >> $(TESTLOG)
@@ -1457,6 +1581,7 @@ t1802:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED >> $(ARTIFACTS)\T1802.LOG
    FIND "PNP is not supported for this card type." $(ARTIFACTS)\T1802.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1802.LOG
+   @echo "[t1802] PASSED"
 
 t1803:
    @echo [t1803] Testing /FULLDUPLEX rejection on 3C509-TP (ASIC revision 1)... >> $(TESTLOG)
@@ -1464,6 +1589,7 @@ t1803:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T1803.LOG
    FIND "Full duplex is not supported for this card type." $(ARTIFACTS)\T1803.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1803.LOG
+   @echo "[t1803] PASSED"
 
 t1804:
    @echo [t1804] Testing /TR:AUTO rejection on 3C509-TP (ASIC revision 1)... >> $(TESTLOG)
@@ -1471,6 +1597,7 @@ t1804:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1804.LOG
    FIND "AUTO transceiver selection requires a 3C509B-generation adapter." $(ARTIFACTS)\T1804.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1804.LOG
+   @echo "[t1804] PASSED"
 
 t1805:
    @echo [t1805] Testing Boot ROM rejection on 3C509-TP (ASIC revision 1)... >> $(TESTLOG)
@@ -1478,6 +1605,7 @@ t1805:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:8 >> $(ARTIFACTS)\T1805.LOG
    FIND "Boot ROM configuration requires a 3C509B-generation adapter." $(ARTIFACTS)\T1805.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "completed successfully." $(ARTIFACTS)\T1805.LOG
+   @echo "[t1805] PASSED"
 
 t1806:
    @echo [t1806] Testing combined valid + reject options perform no partial write... >> $(TESTLOG)
@@ -1490,6 +1618,7 @@ t1806:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1806.LOG
    FIND "IRQ = 3" $(ARTIFACTS)\T1806.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "IRQ = 5" $(ARTIFACTS)\T1806.LOG
+   @echo "[t1806] PASSED"
 
 t1807:
    @echo [t1807] Testing common CONFIGURE properties on 3C509-TP (ASIC revision 1)... >> $(TESTLOG)
@@ -1501,6 +1630,7 @@ t1807:
    FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1807.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1807.LOG > NUL
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1807.LOG > NUL
+   @echo "[t1807] PASSED"
 
 t1808:
    @echo [t1808] Testing SAVECONFIG on 3C509-TP (ASIC rev. 1) emits only common properties... >> $(TESTLOG)
@@ -1517,4 +1647,4 @@ t1808:
    CALL $(ASSERTERS)\NFIND.BAT "TR:AUTO" $(ARTIFACTS)\T1808.BAT
    CALL $(ASSERTERS)\NFIND.BAT "BADDRESS" $(ARTIFACTS)\T1808.BAT
    CALL $(ASSERTERS)\NFIND.BAT "BSIZE" $(ARTIFACTS)\T1808.BAT
-   
+   @echo "[t1808] PASSED"
