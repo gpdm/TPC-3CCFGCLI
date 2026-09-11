@@ -11,6 +11,7 @@ TEST_LOG="${LOGDIR}/TEST.LOG"
 TEST_MK="TEST.MK"
 ARTIFACT_DIR="${LOGDIR}/ARTIFACT"
 SAVE_MAX_BATCH_LINE=128
+UV=$(command -v uv 2>/dev/null)
 
 
 # ensure log directories exist
@@ -46,14 +47,14 @@ test_saveconfig_line_lengths() {
     return 1
   fi
 
-  echo "[SC0001]: Asserting max ${SAVE_MAX_BATCH_LINE} byte line length for DOS PSP not exceeded ..." 
+  echo "[SC0001]: Max ${SAVE_MAX_BATCH_LINE} byte line length for DOS PSP not exceeded" >> "${TEST_LOG}" 
   result=$(awk '{ if (length > max) max = length } END { print max }' "${ARTIFACT_DIR}/RESTORE.BAT")
 
   if [ "$result" -gt "$SAVE_MAX_BATCH_LINE" ]; then
     echo "[SC0001] FAILED (max length exceed: ${result} chars found)" >> "${TEST_LOG}"
     return 1
   else
-    echo "[SC0001] PASSED"
+    echo "[SC0001] PASSED" >> "${TEST_LOG}"
   fi
 
   echo "SAVECONFIG: run completed" >> "${TEST_LOG}"
@@ -78,8 +79,8 @@ test_hwlimits() {
     conf=$(mktemp "/tmp/autoexec-testhwl-${memkb}.XXXXXX")
     log="${ARTIFACT_DIR}/HWL${memkb}.LOG"
 
-    echo "Dispatching resource test with ${memkb} KB memory limit to DOSBox-X ..."
-    echo "[HWL${memkb}] Testing 8086/8088 with ${memkb} KB memory limit..." >> "${TEST_LOG}"
+    echo "Dispatching resource test with ${memkb} KB memory limit to DOSBox-X ..." >> "${TEST_LOG}"
+    echo "[HWL${memkb}] 8086/8088 with ${memkb} KB memory limit" >> "${TEST_LOG}"
     sed "s:__MEMKB__:${memkb}:g;s:__BUILD_DIR__:$( pwd ):g" "${template}" > "${conf}"
     "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
     rm -f "$conf"
@@ -112,6 +113,20 @@ TAIL_PID=$!
 test_regressions && test_saveconfig_line_lengths && test_hwlimits
 
 
+# render junit xml file if uv is available
+#
+if [ -n "$UV" ]; then
+    echo "Rendering test results as JUnit XML ..." >> "${TEST_LOG}"
+
+    uv run testreport.py -f ${TEST_LOG} -m ${TEST_MK} >> "${TEST_LOG}"
+else
+cat <<EOF | tee >> "${TEST_LOG}"
+NOTICE: uv is not currently installed, JUnit rendering not available.
+        Please install uv to run the testreport.py script for JUnit rendering.
+EOF
+fi
+
+
 # kill tail running in background
 kill -INT ${TAIL_PID} 2>&1 >/dev/null
 
@@ -131,8 +146,8 @@ grep -q '^Hardware Limit test: run completed' "${TEST_LOG}" && HWLIMIT_FAIL=0
 # check defined vs. executed tests and see if we anyway
 # had a delta, which would indicate a failure.
 TESTS_DEFINED=$(grep -Ec '^t[0-9]{4}:' "$TEST_MK")
-TESTS_EXECUTED=$(grep -Ec '\[t[0-9]{4}\]' "$TEST_LOG")
-TESTS_FAILED=$(( TESTS_DEFINED != TESTS_EXECUTED ))
+TESTS_PASSED=$(grep -Ec '\[t[0-9]{4}\]\sPASSED' "$TEST_LOG")
+TESTS_FAILED=$(( TESTS_DEFINED != TESTS_PASSED ))
 
 
 cat <<EOF | tee >> "${TEST_LOG}"
@@ -141,15 +156,14 @@ Test summary
 ============
 Smoke Test            : $( (( SMOKE_FAIL + TESTS_FAILED == 0 )) && echo SUCCESS || echo FAILED )
     Defined Tests     : ${TESTS_DEFINED}
-    Executed Tests    : ${TESTS_EXECUTED}
-    Failed Tests      : $( (( TESTS_FAILED == 0 )) && echo NONE || echo OBSERVED )
+    Executed Tests    : ${TESTS_PASSED}
+    Failed Tests      : $( (( TESTS_FAILED == 0 )) && echo NONE || echo YES )
 SAVECONFIG Test       : $( (( SAVECONFIG_FAIL == 0 )) && echo SUCCESS || echo FAILED )
 Hardware Limit Test   : $( (( HWLIMIT_FAIL == 0 )) && echo SUCCESS || echo FAILED )
 
 Overall result        : $( (( SMOKE_FAIL + SAVECONFIG_FAIL + HWLIMIT_FAIL + TESTS_FAILED > 0 )) && echo FAIL || echo PASS )
 
 EOF
-
 
 # emmit return code based on assertions of the individual tests.
 #
