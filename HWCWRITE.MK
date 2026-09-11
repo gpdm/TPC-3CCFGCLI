@@ -29,7 +29,6 @@ REFERENCEAPP = 3C5X9CFG.EXE
 WRITERAPP = 3CCFGCLI.EXE
 READERAPP = 3CCFGCLI.EXE
 ARTIFACTS = ARTIFACT
-ASSERTERS = ASSERTRS
 LOGFILE = HWCWRITE.LOG
 CFGDUMP = $(ARTIFACTS)\HWCW.SET
 ROMDUMP = $(ARTIFACTS)\HWCW-ROM.SET
@@ -53,8 +52,8 @@ all:
 
 prep:
 	@if not exist $(ARTIFACTS)\NUL mkdir $(ARTIFACTS)
-	@echo Running 3CCFGCLI Hardware Compliance Write checks... >> $(LOGFILE)
-	@echo Running 3CCFGCLI Hardware Compliance Write checks...
+	@echo Running 3CCFGCLI Hardware Compliance Write checks >> $(LOGFILE)
+	@echo Running 3CCFGCLI Hardware Compliance Write checks
 
 complete:
 	@echo Hardware Compliance Write checks completed. >> $(LOGFILE)
@@ -104,8 +103,8 @@ hwcw-rom-tpc: hwcw-rom-not-implemented
 HWCW_COMMON: hwcw001 hwcw002 hwcw004 hwcw006
 
 save-config:
-	@echo Saving original adapter configuration to $(RESTOREBAT)... >> $(LOGFILE)
-	@echo Saving original adapter configuration to $(RESTOREBAT)...
+	@echo Saving original adapter configuration to $(RESTOREBAT) >> $(LOGFILE)
+	@echo Saving original adapter configuration to $(RESTOREBAT)
 	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\$(RESTOREBAT) /EXECFILE:%1 > $(LOGFILE)
 	FIND "Configuration restore batch file created:" $(LOGFILE) > NUL
 
@@ -124,47 +123,47 @@ restore: restore-config
 # Deterministic baselines written by the original utility.
 
 set-default-btp:
-	@echo Writing 3C509B-TP baseline via original utility... >> $(LOGFILE)
-	@echo Writing 3C509B-TP baseline via original utility...
+	@echo Writing 3C509B-TP baseline via original utility >> $(LOGFILE)
+	@echo Writing 3C509B-TP baseline via original utility
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED > $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP >> $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(DEFAULT_IRQ) /IOBASE:$(DEFAULT_IOBASE) /PNP:ENABLED /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(DEFAULT_MODEM) /OPTIMIZE:$(DEFAULT_OPTIMIZE) /BSIZE:DISABLED >> $(ARTIFACTS)\HWCWSET.LOG
 
 set-default-bcoax:
-	@echo Writing 3C509B-COAX baseline via original utility... >> $(LOGFILE)
-	@echo Writing 3C509B-COAX baseline via original utility...
+	@echo Writing 3C509B-COAX baseline via original utility >> $(LOGFILE)
+	@echo Writing 3C509B-COAX baseline via original utility
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI > $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(DEFAULT_IRQ) /IOBASE:$(DEFAULT_IOBASE) /PNP:ENABLED >> $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(DEFAULT_MODEM) /OPTIMIZE:$(DEFAULT_OPTIMIZE) /BSIZE:DISABLED >> $(ARTIFACTS)\HWCWSET.LOG
 
 set-default-bcombo:
-	@echo Writing 3C509B-Combo baseline via original utility... >> $(LOGFILE)
-	@echo Writing 3C509B-Combo baseline via original utility...
+	@echo Writing 3C509B-Combo baseline via original utility >> $(LOGFILE)
+	@echo Writing 3C509B-Combo baseline via original utility
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED > $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP >> $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(DEFAULT_IRQ) /IOBASE:$(DEFAULT_IOBASE) /PNP:ENABLED /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(DEFAULT_MODEM) /OPTIMIZE:$(DEFAULT_OPTIMIZE) /BSIZE:DISABLED >> $(ARTIFACTS)\HWCWSET.LOG
 
 set-default-btpo:
-	@echo Writing 3C509B-TPO baseline via original utility... >> $(LOGFILE)
-	@echo Writing 3C509B-TPO baseline via original utility...
+	@echo Writing 3C509B-TPO baseline via original utility >> $(LOGFILE)
+	@echo Writing 3C509B-TPO baseline via original utility
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED > $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP >> $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(DEFAULT_IRQ) /IOBASE:$(DEFAULT_IOBASE) /PNP:ENABLED /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(DEFAULT_MODEM) /OPTIMIZE:$(DEFAULT_OPTIMIZE) >> $(ARTIFACTS)\HWCWSET.LOG
 
 set-default-btpc:
-	@echo Writing 3C509B-TPCoax baseline via original utility... >> $(LOGFILE)
-	@echo Writing 3C509B-TPCoax baseline via original utility...
+	@echo Writing 3C509B-TPCoax baseline via original utility >> $(LOGFILE)
+	@echo Writing 3C509B-TPCoax baseline via original utility
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED > $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP >> $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(DEFAULT_IRQ) /IOBASE:$(DEFAULT_IOBASE) /PNP:ENABLED /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(DEFAULT_MODEM) /OPTIMIZE:$(DEFAULT_OPTIMIZE) /BSIZE:DISABLED >> $(ARTIFACTS)\HWCWSET.LOG
 
 set-default-tp:
-	@echo Writing 3C509-TP baseline via original utility... >> $(LOGFILE)
-	@echo Writing 3C509-TP baseline via original utility...
+	@echo Writing 3C509-TP baseline via original utility >> $(LOGFILE)
+	@echo Writing 3C509-TP baseline via original utility
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP > $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(DEFAULT_IRQ) /IOBASE:$(DEFAULT_IOBASE) >> $(ARTIFACTS)\HWCWSET.LOG
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(DEFAULT_MODEM) /OPTIMIZE:$(DEFAULT_OPTIMIZE) >> $(ARTIFACTS)\HWCWSET.LOG
@@ -172,83 +171,105 @@ set-default-tp:
 # Individual physical write checks.
 
 hwcw001:
-	@echo [hwcw001] 3CCFGCLI /INT writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw001] 3CCFGCLI /INT writer, fresh LIST readback...
+	@echo [hwcw001] 3CCFGCLI /INT writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw001] 3CCFGCLI /INT writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(TEST_IRQ) > $(ARTIFACTS)\HWCW001.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW001.LOG
 	FIND "IRQ = $(TEST_IRQ)" $(ARTIFACTS)\HWCW001.LOG > NUL
+	@echo [hwcw001] PASSED >> $(LOGFILE)
+	@echo [hwcw001] PASSED
 
 hwcw002:
-	@echo [hwcw002] 3CCFGCLI /IOBASE writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw002] 3CCFGCLI /IOBASE writer, fresh LIST readback...
+	@echo [hwcw002] 3CCFGCLI /IOBASE writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw002] 3CCFGCLI /IOBASE writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(TEST_IOBASE) > $(ARTIFACTS)\HWCW002.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW002.LOG
 	FIND "IOBASE = $(TEST_IOBASE)" $(ARTIFACTS)\HWCW002.LOG > NUL
+	@echo [hwcw002] PASSED >> $(LOGFILE)
+	@echo [hwcw002] PASSED
 
 hwcw003:
-	@echo [hwcw003] 3CCFGCLI /PNP writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw003] 3CCFGCLI /PNP writer, fresh LIST readback...
+	@echo [hwcw003] 3CCFGCLI /PNP writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw003] 3CCFGCLI /PNP writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /PNP:$(TEST_PNP) > $(ARTIFACTS)\HWCW003.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW003.LOG
 	FIND "Plug and Play = disabled" $(ARTIFACTS)\HWCW003.LOG > NUL
+	@echo [hwcw003] PASSED >> $(LOGFILE)
+	@echo [hwcw003] PASSED
 
 hwcw004:
-	@echo [hwcw004] 3CCFGCLI /MODEM writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw004] 3CCFGCLI /MODEM writer, fresh LIST readback...
+	@echo [hwcw004] 3CCFGCLI /MODEM writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw004] 3CCFGCLI /MODEM writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(TEST_MODEM) > $(ARTIFACTS)\HWCW004.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW004.LOG
 	FIND "MODEM Interrupt Disable Time = 1300 us (1200 bd)" $(ARTIFACTS)\HWCW004.LOG > NUL
+	@echo [hwcw004] PASSED >> $(LOGFILE)
+	@echo [hwcw004] PASSED
 
 hwcw005:
-	@echo [hwcw005] 3CCFGCLI /FULLDUPLEX writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw005] 3CCFGCLI /FULLDUPLEX writer, fresh LIST readback...
+	@echo [hwcw005] 3CCFGCLI /FULLDUPLEX writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw005] 3CCFGCLI /FULLDUPLEX writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED > $(ARTIFACTS)\HWCW005.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW005.LOG
 	FIND "Full Duplex = disabled" $(ARTIFACTS)\HWCW005.LOG > NUL
+	@echo [hwcw005] PASSED >> $(LOGFILE)
+	@echo [hwcw005] PASSED
 
 hwcw006:
-	@echo [hwcw006] 3CCFGCLI /OPTIMIZE writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw006] 3CCFGCLI /OPTIMIZE writer, fresh LIST readback...
+	@echo [hwcw006] 3CCFGCLI /OPTIMIZE writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw006] 3CCFGCLI /OPTIMIZE writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:$(TEST_OPTIMIZE) > $(ARTIFACTS)\HWCW006.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW006.LOG
 	FIND "Optimization = Server" $(ARTIFACTS)\HWCW006.LOG > NUL
+	@echo [hwcw006] PASSED >> $(LOGFILE)
+	@echo [hwcw006] PASSED
 
 # Card specific transceiver writes.
 
 hwcw007-btp:
-	@echo [hwcw007] 3CCFGCLI /TR:AUI writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw007] 3CCFGCLI /TR:AUI writer, fresh LIST readback...
+	@echo [hwcw007] 3CCFGCLI /TR:AUI writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw007] 3CCFGCLI /TR:AUI writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI > $(ARTIFACTS)\HWCW007.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW007.LOG
 	FIND "Transceiver = external" $(ARTIFACTS)\HWCW007.LOG > NUL
+	@echo [hwcw007] PASSED >> $(LOGFILE)
+	@echo [hwcw007] PASSED
 
 hwcw007-bcoax:
-	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback...
+	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCW007.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW007.LOG
 	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCW007.LOG > NUL
+	@echo [hwcw007] PASSED >> $(LOGFILE)
+	@echo [hwcw007] PASSED
 
 hwcw007-bcombo:
-	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback...
+	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCW007.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW007.LOG
 	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCW007.LOG > NUL
+	@echo [hwcw007] PASSED >> $(LOGFILE)
+	@echo [hwcw007] PASSED
 
 hwcw007-btpc:
-	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback...
+	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw007] 3CCFGCLI /TR:COAX writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCW007.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW007.LOG
 	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCW007.LOG > NUL
+	@echo [hwcw007] PASSED >> $(LOGFILE)
+	@echo [hwcw007] PASSED
 
 hwcw007-tp:
-	@echo [hwcw007] 3CCFGCLI /TR:AUI writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw007] 3CCFGCLI /TR:AUI writer, fresh LIST readback...
+	@echo [hwcw007] 3CCFGCLI /TR:AUI writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw007] 3CCFGCLI /TR:AUI writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI > $(ARTIFACTS)\HWCW007.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW007.LOG
 	FIND "Transceiver = external" $(ARTIFACTS)\HWCW007.LOG > NUL
+	@echo [hwcw007] PASSED >> $(LOGFILE)
+	@echo [hwcw007] PASSED
 
 # Multi property physical transaction.
 #
@@ -258,26 +279,27 @@ hwcw007-tp:
 # configuration dump performed by HWCTEST.BAT after this make run.
 
 hwcw008:
-	@echo [hwcw008] 3CCFGCLI multi-property CONFIGURE transaction... >> $(LOGFILE)
-	@echo [hwcw008] 3CCFGCLI multi-property CONFIGURE transaction...
+	@echo [hwcw008] 3CCFGCLI multi-property CONFIGURE transaction >> $(LOGFILE)
+	@echo [hwcw008] 3CCFGCLI multi-property CONFIGURE transaction
 	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(DEFAULT_IRQ) /IOBASE:$(DEFAULT_IOBASE) /MODEM:$(DEFAULT_MODEM) /OPTIMIZE:$(DEFAULT_OPTIMIZE) > $(ARTIFACTS)\HWCW008.LOG
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(TEST_IRQ) /IOBASE:$(TEST_IOBASE) /MODEM:$(TEST_MODEM) /OPTIMIZE:$(TEST_OPTIMIZE) >> $(ARTIFACTS)\HWCW008.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW008.LOG
 	FIND "IOBASE = $(TEST_IOBASE), IRQ = $(TEST_IRQ)" $(ARTIFACTS)\HWCW008.LOG > NUL
 	FIND "MODEM Interrupt Disable Time = 1300 us (1200 bd)" $(ARTIFACTS)\HWCW008.LOG > NUL
 	FIND "Optimization = Server" $(ARTIFACTS)\HWCW008.LOG > NUL
+	@echo [hwcw008] PASSED >> $(LOGFILE)
+	@echo [hwcw008] PASSED
 
 # Optional physical Boot ROM write test.
 
 hwcw009:
-	@echo [hwcw009] 3CCFGCLI Boot ROM writer, fresh LIST readback... >> $(LOGFILE)
-	@echo [hwcw009] 3CCFGCLI Boot ROM writer, fresh LIST readback...
+	@echo [hwcw009] 3CCFGCLI Boot ROM writer, fresh LIST readback >> $(LOGFILE)
+	@echo [hwcw009] 3CCFGCLI Boot ROM writer, fresh LIST readback
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:$(TEST_BADDRESS) /BSIZE:$(TEST_BSIZE) > $(ARTIFACTS)\HWCW009.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCW009.LOG
 	FIND "Boot ROM = $(TEST_BSIZE)K at $(TEST_BADDRESS)H" $(ARTIFACTS)\HWCW009.LOG > NUL
-
-
-
+	@echo [hwcw009] PASSED >> $(LOGFILE)
+	@echo [hwcw009] PASSED
 
 
 # Independent vendor configuration dump verification.
@@ -331,37 +353,37 @@ hwcw-tp-vrfy: HWCW_VRFY_COMMON HWCW_VRFY_TR_EXTERNAL
 # Common final state after the normal CONFIG run.
 
 HWCW_VRFY_COMMON:
-	@echo [vrfy] Verifying common CONFIG values in 3C5X9CFG dump... >> $(LOGFILE)
-	@echo [vrfy] Verifying common CONFIG values in 3C5X9CFG dump...
-	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "base address:" "280"
-	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Interrupt request level:" "3"
-	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Network driver optimization:" "server"
-	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Maximum interrupt disable time:" "1300 microseconds"
+	@echo [vrfy] Verifying common CONFIG values in 3C5X9CFG dump >> $(LOGFILE)
+	@echo [vrfy] Verifying common CONFIG values in 3C5X9CFG dump
+	COMMAND /C LFIND.BAT $(CFGDUMP) "base address:" "280" >> $(LOGFILE)
+	COMMAND /C LFIND.BAT $(CFGDUMP) "Interrupt request level:" "3" >> $(LOGFILE)
+	COMMAND /C LFIND.BAT $(CFGDUMP) "Network driver optimization:" "server" >> $(LOGFILE)
+	COMMAND /C LFIND.BAT $(CFGDUMP) "Maximum interrupt disable time:" "1300 microseconds" >> $(LOGFILE)
 
 HWCW_VRFY_PNP:
-	@echo [vrfy] Verifying Plug and Play state in 3C5X9CFG dump... >> $(LOGFILE)
-	@echo [vrfy] Verifying Plug and Play state in 3C5X9CFG dump...
-	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Plug and Play Capability:" "disabled"
+	@echo [vrfy] Verifying Plug and Play state in 3C5X9CFG dump >> $(LOGFILE)
+	@echo [vrfy] Verifying Plug and Play state in 3C5X9CFG dump
+	COMMAND /C LFIND.BAT $(CFGDUMP) "Plug and Play Capability:" "disabled" >> $(LOGFILE)
 
 HWCW_VRFY_FD:
-	@echo [vrfy] Verifying Full Duplex state in 3C5X9CFG dump... >> $(LOGFILE)
-	@echo [vrfy] Verifying Full Duplex state in 3C5X9CFG dump...
-	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Full Duplex:" "disabled"
+	@echo [vrfy] Verifying Full Duplex state in 3C5X9CFG dump >> $(LOGFILE)
+	@echo [vrfy] Verifying Full Duplex state in 3C5X9CFG dump
+	COMMAND /C LFIND.BAT $(CFGDUMP) "Full Duplex:" "disabled" >> $(LOGFILE)
 
 HWCW_VRFY_TR_TP:
-	@echo [vrfy] Verifying TP transceiver state in 3C5X9CFG dump... >> $(LOGFILE)
-	@echo [vrfy] Verifying TP transceiver state in 3C5X9CFG dump...
-	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Transceiver type:" "on-board TP"
+	@echo [vrfy] Verifying TP transceiver state in 3C5X9CFG dump >> $(LOGFILE)
+	@echo [vrfy] Verifying TP transceiver state in 3C5X9CFG dump
+	COMMAND /C LFIND.BAT $(CFGDUMP) "Transceiver type:" "on-board TP" >> $(LOGFILE)
 
 HWCW_VRFY_TR_COAX:
-	@echo [vrfy] Verifying coax transceiver state in 3C5X9CFG dump... >> $(LOGFILE)
-	@echo [vrfy] Verifying coax transceiver state in 3C5X9CFG dump...
-	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Transceiver type:" "on-board coax"
+	@echo [vrfy] Verifying coax transceiver state in 3C5X9CFG dump >> $(LOGFILE)
+	@echo [vrfy] Verifying coax transceiver state in 3C5X9CFG dump
+	COMMAND /C LFIND.BAT $(CFGDUMP) "Transceiver type:" "on-board coax" >> $(LOGFILE)
 
 HWCW_VRFY_TR_EXTERNAL:
-	@echo [vrfy] Verifying external transceiver state in 3C5X9CFG dump... >> $(LOGFILE)
-	@echo [vrfy] Verifying external transceiver state in 3C5X9CFG dump...
-	$(ASSERTERS)\LFIND.BAT $(CFGDUMP) "Transceiver type:" "external"
+	@echo [vrfy] Verifying external transceiver state in 3C5X9CFG dump >> $(LOGFILE)
+	@echo [vrfy] Verifying external transceiver state in 3C5X9CFG dump
+	COMMAND /C LFIND.BAT $(CFGDUMP) "Transceiver type:" "external" >> $(LOGFILE)
 
 
 # ROMCONFIG vendor dump entry points.
@@ -387,10 +409,10 @@ hwcw-rom-btpc-vrfy: HWCW_ROM_VRFY_BOOT
 	@echo Vendor ROM configuration dump verification completed for 3C509B-TPCoax.
 
 HWCW_ROM_VRFY_BOOT:
-	@echo [vrfy] Verifying Boot PROM state in 3C5X9CFG dump... >> $(LOGFILE)
-	@echo [vrfy] Verifying Boot PROM state in 3C5X9CFG dump...
-	$(ASSERTERS)\LFIND.BAT $(ROMDUMP) "Boot PROM size:" "16"
-	$(ASSERTERS)\LFIND.BAT $(ROMDUMP) "Boot PROM base address:" "C8000"
+	@echo [vrfy] Verifying Boot PROM state in 3C5X9CFG dump >> $(LOGFILE)
+	@echo [vrfy] Verifying Boot PROM state in 3C5X9CFG dump
+	COMMAND /C LFIND.BAT $(ROMDUMP) "Boot PROM size:" "16" >> $(LOGFILE)
+	COMMAND /C LFIND.BAT $(ROMDUMP) "Boot PROM base address:" "C8000" >> $(LOGFILE)
 
 # Emit warnings for Boot ROM verification targets.
 # map unsupported and non-implemented cards.
