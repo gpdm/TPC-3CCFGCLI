@@ -55,55 +55,55 @@ TEST_BSIZE = 16
 
 CARDTYPE = btp
 CARDNAME = 3C509B-TP
-HWCR004_TARGET = hwcr004
-HWCR006_TARGET = hwcr006
-HWCR008_TARGET = hwcr008-btp
-HWCR_ROM_DEPS = clean prep HWCR00xx save-config hwcr001-btp set-default-btp hwcr0101 complete
+HWCW004_TARGET = hwcw004
+HWCW006_TARGET = hwcw006
+HWCW008_TARGET = hwcw008-btp
+HWCW_ROM_DEPS = clean prep HWCW00xx save-config hwcw001-btp set-default-btp hwcw0101 complete
 
 !elif $d(CARD_BCOAX)
 
 CARDTYPE = bcoax
 CARDNAME = 3C509B-COAX
-HWCR004_TARGET = hwcr004
-HWCR006_TARGET =
-HWCR008_TARGET = hwcr008-bcoax
-HWCR_ROM_DEPS = clean prep HWCR00xx save-config hwcr001-bcoax set-default-bcoax hwcr0101 complete
+HWCW004_TARGET = hwcw004
+HWCW006_TARGET =
+HWCW008_TARGET = hwcw008-bcoax
+HWCW_ROM_DEPS = clean prep HWCW00xx save-config hwcw001-bcoax set-default-bcoax hwcw0101 complete
 
 !elif $d(CARD_BCOMBO)
 
 CARDTYPE = bcombo
 CARDNAME = 3C509B-Combo
-HWCR004_TARGET = hwcr004
-HWCR006_TARGET = hwcr006
-HWCR008_TARGET = hwcr008-bcombo
-HWCR_ROM_DEPS = clean prep HWCR00xx save-config hwcr001-bcombo set-default-bcombo hwcr0101 complete
+HWCW004_TARGET = hwcw004
+HWCW006_TARGET = hwcw006
+HWCW008_TARGET = hwcw008-bcombo
+HWCW_ROM_DEPS = clean prep HWCW00xx save-config hwcw001-bcombo set-default-bcombo hwcw0101 complete
 
 !elif $d(CARD_BTPO)
 
 CARDTYPE = btpo
 CARDNAME = 3C509B-TPO
-HWCR004_TARGET = hwcr004
-HWCR006_TARGET = hwcr006
-HWCR008_TARGET =
-HWCR_ROM_DEPS = hwcr-rom-unsupported
+HWCW004_TARGET = hwcw004
+HWCW006_TARGET = hwcw006
+HWCW008_TARGET =
+HWCW_ROM_DEPS = hwcw-rom-unsupported
 
 !elif $d(CARD_BTPC)
 
 CARDTYPE = btpc
 CARDNAME = 3C509B-TPCoax
-HWCR004_TARGET = hwcr004
-HWCR006_TARGET = hwcr006
-HWCR008_TARGET = hwcr008-btpc
-HWCR_ROM_DEPS = clean prep HWCR00xx save-config hwcr001-btpc set-default-btpc hwcr0101 complete
+HWCW004_TARGET = hwcw004
+HWCW006_TARGET = hwcw006
+HWCW008_TARGET = hwcw008-btpc
+HWCW_ROM_DEPS = clean prep HWCW00xx save-config hwcw001-btpc set-default-btpc hwcw0101 complete
 
 !elif $d(CARD_TP)
 
 CARDTYPE = tp
 CARDNAME = 3C509-TP
-HWCR004_TARGET =
-HWCR006_TARGET =
-HWCR008_TARGET = hwcr008-tp
-HWCR_ROM_DEPS = hwcr-rom-not-implemented
+HWCW004_TARGET =
+HWCW006_TARGET =
+HWCW008_TARGET = hwcw008-tp
+HWCW_ROM_DEPS = hwcw-rom-not-implemented
 
 !else
 

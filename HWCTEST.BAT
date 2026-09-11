@@ -133,7 +133,9 @@ IF ERRORLEVEL 1 GOTO FAIL
 REM Create post-configurative config dump using original 3C5X0CFG binary
 ECHO Taking post-configuration dump using 3CCFGCLI >> ARTIFACT\HWCTEST.LOG
 ECHO Taking post-configuration dump using 3CCFGCLI
+REM clear keyboard input buffer
 stuffit 0
+REM load key macro sequence to control 3C5X9CFG to export a config dump
 stuffit +2 @62 +2 9 9 13 +2 9 13 +2 "ARTIFACT\%TARGET%.SET" +2 13 +1 27 27 13
 3c5x9cfg
 IF NOT EXIST ARTIFACT\%TARGET%.SET GOTO FAIL
