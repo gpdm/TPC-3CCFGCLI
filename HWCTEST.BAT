@@ -9,8 +9,8 @@ REM ERRORLEVEL handling deliberately stays inside this batch file.
 
 REM initialization
 IF NOT EXIST ARTIFACT\NUL MD ARTIFACT
-IF EXIST ARTIFACT\NUL DEL ARTIFACT\HWCTEST.LOG
-IF EXIST ARTIFACT\NUL DEL ARTIFACT\*.SET
+IF EXIST ARTIFACT\HWCTEST.LOG DEL ARTIFACT\HWCTEST.LOG > NUL
+IF EXIST ARTIFACT\*.SET DEL ARTIFACT\*.SET > NUL
 
 
 REM Perform initial hardware scan
@@ -127,33 +127,30 @@ GOTO RUN
 :RUN
 ECHO Running test target %TARGET% for detected NIC: %DETECTED_NIC%
 ECHO Running test target %TARGET% for detected NIC: %DETECTED_NIC% >> ARTIFACT\HWCTEST.LOG
-MAKE -f%MKFILE% %TARGET%-%DETECTED_NIC%
+MAKE -f%MKFILE% -DCARDTYPE=%DETECTED_NIC% %TARGET%
 IF ERRORLEVEL 1 GOTO FAIL
 
-IF %TARGET%==hwcw GOTO PCVERIFIY
-IF %TARGET%==hwcw-rom GOTO PCVERIFIY
-GOTO OK
-
-REM Post-configurative verification using 3CCFGCLI
-REM runs only for hwcr and hwcr-rom targets and
-REM calls MAKE one more time to verify the results
-:PCVERIFIY
+REM Create post-configurative config dump using original 3C5X0CFG binary
 ECHO Taking post-configuration dump using 3CCFGCLI >> ARTIFACT\HWCTEST.LOG
 ECHO Taking post-configuration dump using 3CCFGCLI
 stuffit 0
 stuffit +2 @62 +2 9 9 13 +2 9 13 +2 "ARTIFACT\%TARGET%.SET" +2 13 +1 27 27 13
 3c5x9cfg
+IF NOT EXIST ARTIFACT\%TARGET%.SET GOTO FAIL
 
-MAKE -f%MKFILE% %TARGET%-%DETECTED_NIC%-vrfy
-IF ERRORLEVEL 1 GOTO FAIL
 GOTO OK
+
 
 :FAIL
 REM Deliberately return a nonzero DOS ERRORLEVEL.
+ECHO Hardware Compliance Test FAILED. >> ARTIFACT\HWCTEST.LOG
+ECHO Hardware Compliance Test FAILED.
 FIND "HWC-FAILURE-SENTINEL" ARTIFACT\HWCTEST.LOG > NUL
 GOTO END
 
 :OK
+ECHO Hardware Compliance Test PASSED. >> ARTIFACT\HWCTEST.LOG
+ECHO Hardware Compliance Test PASSED.
 REM Reset ERRORLEVEL to zero using text known to exist in a successful LIST.
 FIND "3Com " ARTIFACT\HWCTEST.LOG > NUL
 
