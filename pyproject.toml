@@ -1,0 +1,10 @@
+[project]
+requires-python = ">=3.10"
+name = "testreport"
+version = "0.1"
+dependencies = [
+    "junitparser>=5.0.1",
+]
+
+[tool.uv]
+package = false
