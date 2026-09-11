@@ -464,12 +464,11 @@ t0711:
    $(BINAPP) LIST >> $(ARTIFACTS)\T0711.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0711.LOG > NUL
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0711.LOG > NUL
+   @echo [t0711] PASSED  >> $(TESTLOG)
 
 # Full Duplex requires effective TP. A standalone change to AUI must therefore
 # fail without changing state; AUI+FULLDUPLEX:DISABLED is valid because the
 # combined prospective final state no longer has Full Duplex enabled.
-   @echo [t0711] PASSED  >> $(TESTLOG)
-
 t0714:
    @echo [t0714] reverse Full Duplex dependency preserves TP state >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0714.LOG
@@ -692,11 +691,10 @@ t1120:
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1120.LOG
    FIND "Boot ROM Size Valid = no" $(ARTIFACTS)\T1120.LOG > NUL
    FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1120.LOG > NUL
+   @echo [t1120] PASSED  >> $(TESTLOG)
 
 # A failed Boot ROM probe is non-fatal to unrelated properties in the same
 # transaction. These cases cover preservation/commit across INT, IOBASE, and TR.
-   @echo [t1120] PASSED  >> $(TESTLOG)
-
 t1122:
    @echo [t1122] no-ROM seed rejects Boot ROM while preserving INT >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1122.LOG
@@ -781,11 +779,10 @@ t1132:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1132.LOG
    FIND "Transceiver = external" $(ARTIFACTS)\T1132.LOG > NUL
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1132.LOG > NUL
+   @echo [t1132] PASSED  >> $(TESTLOG)
 
 # Canonical enabled-to-disabled Boot ROM transition test covering persistent
 # state, live state, diagnostics, and secondary EEPROM consistency.
-   @echo [t1132] PASSED  >> $(TESTLOG)
-
 t1133:
    @echo [t1133] enabled Boot ROM can be fully disabled and verified >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1133.LOG
@@ -1039,11 +1036,10 @@ t1401:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1401.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T1401.LOG > NUL
    FIND "IRQ = 5" $(ARTIFACTS)\T1401.LOG > NUL
+   @echo [t1401] PASSED  >> $(TESTLOG)
 
 # MODEM, FULLDUPLEX, and OPTIMIZE share EEPROM word 0Dh. These combinations
 # verify that independently requested fields are merged without clobbering.
-   @echo [t1401] PASSED  >> $(TESTLOG)
-
 t1402:
    @echo [t1402] combined CONFIGURE /MODEM+/FULLDUPLEX transaction >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1402.LOG
@@ -1134,11 +1130,10 @@ t1504:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1504.LOG
    FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1504.LOG > NUL
    FIND "IOBASE = 0310, IRQ = 5" $(ARTIFACTS)\T1504.LOG > NUL
+   @echo [t1504] PASSED  >> $(TESTLOG)
 
 # This deliberately creates an ambiguous hardware state with two adapters at
 # the same active IOBASE. The target must not be treated as safely addressable.
-   @echo [t1504] PASSED  >> $(TESTLOG)
-
 t1505:
    @echo [t1505] duplicate active-IOBASE conflict rejects targeted migration >> $(TESTLOG)
    ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1505.LOG
@@ -1170,14 +1165,13 @@ t1603:
    FIND "Configuration restore batch file created: $(ARTIFACTS)\RESTORE.BAT" $(ARTIFACTS)\T1603.LOG > NUL
    FIND "ADAPTERNUM:1 /INT:10" $(ARTIFACTS)\RESTORE.BAT > NUL
    FIND "ADAPTERNUM:2 /INT:5" $(ARTIFACTS)\RESTORE.BAT > NUL
+   @echo [t1603] PASSED  >> $(TESTLOG)
 
 
 # End-to-end SAVECONFIG restore test.
 # Unlike the manual multi-step configuration test, this verifies that
 # SAVECONFIG generates executable restore commands which, after a fresh seed,
 # reconstruct the expected adapter configuration.
-   @echo [t1603] PASSED  >> $(TESTLOG)
-
 t1606:
    @echo [t1606] SAVECONFIG keeps Boot ROM pair atomic in split restore commands >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1606.LOG
@@ -1229,11 +1223,10 @@ t1609:
    FIND "ADAPTERNUM:1 /INT:10 /IOBASE:0300 /PNP:ENABLED /FULLDUPLEX:ENABLED" $(ARTIFACTS)\DEFREST.BAT > NUL
    FIND "ADAPTERNUM:1 /BSIZE:DISABLED /TR:TP" $(ARTIFACTS)\DEFREST.BAT > NUL
    FIND "BSIZE:DISABLED" $(ARTIFACTS)\DEFREST.BAT > NUL
+   @echo [t1609] PASSED  >> $(TESTLOG)
 
 # %1 has unknown expanded length when the restore file is generated, so line
 # packing deliberately reserves space conservatively and may split earlier.
-   @echo [t1609] PASSED  >> $(TESTLOG)
-
 t1610:
    @echo [t1610] SAVECONFIG %%1 conservative EXECFILE reservation >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1610.LOG
@@ -1335,11 +1328,10 @@ t1619:
    FIND "Configuration restore batch file created: RESTORE.BAT" $(ARTIFACTS)\T1619.LOG > NUL
    FIND "3CCFGCLI.EXE CONFIGURE" RESTORE.BAT > NUL
    @if exist RESTORE.BAT del RESTORE.BAT
+   @echo [t1619] PASSED  >> $(TESTLOG)
 
 # Two representative placements cover global /VERBOSE position handling because
 # it is consumed by the common argument scanner before SAVECONFIG parsing.
-   @echo [t1619] PASSED  >> $(TESTLOG)
-
 t1620:
    @echo [t1620] global /VERBOSE position is not significant for SAVECONFIG >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1620.LOG
@@ -1413,13 +1405,12 @@ t1625:
    FIND "BADDRESS:C2000 /BSIZE:8" $(ARTIFACTS)\T1625.BAT > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:8 >> $(ARTIFACTS)\T1625.LOG
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1625.LOG > NUL
+   @echo [t1625] PASSED  >> $(TESTLOG)
 
 # Focused cases verify that transaction verification continues correctly from
 # one requested property to the next. The final integration case verifies that
 # a complete configuration split across multiple CONFIGURE invocations composes
 # correctly.
-   @echo [t1625] PASSED  >> $(TESTLOG)
-
 t17xx:
    @echo [t17xx] VERIFICATION_CONTROL_FLOW: verify transaction chain behaviour  >> $(TESTLOG)
 
@@ -1510,14 +1501,13 @@ t1708:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1708.LOG
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T1708.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1708.LOG > NUL
+   @echo [t1708] PASSED  >> $(TESTLOG)
 
 # End-to-end verification of a manually entered full adapter configuration.
 # The configuration is deliberately split across two CONFIGURE invocations
 # because the complete option set exceeds the DOS PSP command-line limit.
 # This verifies that consecutive configuration transactions compose correctly
 # and that the resulting adapter state remains consistent.
-   @echo [t1708] PASSED  >> $(TESTLOG)
-
 t1710:
    @echo [t1710] manually split full configuration verification sequence with /VERBOSE >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM8K > $(ARTIFACTS)\T1710.LOG

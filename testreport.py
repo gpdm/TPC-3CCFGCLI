@@ -13,6 +13,12 @@ import sys
 from pathlib import Path
 
 
+# global init ars
+args = None
+
+
+
+
 # a bunch of regexes to match the line format
 # emitted by test.sh and the .MK files
 #
@@ -29,11 +35,11 @@ from pathlib import Path
 #
 # possible formats currelty used for test cases:
 #
-# FIXME: the HWCs are missing.
-#
 # t0000 (main tests in TEST.MK)
 # HWL00 (hardware limit test in test.sh)*
 # SC0000 (script output test in test.sh)*
+# HWCR0000 (Hardware Compliance Test - Read Tests)
+# HWCW0000 (Hardware Compliance Test - Write Tests)
 #
 # *) these are defined as dummy targets in TEST.MK, but only to keep the parser below happy.
 #
@@ -42,28 +48,38 @@ TARGET_RE = re.compile(
 )
 
 TEST_HEADER_RE = re.compile(
-    r"^[A-Za-z]{1,3}[0-9]{2}xx$",
+    r"^[A-Za-z]{1,4}[0-9]{2}xx$",
     re.IGNORECASE,
 )
 
 TEST_CASE_RE = re.compile(
-    r"^[A-Za-z]{1,3}[0-9]{2,4}$",
+    r"^[A-Za-z]{1,4}[0-9]{2,4}$",
     re.IGNORECASE,
 )
 
+REPORT_GROUP_RE = re.compile(
+    r"^[A-Z][A-Z0-9_]*$"
+)
+
+
+# regex to match for this:
+# @echo [t02xx] IRQ_CHANGE: Verify IRQ change behaviour ... >> $(TESTLOG)
+# but the log redirection handling is the culprit:
+# it can be there, or absent, both is valid.
+# generally, I don't care if the log redirectionis present.
 MAKE_TESTLOG_ECHO_RE = re.compile(
-    r"^\s*@?echo\s+\[([A-Za-z]{1,3}(?:[0-9]{2,4}|[0-9]{2}xx))\]\s*:?\s*"
-    r"(.+?)(?:\s*>>\s*\$\(TESTLOG\))?\s*$",
+    r"^\s*@?echo\s+\[([A-Za-z]{1,4}(?:[0-9]{2,4}|[0-9]{2}xx))\]\s*:?\s*"
+    r"(.+?)(?=\s*>>?|\s*$)(?:\s*>>?.*)?\s*$",
     re.IGNORECASE,
 )
 
 LOG_PASS_RE = re.compile(
-    r"^\[([A-Za-z]{1,3}[0-9]{2,4})\]\s+PASSED\s*$",
+    r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]\s+PASSED\s*$",
     re.IGNORECASE,
 )
 
 LOG_TEST_RE = re.compile(
-    r"^\[([A-Za-z]{1,3}[0-9]{2,4})\]\s*:?\s*(?!PASSED\s*$)(.+?)\s*$",
+    r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]\s*:?\s*(?!PASSED\s*$)(.+?)\s*$",
     re.IGNORECASE,
 )
 
@@ -207,19 +223,21 @@ def build_test_groups(targets):
     for label, target in targets.items():
         header = None
         tests = []
+        invalid = False
 
         for prerequisite in target["prerequisites"]:
             if TEST_HEADER_RE.match(prerequisite):
                 header = prerequisite
-
             elif TEST_CASE_RE.match(prerequisite):
                 tests.append(prerequisite)
+            else:
+                invalid = True
+                break
 
         #
-        # A symbolic test group is any target which references
-        # at least one test case.
+        # A report group consists exclusively of a header and test cases.
         #
-        if not tests:
+        if invalid or header is None or not tests:
             continue
 
         groups.append({
@@ -437,10 +455,17 @@ def build_junit_report(
                     f"Test target is missing from Makefile: {raw_test_id}"
                 )
 
-            description = target.get("description")
 
-            if not description and test_id in started:
+            if test_id in started:
                 description = started[test_id]["description"]
+            else:
+                description = target.get("description")
+
+            # FIXME remove this once the description handling is finalized
+            #description = target.get("description")
+
+            #if not description and test_id in started:
+            #    description = started[test_id]["description"]
 
             if not description:
                 description = "No test description available"
@@ -458,7 +483,6 @@ def build_junit_report(
                 description,
             )
 
-            #
             # Per-test artefacts follow the case ID by convention:
             #
             #   t0707  -> ARTIFACT/T0707.LOG
@@ -538,8 +562,9 @@ def print_makefile_debug(targets, groups):
         print(f"  tests       : {' '.join(group['tests'])}")
         print()
 
+
 # and some debug header for the results
-def print_result_debug(groups, targets, results):
+def print_result_debug(groups, targets, started, results):
     print("Test results")
     print("============")
     print()
@@ -548,13 +573,20 @@ def print_result_debug(groups, targets, results):
         print(group["name"])
 
         for test_id in group["tests"]:
-            description = targets[test_id].get("description") or ""
+            normalized_id = test_id.lower()
+
+            if normalized_id in started:
+                description = started[normalized_id]["description"]
+            else:
+                description = targets[test_id].get("description") or ""
+
             print(
-                f"  {test_id}: {results[test_id.lower()]}: "
+                f"  {test_id}: {results[normalized_id]}: "
                 f"{description}"
             )
 
         print()
+
 
 
 # ###################################
@@ -562,6 +594,7 @@ def print_result_debug(groups, targets, results):
 # ###################################
 #
 def main():
+    global args
     args = parse_arguments()
 
     try:
@@ -624,7 +657,7 @@ def main():
         print(f"Tests skipped  : {skipped_count}")
 
         print_makefile_debug(targets, groups)
-        print_result_debug(groups, targets, results)
+        print_result_debug(groups, targets, started, results)
 
     print(f"JUnit report written: {junit_file}")
 
