@@ -67,19 +67,24 @@ REPORT_GROUP_RE = re.compile(
 # but the log redirection handling is the culprit:
 # it can be there, or absent, both is valid.
 # generally, I don't care if the log redirectionis present.
+#
 MAKE_TESTLOG_ECHO_RE = re.compile(
-    r"^\s*@?echo\s+\[([A-Za-z]{1,4}(?:[0-9]{2,4}|[0-9]{2}xx))\]\s*:?\s*"
-    r"(.+?)(?=\s*>>?|\s*$)(?:\s*>>?.*)?\s*$",
+    r"^\s*@?echo\s+\[([A-Za-z]{1,4}(?:[0-9]{2,4}|[0-9]{2}xx))\]"
+    r"(?:\.\[([A-Za-z0-9_.%/+@\x2D]+)\])?\s*:?\s*"
+    r"(.+?)(?=\s*>>|\s*$)(?:\s*>>.*)?\s*$",
     re.IGNORECASE,
 )
 
 LOG_PASS_RE = re.compile(
-    r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]\s+PASSED\s*$",
+    r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]"
+    r"(?:\.\[[A-Za-z0-9_.%/+@\x2D]+\])?\s+PASSED\s*$",
     re.IGNORECASE,
 )
 
 LOG_TEST_RE = re.compile(
-    r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]\s*:?\s*(?!PASSED\s*$)(.+?)\s*$",
+    r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]"
+    r"(?:\.\[[A-Za-z0-9_.%/+@\x2D]+\])?\s*:?\s*"
+    r"(?!PASSED\s*$)(.+?)\s*$",
     re.IGNORECASE,
 )
 
@@ -193,6 +198,8 @@ def load_makefile(makefile):
     for line in lines:
         target_match = TARGET_RE.match(line)
 
+
+
         if target_match:
             current_target = target_match.group(1)
             continue
@@ -204,10 +211,16 @@ def load_makefile(makefile):
 
         if echo_match:
             message_id = echo_match.group(1).lower()
-            message = echo_match.group(2).strip()
+            subtest = echo_match.group(2)
+            message = echo_match.group(3).strip()
+
+            source_target = message_id
+
+            if subtest:
+                source_target = f"{message_id}-{subtest.lower()}"
 
             if (
-                message_id == current_target.lower()
+                source_target == current_target.lower()
                 and message.upper() != "PASSED"
                 and targets[current_target]["description"] is None
             ):
