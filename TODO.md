@@ -23,13 +23,3 @@ This file documents pending items, in no particular order or priority.
 
 Could be use to dynamically narrow-down the allowed IRQs for 8-bit bus systems.
 Not strictly needed, but nice to have.
-
-### [Enhancement] Implement CLI Exit Codes
-
-The original utility does not emit return codes on the CLI either.
-
-But it could be useful anyway to emit return codes for success states, but also
-non-zero codes after command, hardware, and verification failures.
-
-Not a priority thing right now.
-
