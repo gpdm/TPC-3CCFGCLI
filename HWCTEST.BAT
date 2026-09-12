@@ -140,7 +140,8 @@ GOTO RUN
 REM As NIC is now detected, reset LOGFILE and ARTIFACT paths
 SET INITLOG=%LOGFILE%
 SET ARTIFACT=%DETECTED_NIC%\ARTIFACT
-SET LOGFILE=%DETECTED_NIC%\HWCREAD.LOG
+IF "%TARGET%" == "hwcr" SET LOGFILE=%DETECTED_NIC%\HWCREAD.LOG
+IF "%TARGET%" == "hwcw" SET LOGFILE=%DETECTED_NIC%\HWCWRITE.LOG
 
 REM Ensure output directories exist
 IF NOT EXIST %DETECTED_NIC%\NUL MD %DETECTED_NIC%
@@ -160,9 +161,9 @@ ECHO invoke: MAKE -f%MKFILE% -DCARD_%DETECTED_NIC% %ROMTEST% %TARGET%
 MAKE -f%MKFILE% -DCARD_%DETECTED_NIC% %ROMTEST% %TARGET%
 IF ERRORLEVEL 1 GOTO FAIL
 
-REM Create post-configurative config dump using original 3C5X0CFG binary
-ECHO Taking post-configuration dump using 3CCFGCLI >> %LOGFILE%
-ECHO Taking post-configuration dump using 3CCFGCLI
+REM Create post-configurative config dump using original 3C5X9CFG binary
+ECHO Taking post-configuration dump using 3C5X9CFG >> %LOGFILE%
+ECHO Taking post-configuration dump using 3C5X9CFG
 REM clear keyboard input buffer
 stuffit 0
 REM load key macro sequence to control 3C5X9CFG to export a config dump

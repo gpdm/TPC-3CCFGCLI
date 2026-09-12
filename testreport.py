@@ -81,6 +81,20 @@ LOG_PASS_RE = re.compile(
     re.IGNORECASE,
 )
 
+NONFAIL_STATUSES = {
+    "DISABLED",
+    "NOT IMPLEMENTED",
+    "NOT SUPPORTED",
+    "NOT APPLICABLE",
+}
+
+LOG_NONFAIL_RE = re.compile(
+    r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]"
+    r"(?:\.\[[A-Za-z0-9_.%/+@\x2D]+\])?\s+"
+    r"(DISABLED|NOT IMPLEMENTED|NOT SUPPORTED|NOT APPLICABLE)\s*$",
+    re.IGNORECASE,
+)
+
 LOG_TEST_RE = re.compile(
     r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]"
     r"(?:\.\[[A-Za-z0-9_.%/+@\x2D]+\])?\s*:?\s*"
@@ -266,6 +280,7 @@ def build_test_groups(targets):
 def parse_logfile(logfile):
     started = {}
     passed = set()
+    nonfails = {}
 
     with logfile.open(
         "r",
@@ -279,6 +294,13 @@ def parse_logfile(logfile):
 
             if pass_match:
                 passed.add(pass_match.group(1).lower())
+                continue
+
+            nonfail_match = LOG_NONFAIL_RE.match(line)
+
+            if nonfail_match:
+                test_id = nonfail_match.group(1).lower()
+                nonfails[test_id] = nonfail_match.group(2).upper()
                 continue
 
             test_match = LOG_TEST_RE.match(line)
@@ -296,7 +318,7 @@ def parse_logfile(logfile):
                         },
                     )
 
-    return started, passed
+    return started, passed, nonfails
 
 
 # classiy the results retrieved from the log
@@ -318,7 +340,7 @@ def parse_logfile(logfile):
 #   t0202 = FAIL
 #   everything that follows = SKIPPED
 #
-def classify_results(groups, started, passed):
+def classify_results(groups, started, passed, nonfails):
     planned = [
         test_id.lower()
         for group in groups
@@ -327,6 +349,7 @@ def classify_results(groups, started, passed):
 
     planned_set = set(planned)
     unknown_passed = sorted(passed - planned_set)
+    unknown_nonfails = sorted(set(nonfails) - planned_set)
 
     if unknown_passed:
         raise ReportError(
@@ -335,10 +358,26 @@ def classify_results(groups, started, passed):
             + ", ".join(unknown_passed)
         )
 
+    if unknown_nonfails:
+        raise ReportError(
+            "Log contains non-fail results for tests not present in the "
+            "active Makefile test groups: "
+            + ", ".join(unknown_nonfails)
+        )
+
+    conflicting = sorted(passed & set(nonfails))
+
+    if conflicting:
+        raise ReportError(
+            "Log contains conflicting PASS and non-fail results for: "
+            + ", ".join(conflicting)
+        )
+
+    completed = passed | set(nonfails)
     first_missing_index = None
 
     for index, test_id in enumerate(planned):
-        if test_id not in passed:
+        if test_id not in completed:
             first_missing_index = index
             break
 
@@ -347,31 +386,37 @@ def classify_results(groups, started, passed):
 
     if first_missing_index is None:
         for test_id in planned:
-            results[test_id] = "PASS"
+            if test_id in passed:
+                results[test_id] = "PASS"
+            else:
+                results[test_id] = nonfails[test_id]
 
         return results, failed_test
 
     failed_test = planned[first_missing_index]
 
-    later_passed = [
+    later_completed = [
         test_id
         for test_id in planned[first_missing_index + 1:]
-        if test_id in passed
+        if test_id in completed
     ]
 
     # gah .... basically should never happen
     # but I had some - prefixed calls from earlier trials,
     # maybe good to leep in as safeguard anyway.
-    if later_passed:
+    if later_completed:
         raise ReportError(
-            f"Fail fast log is inconsistent: {failed_test} has no PASSED "
-            "marker, but later tests passed: "
-            + ", ".join(later_passed)
+            f"Fail fast log is inconsistent: {failed_test} has no result "
+            "marker, but later tests completed: "
+            + ", ".join(later_completed)
         )
 
     for index, test_id in enumerate(planned):
         if index < first_missing_index:
-            results[test_id] = "PASS"
+            if test_id in passed:
+                results[test_id] = "PASS"
+            else:
+                results[test_id] = nonfails[test_id]
         elif index == first_missing_index:
             results[test_id] = "FAIL"
         else:
@@ -546,6 +591,9 @@ def build_junit_report(
                     )
                 ]
 
+            elif status in NONFAIL_STATUSES:
+                case.result = [Skipped(status)]
+
             suite.add_testcase(case)
 
         suite.update_statistics()
@@ -618,11 +666,12 @@ def main():
 
         targets = load_makefile(args.makefile)
         groups = build_test_groups(targets)
-        started, passed = parse_logfile(args.logfile)
+        started, passed, nonfails = parse_logfile(args.logfile)
         results, failed_test = classify_results(
             groups,
             started,
             passed,
+            nonfails,
         )
 
         build_junit_report(
@@ -652,7 +701,7 @@ def main():
         for status in results.values()
     )
     skipped_count = sum(
-        status == "SKIPPED"
+        status == "SKIPPED" or status in NONFAIL_STATUSES
         for status in results.values()
     )
 
