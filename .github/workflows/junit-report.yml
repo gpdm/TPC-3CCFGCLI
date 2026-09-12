@@ -1,4 +1,4 @@
-name: JUnit Test Report
+name: 3CCFGCLI Test Report
 
 on:
   push:
@@ -40,7 +40,7 @@ jobs:
 
 
   hardware-compliance:
-    name: HWC - ${{ matrix.model }}
+    name: HWC Tests - ${{ matrix.model }}
     runs-on: ubuntu-latest
 
     strategy:
