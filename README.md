@@ -289,7 +289,7 @@ This includes the current Link Status, also known as Link Beat.
 Example:
 
 ```text
-3Com EtherLink III CLI Configuration Program v0.7.1
+3Com EtherLink III CLI Configuration Program v0.7.5
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -298,20 +298,17 @@ NIC                            NIC
 Number                       Description
 --------------------------------------------------------------------------
   1    3Com 3C509B-TP: Ethernet Address = 02608C654321
-       EtherLink III 16-bit ISA NIC
-       ASIC Revision = 4
-       Software Compatibility = failure level 0, warning level 0
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
        Connectors = TP, AUI
        Full Duplex Capability = yes
        Plug and Play Capability = yes
-       Link Status = connected
-       ---
+              ---
        IOBASE = 0300, IRQ = 10
        Transceiver = on-board TP
        Plug and Play = enabled
        Boot ROM = disabled
        Optimization = DOS
-       MODEM Interrupt Disable Time = 1600 us (NONE)
+       MODEM Interrupt Disable Time = 25 us
        Full Duplex = disabled
 ```
 
