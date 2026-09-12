@@ -17,25 +17,6 @@ This file documents pending items, in no particular order or priority.
   original utility handles this conflict gracefully or simply fails. Until
   confirmed, retain the conservative failure expectation in t1505.
   
-
-- [Pending Clarification/Compatibility] config restore fails
-
-  TESTHWC.MK includes config restoration via `RESTORE.BAT` as generated
-  by `3CCFGCLI.EXE` during the compliance test.
-  
-  This somewhat broken right now:
-  
-  When invoking `RESTORE.BAT 3C5X9CFG.EXE` from `make`, the test system locks up.
-  
-  When invoking the same command from the DOS prompt, it runs through.
-  This may hint at an actual out-of-memory issue, possible related to MAKE.
-  
-  Tested only on MS-DOS 4 so far. Needs further investigation.
-  Might be related to the fact that I'm not using MAKE 4.0, but the older MAKE 3.0,
-  as only this one runs on MS-DOS 4.
-
-
-
 ## Enhancements
 
 ### 3C509 (non-B) Boot ROM Support
