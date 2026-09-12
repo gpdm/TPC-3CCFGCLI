@@ -2,7 +2,7 @@
 
 This project started out of sheer curiosity.
 
-While reading through the 3C509B nestor project, I saw a request asking if someone could strip the MEWEL text UI out of the original 3Com config utility. Didn't think it was doable, but I started looking anyway.
+While reading through the 3C509B nestor project, I saw a request asking if someone could strip the MEWEL text UI out of the original 3Com config utility. I Didn't think it was doable, but I started looking anyway.
 
 Disassembled the original binary using DOS Sourcer 8, spent time in Ghidra, generated ridiculous call graphs, and tried to untangle the config logic from the UI.
 
@@ -10,9 +10,9 @@ At some point it became pretty obvious that this would take ages.
 
 The original utility isn't just a small config tool with a text UI bolted on. It's a mess of interconnected code linked against old runtime libraries. Even if I dissected the whole thing, I'd still be stuck figuring out what could safely be thrown away and how to link it back into a working program.
 
-Unreasonable. What I actually needed was a clean reimplementation.
+That's Unreasonable. What I actually needed was a clean reimplementation.
 
-Only problem: I wasn't motivated to write a DOS program from scratch in C. And definitely not in assembly.
+The only problem: I wasn't motivated to write a DOS program from scratch in C. And definitely not in assembly.
 
 I'd done x86 assembly before, but that was about 35 years ago. I was rusty. I could read it, but the details were gone.
 
@@ -44,7 +44,7 @@ Once basic discovery was solid, I expanded `LIST`. The first version found adapt
 
 I was cautious not to touch the core discovery code once it worked. Additional EEPROM reads happened *after* enumeration finished, keeping them outside the main NIC record layout. That became a rule: once a piece worked against real hardware, don't casually disturb it.
 
-By then the program was closing in on 2,000 lines, but it was still just a read-only inspection tool. The dangerous part—changing configs—hadn't even started.
+By then the program was closing in on 2,000 lines, but it was still just a read-only inspection tool. The dangerous part hadn't even started.
 
 ### Building CONFIGURE without configuring anything
 
@@ -102,11 +102,11 @@ That's why I got conservative about writes. If something couldn't be verified, I
 
 ### Boot ROM support and final audits
 
-By the 0.7 series, most features were done. Shifted focus from adding features to auditing what was already there: stale procedures, unreachable branches, redundant reads, failure handling, parser inconsistencies.
+By the 0.7 series, most features were done. That shifted focus from adding features to auditing what was already there: stale procedures, unreachable branches, redundant reads, failure handling, parser inconsistencies.
 
 Replacing a linear error dispatch routine with a pointer table knocked several hundred bytes off the binary—crucial for 8086/8088 memory limits. I ran hardware limit tests with 64KB, 128KB, and 256KB caps to make sure it actually ran where it needed to.
 
-Boot ROM config was the last messy corner. Writing a ROM base address to EEPROM is easy; knowing if a valid ROM is actually installed is harder. Added a ROM access abstraction to both backends, validating signatures, sizes, checksums, and paging behavior. `/BADDRESS` and `/BSIZE` are still the trickiest parts, mostly because I don't have physical ROM modules for every test case.
+Boot ROM config was the last messy corner. Writing a ROM base address to EEPROM is easy; knowing if a valid ROM is actually installed is harder. So I added a ROM access abstraction to both backends, validating signatures, sizes, checksums, and paging behavior. `/BADDRESS` and `/BSIZE` are still the trickiest parts, mostly because I don't have physical ROM modules so I can't fully very it outside the mock scope at this point.
 
 ### What the LLM actually did
 
@@ -116,8 +116,8 @@ It found real issues: an EEPROM read path treating `FFFFh` as an error even thou
 
 To be absolutely clear: Had I written all of this completely by myself, it would have taken months. And I wasn't willing to invest that much time.
 
-Two weeks later, the utility went from a read-only experiment to an almost finished tool. There are still corners I don't entirely trust, and bugs are surely hiding somewhere.
+Two weeks later, the utility went from a read-only experiment to an almost finished tool. There are still corners I don't entirely trust, and bugs are surely hiding somewhere. But as the regression suite is evolving, coverage of blinds spots gets better every day. The last week I spent more time on the test infrastructure than on the actual program itself.
 
-But it works. On real hardware. On an 8086.
+But hey, it works. On real hardware. On an 8086. In less than 256K of RAM.
 
 And that's a lot further than I expected this experiment to go.
