@@ -1,6 +1,6 @@
-Needed for Borland TASM.
+Needed for Borland TASM 5.0.
 
-Install TASM through DOSBox-X into this directory,
+Install TASM 5.0 through DOSBox-X into this directory,
 or create a `./BIN` subdirectory yourself, and place
-`TASM.EXE`, `TLINK.EXE` and `MAKE.EXE` including
-the runtime files there.
+`TASM.EXE`, `TLINK.EXE`, `32RTM.EXE`, `DPMI32VM.OVL`
+and `MAKE.EXE` in here.
