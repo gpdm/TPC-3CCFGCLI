@@ -24,15 +24,6 @@ This file documents pending items, in no particular order or priority.
 Could be use to dynamically narrow-down the allowed IRQs for 8-bit bus systems.
 Not strictly needed, but nice to have.
 
-
-### [Enhancement] PnP-BIOS Detection
-
-At the time, since this utility is primarily intended for 8-bit bus systems,
-this is not necessary.
-
-But it would just generally be interesting in doing it.
-
-
 ### [Enhancement] Implement CLI Exit Codes
 
 The original utility does not emit return codes on the CLI either.
