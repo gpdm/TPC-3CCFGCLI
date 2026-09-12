@@ -49,12 +49,12 @@ SET TARGET=hwcr
 SET ROMTEST=-DROM_TEST
 GOTO HWDETECT
 
-:O_CONFIG
+:O_WRITE
 SET MKFILE=HWCWRITE.MK
 SET TARGET=hwcw
 GOTO HWDETECT
 
-:O_ROMCONFIG
+:O_WRITEROM
 SET MKFILE=HWCWRITE.MK
 SET TARGET=hwcw
 SET ROMTEST=-DROM_TEST
@@ -68,14 +68,14 @@ ECHO.
 ECHO Usage:
 ECHO   %0 READ 
 ECHO   %0 READROM
-ECHO   %0 CONFIG
-ECHO   %0 ROMCONFIG
+ECHO   %0 WRITE
+ECHO   %0 WRITEPROM
 ECHO.
 ECHO Commands:
 ECHO   READ       3CCFGCLI observes while original 3C5X9CFG runs config commands.
 ECHO   READROM    same as READ, but include Boot ROM tests
-ECHO   CONFIG     3CCFGCLI performs all configure commands and read-backs.
-ECHO   ROMCONFIG  Same as CONFIG, but include Boot ROM tests
+ECHO   WRITE      3CCFGCLI performs all configure commands and read-backs.
+ECHO   WRITEROM   Same as WRITE, but include Boot ROM tests
 ECHO.
 GOTO OK
 
