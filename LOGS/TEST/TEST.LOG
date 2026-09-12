@@ -329,17 +329,26 @@ Dispatching resource test with 256 KB memory limit to DOSBox-X ...
 [HWL256] 8086/8088 with 256 KB memory limit
 [HWL256] PASSED
 Hardware Limit test: run completed
+Running PC Interrupt Controller tests ...
+Dispatching tests to DOSBox-X ...
+[t19xx] PIC_GATE:Verify IRQ gate behaviour on a single PIC system
+[t1901] single PIC permits low IRQ without warning
+[t1901] PASSED
+[t1902] single PIC warns but permits high IRQ
+[t1902] PASSED
+PC Interrupt Controller tests: run completed
 Rendering test results as JUnit XML ...
 JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 
 Test summary
 ============
-Smoke Test            : SUCCESS
-    Defined Tests     : 146
-    Executed Tests    : 146
-    Failed Tests      : NONE
-SAVECONFIG Test       : SUCCESS
-Hardware Limit Test   : SUCCESS
+Smoke Test                   : SUCCESS
+    Defined Tests            : 148
+    Executed Tests           : 148
+    Failed Tests             : NONE
+SAVECONFIG Test              : SUCCESS
+Hardware Limit Test          : SUCCESS
+PC Interrupt Controller Test : SUCCESS
 
 Overall result        : PASS
 

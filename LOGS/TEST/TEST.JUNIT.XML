@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results" tests="150" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results" tests="152" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -963,6 +963,24 @@
 			<properties>
 				<property name="description" value="SAVECONFIG on 3C509-TP (ASIC rev. 1) emits only common properties"/>
 				<property name="artifact" value="ARTIFACT/T1808.LOG"/>
+			</properties>
+		</testcase>
+	</testsuite>
+	<testsuite name="PIC_GATE: Verify IRQ gate behaviour on a single PIC system" tests="2" errors="0" failures="0" skipped="0" time="0">
+		<properties>
+			<property name="header_id" value="t19xx"/>
+			<property name="description" value="Verify IRQ gate behaviour on a single PIC system"/>
+		</properties>
+		<testcase name="t1901: single PIC permits low IRQ without warning" classname="PIC_GATE">
+			<properties>
+				<property name="description" value="single PIC permits low IRQ without warning"/>
+				<property name="artifact" value="ARTIFACT/T1901.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1902: single PIC warns but permits high IRQ" classname="PIC_GATE">
+			<properties>
+				<property name="description" value="single PIC warns but permits high IRQ"/>
+				<property name="artifact" value="ARTIFACT/T1902.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>
