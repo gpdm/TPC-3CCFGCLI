@@ -1,4 +1,4 @@
-# 3CCFG CLI
+# 3CCFGCLI
 
 [![JUnit Tests](https://github.com/gpdm/TPC-3CCFGCLI/actions/workflows/junit-report.yml/badge.svg)](https://github.com/gpdm/TPC-3CCFGCLI/actions/workflows/junit-report.yml)
 
