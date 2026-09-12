@@ -19,15 +19,6 @@ This file documents pending items, in no particular order or priority.
   
 ## Enhancements
 
-### 3C509 (non-B) Boot ROM Support
-
-As noted in [README.md](README.md), Boot ROM support for 3C509 (non-B) is currently not implemented
-in this utility. I have no ROMs curently to even test the Boot ROM support for the 3c509B,
-but even more worse, I don't have a plain 3c509 on hand.
-
-I won't spend time on this feature for now until I have test gear on hand.
-
-
 ### [Enhancement] Would be interesting to write a detection capability for 8-bit/16-bit bus.
 
 Could be use to dynamically narrow-down the allowed IRQs for 8-bit bus systems.
