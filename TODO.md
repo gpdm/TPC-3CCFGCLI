@@ -28,16 +28,6 @@ but even more worse, I don't have a plain 3c509 on hand.
 I won't spend time on this feature for now until I have test gear on hand.
 
 
-
-### [Enhancement] Handle /VERBOSE flag for `SAVECONFIG`
-
-While the `SAVECONFIG` verb accepts the `/VERBOSE` flag, it doesn't produce extra diagnostics output.
-
-Right now, I don't have a need for that, but maybe it's worthwile implementing it.
-
-NOTE: For `LIST` it was implemented in the meantime.
-
-
 ### [Enhancement] Would be interesting to write a detection capability for 8-bit/16-bit bus.
 
 Could be use to dynamically narrow-down the allowed IRQs for 8-bit bus systems.
