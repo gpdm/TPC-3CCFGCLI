@@ -480,20 +480,25 @@ def build_junit_report(
             "Install it with: python3 -m pip install junitparser"
         ) from error
 
-    xml = JUnitXml("3CCFGCLI Regression Tests")
+    xml = JUnitXml("3CCFGCLI Test Results")
 
     for group in groups:
         group_name = group["name"]
         header_id = group["header"]
         header_target = targets.get(header_id, {})
 
-        suite = TestSuite(group_name)
-        suite.add_property("header_id", header_id)
-
         group_description = clean_group_description(
             group_name,
             header_target.get("description"),
         )
+
+        suite_name = group_name
+
+        if group_description:
+            suite_name = f"{group_name}: {group_description}"
+
+        suite = TestSuite(suite_name)
+        suite.add_property("header_id", header_id)
 
         if group_description:
             suite.add_property(
@@ -528,8 +533,10 @@ def build_junit_report(
             if not description:
                 description = "No test description available"
 
+            case_name = f"{test_id}: {description}"
+
             case = TestCase(
-                test_id,
+                case_name,
                 classname=group_name,
             )
 

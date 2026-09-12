@@ -1,65 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Regression Tests" tests="10" failures="0" errors="0" skipped="1" time="0.0">
-	<testsuite name="HWCR_READ" tests="10" errors="0" failures="0" skipped="1" time="0">
+<testsuites name="3CCFGCLI Test Results" tests="10" failures="0" errors="0" skipped="1" time="0.0">
+	<testsuite name="HWCR_READ: Hardware Compliance Read checks for $(CARDNAME)" tests="10" errors="0" failures="0" skipped="1" time="0">
 		<properties>
 			<property name="header_id" value="HWCR00xx"/>
 			<property name="description" value="Hardware Compliance Read checks for $(CARDNAME)"/>
 		</properties>
-		<testcase name="hwcr001" classname="HWCR_READ">
+		<testcase name="hwcr001: Reading 3C509B-TPCoax identity and capabilities" classname="HWCR_READ">
 			<properties>
 				<property name="description" value="Reading 3C509B-TPCoax identity and capabilities"/>
 				<property name="artifact" value="ARTIFACT/HWCR001.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr002" classname="HWCR_READ">
+		<testcase name="hwcr002: 9c5x9cfg /INT writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
 			<properties>
 				<property name="description" value="9c5x9cfg /INT writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCR002.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr003" classname="HWCR_READ">
+		<testcase name="hwcr003: 9c5x9cfg /IOBASE writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
 			<properties>
 				<property name="description" value="9c5x9cfg /IOBASE writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCR003.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr004" classname="HWCR_READ">
+		<testcase name="hwcr004: 9c5x9cfg /PNP writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
 			<properties>
 				<property name="description" value="9c5x9cfg /PNP writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCR004.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr005" classname="HWCR_READ">
+		<testcase name="hwcr005: 9c5x9cfg /MODEM writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
 			<properties>
 				<property name="description" value="9c5x9cfg /MODEM writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCR005.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr006" classname="HWCR_READ">
+		<testcase name="hwcr006: 9c5x9cfg /FULLDUPLEX writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
 			<properties>
 				<property name="description" value="9c5x9cfg /FULLDUPLEX writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCR006.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr007" classname="HWCR_READ">
+		<testcase name="hwcr007: 9c5x9cfg /OPTIMIZE writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
 			<properties>
 				<property name="description" value="9c5x9cfg /OPTIMIZE writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCR007.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr008" classname="HWCR_READ">
+		<testcase name="hwcr008: 9c5x9cfg /TR:COAX writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
 			<properties>
 				<property name="description" value="9c5x9cfg /TR:COAX writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCR008.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr009" classname="HWCR_READ">
+		<testcase name="hwcr009: Reading combined hardware state through SAVECONFIG" classname="HWCR_READ">
 			<properties>
 				<property name="description" value="Reading combined hardware state through SAVECONFIG"/>
 				<property name="artifact" value="ARTIFACT/HWCR009.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr051" classname="HWCR_READ">
+		<testcase name="hwcr051: Boot ROM testing is currently not implemented for 3C509B-TPCoax." classname="HWCR_READ">
 			<properties>
 				<property name="description" value="Boot ROM testing is currently not implemented for 3C509B-TPCoax."/>
 			</properties>
