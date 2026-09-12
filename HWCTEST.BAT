@@ -7,22 +7,31 @@ REM The complete test sequence stays in MAKE.
 REM ERRORLEVEL handling deliberately stays inside this batch file.
 
 
-REM initialization
-IF NOT EXIST ARTIFACT\NUL MD ARTIFACT
-IF EXIST ARTIFACT\HWCTEST.LOG DEL ARTIFACT\HWCTEST.LOG > NUL
-IF EXIST ARTIFACT\*.SET DEL ARTIFACT\*.SET > NUL
+
+REM Vars Init
+SET ARTIFACT=
+SET LOGFILE=HWCINIT.LOG
+SET DETECTED_NIC=UNKNOWN
+SET TARGET=
+SET MKFILE=
+SET ROMTEST=
+
+REM Sanitize 
+IF EXIST %LOGFILE% DEL %LOGFILE% > NUL
+
+REM IF NOT EXIST ARTIFACT\NUL MD ARTIFACT
+REM IF EXIST ARTIFACT\HWCTEST.LOG DEL ARTIFACT\HWCTEST.LOG > NUL
+REM IF EXIST ARTIFACT\*.SET DEL ARTIFACT\*.SET > NUL
 
 
 REM Perform initial hardware scan
-3CCFGCLI.EXE LIST > ARTIFACT\HWCTEST.LOG
+3CCFGCLI.EXE LIST > %LOGFILE%
 
-REM Vars init
-SET DETECTED_NIC=UNKNOWN
-SET TARGET=
 
 REM CLI dispatch
 REM I know, it's superugly, but this make arguments work case-insensitive.
-REM And besides, it's just a bloody batch file, so who cares?
+REM Yes, an invalid argument will cause a LABEL NOT FOUND error.
+REM But it's just a bloody batch for HWC regressions, so who cares?
 GOTO O_%1
 
 :O_
@@ -36,7 +45,8 @@ GOTO HWDETECT
 
 :O_READROM
 SET MKFILE=HWCREAD.MK
-SET TARGET=hwcr-rom
+SET TARGET=hwcr
+SET ROMTEST=-DROM_TEST
 GOTO HWDETECT
 
 :O_CONFIG
@@ -46,7 +56,8 @@ GOTO HWDETECT
 
 :O_ROMCONFIG
 SET MKFILE=HWCWRITE.MK
-SET TARGET=hwcw-rom
+SET TARGET=hwcw
+SET ROMTEST=-DROM_TEST
 GOTO HWDETECT
 
 
@@ -62,9 +73,9 @@ ECHO   %0 ROMCONFIG
 ECHO.
 ECHO Commands:
 ECHO   READ       3CCFGCLI observes while original 3C5X9CFG runs config commands.
-ECHO   READROM    same as READ, but only for Boot ROM tests
+ECHO   READROM    same as READ, but include Boot ROM tests
 ECHO   CONFIG     3CCFGCLI performs all configure commands and read-backs.
-ECHO   ROMCONFIG  Same as CONFIG, but only for Boot ROM tests
+ECHO   ROMCONFIG  Same as CONFIG, but include Boot ROM tests
 ECHO.
 GOTO OK
 
@@ -72,22 +83,22 @@ GOTO OK
 :HWDETECT
 ECHO 3Com EtherLink III card detection running ...
 
-FIND "3Com 3C509B-TPCoax:" ARTIFACT\HWCTEST.LOG > NUL
+FIND "3Com 3C509B-TPCoax:" %LOGFILE% > NUL
 IF NOT ERRORLEVEL 1 GOTO BTPC
 
-FIND "3Com 3C509B-TPO:" ARTIFACT\HWCTEST.LOG > NUL
+FIND "3Com 3C509B-TPO:" %LOGFILE% > NUL
 IF NOT ERRORLEVEL 1 GOTO BTPO
 
-FIND "3Com 3C509B-Combo:" ARTIFACT\HWCTEST.LOG > NUL
+FIND "3Com 3C509B-Combo:" %LOGFILE% > NUL
 IF NOT ERRORLEVEL 1 GOTO BCOMBO
 
-FIND "3Com 3C509B-TP:" ARTIFACT\HWCTEST.LOG > NUL
+FIND "3Com 3C509B-TP:" %LOGFILE% > NUL
 IF NOT ERRORLEVEL 1 GOTO BTP
 
-FIND "3Com 3C509B:" ARTIFACT\HWCTEST.LOG > NUL
+FIND "3Com 3C509B:" %LOGFILE% > NUL
 IF NOT ERRORLEVEL 1 GOTO BCOAX
 
-FIND "3Com 3C509-TP:" ARTIFACT\HWCTEST.LOG > NUL
+FIND "3Com 3C509-TP:" %LOGFILE% > NUL
 IF NOT ERRORLEVEL 1 GOTO TP
 
 ECHO Unsupported EtherLink III model.
@@ -124,36 +135,55 @@ ECHO Detected 3C509-TP.
 SET DETECTED_NIC=TP
 GOTO RUN
 
+
 :RUN
+REM As NIC is now detected, reset LOGFILE and ARTIFACT paths
+SET INITLOG=%LOGFILE%
+SET ARTIFACT=%DETECTED_NIC%\ARTIFACT
+SET LOGFILE=%DETECTED_NIC%\HWCREAD.LOG
+
+REM Ensure output directories exist
+IF NOT EXIST %DETECTED_NIC%\NUL MD %DETECTED_NIC%
+IF NOT EXIST %ARTIFACT%\NUL MD %ARTIFACT%
+
+REM Move INITLOG to the final LOGFILE and cleanup
+COPY %INITLOG% %LOGFILE%
+DEL %INITLOG%
+SET INITLOG=
+
+ECHO Running test target %TARGET% for detected NIC: %DETECTED_NIC% >> %LOGFILE%
 ECHO Running test target %TARGET% for detected NIC: %DETECTED_NIC%
-ECHO Running test target %TARGET% for detected NIC: %DETECTED_NIC% >> ARTIFACT\HWCTEST.LOG
-MAKE -f%MKFILE% -DCARD_%DETECTED_NIC%=1 %TARGET%
+
+ECHO invoke: MAKE -f%MKFILE% -DCARD_%DETECTED_NIC% %ROMTEST% %TARGET% >> %LOGFILE%
+ECHO invoke: MAKE -f%MKFILE% -DCARD_%DETECTED_NIC% %ROMTEST% %TARGET%
+
+MAKE -f%MKFILE% -DCARD_%DETECTED_NIC% %ROMTEST% %TARGET%
 IF ERRORLEVEL 1 GOTO FAIL
 
 REM Create post-configurative config dump using original 3C5X0CFG binary
-ECHO Taking post-configuration dump using 3CCFGCLI >> ARTIFACT\HWCTEST.LOG
+ECHO Taking post-configuration dump using 3CCFGCLI >> %LOGFILE%
 ECHO Taking post-configuration dump using 3CCFGCLI
 REM clear keyboard input buffer
 stuffit 0
 REM load key macro sequence to control 3C5X9CFG to export a config dump
-stuffit +2 @62 +2 9 9 13 +2 9 13 +2 "ARTIFACT\%TARGET%.SET" +2 13 +1 27 27 13
+stuffit +2 @62 +2 9 9 13 +2 9 13 +2 "%ARTIFACT%\%TARGET%.SET" +2 13 +2 27 27 13
 3c5x9cfg
-IF NOT EXIST ARTIFACT\%TARGET%.SET GOTO FAIL
+IF NOT EXIST %ARTIFACT%\%TARGET%.SET GOTO FAIL
 
 GOTO OK
 
 
 :FAIL
 REM Deliberately return a nonzero DOS ERRORLEVEL.
-ECHO Hardware Compliance Test FAILED. >> ARTIFACT\HWCTEST.LOG
-ECHO Hardware Compliance Test FAILED.
-FIND "HWC-FAILURE-SENTINEL" ARTIFACT\HWCTEST.LOG > NUL
+ECHO Hardware Compliance Test FAILED. See %LOGFILE% for more details. >> %LOGFILE%
+ECHO Hardware Compliance Test FAILED. See %LOGFILE% for more details.
+FIND "HWC-FAILURE-SENTINEL" %LOGFILE% > NUL
 GOTO END
 
 :OK
-ECHO Hardware Compliance Test PASSED. >> ARTIFACT\HWCTEST.LOG
+ECHO Hardware Compliance Test PASSED. >> %LOGFILE%
 ECHO Hardware Compliance Test PASSED.
 REM Reset ERRORLEVEL to zero using text known to exist in a successful LIST.
-FIND "3Com " ARTIFACT\HWCTEST.LOG > NUL
+FIND "3Com " %LOGFILE% > NUL
 
 :END
