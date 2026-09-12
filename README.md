@@ -1,13 +1,17 @@
 # 3CCFG CLI
 
+[![JUnit Tests](https://github.com/gpdm/TPC-3CCFGCLI/actions/workflows/junit-report.yml/badge.svg)](https://github.com/gpdm/TPC-3CCFGCLI/actions/workflows/junit-report.yml)
+
 ```text
 +-----------------------------------------------------------------------------------+
 |                                                                                   |
 |  EXPERIMENTAL RELEASE, LIMITED HARDWARE TESTING                                   |
 |                                                                                   |
-|  This release has only undergone limited testing on physical hardware.            |
-|  Bugs and unexpected behaviors may be present.                                    |
-|  GENERALLY CONSIDERED UNSAFE ARE /BADDR AND /BSIZE OPERATIONS, REST SHOULD WORK   |
+|  3CCFGLI has seen limited hardware testing on a real 3C509B-TPC NIC.              |
+|  Other models have not yet been tested in the real world, bugs may be present!    |
+|                                                                                   |
+|  Generally, all config verbs are expected to behave correctly at this time.       |
+|  TO BE CONSIDERED AS *UNSAFE* ARE /BADDR AND /BSIZE OPERATIONS.                   |
 |  USE ENTIRELY AT YOUR OWN RISK.                                                   |
 |                                                                                   |
 +-----------------------------------------------------------------------------------+
