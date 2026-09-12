@@ -1,0 +1,30 @@
+name: JUnit Test Report
+
+on:
+  push:
+    paths:
+      # Löst aus, sobald IRGENDEINE XML-Datei im Ordner LOGS geändert oder hinzugefügt wird:
+      - 'LOGS/**/*.XML'
+      - 'LOGS/**/*.xml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  render-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: JUnit Report aufbereiten
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: 'Hardware Test Suite Results'
+          # Sucht rekursiv nach ALLEN XML-Dateien im Ordner LOGS:
+          path: 'LOGS/**/*.XML'
+          reporter: java-junit
+          fail-on-error: false
