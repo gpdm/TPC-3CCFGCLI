@@ -3,7 +3,6 @@ name: JUnit Test Report
 on:
   push:
     paths:
-      # Trigger whenever a generated JUnit report is added or changed.
       - 'LOGS/**/*.JUNIT.XML'
 
   workflow_dispatch:
@@ -13,22 +12,61 @@ permissions:
   checks: write
 
 jobs:
-  render-report:
+  regression:
+    name: Regression Tests
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Render JUnit reports
+      - name: Render regression tests
         uses: dorny/test-reporter@v3
         if: always()
         with:
-          name: '3CCFGCLI Test Results'
-          path: 'LOGS/**/*.JUNIT.XML'
+          name: '3CCFGCLI Regression Tests'
+          path: 'LOGS/TEST/*.JUNIT.XML'
           reporter: java-junit
 
-          report-title: '3CCFGCLI Test Results'
+          report-title: '3CCFGCLI Regression Tests'
+          use-actions-summary: true
+
+          list-suites: all
+          list-tests: all
+          collapsed: never
+
+          fail-on-error: false
+          fail-on-empty: false
+
+
+  hardware-compliance:
+    name: HWC - ${{ matrix.model }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        model:
+          - BTP
+          - BCOAX
+          - BCOMBO
+          - BTPO
+          - BTPC
+          - TP
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Render HWC ${{ matrix.model }}
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: 'Hardware Compliance - ${{ matrix.model }}'
+          path: 'LOGS/HWC/${{ matrix.model }}/*.JUNIT.XML'
+          reporter: java-junit
+
+          report-title: 'Hardware Compliance - ${{ matrix.model }}'
           use-actions-summary: true
 
           list-suites: all
