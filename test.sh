@@ -101,6 +101,33 @@ test_hwlimits() {
 }
 
 
+
+# This test verifies that 3CCFGCLI can handle single-PIC configurations.
+# On a true 8086/8088 system with the original PC/XT bus, there would be
+# only one PIC available, thus limitting the allowed IRQ values.
+#
+test_pic() {
+  local conf
+  conf=$(mktemp "/tmp/autoexec-test.XXXXXX")
+  local template="autoexec-test"
+
+  echo "Running PC Interrupt Controller tests ..." >> "${TEST_LOG}"
+
+  # clear old logs - if any ...
+  find "${ARTIFACT_DIR}" -maxdepth 1 -type f -name 'PIC*.LOG' -exec rm -f {} \;
+
+  sed -e "s:CALL TEST:CALL TEST PIC_GATE:g" -e $'/\\[dosbox\\]/a\\\nenable slave pic = false\\\nenable pc nmi mask = true\\\n' "${template}" > "${conf}"
+  
+  echo "Dispatching tests to DOSBox-X ..." >> "${TEST_LOG}"
+  "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
+  # FIXME check return code for imminent fail
+  rm -f "$conf"
+
+  echo "PC Interrupt Controller tests: run completed" >> "${TEST_LOG}"
+}
+
+
+
 # Agent doesn't like if there's no output for prolonged time.
 # Let's simply tail the log continuosly to the terminal
 tail -f ${TEST_LOG} &
@@ -110,8 +137,7 @@ TAIL_PID=$!
 # run tests in sequence
 # chaining only on successful assertion of previous tests
 #
-test_regressions && test_saveconfig_line_lengths && test_hwlimits
-
+test_regressions && test_saveconfig_line_lengths && test_hwlimits && test_pic
 
 # render junit xml file if uv is available
 #
@@ -136,12 +162,14 @@ kill -INT ${TAIL_PID} 2>&1 >/dev/null
 # assume fail by default, and only clear the fail flags if the tests pass.
 SMOKE_FAIL=1
 SAVECONFIG_FAIL=1
+PIC_FAIL=1
 HWLIMIT_FAIL=1
 
 # run completed usually means success, but there may be exceptions
 grep -q '^Smoke test: run completed' "${TEST_LOG}" && SMOKE_FAIL=0
 grep -q '^SAVECONFIG: run completed' "${TEST_LOG}" && SAVECONFIG_FAIL=0
 grep -q '^Hardware Limit test: run completed' "${TEST_LOG}" && HWLIMIT_FAIL=0
+grep -q '^PC Interrupt Controller tests: run completed' "${TEST_LOG}" && PIC_FAIL=0
 
 # check defined vs. executed tests and see if we anyway
 # had a delta, which would indicate a failure.
@@ -154,17 +182,18 @@ cat <<EOF | tee >> "${TEST_LOG}"
 
 Test summary
 ============
-Smoke Test            : $( (( SMOKE_FAIL + TESTS_FAILED == 0 )) && echo SUCCESS || echo FAILED )
-    Defined Tests     : ${TESTS_DEFINED}
-    Executed Tests    : ${TESTS_PASSED}
-    Failed Tests      : $( (( TESTS_FAILED == 0 )) && echo NONE || echo YES )
-SAVECONFIG Test       : $( (( SAVECONFIG_FAIL == 0 )) && echo SUCCESS || echo FAILED )
-Hardware Limit Test   : $( (( HWLIMIT_FAIL == 0 )) && echo SUCCESS || echo FAILED )
+Smoke Test                   : $( (( SMOKE_FAIL + TESTS_FAILED == 0 )) && echo SUCCESS || echo FAILED )
+    Defined Tests            : ${TESTS_DEFINED}
+    Executed Tests           : ${TESTS_PASSED}
+    Failed Tests             : $( (( TESTS_FAILED == 0 )) && echo NONE || echo YES )
+SAVECONFIG Test              : $( (( SAVECONFIG_FAIL == 0 )) && echo SUCCESS || echo FAILED )
+Hardware Limit Test          : $( (( HWLIMIT_FAIL == 0 )) && echo SUCCESS || echo FAILED )
+PC Interrupt Controller Test : $( (( PIC_FAIL == 0 )) && echo SUCCESS || echo FAILED )
 
-Overall result        : $( (( SMOKE_FAIL + SAVECONFIG_FAIL + HWLIMIT_FAIL + TESTS_FAILED > 0 )) && echo FAIL || echo PASS )
+Overall result        : $( (( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + TESTS_FAILED > 0 )) && echo FAIL || echo PASS )
 
 EOF
 
 # emmit return code based on assertions of the individual tests.
 #
-exit $(( SMOKE_FAIL + SAVECONFIG_FAIL + HWLIMIT_FAIL + TESTS_FAILED > 0 ))
+exit $(( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + TESTS_FAILED > 0 ))

@@ -216,6 +216,7 @@ CFG_ERR_FD_UNSUPPORTED_CARD EQU 77
 CFG_ERR_PNP_UNSUPPORTED_CARD EQU 78
 CFG_ERR_TR_AUTO_UNSUPPORTED_CARD EQU 79
 CFG_ERR_BOOTROM_UNSUPPORTED_CARD EQU 80
+CFG_ERR_INT_REQUIRES_SLAVE_PIC EQU 81
 
 DATASEG
 
@@ -290,6 +291,11 @@ msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 
 msg_cfg_bad_int DB "Invalid /INT parameter. Value must be either of", 0Dh, 0Ah
                 DB "Systems with 8-bit Bus: 3, 5, 7", 0Dh, 0Ah
                 DB "Systems with 16-bit Bus: 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
+msg_cfg_pic_warning_prefix DB "WARNING: IRQ ", '$'
+msg_cfg_pic_warning_suffix DB " requires a secondary interrupt controller,", 0Dh, 0Ah
+                           DB "but no secondary PIC was detected on this system.", 0Dh, 0Ah, '$'
+msg_cfg_pic_gate_error DB "Requested IRQ requires a secondary interrupt controller,", 0Dh, 0Ah
+                       DB "but no secondary PIC was detected on this system.", 0Dh, 0Ah, '$'
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
 msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER.", 0Dh, 0Ah, '$'
@@ -539,6 +545,11 @@ id_oem1         DW  0
 id_oem2         DW  0
 id_addr_cfg     DW  0
 id_resource_cfg DW  0
+
+; Host PIC topology state used only by the /INT configuration gate.
+; pic_gate_enforce = 0 warns and continues, nonzero rejects the selection.
+pic_slave_present DB 0
+pic_gate_enforce   DB 0
 
 ; Temporary live EEPROM values used only by the LIST output.
 ; These are deliberately separate from nic_table so the known good 16 byte
@@ -872,6 +883,7 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_pnp_unsupported_card          ; 78 CFG_ERR_PNP_UNSUPPORTED_CARD
     DW      OFFSET msg_cfg_tr_auto_unsupported_card      ; 79 CFG_ERR_TR_AUTO_UNSUPPORTED_CARD
     DW      OFFSET msg_cfg_bootrom_unsupported_card      ; 80 CFG_ERR_BOOTROM_UNSUPPORTED_CARD
+    DW      OFFSET msg_cfg_pic_gate_error                ; 81 CFG_ERR_INT_REQUIRES_SLAVE_PIC
 LABEL cfg_error_messages_end WORD
 
 CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2
@@ -922,6 +934,47 @@ PROC Nic_IdPort_Read_Word NEAR
     pop     cx
     ret
 ENDP Nic_IdPort_Read_Word
+
+; Probe the secondary 8259 interrupt mask register at I/O port A1h.
+; The original mask is restored before the saved interrupt state is restored.
+PROC Cfg_Probe_Secondary_PIC NEAR
+    pushf
+    cli
+    push    ax
+    push    bx
+    push    dx
+
+    mov     dx, 0A1h
+    in      al, dx
+    mov     bl, al
+
+    mov     al, 55h
+    out     dx, al
+    in      al, dx
+    cmp     al, 55h
+    jne     @@Absent
+
+    mov     al, 0AAh
+    out     dx, al
+    in      al, dx
+    cmp     al, 0AAh
+    jne     @@Absent
+
+    mov     [pic_slave_present], 1
+    jmp     @@Restore
+
+@@Absent:
+    mov     [pic_slave_present], 0
+
+@@Restore:
+    mov     al, bl
+    out     dx, al
+    pop     dx
+    pop     bx
+    pop     ax
+    popf
+    ret
+ENDP Cfg_Probe_Secondary_PIC
 
 ; ----------------------------------------------------------------------------
 ; Program entry
@@ -2846,9 +2899,9 @@ PROC Cfg_Dispatch_Property NEAR
 ENDP Cfg_Dispatch_Property
 
 ; Property handler entry points receive SI = value pointer and CX = value length.
-; /INT validates its accepted value and stages it without hardware access.
+; /INT validates its accepted value, applies the host PIC gate, and stages it.
 ; /IOBASE and /PNP likewise parse and stage only.  No property handler
-; performs hardware access directly.
+; performs NIC hardware access directly.
 ; Input SI = /INT value pointer, CX = value length.
 ; Accepted canonical decimal forms are exactly:
 ;   3, 5, 7, 9, 10, 11, 12, 15
@@ -2900,9 +2953,29 @@ PROC Cfg_Handle_INT NEAR
     add     al, 10
 
 @@Accepted:
+    cmp     al, 9
+    jb      @@StoreAccepted
+
+    call    Cfg_Probe_Secondary_PIC
+    cmp     [pic_slave_present], 0
+    jne     @@StoreAccepted
+    cmp     [pic_gate_enforce], 0
+    jne     @@PicGateError
+
+    mov     dx, OFFSET msg_cfg_pic_warning_prefix
+    call    Print_String
+    call    Print_DecByte
+    mov     dx, OFFSET msg_cfg_pic_warning_suffix
+    call    Print_String
+
+@@StoreAccepted:
     mov     [cfg_int_value], al
     or      [cfg_parse_flags], CFG_PARSE_INT
     mov     [cfg_last_error], CFG_ERR_NONE
+    jmp     @@Done
+
+@@PicGateError:
+    mov     [cfg_last_error], CFG_ERR_INT_REQUIRES_SLAVE_PIC
     jmp     @@Done
 
 @@Invalid:

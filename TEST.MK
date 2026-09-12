@@ -89,6 +89,10 @@ VERIFICATION_CONTROL_FLOW: t17xx t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708
 # Base: 1800
 3C509_REV1: t18xx t1801 t1802 t1803 t1804 t1805 t1806 t1807 t1808
 
+# Base: 1900
+# NOTE: This group is deliberately not included in smoke-core.
+#       It will be called up during standalone tests from test.sh.
+PIC_GATE: t19xx t1901 t1902
 
 # Test Case Definitions
 # #####################
@@ -1640,6 +1644,29 @@ t1808:
    @echo [t1808] PASSED  >> $(TESTLOG)
 
 
+t19xx:
+   @echo [t19xx] PIC_GATE:Verify IRQ gate behaviour on a single PIC system  >> $(TESTLOG)
+
+t1901:
+   @echo [t1901] single PIC permits low IRQ without warning  >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1901.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 >> $(ARTIFACTS)\T1901.LOG
+   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1901.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "secondary interrupt controller" $(ARTIFACTS)\T1901.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1901.LOG
+   FIND "IRQ = 5" $(ARTIFACTS)\T1901.LOG > NUL
+   @echo [t1901] PASSED  >> $(TESTLOG)
+
+t1902:
+   @echo [t1902] single PIC warns but permits high IRQ  >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1902.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 >> $(ARTIFACTS)\T1902.LOG
+   FIND "WARNING: IRQ 9 requires a secondary interrupt controller," $(ARTIFACTS)\T1902.LOG > NUL
+   FIND "but no secondary PIC was detected on this system." $(ARTIFACTS)\T1902.LOG > NUL
+   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1902.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1902.LOG
+   FIND "IRQ = 9" $(ARTIFACTS)\T1902.LOG > NUL
+   @echo [t1902] PASSED  >> $(TESTLOG)
 
 
 # ################################################################
