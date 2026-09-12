@@ -36,8 +36,6 @@ Usage:
 Examples:
 
   $0 image
-  $0 /dev/fd0
-  $0 /dev/sdb
   $0 /dev/disk4
 
 Modes:
@@ -52,10 +50,6 @@ Modes:
 
   DEVICE
       Copies the HWC test files to an existing DOS formatted floppy disk.
-
-      Linux examples:
-        /dev/fd0
-        /dev/sdb
 
       macOS example:
         /dev/disk4
@@ -79,22 +73,15 @@ is_standard_floppy_size()
 
 
 ###############################################################################
-# Detect operating system
+# Check operating system
 ###############################################################################
 
-case "$(uname -s)" in
-    Linux)
-        HOST_OS="linux"
-        ;;
+HOST_OS="$(uname -s)"
 
-    Darwin)
-        HOST_OS="macos"
-        ;;
-
-    *)
-        die "Unsupported operating system: $(uname -s)"
-        ;;
-esac
+if [[ "$HOST_OS" != "Darwin" ]]
+then
+    die "This script currently runs on macOS only. It has not been adapted or ported to Linux or other operating systems."
+fi
 
 
 
@@ -164,126 +151,12 @@ copy_payload()
         "HWCREAD.MK" \
         "HWCTEST.BAT" \
         "HWCWRITE.MK" \
-        "ASSERTRS/LFIND.BAT" \
         ::
-
-    echo "Verifying filesystem..."
-
-    mdir -i "$media" :: >/dev/null
 }
 
 
 ###############################################################################
-# 5a. Validate Linux floppy device
-###############################################################################
-
-validate_linux_floppy()
-{
-    local dev="$1"
-    local base
-    local props=""
-    local floppy=0
-    local type=""
-    local removable=""
-    local size=""
-
-    [[ -e "$dev" ]] ||
-        die "Device does not exist: $dev"
-
-    [[ -b "$dev" ]] ||
-        die "Not a block device: $dev"
-
-    base="$(basename "$dev")"
-
-    #
-    # Traditional Linux floppy controller
-    #
-    if [[ "$base" =~ ^fd[0-9]+$ ]]
-    then
-        floppy=1
-    fi
-
-    #
-    # USB floppy drive, if udev identifies it explicitly
-    #
-    if command -v udevadm >/dev/null 2>&1
-    then
-        props="$(
-            udevadm info \
-                --query=property \
-                --name="$dev" \
-                2>/dev/null || true
-        )"
-
-        if printf '%s\n' "$props" |
-           grep -q '^ID_DRIVE_FLOPPY=1$'
-        then
-            floppy=1
-        fi
-    fi
-
-    #
-    # Reject partitions
-    #
-    if command -v lsblk >/dev/null 2>&1
-    then
-        type="$(
-            lsblk -d -n -o TYPE "$dev" 2>/dev/null |
-            tr -d '[:space:]'
-        )"
-
-        case "$base" in
-            fd[0-9]*)
-                ;;
-            *)
-                [[ "$type" == "disk" ]] ||
-                    die "Device is not a whole disk device: $dev"
-                ;;
-        esac
-    fi
-
-    #
-    # Fallback for removable media with an exact standard floppy capacity
-    #
-    if [[ "$floppy" -eq 0 ]] &&
-       command -v lsblk >/dev/null 2>&1 &&
-       command -v blockdev >/dev/null 2>&1
-    then
-        removable="$(
-            lsblk -d -n -o RM "$dev" 2>/dev/null |
-            tr -d '[:space:]'
-        )"
-
-        size="$(
-            blockdev --getsize64 "$dev" 2>/dev/null ||
-            true
-        )"
-
-        if [[ "$removable" == "1" ]] &&
-           is_standard_floppy_size "$size"
-        then
-            floppy=1
-        fi
-    fi
-
-    [[ "$floppy" -eq 1 ]] ||
-        die "Device does not appear to be a floppy disk drive: $dev"
-
-    #
-    # Do not write through a mounted filesystem
-    #
-    if command -v findmnt >/dev/null 2>&1
-    then
-        if findmnt -rn -S "$dev" >/dev/null 2>&1
-        then
-            die "Device is mounted. Unmount it before running this script."
-        fi
-    fi
-}
-
-
-###############################################################################
-# 5b. Validate macOS floppy device
+# Validate macOS floppy device
 ###############################################################################
 
 validate_macos_floppy()
@@ -355,22 +228,14 @@ validate_macos_floppy()
 
 
 ###############################################################################
-# 5c. Check floppy and inserted disk
+# Check floppy and inserted disk
 ###############################################################################
 
 validate_floppy()
 {
     local dev="$1"
 
-    case "$HOST_OS" in
-        linux)
-            validate_linux_floppy "$dev"
-            ;;
-
-        macos)
-            validate_macos_floppy "$dev"
-            ;;
-    esac
+    validate_macos_floppy "$dev"
 
     [[ -r "$dev" ]] ||
         die "Device is not readable: $dev"

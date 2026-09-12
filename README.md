@@ -359,7 +359,7 @@ DOSBOX_BIN=/custom/path/dosbox-x ./test.sh
 
 ### Prerequisites
 
-* DOSBox-X installed.
+* `DOSBox-X` 
 
 * Wrapper scripts default to
   `/Applications/DOSBox-X.app/Contents/MacOS/dosbox-x` and can be overridden
@@ -368,7 +368,7 @@ DOSBOX_BIN=/custom/path/dosbox-x ./test.sh
 * The repository contains a local `./TASM` placeholder directory.
 
 * TASM, TLINK, and MAKE are not bundled with this repository. Install them
-  separately. The project was built around TASM 5.0, that's what I recommened.
+  separately. The project was built around `TASM 5.0`, that's what I recommened.
 
 * DOSBox X maps the current working directory as `C:`, so `./TASM` on the host
   corresponds to `\TASM` inside DOSBox X.
@@ -389,6 +389,16 @@ DOSBOX_BIN=/custom/path/dosbox-x ./test.sh
 
 * BUILD's MAKEFILE will automatically check for `C:\PKLITE\PKLITE.EXE` and
   create compress the main `3CCFGCLI.EXE` binary.
+
+* `Python 3` and `uv` for JUnit test report converter `testreport.py` 
+
+* `Borland MAKE 3.0` (i.e. from `TASM 2.0`) needed for Hardware Compliance Checks (HWC).
+  Must be available in `./TASM2/`
+
+* [STUFFIT](http://ftp.oldskool.org/pub/simtelnet/msdos/keyboard/stuff310.zip) for HWCs.
+  Must be available in `./STUFFIT`.
+
+  Mind: This is *NOT* Stuff-It Expander for the Mac, despite the same name!
  
 
 ### Build flow
