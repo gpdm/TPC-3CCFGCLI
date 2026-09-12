@@ -1,0 +1,34 @@
+3CSEED - 3C509B mock state seeder v0.7.5
+Seed file created (3C509-TP).
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+IOBASE parameter accepted. Requested IOBASE: 0210
+INT parameter accepted. Requested IRQ: 5
+MODEM parameter accepted. Requested setting: 9600
+TR parameter accepted. Requested transceiver: TP
+
+Configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509-TP: Ethernet Address = 02608C654321
+       EtherLink III 16-bit ISA NIC (ASIC Revision 1)
+       Connectors = TP, AUI
+       Full Duplex Capability = not supported
+       Plug and Play Capability = not supported
+              ---
+       IOBASE = 0210, IRQ = 5
+       Transceiver = on-board TP
+       Plug and Play = not supported
+       Boot ROM = disabled
+       Optimization = Server
+       MODEM Interrupt Disable Time = 500 us (9600 bd)
+       Full Duplex = not supported

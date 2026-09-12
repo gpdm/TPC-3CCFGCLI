@@ -1,0 +1,25 @@
+3CSEED - 3C509B mock state seeder v0.7.5
+Seed file created (INIT).
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Adapter 1 selected.
+TR parameter accepted. Requested transceiver: TP
+
+Reading current configuration...
+Current active IOBASE: 0300
+Current live Address Configuration: 0010
+Current live Resource Configuration: A000
+
+Preparing requested configuration...
+Prospective active IOBASE: 0300
+New live Address Configuration: 0010
+New live Resource Configuration: A000
+
+Transceiver type is already configured to the requested value.
+No hardware changes required.
+No hardware changes required.
+
+Configuration completed successfully.

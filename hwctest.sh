@@ -692,7 +692,16 @@ run_import_option()
 
 post_import_test_check()
 {
-    :
+    # HWCTEST.BAT always dumps a HWCR.SET or HWCW.SET config dump
+    # as a final step, we should see if the result matches our expectations
+    # based on the actual test run.
+    #
+    # Due to resource limits of the hardware testing environment,
+    # this check cannot run through nested MAKE targets.
+    # Therefore, I simply implement a post-processing check here.
+    # Some AWK voodoo will surely do the trick!
+
+
 }
 
 

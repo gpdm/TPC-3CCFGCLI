@@ -1,0 +1,25 @@
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Adapter 1 selected.
+MODEM parameter accepted. Requested setting: 1200
+
+Reading current configuration...
+Current active IOBASE: 0300
+Current live Address Configuration: 0010
+Current live Resource Configuration: A000
+Current EEPROM word 0Dh: 3310
+
+Preparing requested configuration...
+Prospective active IOBASE: 0300
+New live Address Configuration: 0010
+New live Resource Configuration: A000
+New EEPROM word 0Dh: 3310
+
+Modem speed setting is already configured to the requested value.
+No hardware changes required.
+No hardware changes required.
+
+Modem speed configuration completed successfully.

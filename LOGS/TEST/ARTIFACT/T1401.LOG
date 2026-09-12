@@ -1,0 +1,70 @@
+3CSEED - 3C509B mock state seeder v0.7.5
+Seed file created (INIT).
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Adapter 1 selected.
+IOBASE parameter accepted. Requested IOBASE: 0280
+INT parameter accepted. Requested IRQ: 5
+
+Reading current configuration...
+Current active IOBASE: 0300
+Current persistent IOBASE: 0300
+Current EEPROM word 08h: 0010
+Current live IOBASE: 0300
+Current live Address Configuration: 0010
+Current IRQ: 10
+Current live IRQ: 10
+Current EEPROM word 09h: A000
+Current live Resource Configuration: A000
+
+Preparing requested configuration...
+Prospective active IOBASE: 0280
+New EEPROM word 08h: 0008
+New live Address Configuration: 0008
+New EEPROM word 09h: 5000
+New live Resource Configuration: 5000
+
+Deactivating selected adapter at old IOBASE...
+Reactivating adapter at requested IOBASE...
+
+Writing changed EEPROM configuration...
+I/O configuration word written.
+IRQ configuration word written.
+
+Updating EEPROM checksum...
+EEPROM checksum updated.
+
+Synchronizing live configuration...
+
+Verifying requested configuration...
+Adapter reachable at active IOBASE: 0280
+EEPROM IOBASE verified: 0280
+Live IOBASE verified: 0280
+EEPROM IRQ verified: 5
+Live IRQ verified: 5
+
+IOBASE and IRQ configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509B-TP: Ethernet Address = 02608C654321
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
+       Connectors = TP, AUI
+       Full Duplex Capability = yes
+       Plug and Play Capability = yes
+              ---
+       IOBASE = 0280, IRQ = 5
+       Transceiver = on-board TP
+       Plug and Play = enabled
+       Boot ROM = disabled
+       Optimization = DOS
+       MODEM Interrupt Disable Time = 25 us
+       Full Duplex = disabled

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites name="3CCFGCLI Regression Tests" tests="11" failures="0" errors="0" skipped="1" time="0.0">
+	<testsuite name="HWCW_WRITE" tests="11" errors="0" failures="0" skipped="1" time="0">
+		<properties>
+			<property name="header_id" value="HWCW00xx"/>
+			<property name="description" value="Hardware Compliance Write checks for $(CARDNAME)"/>
+		</properties>
+		<testcase name="hwcw001" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="Reading 3C509B-TPCoax identity and capabilities"/>
+				<property name="artifact" value="ARTIFACT/HWCW001.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcw002" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="3CCFGCLI /INT writer, fresh LIST readback"/>
+				<property name="artifact" value="ARTIFACT/HWCW002.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcw003" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="3CCFGCLI /IOBASE writer, fresh LIST readback"/>
+				<property name="artifact" value="ARTIFACT/HWCW003.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcw004" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="3CCFGCLI /PNP writer, fresh LIST readback"/>
+				<property name="artifact" value="ARTIFACT/HWCW004.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcw005" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="3CCFGCLI /MODEM writer, fresh LIST readback"/>
+				<property name="artifact" value="ARTIFACT/HWCW005.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcw006" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="3CCFGCLI /FULLDUPLEX writer, fresh LIST readback"/>
+				<property name="artifact" value="ARTIFACT/HWCW006.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcw007" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="3CCFGCLI /OPTIMIZE writer, fresh LIST readback"/>
+				<property name="artifact" value="ARTIFACT/HWCW007.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcw008" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="3CCFGCLI /TR:COAX writer, fresh LIST readback"/>
+				<property name="artifact" value="ARTIFACT/HWCW008.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcw009" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="Reading combined hardware state through SAVECONFIG"/>
+				<property name="artifact" value="ARTIFACT/HWCW009.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcw010" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="3CCFGCLI multi-property CONFIGURE transaction"/>
+				<property name="artifact" value="ARTIFACT/HWCW010.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcw051" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="Boot ROM testing is currently not implemented for 3C509B-TPCoax."/>
+			</properties>
+			<skipped message="NOT IMPLEMENTED"/>
+		</testcase>
+	</testsuite>
+</testsuites>

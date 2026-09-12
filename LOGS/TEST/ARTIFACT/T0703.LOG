@@ -1,0 +1,29 @@
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Adapter 1 selected.
+FULLDUPLEX parameter accepted. Requested mode: disabled
+
+Reading current configuration...
+Current active IOBASE: 0300
+Current live Address Configuration: 0010
+Current live Resource Configuration: A000
+
+Preparing requested configuration...
+Prospective active IOBASE: 0300
+New live Address Configuration: 0010
+New live Resource Configuration: A000
+
+Writing changed EEPROM configuration...
+Full duplex configuration word written.
+
+Updating EEPROM checksum...
+EEPROM checksum updated.
+
+Verifying requested configuration...
+EEPROM full duplex mode verified.
+Live Network Diagnostic full duplex mode verified.
+
+Full duplex configuration completed successfully.

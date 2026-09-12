@@ -1,0 +1,56 @@
+3CSEED - 3C509B mock state seeder v0.7.5
+Seed file created (INIT).
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Adapter 1 selected.
+PNP parameter accepted. Requested Plug and Play mode: disabled
+MODEM parameter accepted. Requested setting: 9600
+
+Reading current configuration...
+Current active IOBASE: 0300
+Current live Address Configuration: 0010
+Current live Resource Configuration: A000
+Current EEPROM word 0Dh: 0010
+
+Preparing requested configuration...
+Prospective active IOBASE: 0300
+New live Address Configuration: 0010
+New live Resource Configuration: A000
+New EEPROM word 0Dh: 1310
+
+Writing changed EEPROM configuration...
+Modem speed configuration word written.
+Plug and Play configuration word written.
+
+Updating EEPROM checksum...
+EEPROM checksum updated.
+
+Verifying requested configuration...
+EEPROM Plug and Play mode verified.
+EEPROM modem speed setting verified.
+
+Configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509B-TP: Ethernet Address = 02608C654321
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
+       Connectors = TP, AUI
+       Full Duplex Capability = yes
+       Plug and Play Capability = yes
+              ---
+       IOBASE = 0300, IRQ = 10
+       Transceiver = on-board TP
+       Plug and Play = disabled
+       Boot ROM = disabled
+       Optimization = DOS
+       MODEM Interrupt Disable Time = 500 us (9600 bd)
+       Full Duplex = disabled

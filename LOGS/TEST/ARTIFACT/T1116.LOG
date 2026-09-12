@@ -1,0 +1,8 @@
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+BADDRESS parameter accepted. Requested base address: C2000H
+BSIZE parameter accepted. Requested size: 16K
+Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps.

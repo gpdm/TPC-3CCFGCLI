@@ -1,0 +1,51 @@
+3CSEED - 3C509B mock state seeder v0.7.5
+Seed file created (INIT).
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Adapter 1 selected.
+MODEM parameter accepted. Requested setting: 1200
+
+Reading current configuration...
+Current active IOBASE: 0300
+Current live Address Configuration: 0010
+Current live Resource Configuration: A000
+Current EEPROM word 0Dh: 0010
+Current EEPROM word 0Dh: DOS
+
+Preparing requested configuration...
+Prospective active IOBASE: 0300
+New live Address Configuration: 0010
+New live Resource Configuration: A000
+New EEPROM word 0Dh: 3330
+New EEPROM word 0Dh: Server
+
+Writing changed EEPROM configuration...
+
+    /INT:N                         Set IRQ (3,5,7,9,10,11,12,15).
+    /IOBASE:NNN                    Set ISA IOBASE address (hex).
+    /PNP:ENABLED|DISABLED          Plug and Play mode.
+    /FULLDUPLEX:ENABLED|DISABLED   Full duplex mode.
+    /TR:TP|AUI|COAX|AUTO           Transceiver type.
+    /XCVR:...                      Alias for /TR.
+    /MODEM:N|NONE                  Modem speed/interrupt-disable tuning.
+    /OPTIMIZE:DOS|WINDOWS|OS/2|SERVER
+                                   Network workload optimization.
+    /BADDRESS:NNNNN                Boot ROM base (hex, C0000-DE000,
+                                   2000h steps); requires /BSIZE.
+    /BSIZE:8|16|32|DISABLED       Boot ROM size in KB, or DISABLED;
+                                   a size requires /BADDRESS.
+
+Global options (valid with any command):
+  /VERBOSE                       Show verbose transaction details.
+
+Updating EEPROM checksum...
+EEPROM checksum updated.
+
+Verifying requested configuration...
+EEPROM modem speed setting verified.
+EEPROM optimize mode verified.
+
+Configuration completed successfully.

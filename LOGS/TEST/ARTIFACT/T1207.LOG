@@ -1,0 +1,52 @@
+3CSEED - 3C509B mock state seeder v0.7.5
+Seed file created (3C509B-COMBO).
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509B-Combo: Ethernet Address = 02608C654321
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
+       Connectors = TP, AUI, COAX
+       Full Duplex Capability = yes
+       Plug and Play Capability = yes
+              ---
+       IOBASE = 0300, IRQ = 10
+       Transceiver = on-board TP
+       Plug and Play = enabled
+       Boot ROM = disabled
+       Optimization = DOS
+       MODEM Interrupt Disable Time = 25 us
+       Full Duplex = disabled
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+TR parameter accepted. Requested transceiver: COAX
+
+Configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509B-Combo: Ethernet Address = 02608C654321
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
+       Connectors = TP, AUI, COAX
+       Full Duplex Capability = yes
+       Plug and Play Capability = yes
+              ---
+       IOBASE = 0300, IRQ = 10
+       Transceiver = on-board coax
+       Plug and Play = enabled
+       Boot ROM = disabled
+       Optimization = DOS
+       MODEM Interrupt Disable Time = 25 us
+       Full Duplex = disabled

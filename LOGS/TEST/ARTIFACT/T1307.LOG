@@ -1,0 +1,53 @@
+3CSEED - 3C509B mock state seeder v0.7.5
+Seed file created (INIT).
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Configuration restore batch file created: RESTORE.BAT
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Configuration restore batch file created: LOGS\TEST\ARTIFACT\VERBSC.BAT
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Usage: 3CCFGCLI [COMMAND]
+
+Commands:
+  /? or /H
+    Display this help screen.
+
+  LIST
+    Detect and display 3C509 and 3C509B adapters.
+
+  SAVECONFIG [/OUTPUTFILE:file] [/EXECFILE:program]
+    Export all adapter configurations to a restore batch file.
+    /OUTPUTFILE overrides the output batch file (default: RESTORE.BAT).
+    /EXECFILE overrides the embedded program name (default: self).
+
+  CONFIGURE [options]
+    Configure ISA adapter properties. Options:
+
+    /ADAPTERNUM:N                  Select adapter N (from LIST).
+    /INT:N                         Set IRQ (3,5,7,9,10,11,12,15).
+    /IOBASE:NNN                    Set ISA IOBASE address (hex).
+    /PNP:ENABLED|DISABLED          Plug and Play mode.
+    /FULLDUPLEX:ENABLED|DISABLED   Full duplex mode.
+    /TR:TP|AUI|COAX|AUTO           Transceiver type.
+    /XCVR:...                      Alias for /TR.
+    /MODEM:N|NONE                  Modem speed/interrupt-disable tuning.
+    /OPTIMIZE:DOS|WINDOWS|OS/2|SERVER
+                                   Network workload optimization.
+    /BADDRESS:NNNNN                Boot ROM base (hex, C0000-DE000,
+                                   2000h steps); requires /BSIZE.
+    /BSIZE:8|16|32|DISABLED       Boot ROM size in KB, or DISABLED;
+                                   a size requires /BADDRESS.
+
+Global options (valid with any command):
+  /VERBOSE                       Show verbose transaction details.

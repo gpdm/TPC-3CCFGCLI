@@ -1,0 +1,124 @@
+3CSEED - 3C509B mock state seeder v0.7.5
+Seed file created (INIT).
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Adapter 1 selected.
+INT parameter accepted. Requested IRQ: 5
+PNP parameter accepted. Requested Plug and Play mode: disabled
+MODEM parameter accepted. Requested setting: 9600
+FULLDUPLEX parameter accepted. Requested mode: enabled
+
+Reading current configuration...
+Current active IOBASE: 0300
+Current live Address Configuration: 0010
+Current IRQ: 10
+Current live IRQ: 10
+Current EEPROM word 09h: A000
+Current live Resource Configuration: A000
+Current EEPROM word 0Dh: 0010
+
+Preparing requested configuration...
+Prospective active IOBASE: 0300
+New live Address Configuration: 0010
+New EEPROM word 09h: 5000
+New live Resource Configuration: 5000
+New EEPROM word 0Dh: 9310
+
+Preparing adapter using original ISA activation sequence...
+
+Writing changed EEPROM configuration...
+IRQ configuration word written.
+Full duplex configuration word written.
+Plug and Play configuration word written.
+
+Updating EEPROM checksum...
+EEPROM checksum updated.
+
+Synchronizing live configuration...
+
+Verifying requested configuration...
+EEPROM IRQ verified: 5
+Live IRQ verified: 5
+EEPROM Plug and Play mode verified.
+EEPROM modem speed setting verified.
+EEPROM full duplex mode verified.
+Live Network Diagnostic full duplex mode verified.
+
+Configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Adapter 1 selected.
+BADDRESS parameter accepted. Requested base address: C8000H
+BSIZE parameter accepted. Requested size: 8K
+
+Reading current configuration...
+Current active IOBASE: 0300
+Current live Address Configuration: 0010
+Current live Resource Configuration: 5000
+Current EEPROM word 0Dh: DOS
+
+Preparing requested configuration...
+Prospective active IOBASE: 0300
+New live Address Configuration: 0410
+New live Resource Configuration: 5000
+New EEPROM word 0Dh: Server
+
+Writing changed EEPROM configuration...
+Boot ROM configuration word written.
+
+    /INT:N                         Set IRQ (3,5,7,9,10,11,12,15).
+    /IOBASE:NNN                    Set ISA IOBASE address (hex).
+    /PNP:ENABLED|DISABLED          Plug and Play mode.
+    /FULLDUPLEX:ENABLED|DISABLED   Full duplex mode.
+    /TR:TP|AUI|COAX|AUTO           Transceiver type.
+    /XCVR:...                      Alias for /TR.
+    /MODEM:N|NONE                  Modem speed/interrupt-disable tuning.
+    /OPTIMIZE:DOS|WINDOWS|OS/2|SERVER
+                                   Network workload optimization.
+    /BADDRESS:NNNNN                Boot ROM base (hex, C0000-DE000,
+                                   2000h steps); requires /BSIZE.
+    /BSIZE:8|16|32|DISABLED       Boot ROM size in KB, or DISABLED;
+                                   a size requires /BADDRESS.
+
+Global options (valid with any command):
+  /VERBOSE                       Show verbose transaction details.
+
+Updating EEPROM checksum...
+EEPROM checksum updated.
+
+Synchronizing live configuration...
+
+Verifying requested configuration...
+EEPROM optimize mode verified.
+EEPROM Boot ROM base address verified.
+EEPROM Boot ROM size verified.
+Live Boot ROM configuration verified.
+
+Configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509B-TP: Ethernet Address = 02608C654321
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
+       Connectors = TP, AUI
+       Full Duplex Capability = yes
+       Plug and Play Capability = yes
+              ---
+       IOBASE = 0300, IRQ = 5
+       Transceiver = on-board TP
+       Plug and Play = disabled
+       Boot ROM = 8K at C8000H
+       Optimization = Server
+       MODEM Interrupt Disable Time = 500 us (9600 bd)
+       Full Duplex = enabled

@@ -1,0 +1,21 @@
+3Com EtherLink III CLI Configuration Program v0.7.5
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509B-TPCoax: Ethernet Address = 00104B0442BF
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
+       Connectors = TP, COAX
+       Full Duplex Capability = yes
+       Plug and Play Capability = yes
+              ---
+       IOBASE = 0300, IRQ = 10
+       Transceiver = on-board TP
+       Plug and Play = enabled
+       Boot ROM = disabled
+       Optimization = DOS
+       MODEM Interrupt Disable Time = 1600 us (NONE)
+       Full Duplex = disabled
