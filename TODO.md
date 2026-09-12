@@ -16,10 +16,3 @@ This file documents pending items, in no particular order or priority.
   same IOBASE and the original 3C5X9CFG utility. Determine whether the
   original utility handles this conflict gracefully or simply fails. Until
   confirmed, retain the conservative failure expectation in t1505.
-  
-## Enhancements
-
-### [Enhancement] Would be interesting to write a detection capability for 8-bit/16-bit bus.
-
-Could be use to dynamically narrow-down the allowed IRQs for 8-bit bus systems.
-Not strictly needed, but nice to have.
