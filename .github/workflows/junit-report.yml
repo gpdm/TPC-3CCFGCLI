@@ -3,7 +3,9 @@ name: JUnit Test Report
 on:
   push:
     paths:
+      # Trigger whenever a generated JUnit report is added or changed.
       - 'LOGS/**/*.JUNIT.XML'
+
   workflow_dispatch:
 
 permissions:
@@ -18,28 +20,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Render regression tests
+      - name: Render JUnit reports
         uses: dorny/test-reporter@v3
         if: always()
         with:
-          name: 'Regression Tests'
-          path: 'LOGS/TEST/*.JUNIT.XML'
+          name: '3CCFGCLI Test Results'
+          path: 'LOGS/**/*.JUNIT.XML'
           reporter: java-junit
-          fail-on-error: false
+
+          report-title: '3CCFGCLI Test Results'
+          use-actions-summary: true
+
           list-suites: all
           list-tests: all
-          list-files: none
           collapsed: never
 
-      - name: Render hardware compliance tests
-        uses: dorny/test-reporter@v3
-        if: always()
-        with:
-          name: 'Hardware Compliance Tests'
-          path: 'LOGS/HWC/*.JUNIT.XML'
-          reporter: java-junit
           fail-on-error: false
-          list-suites: all
-          list-tests: all
-          list-files: none
-          collapsed: never
+          fail-on-empty: false
