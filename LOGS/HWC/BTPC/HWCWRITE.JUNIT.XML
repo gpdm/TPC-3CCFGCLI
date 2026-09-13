@@ -71,9 +71,9 @@
 			</properties>
 			<skipped message="NOT IMPLEMENTED"/>
 		</testcase>
-		<testcase name="hwcs001: Verifying common configured state" classname="HWCW_WRITE">
+		<testcase name="hwcs001: Verify 3C5X9CFG post HWC configuration dump" classname="HWCW_WRITE">
 			<properties>
-				<property name="description" value="Verifying common configured state"/>
+				<property name="description" value="Verify 3C5X9CFG post HWC configuration dump"/>
 			</properties>
 		</testcase>
 	</testsuite>
