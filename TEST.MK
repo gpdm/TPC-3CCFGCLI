@@ -94,6 +94,15 @@ VERIFICATION_CONTROL_FLOW: t17xx t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708
 #       It will be called up during standalone tests from test.sh.
 PIC_GATE: t19xx t1901 t1902
 
+# Imported hardware compliance SET verification.
+# NOTE: This group is deliberately not included in smoke-core.
+#       HWC_SET_FILE, HWC_CARD and HWC_SET_LOG are supplied by hwctest.sh.
+#       The HWCSET names intentionally do not use the tNNNN namespace, because
+#       these checks are not part of the normal test.sh regression count.
+#HWC_SET_VERIFY: hwcs001
+hwc_set_verify: hwcs0xx hwcs001-$(HWC_CARD) hwcs-complete
+
+
 # Test Case Definitions
 # #####################
 
@@ -1643,7 +1652,6 @@ t1808:
    CALL $(ASSERTERS)\NFIND.BAT "BSIZE" $(ARTIFACTS)\T1808.BAT
    @echo [t1808] PASSED  >> $(TESTLOG)
 
-
 t19xx:
    @echo [t19xx] PIC_GATE:Verify IRQ gate behaviour on a single PIC system  >> $(TESTLOG)
 
@@ -1669,6 +1677,70 @@ t1902:
    @echo [t1902] PASSED  >> $(TESTLOG)
 
 
+# Hardware compliance SET verification.
+#
+# These checks validate the independent configuration dump written by the
+# original 3C5X9CFG utility after a hardware compliance run.  Only settings
+# for which the HWC run establishes a deterministic final state are checked.
+# Link Beat is deliberately not asserted because neither HWCREAD.MK nor
+# HWCWRITE.MK configures it.
+#
+# HWC_SET_FILE is the DOS path of HWCR.SET or HWCW.SET.
+# HWC_CARD is one of BTP, BCOAX, BCOMBO, BTPO, BTPC or TP.
+# HWC_SET_LOG is a dedicated result log supplied by hwctest.sh.
+
+hwcs0xx:
+   @echo HWC SET verification: Verify 3C5X9CFG post HWC configuration dump >> $(HWC_LOGFILE)
+
+hwcs001-common:
+   @echo [hwcs001].[common] Verifying common configured state >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@I/O base address:" "280H" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Interrupt request level:" " 3" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Boot PROM size:" "disabled" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Network driver optimization:" "server" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Maximum interrupt disable time:" "1300 microseconds" > NUL
+
+hwcs001-BTP: hwcs001-common
+   @echo [hwcs001].[btp] Verifying 3C509B TP final state >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "external" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Plug and Play Capability:" "disabled" > NUL
+   @echo [hwcs001].[btp] PASSED >> $(HWC_LOGFILE)
+
+hwcs001-BCOAX: hwcs001-common
+   @echo [hwcs001].[bcoax] Verifying 3C509B COAX final state >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Plug and Play Capability:" "disabled" > NUL
+   @echo [hwcs001].[bcoax] PASSED >> $(HWC_LOGFILE)
+
+hwcs001-BCOMBO: hwcs001-common
+   @echo [hwcs001].[bcombo] Verifying 3C509B Combo final state >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Plug and Play Capability:" "disabled" > NUL
+   @echo [hwcs001].[bcombo] PASSED >> $(HWC_LOGFILE)
+
+hwcs001-BTPO: hwcs001-common
+   @echo [hwcs001].[btpo] Verifying 3C509B TPO final state >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "on-board TP" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Plug and Play Capability:" "disabled" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Full Duplex:" "enabled" > NUL
+   @echo [hwcs001].[btpo] PASSED >> $(HWC_LOGFILE)
+
+hwcs001-BTPC: hwcs001-common
+   @echo [hwcs001].[btpc] Verifying 3C509B TPCoax final state >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Plug and Play Capability:" "disabled" > NUL
+   @echo [hwcs001].[btpc] PASSED >> $(HWC_LOGFILE)
+
+hwcs001-TP: hwcs001-common
+   @echo [hwcs001].[tp] Verifying 3C509 TP final state >> $(HWC_LOGFILE)
+   CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "external" > NUL
+   @echo [hwcs001].[tp] PASSED >> $(HWC_LOGFILE)
+
+hwcs-complete:
+   @echo HWC SET verification: run completed >> $(HWC_LOGFILE)
+   @echo HWC SET verification: run completed
+
+
 # ################################################################
 # The following are dummy definitions which exist only for declarative purposes.
 # These tests are actually run by test.sh itself and never actually
@@ -1681,14 +1753,14 @@ t1902:
 # actual regression tests.
 # check test_saveconfig_line_lengths() test_hwlimits() functions in test.sh instead.
 # ################################################################
-#
+
 # SAVECONFIG assertions (DUMMY DECLARATION ONLY)
 SAVECONFIG_ASSERTIONS: SC00xx SC0001
 SC00xx:
    @echo [SC00xx] DOS PSP Command Line Length Safety
 SC0001:
    @echo [SC0001] Max 128 byte line length for DOS PSP not exceeded
-#
+
 # Hardware Limit assertions (DUMMY DECLARATION ONLY)
 HARDWARE_LIMIT: HWL00xx HWL64 HWL128 HWL256
 HWL00xx:

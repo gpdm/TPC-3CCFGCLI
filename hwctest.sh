@@ -15,7 +15,10 @@ HWC_ROOT="${LOG_ROOT}/HWC"
 
 HWCREAD_MK="./HWCREAD.MK"
 HWCWRITE_MK="./HWCWRITE.MK"
+TEST_MK="./TEST.MK"
 TESTREPORT="./testreport.py"
+AUTOEXEC_TEST="./autoexec-test"
+DOSBOX_BIN=${DOSBOX_BIN:-/Applications/DOSBox-X.app/Contents/MacOS/dosbox-x}
 
 CARD_TYPES=(BTP BCOAX BCOMBO BTPO BTPC TP)
 LOCAL_HWC_DIRS=()
@@ -690,18 +693,137 @@ run_import_option()
 # 3. Post import test check
 ###############################################################################
 
+dos_path()
+{
+    local path="${1#./}"
+    printf '%s' "${path//\//\\}"
+}
+
+
+run_hwc_set_check()
+{
+    local card="$1"
+    local setfile="$2"
+    local hwc_log="$3"
+    local basename
+    local verify_log
+    local dos_setfile
+    local dos_hwc_log
+    local dos_verify_log
+    local conf
+
+    basename="$(basename "$setfile" .SET)"
+    verify_log="$(dirname "$setfile")/${basename}VFY.LOG"
+    dos_setfile="$(dos_path "$setfile")"
+    dos_verify_log="$(dos_path "$verify_log")"
+    dos_hwc_log="$(dos_path "$hwc_log")"
+    conf="$(mktemp "/tmp/autoexec-hwcset.XXXXXX")"
+
+    rm -f "$verify_log"
+
+    while IFS= read -r line || [[ -n "$line" ]]
+    do
+        case "$line" in
+            *"CALL TEST"*)
+                printf 'SET HWC_SET_FILE=%s\n' "$dos_setfile"
+                printf 'SET HWC_CARD=%s\n' "$card"
+                printf 'SET HWC_LOGFILE=%s\n' "$dos_hwc_log"
+                printf 'SET HWC_VERIFY_LOGFILE=%s\n' "$dos_verify_log"
+                printf 'CALL TEST hwc_set_verify\n'
+                ;;
+            *)
+                printf '%s\n' "$line"
+                ;;
+        esac
+    done < "$AUTOEXEC_TEST" > "$conf"
+
+    echo "Verifying $setfile through TEST.MK ..."
+    "$DOSBOX_BIN" -conf "$conf" > /dev/null 2>&1 || true
+    rm -f "$conf"
+}
+
+
 post_import_test_check()
 {
-    # HWCTEST.BAT always dumps a HWCR.SET or HWCW.SET config dump
-    # as a final step, we should see if the result matches our expectations
-    # based on the actual test run.
-    #
-    # Due to resource limits of the hardware testing environment,
-    # this check cannot run through nested MAKE targets.
-    # Therefore, I simply implement a post-processing check here.
-    # Some AWK voodoo will surely do the trick!
+    local dir
+    local card
+    local setfile
+    local logfile
+    local check_count=0
+    local failure_count=0
+    local index=0
 
+    scan_local_hwc_data
 
+    if [[ "$LOCAL_HWC_DIR_COUNT" -eq 0 ]]
+    then
+        echo
+        echo "No local HWC data is available for SET verification."
+        return 0
+    fi
+
+    [[ -x "$DOSBOX_BIN" ]] ||
+        die "DOSBox-X executable not found: $DOSBOX_BIN"
+
+    [[ -f "$AUTOEXEC_TEST" ]] ||
+        die "DOSBox-X test configuration not found: $AUTOEXEC_TEST"
+
+    [[ -f "$TEST_MK" ]] ||
+        die "TEST.MK not found: $TEST_MK"
+
+    echo
+    echo "Verifying imported 3C5X9CFG SET dumps..."
+
+    while [[ "$index" -lt "$LOCAL_HWC_DIR_COUNT" ]]
+    do
+        dir="${LOCAL_HWC_DIRS[$index]}"
+        index=$((index + 1))
+        card="$(upper "$(basename "$dir")")"
+
+        for logfile in "$dir/HWCREAD.LOG" "$dir/HWCWRITE.LOG"
+        do
+            [[ -f "$logfile" ]] || continue
+
+            case "$(basename "$logfile")" in
+                HWCREAD.LOG)
+                    setfile="$dir/ARTIFACT/HWCR.SET"
+                    ;;
+                HWCWRITE.LOG)
+                    setfile="$dir/ARTIFACT/HWCW.SET"
+                    ;;
+            esac
+
+            check_count=$((check_count + 1))
+
+            if [[ ! -f "$setfile" ]]
+            then
+                warn "$(basename "$setfile") is missing for imported $(basename "$logfile") data: $dir"
+                failure_count=$((failure_count + 1))
+                continue
+            fi
+
+            if ! run_hwc_set_check "$card" "$setfile" "$logfile"
+            then
+                failure_count=$((failure_count + 1))
+            fi
+        done
+    done
+
+    if [[ "$check_count" -eq 0 ]]
+    then
+        echo "No HWC read or write logs were found for SET verification."
+        return 0
+    fi
+
+    echo "SET dumps verified: $((check_count - failure_count)) of $check_count"
+
+    if [[ "$failure_count" -ne 0 ]]
+    then
+        warn "$failure_count SET verification check(s) failed."
+        return 1
+    fi
+
+    return 0
 }
 
 

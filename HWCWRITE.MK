@@ -186,7 +186,7 @@ clean:
 # Full hardware compliance write run.
 # Optional tests expand to an empty macro on
 # models which do not support the corresponding capability.
-HWCW_WRITE: HWCW00xx hwcw001 hwcw002 hwcw003 hwcw004 hwcw005 hwcw006 hwcw007 hwcw008 hwcw009 hwcw010 hwcw051
+HWCW_WRITE: HWCW00xx hwcw001 hwcw002 hwcw003 hwcw004 hwcw005 hwcw006 hwcw007 hwcw008 hwcw009 hwcw010 hwcw051 hwcs001
 hwcw: clean prep HWCW00xx save-config set-default-$(CARDTYPE) hwcw001-$(CARDTYPE) hwcw002 hwcw003 $(HWCW004_TARGET) hwcw005 $(HWCW006_TARGET) hwcw007 $(HWCW008_TARGET) hwcw009-$(CARDTYPE) hwcw010 $(HWCW051_TARGET) complete
 
 save-config:
@@ -564,3 +564,16 @@ hwcw051:
 	FIND "BSIZE:$(TEST_BSIZE)" $(ARTIFACTS)\HWCW051.BAT > NUL
 	@echo [hwcw051] PASSED >> $(LOGFILE)
 	@echo [hwcw051] PASSED
+
+
+# dummy target forHardware compliance SET verification.
+#
+# this exists only to sastisty restreport.py dependencies.
+# The actual post-dependency checks are post-processed via
+# TEST.MK on the development system.
+#
+hwcs0xx:
+   @echo HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
+
+hwcs001:
+   @echo [hwcs001] HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
