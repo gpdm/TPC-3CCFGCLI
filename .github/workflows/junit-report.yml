@@ -13,19 +13,19 @@ permissions:
 
 jobs:
   build:
-    name: Regression Tests
+    name: Build Report
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Render regression tests
+      - name: Render build report
         uses: dorny/test-reporter@v3
         if: always()
         with:
           name: '3CCFGCLI Build Report'
-          path: 'LOGS/BUILTD/*.JUNIT.XML'
+          path: 'LOGS/BUILD/*.JUNIT.XML'
           reporter: java-junit
 
           report-title: '3CCFGCLI Build Report'
