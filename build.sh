@@ -2,10 +2,12 @@
 
 set -u
 
-BUILD_LOG="BUILD.LOG"
+LOGDIR="LOGS"
+BUILD_LOG="${LOGDIR}/BUILD.LOG"
 DOSBOX_BIN=${DOSBOX_BIN:-/Applications/DOSBox-X.app/Contents/MacOS/dosbox-x}
 
 # clear BUILD.LOG
+[ ! -d ${LOGDIR} ] && mkdir ${LOGDIR}
 [ -f ${BUILD_LOG} ] && rm ${BUILD_LOG}
 [ ! -f ${BUILD_LOG} ] && touch ${BUILD_LOG}
 

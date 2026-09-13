@@ -1,6 +1,4 @@
 # ignore build and test artifacts in current directory
-BUILD.LOG
-TEST.LOG
 3C509B.MCK
 # also ignore the Windows directory
 # (it may be created by TASM native install)

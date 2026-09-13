@@ -1,0 +1,56 @@
+MAKE Version 4.0  Copyright (c) 1987, 1996 Borland International
+Assembling 3CCFGCLI.EXE ...
+	\TASM\BIN\TASM.EXE /jJUMPS /M5 /dREALHW 3CCFGCLI.ASM,OBJ\3CCFGCLI.OBJ
+Turbo Assembler  Version 4.1  Copyright (c) 1988, 1996 Borland International
+
+Assembling file:   3CCFGCLI.ASM  to  OBJ\3CCFGCLI.OBJ
+Error messages:    None
+Warning messages:  None
+Passes:            5
+Remaining memory:  157k
+
+Linking 3CCFGCLI.EXE ...
+	\TASM\BIN\TLINK.EXE OBJ\3CCFGCLI.OBJ,BIN\3CCFGCLI.EXE
+Turbo Link  Version 7.1.30.1. Copyright (c) 1987, 1996 Borland International
+Compressing 3CCFGCLI.EXE with PKLITE ...
+PKLITE (R) Reg. U.S. Pat. and Tm. Off. Ver. 2.01  3-15-96  Shareware Version
+Copr. 1990-1992,1995,1996 PKWARE Inc. All Rights Reserved. Patent No. 5,051,745
+
+Compressing: BIN/3CCFGCLI.EXE into file BIN/PKLITE/3CCFGCLI.EXE     30%58%86%   
+Original File Size: 28882  Compressed File Size: 14784  Ratio: 48.9
+Assembling 3CHWMOCK.EXE ...
+	\TASM\BIN\TASM.EXE /jJUMPS /M5 /dMOCKHW 3CCFGCLI.ASM,OBJ\3CHWMOCK.OBJ
+Turbo Assembler  Version 4.1  Copyright (c) 1988, 1996 Borland International
+
+Assembling file:   3CCFGCLI.ASM  to  OBJ\3CHWMOCK.OBJ
+Error messages:    None
+Warning messages:  None
+Passes:            5
+Remaining memory:  135k
+
+Linking 3CHWMOCK.EXE ...
+	\TASM\BIN\TLINK.EXE OBJ\3CHWMOCK.OBJ,BIN\3CHWMOCK.EXE
+Turbo Link  Version 7.1.30.1. Copyright (c) 1987, 1996 Borland International
+Assembling 3CSEED.EXE ...
+	\TASM\BIN\TASM.EXE /jJUMPS /M5 3CSEED.ASM,OBJ\3CSEED.OBJ
+Turbo Assembler  Version 4.1  Copyright (c) 1988, 1996 Borland International
+
+Assembling file:   3CSEED.ASM  to  OBJ\3CSEED.OBJ
+Error messages:    None
+Warning messages:  None
+Passes:            4
+Remaining memory:  300k
+
+Linking 3CSEED.EXE ...
+	\TASM\BIN\TLINK.EXE OBJ\3CSEED.OBJ,BIN\3CSEED.EXE
+Turbo Link  Version 7.1.30.1. Copyright (c) 1987, 1996 Borland International
+
+Build summary
+=============
+TASM calls    : 3
+TLINK calls   : 3
+Warnings      : 0
+Errors        : 0
+
+Overall result: PASS
+
