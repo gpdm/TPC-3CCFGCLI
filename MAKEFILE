@@ -1,68 +1,169 @@
-# Borland MAKEFILE for 3CCFG project
+# Borland MAKEFILE for 3CCFGCLI
+#
+# Build report structure:
+#
+#   LOGS\BUILD\BUILD.LOG
+#   LOGS\BUILD\ARTIFACT\BLD001.LOG
+#   LOGS\BUILD\ARTIFACT\BLD002.LOG
+#   ...
+#
 # Targets:
-#   make all
-#   make 3ccfgcli
-#   make 3chwmock
-#   make seed
-#   make clean
+#
+#   MAKE ALL
+#   MAKE 3CCFGCLI
+#   MAKE 3CHWMOCK
+#   MAKE SEED
+#   MAKE CLEAN
+
 
 TASM = \TASM\BIN\TASM.EXE
 TLINK = \TASM\BIN\TLINK.EXE
 PKLITE = \PKLITE\PKLITE.EXE
 
-TASMFLAGS = /jJUMPS /M5
+TASMFLAGS = /jJUMPS /M5 /z /w3
+
 OBJDIR = OBJ
 BINDIR = BIN
 PKLDIR = $(BINDIR)\PKLITE
 
-all: 3ccfgcli 3chwmock seed
+LOGROOT = LOGS
+LOGDIR = $(LOGROOT)\BUILD
+ARTIFACTS = $(LOGDIR)\ARTIFACT
+BUILDLOG = $(LOGDIR)\BUILD.LOG
 
-3ccfgcli: $(BINDIR)\3CCFGCLI.EXE
 
-3chwmock: $(BINDIR)\3CHWMOCK.EXE
+# ############################################################
+# Main targets
+# ############################################################
 
-seed: $(BINDIR)\3CSEED.EXE
+all: prep BUILD
+   @echo BUILD: run completed  >> $(BUILDLOG)
+   @echo BUILD: run completed
+
+3ccfgcli: prep BLD0xx bld001 bld002 bld003
+   @echo BUILD: run completed  >> $(BUILDLOG)
+   @echo BUILD: run completed
+
+3chwmock: prep BLD0xx bld004 bld005
+   @echo BUILD: run completed  >> $(BUILDLOG)
+   @echo BUILD: run completed
+
+seed: prep BLD0xx bld006 bld007
+   @echo BUILD: run completed  >> $(BUILDLOG)
+   @echo BUILD: run completed
+
+
+# ############################################################
+# Build report group
+# ############################################################
+
+BUILD: BLD0xx bld001 bld002 bld003 bld004 bld005 bld006 bld007
+
+
+BLD0xx:
+	@ECHO BUILD: Build 3CCFGCLI binaries >> $(BUILDLOG)
+
+
+# ############################################################
+# Preparation
+# ############################################################
 
 prep:
-	# MAKEFILE deliberately does not clear BUILD.LOG - this is handled by build.sh
-	@if not exist $(BINDIR)\NUL md $(BINDIR)
-	@if not exist $(PKLDIR)\NUL md $(PKLDIR)
-	@if not exist $(OBJDIR)\NUL md $(OBJDIR)
+	@IF NOT EXIST $(LOGROOT)\NUL MD $(LOGROOT)
+	@IF NOT EXIST $(LOGDIR)\NUL MD $(LOGDIR)
+	@IF NOT EXIST $(ARTIFACTS)\NUL MD $(ARTIFACTS)
+	@IF NOT EXIST $(BINDIR)\NUL MD $(BINDIR)
+	@IF NOT EXIST $(PKLDIR)\NUL MD $(PKLDIR)
+	@IF NOT EXIST $(OBJDIR)\NUL MD $(OBJDIR)
+	@DEL $(ARTIFACTS)\*.LOG
 
-$(OBJDIR)\3CCFGCLI.OBJ: prep 3CCFGCLI.ASM 3C509DEF.INC 3CHWIF.ASM 3CMOCKIF.ASM
-	@ECHO Assembling 3CCFGCLI.EXE ...
-	$(TASM) $(TASMFLAGS) /dREALHW 3CCFGCLI.ASM,$(OBJDIR)\3CCFGCLI.OBJ
 
-$(OBJDIR)\3CHWMOCK.OBJ: prep 3CCFGCLI.ASM 3C509DEF.INC 3CHWIF.ASM 3CMOCKIF.ASM
-	@ECHO Assembling 3CHWMOCK.EXE ...
-	$(TASM) $(TASMFLAGS) /dMOCKHW 3CCFGCLI.ASM,$(OBJDIR)\3CHWMOCK.OBJ
+# ############################################################
+# 3CCFGCLI hardware build
+# ############################################################
 
-$(OBJDIR)\3CSEED.OBJ: prep 3CSEED.ASM 3C509DEF.INC
-	@ECHO Assembling 3CSEED.EXE ...
-	$(TASM) $(TASMFLAGS) 3CSEED.ASM,$(OBJDIR)\3CSEED.OBJ
+bld001:
+	@ECHO [bld001] Assemble 3CCFGCLI hardware binary >> $(BUILDLOG)
+	@ECHO [bld001] Assemble 3CCFGCLI hardware binary
+	@$(TASM) $(TASMFLAGS) /dREALHW 3CCFGCLI.ASM,$(OBJDIR)\3CCFGCLI.OBJ > $(ARTIFACTS)\BLD001.LOG
+	@IF EXIST $(OBJDIR)\3CCFGCLI.OBJ ECHO [bld001] PASSED >> $(BUILDLOG)
+	@IF EXIST $(OBJDIR)\3CCFGCLI.OBJ ECHO [bld001] PASSED
 
-$(BINDIR)\3CCFGCLI.EXE: $(OBJDIR)\3CCFGCLI.OBJ
-	@ECHO Linking 3CCFGCLI.EXE ...
-	$(TLINK) $(OBJDIR)\3CCFGCLI.OBJ,$(BINDIR)\3CCFGCLI.EXE
-	@IF EXIST $(PKLITE) ECHO Compressing 3CCFGCLI.EXE with PKLITE ... 
-	@IF EXIST $(PKLITE) $(PKLITE) -o $(BINDIR)\3CCFGCLI.EXE $(PKLDIR)\3CCFGCLI.EXE
 
-$(BINDIR)\3CHWMOCK.EXE: $(OBJDIR)\3CHWMOCK.OBJ
-	@ECHO Linking 3CHWMOCK.EXE ...
-	$(TLINK) $(OBJDIR)\3CHWMOCK.OBJ,$(BINDIR)\3CHWMOCK.EXE
 
-$(BINDIR)\3CSEED.EXE: $(OBJDIR)\3CSEED.OBJ
-	@ECHO Linking 3CSEED.EXE ...
-	$(TLINK) $(OBJDIR)\3CSEED.OBJ,$(BINDIR)\3CSEED.EXE
+bld002:
+	@ECHO [bld002] Link 3CCFGCLI hardware binary >> $(BUILDLOG)
+	@ECHO [bld002] Link 3CCFGCLI hardware binary
+	@$(TLINK) $(OBJDIR)\3CCFGCLI.OBJ,$(BINDIR)\3CCFGCLI.EXE > $(ARTIFACTS)\BLD002.LOG
+	@IF EXIST $(BINDIR)\3CCFGCLI.EXE ECHO [bld002] PASSED >> $(BUILDLOG)
+	@IF EXIST $(BINDIR)\3CCFGCLI.EXE ECHO [bld002] PASSED
+
+
+bld003:
+	@ECHO [bld003] Optional: Compress 3CCFGCLI hardware binary with PKLITE >> $(BUILDLOG)
+	@ECHO [bld003] Optional: Compress 3CCFGCLI hardware binary with PKLITE
+	@IF NOT EXIST $(PKLITE) ECHO PKLITE is not available. > $(ARTIFACTS)\BLD003.LOG
+	@IF EXIST $(PKLITE) $(PKLITE) -o $(BINDIR)\3CCFGCLI.EXE $(PKLDIR)\3CCFGCLI.EXE > NUL
+	@IF EXIST $(PKLDIR)\3CCFGCLI.EXE ECHO [bld003] PASSED >> $(BUILDLOG)
+	@IF EXIST $(PKLDIR)\3CCFGCLI.EXE ECHO [bld003] PASSED
+	@IF NOT EXIST $(PKLDIR)\3CCFGCLI.EXE ECHO [bld003] NOT APPLICABLE >> $(BUILDLOG)
+
+
+# ############################################################
+# 3CHWMOCK build
+# ############################################################
+
+bld004:
+	@ECHO [bld004] Assemble 3CHWMOCK binary >> $(BUILDLOG)
+	@ECHO [bld004] Assemble 3CHWMOCK binary
+	@$(TASM) $(TASMFLAGS) /dMOCKHW 3CCFGCLI.ASM,$(OBJDIR)\3CHWMOCK.OBJ > $(ARTIFACTS)\BLD004.LOG
+	@IF EXIST $(OBJDIR)\3CHWMOCK.OBJ ECHO [bld004] PASSED >> $(BUILDLOG)
+	@IF EXIST $(OBJDIR)\3CHWMOCK.OBJ ECHO [bld004] PASSED
+
+
+bld005:
+	@ECHO [bld005] Link 3CHWMOCK binary >> $(BUILDLOG)
+	@ECHO [bld005] Link 3CHWMOCK binary
+	@$(TLINK) $(OBJDIR)\3CHWMOCK.OBJ,$(BINDIR)\3CHWMOCK.EXE > $(ARTIFACTS)\BLD005.LOG
+	@IF EXIST $(BINDIR)\3CHWMOCK.EXE ECHO [bld005] PASSED >> $(BUILDLOG)
+	@IF EXIST $(BINDIR)\3CHWMOCK.EXE ECHO [bld005] PASSED
+
+
+# ############################################################
+# 3CSEED build
+# ############################################################
+
+bld006:
+	@ECHO [bld006] Assemble 3CSEED binary >> $(BUILDLOG)
+	@ECHO [bld006] Assemble 3CSEED binary
+	@$(TASM) $(TASMFLAGS) 3CSEED.ASM,$(OBJDIR)\3CSEED.OBJ > $(ARTIFACTS)\BLD006.LOG
+	@IF EXIST $(OBJDIR)\3CSEED.OBJ ECHO [bld006] PASSED >> $(BUILDLOG)
+	@IF EXIST $(OBJDIR)\3CSEED.OBJ ECHO [bld006] PASSED
+
+
+bld007:
+	@ECHO [bld007] Link 3CSEED binary >> $(BUILDLOG)
+	@ECHO [bld007] Link 3CSEED binary
+	@$(TLINK) $(OBJDIR)\3CSEED.OBJ,$(BINDIR)\3CSEED.EXE > $(ARTIFACTS)\BLD007.LOG
+	@IF EXIST $(BINDIR)\3CSEED.EXE ECHO [bld007] PASSED >> $(BUILDLOG)
+	@IF EXIST $(BINDIR)\3CSEED.EXE ECHO [bld007] PASSED
+
+
+# ############################################################
+# Cleanup
+# ############################################################
 
 clean:
-	@if exist $(OBJDIR)\3CCFGCLI.OBJ del $(OBJDIR)\3CCFGCLI.OBJ
-	@if exist $(OBJDIR)\3CHWMOCK.OBJ del $(OBJDIR)\3CHWMOCK.OBJ
-	@if exist $(OBJDIR)\3CSEED.OBJ del $(OBJDIR)\3CSEED.OBJ
-	@if exist $(BINDIR)\3CCFGCLI.EXE del $(BINDIR)\3CCFGCLI.EXE
-	@if exist $(BINDIR)\3CHWMOCK.EXE del $(BINDIR)\3CHWMOCK.EXE
-	@if exist $(BINDIR)\3CSEED.EXE del $(BINDIR)\3CSEED.EXE
-	@if exist $(BINDIR)\3CCFGCLI.MAP del $(BINDIR)\3CCFGCLI.MAP
-	@if exist $(BINDIR)\3CHWMOCK.MAP del $(BINDIR)\3CHWMOCK.MAP
-	@if exist $(BINDIR)\3CSEED.MAP del $(BINDIR)\3CSEED.MAP
-	@if exist $(PKLDIR)\3CCFGCLI.EXE del $(PKLDIR)\3CCFGCLI.EXE
+	@IF EXIST $(OBJDIR)\3CCFGCLI.OBJ DEL $(OBJDIR)\3CCFGCLI.OBJ
+	@IF EXIST $(OBJDIR)\3CHWMOCK.OBJ DEL $(OBJDIR)\3CHWMOCK.OBJ
+	@IF EXIST $(OBJDIR)\3CSEED.OBJ DEL $(OBJDIR)\3CSEED.OBJ
+
+	@IF EXIST $(BINDIR)\3CCFGCLI.EXE DEL $(BINDIR)\3CCFGCLI.EXE
+	@IF EXIST $(BINDIR)\3CHWMOCK.EXE DEL $(BINDIR)\3CHWMOCK.EXE
+	@IF EXIST $(BINDIR)\3CSEED.EXE DEL $(BINDIR)\3CSEED.EXE
+
+	@IF EXIST $(BINDIR)\3CCFGCLI.MAP DEL $(BINDIR)\3CCFGCLI.MAP
+	@IF EXIST $(BINDIR)\3CHWMOCK.MAP DEL $(BINDIR)\3CHWMOCK.MAP
+	@IF EXIST $(BINDIR)\3CSEED.MAP DEL $(BINDIR)\3CSEED.MAP
+
+	@IF EXIST $(PKLDIR)\3CCFGCLI.EXE DEL $(PKLDIR)\3CCFGCLI.EXE

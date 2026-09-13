@@ -1,0 +1,62 @@
+BUILD: Build 3CCFGCLI binaries
+[bld001] Assemble 3CCFGCLI hardware binary
+[bld001] PASSED
+[bld002] Link 3CCFGCLI hardware binary
+[bld002] PASSED
+[bld003] Optional: Compress 3CCFGCLI hardware binary with PKLITE
+[bld003] PASSED
+[bld004] Assemble 3CHWMOCK binary
+[bld004] PASSED
+[bld005] Link 3CHWMOCK binary
+[bld005] PASSED
+[bld006] Assemble 3CSEED binary
+[bld006] PASSED
+[bld007] Link 3CSEED binary
+[bld007] PASSED
+BUILD: run completed
+Rendering test results as JUnit XML ...
+Log file       : LOGS/BUILD/BUILD.LOG
+Log directory  : LOGS/BUILD
+Artifact dir   : LOGS/BUILD/ARTIFACT
+Makefile       : MAKEFILE
+JUnit file     : LOGS/BUILD/BUILD.JUNIT.XML
+Test groups    : 1
+Tests defined  : 7
+Tests passed   : 7
+Tests failed   : 0
+Tests skipped  : 0
+
+MAKE test groups
+================
+
+BUILD:
+  header      : BLD0xx
+  description : None
+  tests       : bld001 bld002 bld003 bld004 bld005 bld006 bld007
+
+Test results
+============
+
+BUILD
+  bld001: PASS: Assemble 3CCFGCLI hardware binary
+  bld002: PASS: Link 3CCFGCLI hardware binary
+  bld003: PASS: Optional: Compress 3CCFGCLI hardware binary with PKLITE
+  bld004: PASS: Assemble 3CHWMOCK binary
+  bld005: PASS: Link 3CHWMOCK binary
+  bld006: PASS: Assemble 3CSEED binary
+  bld007: PASS: Link 3CSEED binary
+
+JUnit report written: LOGS/BUILD/BUILD.JUNIT.XML
+
+Build summary
+=============
+
+Build                     : SUCCESS
+    Defined Build Steps   : 7
+    Completed Build Steps : 7
+    Failed Build Steps    : NONE
+Warnings                  : 0
+Errors                    : 0
+
+Overall result            : PASS
+

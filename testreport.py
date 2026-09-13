@@ -48,7 +48,7 @@ TARGET_RE = re.compile(
 )
 
 TEST_HEADER_RE = re.compile(
-    r"^[A-Za-z]{1,4}[0-9]{2}xx$",
+    r"^[A-Za-z]{1,4}[0-9]{1,2}xx$",
     re.IGNORECASE,
 )
 
