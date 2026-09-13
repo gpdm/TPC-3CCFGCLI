@@ -1,5 +1,6 @@
 # ignore build and test artifacts in current directory
 3C509B.MCK
+uv.lock
 # also ignore the Windows directory
 # (it may be created by TASM native install)
 WINDOWS
