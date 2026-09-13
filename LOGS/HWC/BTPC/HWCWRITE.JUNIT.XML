@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results" tests="11" failures="0" errors="0" skipped="1" time="0.0">
-	<testsuite name="HWCW_WRITE: Hardware Compliance Write checks for $(CARDNAME)" tests="11" errors="0" failures="0" skipped="1" time="0">
+<testsuites name="3CCFGCLI Test Results" tests="12" failures="0" errors="0" skipped="1" time="0.0">
+	<testsuite name="HWCW_WRITE: Hardware Compliance Write checks for $(CARDNAME)" tests="12" errors="0" failures="0" skipped="1" time="0">
 		<properties>
 			<property name="header_id" value="HWCW00xx"/>
 			<property name="description" value="Hardware Compliance Write checks for $(CARDNAME)"/>
@@ -70,6 +70,11 @@
 				<property name="description" value="Boot ROM testing is currently not implemented for 3C509B-TPCoax."/>
 			</properties>
 			<skipped message="NOT IMPLEMENTED"/>
+		</testcase>
+		<testcase name="hwcs001: Verifying common configured state" classname="HWCW_WRITE">
+			<properties>
+				<property name="description" value="Verifying common configured state"/>
+			</properties>
 		</testcase>
 	</testsuite>
 </testsuites>
