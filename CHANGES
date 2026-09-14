@@ -1,3 +1,18 @@
+Changelog 0.7.7
+  - Switching the transceiver away from TP while Full Duplex is enabled now
+    automatically disables Full Duplex, matching the original utility.
+  - This automatic disable now also applies to the live adapter state, not
+    just the saved EEPROM setting.
+  - Fixed EEPROM write/verify error messages sometimes blaming the wrong
+    setting (e.g. Modem) when the real problem was Full Duplex or Optimize.
+  - Fixed a verbose message bug where changing /OPTIMIZE could print an
+    unrelated or garbled confirmation line.
+  - Added regression tests covering these Full Duplex/TR interactions.
+
+
+Changelog 0.7.6
+  - Implements [#6]: PIC capability gate and related tests
+
 Changelog 0.7.5
   - 3CSEED now supports model, resource, and fixture attributes through slash
     options such as /IOBASE:, /INT:, /ROM16K, and /LINKDOWN.

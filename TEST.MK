@@ -60,10 +60,10 @@ PNP_CHANGE: t05xx t0501 t0502 t0505
 MODEM_CHANGE: t06xx t0601 t0602 t0603 t0604 t0605 t0607 t0608 t0609 t0610
 
 # Base: 0700
-FD_CHANGE: t07xx t0701 t0702 t0703 t0705 t0706 t0707 t0708 t0710 t0711 t0714 t0715 t0716 t0717 t0718 t0719 t0720 t0721 t0722 t0723
+FD_CHANGE: t07xx t0701 t0702 t0703 t0705 t0706 t0707 t0708 t0710 t0711 t0714 t0715 t0716 t0717 t0718 t0719 t0720 t0721 t0722 t0723 t0724 t0725 t0726
 
 # Base: 0900
-OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904 t0905
+OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904 t0905 t0906
 
 # Base: 1100
 BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1122 t1126 t1127 t1128 t1129 t1130 t1131 t1132 t1133 t1134 t1135 t1136
@@ -624,6 +624,49 @@ t0723:
    FIND "Optimization = DOS" $(ARTIFACTS)\T0723.LOG > NUL
    @echo [t0723] PASSED  >> $(TESTLOG)
 
+# Phase 3: an implicit persistent FULLDUPLEX disable caused by a genuine TP to
+# non TP /TR transition must also reach the existing live W4 synchronization
+# and its existing live verification success message.
+t0724:
+   @echo [t0724] implicit TR transition reaches live FULLDUPLEX sync >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0724.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0724.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0724B.LOG
+   FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T0724B.LOG > NUL
+   FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0724B.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0724B.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0724.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0724.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0724.LOG > NUL
+   @echo [t0724] PASSED  >> $(TESTLOG)
+
+# AUTO uses a different word 08h representation from AUI/COAX; confirm the
+# implicit live FULLDUPLEX sync path is reached the same way.
+t0725:
+   @echo [t0725] implicit TR:AUTO transition reaches live FULLDUPLEX sync >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0725.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0725.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO /VERBOSE > $(ARTIFACTS)\T0725B.LOG
+   FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T0725B.LOG > NUL
+   FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0725B.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0725B.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0725.LOG
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0725.LOG > NUL
+   @echo [t0725] PASSED  >> $(TESTLOG)
+
+# TR change with no persistent FULLDUPLEX bit transition must not enter the
+# implicit live FULLDUPLEX synchronization path.
+t0726:
+   @echo [t0726] TR without FD transition skips implicit live FD sync >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0726.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0726B.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0726B.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0726B.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0726.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0726.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0726.LOG > NUL
+   @echo [t0726] PASSED  >> $(TESTLOG)
+
 t09xx:
    @echo [t09xx] OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour  >> $(TESTLOG)
 
@@ -669,6 +712,19 @@ t0905:
    FIND "Optimize mode is already configured to the requested value." $(ARTIFACTS)\T0905.LOG > NUL
    FIND "No hardware changes required." $(ARTIFACTS)\T0905.LOG > NUL
    @echo [t0905] PASSED  >> $(TESTLOG)
+
+# OPTIMIZE verbose word 0Dh write message must print its own dedicated
+# message, not a stale DX value left over from an unrelated code path.
+t0906:
+   @echo [t0906] OPTIMIZE verbose word 0Dh write message >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T0906.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER >> $(ARTIFACTS)\T0906.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:DOS /VERBOSE > $(ARTIFACTS)\T0906B.LOG
+   FIND "Optimize configuration word written." $(ARTIFACTS)\T0906B.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0906B.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0906.LOG
+   FIND "Optimization = DOS" $(ARTIFACTS)\T0906.LOG > NUL
+   @echo [t0906] PASSED  >> $(TESTLOG)
 
 t11xx:
    @echo [t11xx] BOOTROM_CHANGE: Verify boot ROM change behaviour  >> $(TESTLOG)

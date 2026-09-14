@@ -376,6 +376,7 @@ msg_cfg_modem_verify_fail DB "Modem speed configuration verification failed.", 0
 msg_cfg_modem_completed DB 0Dh, 0Ah, "Modem speed configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_unchanged DB 0Dh, 0Ah, "Optimize mode is already configured to the requested value.", 0Dh, 0Ah
                       DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_word_written DB "Optimize configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_eeprom_read_fail DB "EEPROM read timed out while reading optimize configuration.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_eeprom_write_fail DB "EEPROM write timed out while writing optimize configuration.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_verified DB "EEPROM optimize mode verified.", 0Dh, 0Ah, '$'
@@ -6180,7 +6181,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word13
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
-    jnz     @@Word0DPrint
+    jnz     @@Word0DWrittenOptimize
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jnz     @@Word0DWrittenFD
     ; No OPTIMIZE/explicit FULLDUPLEX flag is set here. A /TR transition may
@@ -6193,6 +6194,9 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jnz     @@Word0DWrittenFD
     mov     dx, OFFSET msg_cfg_modem_word_written
+    jmp     @@Word0DPrint
+@@Word0DWrittenOptimize:
+    mov     dx, OFFSET msg_cfg_optimize_word_written
     jmp     @@Word0DPrint
 @@Word0DWrittenFD:
     mov     dx, OFFSET msg_cfg_fd_word_written
@@ -6330,9 +6334,22 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@Write0DFail:
     cmp     [cfg_last_error], CFG_ERR_EEPROM_TIMEOUT
     je      @@Fail
+    ; Attribution priority: FULLDUPLEX bit transition (explicit /FULLDUPLEX or
+    ; implicit disable derived by Cfg_Prepare_TR for TP to non-TP) takes
+    ; priority, then OPTIMIZE, otherwise MODEM. This mirrors the same actual
+    ; bit transition test used for the verbose write message above so FULL
+    ; DUPLEX no longer falls through to MODEM merely because word 0Dh is
+    ; shared.
+    mov     ax, [cfg_txn_old_word0d]
+    xor     ax, [cfg_txn_new_word0d]
+    test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jnz     @@Write0DFailFD
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jnz     @@OptimizeWriteFail
     mov     [cfg_last_error], CFG_ERR_MODEM_EEPROM_WRITE
+    jmp     @@Fail
+@@Write0DFailFD:
+    mov     [cfg_last_error], CFG_ERR_FD_EEPROM_WRITE
     jmp     @@Fail
 @@OptimizeWriteFail:
     mov     [cfg_last_error], CFG_ERR_OPTIMIZE_EEPROM_WRITE
@@ -6927,7 +6944,16 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
     push    di
 
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@DoSync
+    ; No explicit /FULLDUPLEX was requested. A /TR transition may still have
+    ; implicitly disabled persistent FULLDUPLEX (Cfg_Prepare_TR); sync live
+    ; W4 only if the persistent FULLDUPLEX bit itself actually transitioned,
+    ; not merely because CFG_PARSE_TR is set.
+    mov     ax, [cfg_txn_old_word0d]
+    xor     ax, [cfg_txn_new_word0d]
+    test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jz      @@Success
+@@DoSync:
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [WORD si + NIC_IO_BASE]
