@@ -11,14 +11,17 @@
 ;   - Distinct-base multi-NIC scenarios are intended to be hardware-credible.
 ;   - Shared-IRQ scenarios are acceptable for CLI testing because the utility
 ;     does not depend on interrupt-driven communication with the adapter.
-;   - Multiple simultaneously active records with the same IOBASE are
-;     conflict simulations only.  The original 3CCFG discovery logic treated
-;     duplicate active resources as an ambiguity/error condition rather than a
-;     clean steady state, and no strong evidence was found that it could
-;     reliably mutate one specific card while two cards actively decoded the
-;     same base.  This mock therefore resolves same-base active access to the
-;     first matching record only and does not claim strong hardware
-;     equivalence for that case.
+;   - Multiple simultaneously active records with the same IOBASE are a
+;     genuine conflict for ordinary physical I/O access.  A normal register
+;     access cannot by itself identify which tagged adapter is intended, so
+;     access is unique only when exactly one active record decodes the port.
+;     Zero or multiple matches fail as unavailable/ambiguous instead of
+;     silently resolving to the first record; see Mock_Find_Record_By_Port.
+;     ID-port identity (discovery, contention, tags, SELECT_TAG,
+;     EEPROM-via-ID-port reads, and activation) remains valid and continues
+;     to distinguish adapters by tag.  Targeted temporary access is now used
+;     for selected revalidation; LIST and transaction paths remain ordinary
+;     access until later phases.
 ; ---------------------------------------------------------------------------
 ; ID-port scratch state classification:
 ;
@@ -62,6 +65,7 @@ mock_file_state DB MCK_FILE_SIZE DUP (0)
 ; Scratch image for the currently loaded mock record.
 mock_state DB MOCK_STATE_SIZE DUP (0)
 mock_state_dirty DB 0
+mock_persistence_pending DB 0
 mock_current_window DB 0
 mock_active_base DW 0000h
 mock_tag DB 0
@@ -169,6 +173,7 @@ PROC Init_State NEAR
     mov     [byte mock_record_count], 0
     mov     [byte mock_loaded_index], 0FFh
     mov     [byte mock_contender_index], 0FFh
+    mov     [byte mock_persistence_pending], 0
     ret
 ENDP Init_State
 
@@ -198,6 +203,7 @@ PROC Mock_Init_Empty_File NEAR
     mov     [byte mock_selected_tag], 0
     mov     [byte mock_contender_visible], 0
     mov     [byte mock_state_dirty], 0
+    mov     [byte mock_persistence_pending], 0
 
     pop     di
     pop     cx
@@ -545,18 +551,34 @@ ENDP Mock_Find_First_Command_Contender
 
 ; Input DX = physical ISA port.  Output AL = matching active record index.
 ; A card decodes exactly its configured 16-byte I/O region.
+;
+; Ordinary physical I/O access is unique only when exactly ONE active
+; record decodes the requested port.  If zero records decode it, or if
+; MORE THAN ONE active record decodes it, the access is not attributable
+; to a single adapter and this routine fails (CF set) in both cases.  It
+; deliberately does NOT resolve to the first matching record when the
+; IOBASE is duplicated among active adapters; that would silently model
+; a physically impossible unique response.  Callers therefore see
+; "no distinguishable target" the same way whether the collision is
+; caused by zero matches or multiple matches -- see Nic_IO_Read_Word and
+; Nic_IO_Write_Word.  This is independent of ID-port identity, which
+; keeps distinguishing tagged adapters via Mock_Find_Record_By_Tag /
+; Mock_Find_First_Untagged_Record / Mock_Find_First_Command_Contender
+; regardless of any ordinary-IOBASE collision.
 PROC Mock_Find_Record_By_Port NEAR
     push    bx
     push    cx
     push    si
     push    di
 
+    mov     bh, 0FFh            ; BH = index of first (and so-far only) match
+    xor     bl, bl              ; BL = count of matching active records
     xor     ax, ax
     mov     cl, [byte mock_record_count]
     xor     ch, ch
 @@Loop:
     or      cx, cx
-    jz      @@NotFound
+    jz      @@Scanned
     push    ax
     call    Mock_Get_Record_Ptr
     pop     ax
@@ -564,24 +586,35 @@ PROC Mock_Find_Record_By_Port NEAR
     je      @@Next
     test    [BYTE di + MCK3R_FLAGS], MCKRF_ACTIVE
     jz      @@Next
-    mov     bx, [WORD di + MCK3R_ACTIVE_BASE]
-    cmp     dx, bx
+    mov     si, [WORD di + MCK3R_ACTIVE_BASE]
+    cmp     dx, si
     jb      @@Next
-    add     bx, 000Fh
-    cmp     dx, bx
-    jbe     @@Found
+    add     si, 000Fh
+    cmp     dx, si
+    ja      @@Next
+    ; This record decodes the requested port -> count it and remember the
+    ; first such index.  A second match makes the access ambiguous; keep
+    ; scanning only to let higher-numbered duplicates be counted too, but
+    ; the result is rejected as soon as more than one record matches.
+    inc     bl
+    cmp     bh, 0FFh
+    jne     @@Next
+    mov     bh, al
 @@Next:
     inc     al
     dec     cx
     jmp     @@Loop
-@@Found:
+@@Scanned:
+    cmp     bl, 1
+    jne     @@Ambiguous
+    mov     al, bh
     pop     di
     pop     si
     pop     cx
     pop     bx
     clc
     ret
-@@NotFound:
+@@Ambiguous:
     pop     di
     pop     si
     pop     cx
@@ -683,6 +716,14 @@ PROC Save_State NEAR
     mov     al, [byte mock_record_count]
     mov     [BYTE mock_file_state + MCK_OFF_RECORD_COUNT], al
 
+    pushf
+    pop     ax
+    test    ax, 0200h
+    jnz     @@Write
+    mov     [byte mock_persistence_pending], 1
+    jmp     @@Done
+
+@@Write:
     mov     ah, 3Ch
     xor     cx, cx
     mov     dx, OFFSET MOCK_STATE_FILE
@@ -696,6 +737,7 @@ PROC Save_State NEAR
     int     21h
     mov     ah, 3Eh
     int     21h
+    mov     [byte mock_persistence_pending], 0
 @@Done:
     pop     dx
     pop     cx
@@ -703,6 +745,21 @@ PROC Save_State NEAR
     pop     ax
     ret
 ENDP Save_State
+
+; Flush deferred persistence only when called with interrupts enabled.
+PROC Nic_Sync_State NEAR
+    push    ax
+    pushf
+    pop     ax
+    test    ax, 0200h
+    jz      @@Done
+    cmp     [byte mock_persistence_pending], 0
+    je      @@Done
+    call    Save_State
+@@Done:
+    pop     ax
+    ret
+ENDP Nic_Sync_State
 
 PROC Nic_Read_Status NEAR
     push    dx
@@ -1308,12 +1365,17 @@ PROC Nic_Activate_Tagged_Cards NEAR
     jz      @@Next
     call    Mock_Ensure_Record_By_Tag
     jc      @@Next
+    ; Identity comes from the selected ID tag and the NIC table record.
+    ; Do not perform a normal-IOBASE verification here: Phase 1 correctly
+    ; makes duplicate active-base access ambiguous, while ID-port selection
+    ; remains individually addressable.
     mov     ax, [WORD si + NIC_IO_BASE]
     or      ax, ax
     jz      @@KeepBase
     mov     [word mock_active_base], ax
 @@KeepBase:
     mov     [byte mock_active], 1
+    or      [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
     mov     [byte mock_state_dirty], 1
     call    Mock_Commit_Loaded_Record
 @@Next:
@@ -1733,6 +1795,7 @@ ENDP Mock_Id_Select_Tag
 PROC Mock_Id_Activate_Eligible NEAR
     push    ax
     push    bx
+    push    cx
     push    dx
     push    di
 
@@ -1760,6 +1823,12 @@ PROC Mock_Id_Activate_Eligible NEAR
     mov     al, dh
     and     ax, 001Fh
 @@MakeBase:
+    ; Explicit activation changes only the live selector; EEPROM word 08h
+    ; remains the persistent configured base.
+    mov     cx, [WORD di + MCK3R_W0_ADDRESS_CFG]
+    and     cx, NOT 001Fh
+    or      cx, ax
+    mov     [WORD di + MCK3R_W0_ADDRESS_CFG], cx
     shl     ax, 1
     shl     ax, 1
     shl     ax, 1
@@ -1778,6 +1847,7 @@ PROC Mock_Id_Activate_Eligible NEAR
     call    Save_State
     pop     di
     pop     dx
+    pop     cx
     pop     bx
     pop     ax
     ret
@@ -2287,4 +2357,3 @@ PROC Nic_Rom_Set_Page NEAR
     pop     ax
     ret
 ENDP Nic_Rom_Set_Page
-

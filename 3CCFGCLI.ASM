@@ -655,6 +655,9 @@ cfg_bootrom_rejected      DB 0
 
 cfg_wait_start_lo     DW 0
 cfg_wait_start_hi     DW 0
+cfg_target_base       DW 0
+cfg_target_window     DB 0
+cfg_target_result     DB 0
 
 ; Original CONFIGURE property order is retained for prefix resolution.
 cfg_name_adapternum DB 'ADAPTERNUM', 0
@@ -1025,6 +1028,7 @@ Start:
     int     21h
 
     call    Parse_And_Execute
+    call    Nic_Sync_State
 
     mov     ax, 4C00h
     int     21h
@@ -4510,12 +4514,16 @@ PROC Build_Record_From_Active NEAR
     ret
 ENDP Build_Record_From_Active
 
-; Return carry clear if a record with base DX already exists.
+; Find an existing record for active base DX without collapsing duplicate
+; ID-discovered identities.  Output DI = 0 when no record has this base,
+; DI = record pointer when exactly one record has it, and DI = FFFFh when
+; more than one record has it.  A shared base cannot establish ownership.
 PROC Find_Record_By_Base NEAR
     push    ax
     push    cx
     push    si
 
+    xor     di, di
     mov     cx, [card_count]
     or      cx, cx
     jz      @@NotFound
@@ -4523,20 +4531,23 @@ PROC Find_Record_By_Base NEAR
 @@Loop:
     mov     ax, [WORD si + NIC_IO_BASE]
     cmp     ax, dx
-    je      @@Found
+    jne     @@Next
+    cmp     di, 0
+    jne     @@Ambiguous
+    mov     di, si
+@@Next:
     add     si, NIC_RECORD_SIZE
     loop    @@Loop
 @@NotFound:
     pop     si
     pop     cx
     pop     ax
-    stc
     ret
-@@Found:
+@@Ambiguous:
+    mov     di, 0FFFFh
     pop     si
     pop     cx
     pop     ax
-    clc
     ret
 ENDP Find_Record_By_Base
 
@@ -4559,10 +4570,14 @@ PROC Scan_Active_Base_Ports NEAR
     call    Nic_Check_3Com_Signature
     jc      @@PortLoop
 
-    push    ax
     call    Find_Record_By_Base
-    pop     ax
-    jnc     @@UpdateExisting
+    cmp     di, 0
+    je      @@NewRecord
+    cmp     di, 0FFFFh
+    je      @@PortLoop
+    jmp     @@UpdateExisting
+
+@@NewRecord:
 
     mov     cx, [card_count]
     cmp     cx, MAX_CARDS
@@ -4587,17 +4602,9 @@ PROC Scan_Active_Base_Ports NEAR
     jmp     @@PortLoop
 
 @@UpdateExisting:
-    ; Find_Record_By_Base preserves SI, so locate the matching entry again and
-    ; refresh product and revision from the live hardware.
+    ; Find_Record_By_Base returned the sole matching record pointer.  Refresh
+    ; it only when the active response has an unambiguous owner.
     mov     dx, [si-2]
-    mov     cx, [card_count]
-    mov     di, OFFSET nic_table
-@@FindExisting:
-    cmp     [WORD di + NIC_IO_BASE], dx
-    je      @@Refresh
-    add     di, NIC_RECORD_SIZE
-    loop    @@FindExisting
-    jmp     @@PortLoop
 @@Refresh:
     mov     [WORD di + NIC_PRODUCT_ID], ax
     mov     [BYTE di + NIC_ASIC_REV], bl
@@ -7953,6 +7960,10 @@ PROC Cfg_Revalidate_Selected NEAR
     jz      @@ByTag
 
     mov     dx, [WORD si + NIC_IO_BASE]
+    call    Find_Record_By_Base
+    cmp     di, 0FFFFh
+    je      @@TryTargeted
+    mov     dx, [WORD si + NIC_IO_BASE]
     call    Nic_Check_3Com_Signature
     jc      @@Mismatch
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
@@ -7997,6 +8008,18 @@ PROC Cfg_Revalidate_Selected NEAR
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     al, ch
     call    Nic_Select_Window
+    jmp     @@Good
+
+@@TryTargeted:
+    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
+    jz      @@Mismatch
+    mov     al, [BYTE si + NIC_TAG]
+    or      al, al
+    jz      @@Mismatch
+    cmp     al, 7
+    ja      @@Mismatch
+    call    Cfg_Targeted_Revalidate
+    jc      @@Mismatch
     jmp     @@Good
 
 @@RestoreReadError:
@@ -8093,6 +8116,164 @@ PROC Cfg_Revalidate_Selected NEAR
     ret
 ENDP Cfg_Revalidate_Selected
 
+; Find a valid temporary live IOBASE for the selected record.
+; Input SI = selected NIC record.  Output AX = temporary base, CF on failure.
+; The candidate is not the selected logical base, is not assigned to any NIC
+; record, and has no normal status response.  NIC_IO_BASE is never changed.
+PROC Cfg_Find_Temporary_Base NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    di
+    push    bp
+
+    mov     bx, [WORD si + NIC_IO_BASE]
+    mov     bp, OFFSET io_scan_table
+@@Candidate:
+    mov     ax, [WORD ds:bp]
+    add     bp, 2
+    or      ax, ax
+    jz      @@Fail
+    cmp     ax, bx
+    je      @@Candidate
+    mov     [cfg_target_base], ax
+
+    mov     di, OFFSET nic_table
+    mov     cx, [card_count]
+@@Record:
+    or      cx, cx
+    jz      @@CheckPhysical
+    cmp     ax, [WORD di + NIC_IO_BASE]
+    je      @@Candidate
+    add     di, NIC_RECORD_SIZE
+    dec     cx
+    jmp     @@Record
+
+@@CheckPhysical:
+    mov     dx, [cfg_target_base]
+    call    Nic_Read_Status
+    cmp     ax, 0FFFFh
+    jne     @@Candidate
+    mov     ax, [cfg_target_base]
+    pop     bp
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+
+@@Fail:
+    pop     bp
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Find_Temporary_Base
+
+; Revalidate one selected active ID-tagged adapter through a temporary live
+; base after the caller established that its normal IOBASE has multiple
+; logical owners.
+; Input SI = selected NIC record.  CF indicates validation or restoration
+; failure.  The selected adapter is always restored to NIC_IO_BASE before
+; returning once temporary activation has succeeded.
+PROC Cfg_Targeted_Revalidate NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    di
+    push    si
+
+    pushf
+    cli
+    call    Cfg_Find_Temporary_Base
+    jc      @@FailFlags
+    mov     [cfg_target_base], ax
+
+    mov     ax, [cfg_target_base]
+    call    Cfg_Id_Activate_At_Base
+
+    mov     dx, [cfg_target_base]
+    call    Nic_Get_Current_Window
+    mov     [cfg_target_window], al
+    mov     [cfg_target_result], 0
+
+    mov     dx, [cfg_target_base]
+    call    Nic_Check_3Com_Signature
+    jc      @@ValidationFail
+    cmp     ax, [WORD si + NIC_PRODUCT_ID]
+    jne     @@ValidationFail
+    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
+    je      @@ReadMac
+    cmp     bl, [BYTE si + NIC_ASIC_REV]
+    jne     @@ValidationFail
+
+@@ReadMac:
+    mov     dx, [cfg_target_base]
+    mov     al, EEPROM_OEM_NODE_0
+    call    Nic_EEPROM_Read
+    jc      @@ValidationFail
+    cmp     ah, [BYTE si + NIC_MAC_ADDR]
+    jne     @@ValidationFail
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 1]
+    jne     @@ValidationFail
+    mov     dx, [cfg_target_base]
+    mov     al, EEPROM_OEM_NODE_1
+    call    Nic_EEPROM_Read
+    jc      @@ValidationFail
+    cmp     ah, [BYTE si + NIC_MAC_ADDR + 2]
+    jne     @@ValidationFail
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 3]
+    jne     @@ValidationFail
+    mov     dx, [cfg_target_base]
+    mov     al, EEPROM_OEM_NODE_2
+    call    Nic_EEPROM_Read
+    jc      @@ValidationFail
+    cmp     ah, [BYTE si + NIC_MAC_ADDR + 4]
+    jne     @@ValidationFail
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 5]
+    jne     @@ValidationFail
+
+    mov     dx, [cfg_target_base]
+    mov     al, [cfg_target_window]
+    call    Nic_Select_Window
+    jmp     @@Restore
+
+@@ValidationFail:
+    mov     [cfg_target_result], 1
+    mov     dx, [cfg_target_base]
+    mov     al, [cfg_target_window]
+    call    Nic_Select_Window
+@@Restore:
+    mov     ax, [WORD si + NIC_IO_BASE]
+    call    Cfg_Id_Activate_At_Base
+    mov     dx, [cfg_target_base]
+    call    Nic_Read_Status
+    cmp     ax, 0FFFFh
+    jne     @@FailFlags
+    cmp     [cfg_target_result], 0
+    jne     @@FailFlags
+    popf
+    call    Nic_Sync_State
+    clc
+    jmp     @@Done
+@@FailFlags:
+    popf
+    call    Nic_Sync_State
+    stc
+@@Done:
+    pop     si
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Targeted_Revalidate
+
 ; ISA deactivation core recovered from original sub_335.
 ; Input SI = selected ID record.  D8h plus tag selects it, C0h deactivates it.
 ; The transaction calls this only for a selected ID-tagged record.
@@ -8132,6 +8313,23 @@ PROC Cfg_Id_Activate_Selected NEAR
 
     pushf
     cli
+    mov     ax, [WORD si + NIC_IO_BASE]
+    call    Cfg_Id_Activate_At_Base
+    popf
+
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Id_Activate_Selected
+
+; Activate the selected ID-tagged record at the explicit live base in AX.
+; Caller owns any required outer critical section.
+PROC Cfg_Id_Activate_At_Base NEAR
+    push    bx
+    push    dx
+
+    mov     bx, ax
     cmp     [BYTE si + NIC_ID_MODE], 0
     je      @@Full
     call    Nic_IdPort_Send_Short_Sequence
@@ -8144,7 +8342,7 @@ PROC Cfg_Id_Activate_Selected NEAR
     or      al, [BYTE si + NIC_TAG]
     call    Nic_IdPort_Write_Command
 
-    mov     ax, [WORD si + NIC_IO_BASE]
+    mov     ax, bx
     sub     ax, 0200h
     mov     bx, 0010h
     xor     dx, dx
@@ -8152,13 +8350,10 @@ PROC Cfg_Id_Activate_Selected NEAR
     or      al, ID_CMD_ACTIVATE
     mov     dx, ID_PORT
     call    Nic_IdPort_Write_Command
-    popf
-
     pop     dx
     pop     bx
-    pop     ax
     ret
-ENDP Cfg_Id_Activate_Selected
+ENDP Cfg_Id_Activate_At_Base
 
 ; ============================================================================
 ; Extended LIST information

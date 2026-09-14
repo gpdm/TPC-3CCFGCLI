@@ -3,6 +3,10 @@
 ; Real hardware backend primitives for 3CCFGCLI.
 ; ---------------------------------------------------------------------------
 
+PROC Nic_Sync_State NEAR
+    ret
+ENDP Nic_Sync_State
+
 PROC Nic_IdPort_Write_Command NEAR
     push    dx
     mov     dx, ID_PORT
@@ -350,11 +354,11 @@ PROC Nic_Activate_Tagged_Cards NEAR
     call    Nic_IdPort_Write_Command
     popf
 
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Nic_Check_3Com_Signature
-    jc      @@Next
-    mov     [WORD si + NIC_PRODUCT_ID], ax
-    mov     [BYTE si + NIC_ASIC_REV], bl
+    ; The ID tag selected the adapter being activated.  Do not use a normal
+    ; IOBASE signature read as its identity proof: another active adapter may
+    ; decode the same base, making that response ambiguous.  Product identity
+    ; already came from the ID-port EEPROM record; active-base reconciliation
+    ; refreshes it only when the base has a unique owner.
     or      [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
 @@Next:
     add     si, NIC_RECORD_SIZE
@@ -409,4 +413,3 @@ PROC Nic_Rom_Set_Page NEAR
     pop     ax
     ret
 ENDP Nic_Rom_Set_Page
-

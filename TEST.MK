@@ -1216,18 +1216,25 @@ t1504:
    FIND "IOBASE = 0310, IRQ = 5" $(ARTIFACTS)\T1504.LOG > NUL
    @echo [t1504] PASSED  >> $(TESTLOG)
 
-# This deliberately creates an ambiguous hardware state with two adapters at
-# the same active IOBASE. The target must not be treated as safely addressable.
+# This deliberately creates an ambiguous hardware state with two ID-discovered
+# adapters at the same active IOBASE. Their records must remain distinct.
 t1505:
-   @echo [t1505] duplicate active-IOBASE conflict rejects targeted migration >> $(TESTLOG)
+   @echo [t1505] duplicate IOBASE preserves ID records and rejects migration >> $(TESTLOG)
    ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1505.LOG
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1505.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1505.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T1505.LOG
+   FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1505.LOG > NUL
+   FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1505.LOG > NUL
+   FIND "3Com 3C509-TP" $(ARTIFACTS)\T1505.LOG > NUL
+   FIND "3Com 3C509-Combo" $(ARTIFACTS)\T1505.LOG > NUL
    FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1505.LOG > NUL
    FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1505.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:0310 >> $(ARTIFACTS)\T1505.LOG
-   FIND "Selected adapter has no active IOBASE" $(ARTIFACTS)\T1505.LOG > NUL
+   FIND "EEPROM access timed out." $(ARTIFACTS)\T1505.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1505.LOG
+   FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1505.LOG > NUL
+   FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1505.LOG > NUL
    @echo [t1505] PASSED  >> $(TESTLOG)
 
 t16xx:
