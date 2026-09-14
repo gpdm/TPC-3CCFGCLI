@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.5
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -6,7 +6,7 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 Invalid /INT parameter. Value must be either of
 Systems with 8-bit Bus: 3, 5, 7
 Systems with 16-bit Bus: 3, 5, 7, 9, 10, 11, 12, or 15.
-3Com EtherLink III CLI Configuration Program v0.7.5
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2

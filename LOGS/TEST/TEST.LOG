@@ -1,10 +1,10 @@
 [t01xx] LISTING: Verify general card listing behaviour
 [t0101] Clearing seed and checking no-card case
-3CSEED - 3C509B mock state seeder v0.7.5
+3CSEED - 3C509B mock state seeder v0.7.7
 Seed file deleted (or already absent).
 [t0101] PASSED
 [t0102] Seeding INIT profile and checking card listing
-3CSEED - 3C509B mock state seeder v0.7.5
+3CSEED - 3C509B mock state seeder v0.7.7
 Seed file created (INIT).
 [t0102] PASSED
 [t02xx] IRQ_CHANGE: Verify IRQ change behaviour
@@ -78,10 +78,22 @@ Seed file created (INIT).
 [t0710] PASSED
 [t0711] atomicity of combined AUI and Full Duplex rejection
 [t0711] PASSED
-[t0714] reverse Full Duplex dependency preserves TP state
-[t0714] PASSED
+[t0717] explicit TR:AUI+FULLDUPLEX:ENABLED conflict from TP+FD enabled
+[t0717] PASSED
+[t0719] MODEM plus TR word 0Dh write message without FD change
+[t0719] PASSED
+[t0723] MODEM plus OPTIMIZE field specific verification
+[t0723] PASSED
+[t0724] implicit TR transition reaches live FULLDUPLEX sync
+[t0724] PASSED
+[t0726] TR without FD transition skips implicit live FD sync
+[t0726] PASSED
+[t0727] NOTICE for implicit TR:AUI Full Duplex disable
+[t0727] PASSED
+[t0730] no NOTICE for explicit TR:AUI+FULLDUPLEX:DISABLED
+[t0730] PASSED
 [t09xx] OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour
-[t0901] CONFIGURE /OPTIMIZE transition to OS/2
+[t0901] CONFIGURE /OPTIMIZE transition to OS/2, check work 0Dh
 [t0901] PASSED
 [t0902] CONFIGURE /OPTIMIZE invalid symbolic input
 [t0902] PASSED
@@ -310,7 +322,7 @@ Seed file created (INIT).
 [t1808] SAVECONFIG on 3C509-TP (ASIC rev. 1) emits only common properties
 [t1808] PASSED
 Cleaning seed file
-3CSEED - 3C509B mock state seeder v0.7.5
+3CSEED - 3C509B mock state seeder v0.7.7
 Seed file deleted (or already absent).
 Smoke test complete.
 Smoke test: run completed
@@ -343,8 +355,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 148
-    Executed Tests           : 148
+    Defined Tests            : 154
+    Executed Tests           : 154
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS

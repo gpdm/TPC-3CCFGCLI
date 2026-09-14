@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results" tests="152" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results" tests="158" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -186,7 +186,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="FD_CHANGE: Verify FULLDUPLEX property behaviour" tests="10" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="FD_CHANGE: Verify FULLDUPLEX property behaviour" tests="16" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t07xx"/>
 			<property name="description" value="Verify FULLDUPLEX property behaviour"/>
@@ -245,10 +245,46 @@
 				<property name="artifact" value="ARTIFACT/T0711.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t0714: reverse Full Duplex dependency preserves TP state" classname="FD_CHANGE">
+		<testcase name="t0717: explicit TR:AUI+FULLDUPLEX:ENABLED conflict from TP+FD enabled" classname="FD_CHANGE">
 			<properties>
-				<property name="description" value="reverse Full Duplex dependency preserves TP state"/>
-				<property name="artifact" value="ARTIFACT/T0714.LOG"/>
+				<property name="description" value="explicit TR:AUI+FULLDUPLEX:ENABLED conflict from TP+FD enabled"/>
+				<property name="artifact" value="ARTIFACT/T0717.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t0719: MODEM plus TR word 0Dh write message without FD change" classname="FD_CHANGE">
+			<properties>
+				<property name="description" value="MODEM plus TR word 0Dh write message without FD change"/>
+				<property name="artifact" value="ARTIFACT/T0719.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t0723: MODEM plus OPTIMIZE field specific verification" classname="FD_CHANGE">
+			<properties>
+				<property name="description" value="MODEM plus OPTIMIZE field specific verification"/>
+				<property name="artifact" value="ARTIFACT/T0723.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t0724: implicit TR transition reaches live FULLDUPLEX sync" classname="FD_CHANGE">
+			<properties>
+				<property name="description" value="implicit TR transition reaches live FULLDUPLEX sync"/>
+				<property name="artifact" value="ARTIFACT/T0724.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t0726: TR without FD transition skips implicit live FD sync" classname="FD_CHANGE">
+			<properties>
+				<property name="description" value="TR without FD transition skips implicit live FD sync"/>
+				<property name="artifact" value="ARTIFACT/T0726.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t0727: NOTICE for implicit TR:AUI Full Duplex disable" classname="FD_CHANGE">
+			<properties>
+				<property name="description" value="NOTICE for implicit TR:AUI Full Duplex disable"/>
+				<property name="artifact" value="ARTIFACT/T0727.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t0730: no NOTICE for explicit TR:AUI+FULLDUPLEX:DISABLED" classname="FD_CHANGE">
+			<properties>
+				<property name="description" value="no NOTICE for explicit TR:AUI+FULLDUPLEX:DISABLED"/>
+				<property name="artifact" value="ARTIFACT/T0730.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>
@@ -257,9 +293,9 @@
 			<property name="header_id" value="t09xx"/>
 			<property name="description" value="Verify Workload Optimization change behaviour"/>
 		</properties>
-		<testcase name="t0901: CONFIGURE /OPTIMIZE transition to OS/2" classname="OPTIMIZE_CHANGE">
+		<testcase name="t0901: CONFIGURE /OPTIMIZE transition to OS/2, check work 0Dh" classname="OPTIMIZE_CHANGE">
 			<properties>
-				<property name="description" value="CONFIGURE /OPTIMIZE transition to OS/2"/>
+				<property name="description" value="CONFIGURE /OPTIMIZE transition to OS/2, check work 0Dh"/>
 				<property name="artifact" value="ARTIFACT/T0901.LOG"/>
 			</properties>
 		</testcase>
