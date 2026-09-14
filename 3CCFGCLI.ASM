@@ -8369,14 +8369,250 @@ PROC Select_Nic_Description NEAR
     ret
 ENDP Select_Nic_Description
 
+; Read-only secondary low checksum: EEPROM words 13h through 16h.
+; Input DX = physical base.  Output AL = checksum byte, CF set on read timeout.
+PROC List_Checksum_17_Low NEAR
+    push    bx
+    push    dx
+    push    si
+
+    xor     bx, bx
+    mov     si, EEPROM_SECONDARY_CONFIG_START
+@@Loop:
+    mov     ax, si
+    call    Nic_EEPROM_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, EEPROM_SECONDARY_CONFIG_END
+    jb      @@Loop
+    mov     al, bl
+    pop     si
+    pop     dx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     si
+    pop     dx
+    pop     bx
+    stc
+    ret
+ENDP List_Checksum_17_Low
+
+; Read-only secondary high checksum: EEPROM words 10h-12h and 20h-3Fh.
+; Input DX = physical base.  Output AL = checksum byte, CF set on read timeout.
+PROC List_Checksum_17_High NEAR
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    xor     bx, bx
+    mov     si, EEPROM_SECONDARY_VITAL_START
+@@Vital:
+    mov     ax, si
+    call    Nic_EEPROM_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, EEPROM_SECONDARY_VITAL_END
+    jb      @@Vital
+
+    mov     si, EEPROM_SECONDARY_VITAL_PNP_START
+@@Pnp:
+    mov     ax, si
+    call    Nic_EEPROM_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, EEPROM_SECONDARY_VITAL_PNP_END
+    jb      @@Pnp
+
+    mov     al, bl
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP List_Checksum_17_High
+
+; Read all additional LIST values from an explicit physical base in DX.
+; Input SI = logical NIC record, DX = physical access base.
+; Preserves the live register window across the read operation.
+PROC Read_Extended_Nic_Info_At_Base NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    di
+
+    call    Nic_Get_Current_Window
+    mov     di, ax
+
+    call    Nic_Read_Capabilities
+    mov     [ext_nic_capabilities], ax
+    mov     [ext_nic_capability_valid], bx
+
+    mov     al, EEPROM_ADDR_CFG
+    call    Nic_EEPROM_Read
+    jc      @@SkipAddrCfg
+    mov     [ext_addr_cfg], ax
+@@SkipAddrCfg:
+
+    mov     al, EEPROM_SOFTWARE_INFO
+    call    Nic_EEPROM_Read
+    jc      @@SkipSoftwareInfo
+    mov     [ext_software_info], ax
+@@SkipSoftwareInfo:
+
+    ; EEPROM word 13h only carries Plug and Play state on the 3C509B.
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@CheckVerbose
+    cmp     al, 2
+    jb      @@CheckVerbose
+    mov     al, EEPROM_CONFIG_CONTROL
+    call    Nic_EEPROM_Read
+    jc      @@SkipConfigCtrl
+    mov     [ext_config_ctrl], ax
+@@SkipConfigCtrl:
+
+@@CheckVerbose:
+    ; The additional EEPROM reads are verbose-only so normal LIST retains its
+    ; existing read behavior.  Word 14h bit 4 and the secondary checksum are
+    ; defined here only for the 3C509B generation.  The checksum is validated
+    ; from EEPROM data, rather than from any mock-only state.
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@RestoreWindow
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 2
+    jb      @@RestoreWindow
+    mov     al, EEPROM_REVISION_INFO
+    call    Nic_EEPROM_Read
+    jc      @@SkipBootRomSizeValid
+    test    ax, EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
+    jz      @@BootRomSizeInvalid
+    mov     [ext_boot_rom_size_valid], 1
+    jmp     @@ReadSecondaryChecksum
+@@BootRomSizeInvalid:
+    mov     [ext_boot_rom_size_valid], 0
+@@ReadSecondaryChecksum:
+    mov     al, EEPROM_SECONDARY_CHECKSUM
+    call    Nic_EEPROM_Read
+    jc      @@RestoreWindow
+    mov     bx, ax
+    call    List_Checksum_17_Low
+    jc      @@RestoreWindow
+    cmp     al, bl
+    jne     @@SecondaryChecksumInvalid
+    call    List_Checksum_17_High
+    jc      @@RestoreWindow
+    cmp     al, bh
+    jne     @@SecondaryChecksumInvalid
+    mov     [ext_secondary_checksum_valid], 1
+    jmp     @@RestoreWindow
+@@SecondaryChecksumInvalid:
+    mov     [ext_secondary_checksum_valid], 0
+    jmp     @@RestoreWindow
+@@SkipBootRomSizeValid:
+
+@@RestoreWindow:
+    mov     ax, di
+    call    Nic_Select_Window
+
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Read_Extended_Nic_Info_At_Base
+
+; Read extended information for an ambiguous active ID-tagged record through
+; a temporary live base, then restore the adapter to its original IOBASE.
+; Input SI = selected NIC record.
+PROC Read_Extended_Nic_Info_Targeted NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    di
+
+    pushf
+    cli
+    call    Cfg_Find_Temporary_Base
+    jc      @@FailFlags
+    mov     [cfg_target_base], ax
+
+    mov     ax, [cfg_target_base]
+    call    Cfg_Id_Activate_At_Base
+
+    mov     dx, [cfg_target_base]
+    call    Nic_Check_3Com_Signature
+    jc      @@ReadAndRestore
+    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
+    jne     @@ReadAndRestore
+    mov     [BYTE si + NIC_ASIC_REV], bl
+
+@@ReadAndRestore:
+    mov     dx, [cfg_target_base]
+    call    Read_Extended_Nic_Info_At_Base
+
+    mov     ax, [WORD si + NIC_IO_BASE]
+    call    Cfg_Id_Activate_At_Base
+
+    mov     dx, [cfg_target_base]
+    call    Nic_Read_Status
+    cmp     ax, 0FFFFh
+    jne     @@RestorationFail
+
+    popf
+    call    Nic_Sync_State
+    clc
+    jmp     @@Done
+
+@@RestorationFail:
+    mov     [ext_addr_cfg], 0FFFFh
+    mov     [ext_config_ctrl], 0FFFFh
+    mov     [ext_software_info], 0FFFFh
+    mov     [ext_nic_capabilities], 0FFFFh
+    mov     [ext_nic_capability_valid], 0
+    mov     [ext_boot_rom_size_valid], 0FFFFh
+    mov     [ext_secondary_checksum_valid], 0FFFFh
+
+@@FailFlags:
+    popf
+    call    Nic_Sync_State
+    stc
+
+@@Done:
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Read_Extended_Nic_Info_Targeted
+
 ; Read all additional LIST values from the activated adapter.
 ; Input SI = NIC record.
-; The existing enumeration record is not modified.
+; Determines whether ordinary access is unique or ambiguous, using targeted
+; temporary access when multiple active records share the logical IOBASE.
 PROC Read_Extended_Nic_Info NEAR
     push    ax
     push    bx
     push    cx
     push    dx
+    push    di
 
     mov     [ext_addr_cfg], 0FFFFh
     mov     [ext_config_ctrl], 0FFFFh
@@ -8392,78 +8628,31 @@ PROC Read_Extended_Nic_Info NEAR
     test    [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
     jz      @@Done
 
-    call    Nic_Read_Capabilities
-    mov     [ext_nic_capabilities], ax
-    mov     [ext_nic_capability_valid], bx
-
-    mov     al, EEPROM_ADDR_CFG
-    call    Nic_EEPROM_Read
-    jc      @@SkipAddrCfg
-    mov     [ext_addr_cfg], ax
-@@SkipAddrCfg:
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_SOFTWARE_INFO
-    call    Nic_EEPROM_Read
-    jc      @@SkipSoftwareInfo
-    mov     [ext_software_info], ax
-@@SkipSoftwareInfo:
-
-    ; EEPROM word 13h only carries Plug and Play state on the 3C509B.
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
+    call    Find_Record_By_Base
+    cmp     di, 0
     je      @@Done
-    cmp     al, 2
-    jb      @@Done
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_CONFIG_CONTROL
-    call    Nic_EEPROM_Read
-    jc      @@SkipConfigCtrl
-    mov     [ext_config_ctrl], ax
-@@SkipConfigCtrl:
+    cmp     di, 0FFFFh
+    je      @@Ambiguous
 
-    ; The additional EEPROM reads are verbose-only so normal LIST retains its
-    ; existing read behavior.  Word 14h bit 4 and the secondary checksum are
-    ; defined here only for the 3C509B generation.  The checksum is validated
-    ; from EEPROM data, rather than from any mock-only state.
-    test    [cli_flags], CLI_FLAG_VERBOSE
+    ; Exactly one record owns this logical IOBASE.
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Read_Extended_Nic_Info_At_Base
+    jmp     @@Done
+
+@@Ambiguous:
+    ; Multiple records own the logical IOBASE. Check for valid ID tag.
+    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
     jz      @@Done
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 2
-    jb      @@Done
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_REVISION_INFO
-    call    Nic_EEPROM_Read
-    jc      @@SkipBootRomSizeValid
-    test    ax, EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
-    jz      @@BootRomSizeInvalid
-    mov     [ext_boot_rom_size_valid], 1
-    jmp     @@ReadSecondaryChecksum
-@@BootRomSizeInvalid:
-    mov     [ext_boot_rom_size_valid], 0
-@@ReadSecondaryChecksum:
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_SECONDARY_CHECKSUM
-    call    Nic_EEPROM_Read
-    jc      @@Done
-    mov     bx, ax
-    call    Cfg_Checksum_17_Low
-    jc      @@Done
-    cmp     al, bl
-    jne     @@SecondaryChecksumInvalid
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Cfg_Checksum_17_High
-    jc      @@Done
-    cmp     al, bh
-    jne     @@SecondaryChecksumInvalid
-    mov     [ext_secondary_checksum_valid], 1
-    jmp     @@Done
-@@SecondaryChecksumInvalid:
-    mov     [ext_secondary_checksum_valid], 0
-    jmp     @@Done
-@@SkipBootRomSizeValid:
+    mov     al, [BYTE si + NIC_TAG]
+    or      al, al
+    jz      @@Done
+    cmp     al, MAX_CARDS
+    ja      @@Done
+
+    call    Read_Extended_Nic_Info_Targeted
 
 @@Done:
+    pop     di
     pop     dx
     pop     cx
     pop     bx
