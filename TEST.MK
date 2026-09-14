@@ -60,7 +60,7 @@ PNP_CHANGE: t05xx t0501 t0502 t0505
 MODEM_CHANGE: t06xx t0601 t0602 t0603 t0604 t0605 t0607 t0608 t0609 t0610
 
 # Base: 0700
-FD_CHANGE: t07xx t0701 t0702 t0703 t0705 t0706 t0707 t0708 t0710 t0711 t0714
+FD_CHANGE: t07xx t0701 t0702 t0703 t0705 t0706 t0707 t0708 t0710 t0711 t0714 t0715 t0716 t0717 t0718 t0719 t0720 t0721 t0722 t0723
 
 # Base: 0900
 OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904 t0905
@@ -479,21 +479,150 @@ t0711:
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0711.LOG > NUL
    @echo [t0711] PASSED  >> $(TESTLOG)
 
-# Full Duplex requires effective TP. A standalone change to AUI must therefore
-# fail without changing state; AUI+FULLDUPLEX:DISABLED is valid because the
-# combined prospective final state no longer has Full Duplex enabled.
+# Each transition test first proves the required initial state (TR = TP,
+# FULL DUPLEX = ENABLED) via LIST before applying the actual TR request, so a
+# failed setup step cannot be mistaken for a successful implicit disable.
 t0714:
-   @echo [t0714] reverse Full Duplex dependency preserves TP state >> $(TESTLOG)
+   @echo [t0714] explicit TR:AUI+FULLDUPLEX:DISABLED from TP+FD enabled >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0714.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0714.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T0714.LOG
-   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0714.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0714.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0714.LOG > NUL
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T0714.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0714.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0714.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0714.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0714.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0714.LOG > NUL
    @echo [t0714] PASSED  >> $(TESTLOG)
+
+t0715:
+   @echo [t0715] implicit TP to AUI disables Full Duplex >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0715.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0715.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0715.LOG
+   FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0715.LOG > NUL
+   FIND "Full Duplex = enabled" $(ARTIFACTS)\T0715.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T0715.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0715.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0715.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0715.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0715.LOG > NUL
+   @echo [t0715] PASSED  >> $(TESTLOG)
+
+t0716:
+   @echo [t0716] implicit TP to AUTO disables Full Duplex >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0716.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0716.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0716.LOG
+   FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0716.LOG > NUL
+   FIND "Full Duplex = enabled" $(ARTIFACTS)\T0716.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T0716.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0716.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0716.LOG
+   FIND "Transceiver = auto select" $(ARTIFACTS)\T0716.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0716.LOG > NUL
+   @echo [t0716] PASSED  >> $(TESTLOG)
+
+t0717:
+   @echo [t0717] explicit TR:AUI+FULLDUPLEX:ENABLED conflict from TP+FD enabled >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0717.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0717.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0717.LOG
+   FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0717.LOG > NUL
+   FIND "Full Duplex = enabled" $(ARTIFACTS)\T0717.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0717.LOG
+   FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0717.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0717.LOG
+   FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0717.LOG > NUL
+   FIND "Full Duplex = enabled" $(ARTIFACTS)\T0717.LOG > NUL
+   @echo [t0717] PASSED  >> $(TESTLOG)
+
+# t0718/t0719 isolate the single command under test in its own log file so a
+# message assertion cannot match unrelated earlier verbose output.
+t0718:
+   @echo [t0718] implicit FULLDUPLEX word 0Dh write message on TR:AUI >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0718.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0718.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0718B.LOG
+   FIND "Full duplex configuration word written." $(ARTIFACTS)\T0718B.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "Modem speed configuration word written." $(ARTIFACTS)\T0718B.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0718.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0718.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0718.LOG > NUL
+   @echo [t0718] PASSED  >> $(TESTLOG)
+
+t0719:
+   @echo [t0719] MODEM plus TR word 0Dh write message without FD change >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0719.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0719B.LOG
+   FIND "Modem speed configuration word written." $(ARTIFACTS)\T0719B.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "Full duplex configuration word written." $(ARTIFACTS)\T0719B.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0719.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0719.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0719.LOG > NUL
+   @echo [t0719] PASSED  >> $(TESTLOG)
+
+# Phase 2: the implicit persistent FULLDUPLEX disable derived by /TR must now
+# reach the same EEPROM verification path as an explicit /FULLDUPLEX request.
+# Each command under test is isolated in its own log file so the message
+# assertions cannot match unrelated earlier verbose output.
+t0720:
+   @echo [t0720] implicit FULLDUPLEX EEPROM verification on TR:AUI >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0720.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0720.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0720B.LOG
+   FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T0720B.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0720B.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0720.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0720.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0720.LOG > NUL
+   @echo [t0720] PASSED  >> $(TESTLOG)
+
+# Unrelated TR+MODEM must not trigger FULLDUPLEX EEPROM verification: the
+# persistent FULLDUPLEX bit never transitions in this scenario.
+t0721:
+   @echo [t0721] MODEM plus TR does not trigger FULLDUPLEX verification >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0721.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0721B.LOG
+   FIND "EEPROM modem speed setting verified." $(ARTIFACTS)\T0721B.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "EEPROM full duplex mode verified." $(ARTIFACTS)\T0721B.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0721B.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0721.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0721.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0721.LOG > NUL
+   @echo [t0721] PASSED  >> $(TESTLOG)
+
+# Mixed case: MODEM and the implicit FULLDUPLEX disable both change word 0Dh.
+# Both dedicated verification messages must appear, proving the shared word
+# 0Dh readback cache serves both verification concerns from a single read.
+t0722:
+   @echo [t0722] MODEM plus implicit FULLDUPLEX verification share one read >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0722.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0722.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0722B.LOG
+   FIND "EEPROM modem speed setting verified." $(ARTIFACTS)\T0722B.LOG > NUL
+   FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T0722B.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0722B.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0722.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0722.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0722.LOG > NUL
+   @echo [t0722] PASSED  >> $(TESTLOG)
+
+# Word 0Dh field specific verification attribution: MODEM and OPTIMIZE each
+# verify only their own field, so a combined request must show both dedicated
+# verification success messages, not merely a generic word 0Dh comparison.
+t0723:
+   @echo [t0723] MODEM plus OPTIMIZE field specific verification >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0723.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /OPTIMIZE:DOS /VERBOSE > $(ARTIFACTS)\T0723B.LOG
+   FIND "EEPROM modem speed setting verified." $(ARTIFACTS)\T0723B.LOG > NUL
+   FIND "EEPROM optimize mode verified." $(ARTIFACTS)\T0723B.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0723B.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0723.LOG
+   FIND "(1200 bd)" $(ARTIFACTS)\T0723.LOG > NUL
+   FIND "Optimization = DOS" $(ARTIFACTS)\T0723.LOG > NUL
+   @echo [t0723] PASSED  >> $(TESTLOG)
 
 t09xx:
    @echo [t09xx] OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour  >> $(TESTLOG)

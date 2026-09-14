@@ -5698,6 +5698,8 @@ ENDP Cfg_Txn_Probe_Boot_ROM
 ; Merge only the transceiver selection into the prospective EEPROM word 08h
 ; image.  AUTO (sentinel 0FFh) clears bits 15:14 and sets bit 7.  TP/AUI/COAX
 ; clear bit 7 and write the raw value into bits 15:14.  All other bits preserved.
+; Also derives the confirmed implicit persistent FULLDUPLEX disable for a
+; genuine TP-to-non-TP transition; see the check at @@NoImplicitFD below.
 PROC Cfg_Prepare_TR NEAR
     push    ax
     push    bx
@@ -5717,6 +5719,24 @@ PROC Cfg_Prepare_TR NEAR
     or      ax, bx
 @@Done:
     mov     [cfg_txn_new_word08], ax
+
+    ; Reproduce the confirmed original utility behavior: a genuine transition
+    ; from an old effective TP transceiver to a requested non-TP transceiver
+    ; (AUI, COAX, or AUTO) implicitly disables persistent FULLDUPLEX, unless
+    ; an explicit /FULLDUPLEX option was also supplied on this command line.
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@NoImplicitFD
+    cmp     [cfg_tr_value], 0       ; requested TP is never a non-TP target
+    je      @@NoImplicitFD
+    mov     ax, [cfg_txn_old_word08]
+    test    ax, W0_ADDRESS_CFG_AUTO_SELECT
+    jnz     @@NoImplicitFD          ; old effective TR was AUTO, not TP
+    test    ax, W0_ADDRESS_CFG_XCVR_MASK
+    jnz     @@NoImplicitFD          ; old effective TR was AUI/COAX, not TP
+    test    [cfg_txn_old_word0d], EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jz      @@NoImplicitFD          ; persistent FULLDUPLEX was not enabled
+    and     [cfg_txn_new_word0d], NOT EEPROM_SOFTWARE_INFO_FULLDUPLEX
+@@NoImplicitFD:
 
     pop     cx
     pop     bx
@@ -5854,6 +5874,16 @@ PROC Cfg_Txn_Detect_Changes NEAR
 
 @@Optimize:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
+    jz      @@TRImplicitFD
+    mov     ax, [cfg_txn_old_word0d]
+    cmp     ax, [cfg_txn_new_word0d]
+    je      @@TRImplicitFD
+    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
+
+@@TRImplicitFD:
+    ; /TR alone can still change word 0Dh via the implicit persistent
+    ; FULLDUPLEX disable derived in Cfg_Prepare_TR; detect that too.
+    test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@Done
     mov     ax, [cfg_txn_old_word0d]
     cmp     ax, [cfg_txn_new_word0d]
@@ -6152,6 +6182,15 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jnz     @@Word0DPrint
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@Word0DWrittenFD
+    ; No OPTIMIZE/explicit FULLDUPLEX flag is set here. A /TR transition may
+    ; still have implicitly disabled persistent FULLDUPLEX (Cfg_Prepare_TR),
+    ; so check whether the FULLDUPLEX bit itself actually changed rather than
+    ; assuming so merely because CFG_PARSE_TR is set; MODEM alone, or TR
+    ; combined with MODEM but no FULLDUPLEX bit change, must report MODEM.
+    mov     ax, [cfg_txn_old_word0d]
+    xor     ax, [cfg_txn_new_word0d]
+    test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jnz     @@Word0DWrittenFD
     mov     dx, OFFSET msg_cfg_modem_word_written
     jmp     @@Word0DPrint
@@ -6630,7 +6669,12 @@ PROC Cfg_Txn_Verify NEAR
     mov     [cfg_txn_verify_word0d_valid], 1
 @@MODEMHaveWord0D:
     mov     ax, [cfg_txn_verify_word0d]
-    cmp     ax, [cfg_txn_new_word0d]
+    ; Verify the MODEM interrupt-disable field only; FULLDUPLEX and OPTIMIZE
+    ; bits sharing word 0Dh must not affect MODEM verification attribution.
+    and     ax, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
+    mov     bx, [cfg_txn_new_word0d]
+    and     bx, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
+    cmp     ax, bx
     jne     @@MODEMVerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@FDPersistent
@@ -6639,10 +6683,18 @@ PROC Cfg_Txn_Verify NEAR
     int     21h
 
 @@FDPersistent:
-    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    jz      @@OptimizePersistent
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jz      @@OptimizePersistent
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@FDNeedVerify
+    ; No explicit /FULLDUPLEX was requested. Verify only if the persistent
+    ; FULLDUPLEX bit itself actually transitioned (e.g. the implicit disable
+    ; derived by Cfg_Prepare_TR for a genuine TP to non-TP /TR transition).
+    mov     ax, [cfg_txn_old_word0d]
+    xor     ax, [cfg_txn_new_word0d]
+    test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jz      @@OptimizePersistent
+@@FDNeedVerify:
     cmp     [cfg_txn_verify_word0d_valid], 1
     je      @@FDHaveWord0D
     mov     si, [cfg_selected_ptr]
@@ -6682,7 +6734,12 @@ PROC Cfg_Txn_Verify NEAR
     mov     [cfg_txn_verify_word0d_valid], 1
 @@OptimizeHaveWord0D:
     mov     ax, [cfg_txn_verify_word0d]
-    cmp     ax, [cfg_txn_new_word0d]
+    ; Verify the OPTIMIZE field only; MODEM and FULLDUPLEX bits sharing word
+    ; 0Dh must not affect OPTIMIZE verification attribution.
+    and     ax, EEPROM_SOFTWARE_INFO_OPTIMIZE_MASK
+    mov     bx, [cfg_txn_new_word0d]
+    and     bx, EEPROM_SOFTWARE_INFO_OPTIMIZE_MASK
+    cmp     ax, bx
     jne     @@OptimizeVerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@BootRomPersistent
