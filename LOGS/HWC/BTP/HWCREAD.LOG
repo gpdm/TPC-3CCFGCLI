@@ -1,0 +1,50 @@
+3Com EtherLink III CLI Configuration Program v0.7.6
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509B-TP: Ethernet Address = 0020AFBD8850
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
+       Connectors = TP, AUI
+       Full Duplex Capability = yes
+       Plug and Play Capability = yes
+              ---
+       IOBASE = 0280, IRQ = 3
+       Transceiver = on-board TP
+       Plug and Play = disabled
+       Boot ROM = disabled
+       Optimization = Server
+       MODEM Interrupt Disable Time = 1300 us (1200 bd)
+       Full Duplex = enabled
+Running test target hwcr for detected NIC: BTP 
+invoke: MAKE -fHWCREAD.MK -DCARD_BTP  hwcr 
+Cleaning logs and test artifacts 
+Running 3CCFGCLI Hardware Compliance Read checks 
+[HWCR00xx] Hardware Compliance Read checks for 3C509B-TP 
+Saving original adapter configuration to HWCRREST.BAT 
+3Com EtherLink III CLI Configuration Program v0.7.6
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Configuration restore batch file created: BTP\ARTIFACT\HWCRREST.BAT
+[set-default].[common] Writing 3C509B-TP baseline via original utility 
+[set-default].[btp] PASSED 
+[hwcr001].[common] Reading 3C509B-TP identity and capabilities 
+[hwcr001].[btp] PASSED 
+[hwcr002] 9c5x9cfg /INT writer, 3CCFGCLI LIST reader 
+[hwcr002] PASSED 
+[hwcr003] 9c5x9cfg /IOBASE writer, 3CCFGCLI LIST reader 
+[hwcr003] PASSED 
+[hwcr004] 9c5x9cfg /PNP writer, 3CCFGCLI LIST reader 
+[hwcr004] PASSED 
+[hwcr005] 9c5x9cfg /MODEM writer, 3CCFGCLI LIST reader 
+[hwcr005] PASSED 
+[hwcr006] 9c5x9cfg /FULLDUPLEX writer, 3CCFGCLI LIST reader 
+[hwcr006] PASSED 
+[hwcr007] 9c5x9cfg /OPTIMIZE writer, 3CCFGCLI LIST reader 
+[hwcr007] PASSED 
+[hwcr008].[btp] 9c5x9cfg /TR:AUI writer, 3CCFGCLI LIST reader 

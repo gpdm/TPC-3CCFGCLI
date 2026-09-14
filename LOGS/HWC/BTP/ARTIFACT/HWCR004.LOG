@@ -1,0 +1,29 @@
+Configuration and Diagnostic Program  Version 3.2
+Copyright (C) 1991-1999, 3Com Corporation.  All Rights Reserved.
+
+If you change the Plug and Play option using the
+Configuration and Diagnostic Program, you must
+turn off the computer and reboot.
+
+The 3C5X9 NIC, NIC number 1, was successfully configured.
+3Com EtherLink III CLI Configuration Program v0.7.6
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509B-TP: Ethernet Address = 0020AFBD8850
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
+       Connectors = TP, AUI
+       Full Duplex Capability = yes
+       Plug and Play Capability = yes
+              ---
+       IOBASE = 0280, IRQ = 3
+       Transceiver = on-board TP
+       Plug and Play = disabled
+       Boot ROM = disabled
+       Optimization = DOS
+       MODEM Interrupt Disable Time = 1600 us (NONE)
+       Full Duplex = disabled

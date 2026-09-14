@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites name="3CCFGCLI Test Results" tests="11" failures="1" errors="0" skipped="3" time="0.0">
+	<testsuite name="HWCR_READ: Hardware Compliance Read checks for $(CARDNAME)" tests="11" errors="0" failures="1" skipped="3" time="0">
+		<properties>
+			<property name="header_id" value="HWCR00xx"/>
+			<property name="description" value="Hardware Compliance Read checks for $(CARDNAME)"/>
+		</properties>
+		<testcase name="hwcr001: Reading 3C509B-TP identity and capabilities" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="Reading 3C509B-TP identity and capabilities"/>
+				<property name="artifact" value="ARTIFACT/HWCR001.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcr002: 9c5x9cfg /INT writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="9c5x9cfg /INT writer, 3CCFGCLI LIST reader"/>
+				<property name="artifact" value="ARTIFACT/HWCR002.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcr003: 9c5x9cfg /IOBASE writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="9c5x9cfg /IOBASE writer, 3CCFGCLI LIST reader"/>
+				<property name="artifact" value="ARTIFACT/HWCR003.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcr004: 9c5x9cfg /PNP writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="9c5x9cfg /PNP writer, 3CCFGCLI LIST reader"/>
+				<property name="artifact" value="ARTIFACT/HWCR004.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcr005: 9c5x9cfg /MODEM writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="9c5x9cfg /MODEM writer, 3CCFGCLI LIST reader"/>
+				<property name="artifact" value="ARTIFACT/HWCR005.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcr006: 9c5x9cfg /FULLDUPLEX writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="9c5x9cfg /FULLDUPLEX writer, 3CCFGCLI LIST reader"/>
+				<property name="artifact" value="ARTIFACT/HWCR006.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcr007: 9c5x9cfg /OPTIMIZE writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="9c5x9cfg /OPTIMIZE writer, 3CCFGCLI LIST reader"/>
+				<property name="artifact" value="ARTIFACT/HWCR007.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcr008: 9c5x9cfg /TR:AUI writer, 3CCFGCLI LIST reader" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="9c5x9cfg /TR:AUI writer, 3CCFGCLI LIST reader"/>
+				<property name="artifact" value="ARTIFACT/HWCR008.LOG"/>
+			</properties>
+			<failure message="PASSED marker missing" type="assertion">hwcr008 started at line 50 of the test log, but no PASSED marker was emitted.</failure>
+		</testcase>
+		<testcase name="hwcr009: SAVECONFIG readback &gt; NUL" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="SAVECONFIG readback &gt; NUL"/>
+				<property name="artifact" value="ARTIFACT/HWCR009.LOG"/>
+			</properties>
+			<skipped message="Not executed because hwcr008 failed"/>
+		</testcase>
+		<testcase name="hwcr051: 9c5x9cfg Boot ROM writer, 3CCFGCLI LIST/SAVECONFIG reader" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="9c5x9cfg Boot ROM writer, 3CCFGCLI LIST/SAVECONFIG reader"/>
+			</properties>
+			<skipped message="Not executed because hwcr008 failed"/>
+		</testcase>
+		<testcase name="hwcs001: HWC SET verification: Verify 3C5X9CFG post HWC configuration dump" classname="HWCR_READ">
+			<properties>
+				<property name="description" value="HWC SET verification: Verify 3C5X9CFG post HWC configuration dump"/>
+			</properties>
+			<skipped message="Not executed because hwcr008 failed"/>
+		</testcase>
+	</testsuite>
+</testsuites>
