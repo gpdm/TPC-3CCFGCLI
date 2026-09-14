@@ -79,7 +79,7 @@ CARDTYPE = bcoax
 CARDNAME = 3C509B-COAX
 DEFAULT_TRANSCEIVER = AUI
 HWCR004_TARGET = hwcr004
-HWCR006_TARGET =
+HWCR006_TARGET = hwcr006-unsupported
 HWCR008_TARGET = hwcr008-bcoax
 !if $d(ROM_TEST)
 HWCR051_TARGET = hwcr-rom-not-implemented
@@ -106,7 +106,7 @@ CARDTYPE = btpo
 CARDNAME = 3C509B-TPO
 HWCR004_TARGET = hwcr004
 HWCR006_TARGET = hwcr006
-HWCR008_TARGET =
+HWCR008_TARGET = hwcr008-unsupported
 !if $d(ROM_TEST)
 # Boot ROM is anyway unsupported for 3C509B-TPO model.
 HWCR051_TARGET = hwcr-rom-unsupported
@@ -131,8 +131,8 @@ HWCR051_TARGET = hwcr-rom-disabled
 
 CARDTYPE = tp
 CARDNAME = 3C509-TP
-HWCR004_TARGET =
-HWCR006_TARGET =
+HWCR004_TARGET = hwcr004-unsupported
+HWCR006_TARGET = hwcr006-unsupported
 HWCR008_TARGET = hwcr008-tp
 !if $d(ROM_TEST)
 HWCR051_TARGET = hwcr-rom-not-implemented
@@ -175,7 +175,7 @@ complete:
 clean:
 	@echo Cleaning logs and test artifacts >> $(LOGFILE)
 	@echo Cleaning logs and test artifacts
-	@del $(ARTIFACTS)\*.*
+	@del $(ARTIFACTS)\HWCR*.*
 
 # Full hardware compliance read run.
 # Optional tests expand to an empty macro on
@@ -358,6 +358,12 @@ hwcr004:
 	@echo [hwcr004] PASSED >> $(LOGFILE)
 	@echo [hwcr004] PASSED
 
+hwcr004-unsupported:
+	@echo [hwcr004].[unsupported] PNP support is not supported by $(CARDNAME). >> $(LOGFILE)
+	@echo [hwcr004].[unsupported] PNP support is not supported by $(CARDNAME).
+	@echo [hwcr004].[unsupported] NOT SUPPORTED >> $(LOGFILE)
+	@echo [hwcr004].[unsupported] NOT SUPPORTED
+
 hwcr005:
 	@echo [hwcr005] 9c5x9cfg /MODEM writer, 3CCFGCLI LIST reader >> $(LOGFILE)
 	@echo [hwcr005] 9c5x9cfg /MODEM writer, 3CCFGCLI LIST reader
@@ -375,6 +381,12 @@ hwcr006:
 	FIND "Full Duplex = enabled" $(ARTIFACTS)\HWCR006.LOG > NUL
 	@echo [hwcr006] PASSED >> $(LOGFILE)
 	@echo [hwcr006] PASSED
+
+hwcr006-unsupported:
+	@echo [hwcr006].[unsupported] Full Duplex is not supported by $(CARDNAME). >> $(LOGFILE)
+	@echo [hwcr006].[unsupported] Full Duplex is not supported by $(CARDNAME).
+	@echo [hwcr006].[unsupported] NOT SUPPORTED >> $(LOGFILE)
+	@echo [hwcr006].[unsupported] NOT SUPPORTED
 
 hwcr007:
 	@echo [hwcr007] 9c5x9cfg /OPTIMIZE writer, 3CCFGCLI LIST reader >> $(LOGFILE)
@@ -432,6 +444,12 @@ hwcr008-btpc:
 	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
 	@echo [hwcr008].[btpc] PASSED >> $(LOGFILE)
 	@echo [hwcr008].[btpc] PASSED
+
+hwcr008-btpo:
+	@echo [hwcr008].[btpo] /TR change is not supported by $(CARDNAME). >> $(LOGFILE)
+	@echo [hwcr008].[btpo] /TR change is not supported by $(CARDNAME).
+	@echo [hwcr008].[btpo] NOT SUPPORTED >> $(LOGFILE)
+	@echo [hwcr008].[btpo] NOT SUPPORTED
 
 hwcr008-tp:
 	@echo [hwcr008].[tp] 9c5x9cfg /TR:AUI writer, 3CCFGCLI LIST reader >> $(LOGFILE)
@@ -514,8 +532,8 @@ hwcr009-tp: hwcr009-common
 # #################################
 
 hwcr-rom-unsupported:
-	@echo [hwcr051] Boot ROM is not supported on $(CARDNAME). >> $(LOGFILE)
-	@echo [hwcr051] Boot ROM is not supported on $(CARDNAME).
+	@echo [hwcr051] Boot ROM is not supported by $(CARDNAME). >> $(LOGFILE)
+	@echo [hwcr051] Boot ROM is not supported by $(CARDNAME).
 	@echo [hwcr051] NOT SUPPORTED >> $(LOGFILE)
 	@echo [hwcr051] NOT SUPPORTED
 

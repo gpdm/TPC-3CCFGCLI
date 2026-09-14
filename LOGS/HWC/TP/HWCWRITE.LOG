@@ -1,0 +1,65 @@
+3Com EtherLink III CLI Configuration Program v0.7.6
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509-TP: Ethernet Address = 00608CE90C9B
+       EtherLink III 16-bit ISA NIC (ASIC Revision 1)
+       Connectors = TP, AUI
+       Full Duplex Capability = not supported
+       Plug and Play Capability = not supported
+              ---
+       IOBASE = 0280, IRQ = 3
+       Transceiver = external
+       Plug and Play = not supported
+       Boot ROM = disabled
+       Optimization = Server
+       MODEM Interrupt Disable Time = 1300 us (1200 bd)
+       Full Duplex = not supported
+Running test target hwcw for detected NIC: TP 
+invoke: MAKE -fHWCWRITE.MK -DCARD_TP  hwcw 
+Cleaning logs and test artifacts 
+Running 3CCFGCLI Hardware Compliance Write checks 
+[HWCW00xx] Hardware Compliance Write checks for 3C509-TP 
+Saving original adapter configuration to HWCWREST.BAT 
+3Com EtherLink III CLI Configuration Program v0.7.6
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Configuration restore batch file created: TP\ARTIFACT\HWCWREST.BAT
+[set-default].[common] Writing 3C509-TP baseline via original utility 
+[set-default].[tp] PASSED 
+[hwcw001].[common] Reading 3C509-TP identity and capabilities 
+[hwcw001].[tp] PASSED 
+[hwcw002] 3CCFGCLI /INT writer, fresh LIST readback 
+[hwcw002] PASSED 
+[hwcw003] 3CCFGCLI /IOBASE writer, fresh LIST readback 
+[hwcw003] PASSED 
+[hwcw004].[unsupported] PNP support is not supported by 3C509-TP
+[hwcw004].[unsupported] NOT SUPPORTED
+[hwcw005] 3CCFGCLI /MODEM writer, fresh LIST readback 
+[hwcw005] PASSED
+[hwcw006].[unsupported] Full Duplex is not supported by 3C509-TP
+[hwcw006].[unsupported] NOT SUPPORTED
+[hwcw007] 3CCFGCLI /OPTIMIZE writer, fresh LIST readback 
+[hwcw007] PASSED 
+[hwcw008].[tp] 3CCFGCLI /TR:AUI writer, fresh LIST readback 
+[hwcw008].[tp] PASSED 
+[hwcw009].[common] Reading combined hardware state through SAVECONFIG 
+[hwcw009].[tp] PASSED 
+[hwcw010] 3CCFGCLI multi-property CONFIGURE transaction 
+[hwcw010] PASSED 
+[hwcw051] Boot ROM testing is currently disabled for 3C509-TP. 
+[hwcw051] DISABLED 
+Hardware Compliance Write checks completed. 
+Taking post-configuration dump using 3C5X9CFG 
+Hardware Compliance Test PASSED. 
+HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
+[hwcs001].[common] Verify 3C5X9CFG post HWC configuration dump
+[hwcs001].[tp] Verifying specific 3C509-TP properties
+[hwcs001].[tp] PASSED
+HWC SET verification: run completed

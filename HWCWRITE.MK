@@ -85,7 +85,7 @@ CARDTYPE = bcoax
 CARDNAME = 3C509B-COAX
 DEFAULT_TRANSCEIVER = AUI
 HWCW004_TARGET = hwcw004
-HWCW006_TARGET =
+HWCW006_TARGET = hwcw006-unsupported
 HWCW008_TARGET = hwcw008-bcoax
 !if $d(ROM_TEST)
 HWCW051_TARGET = hwcw-rom-not-implemented
@@ -112,7 +112,7 @@ CARDTYPE = btpo
 CARDNAME = 3C509B-TPO
 HWCW004_TARGET = hwcw004
 HWCW006_TARGET = hwcw006
-HWCW008_TARGET =
+HWCW008_TARGET = hwcw008-btpo
 !if $d(ROM_TEST)
 # Boot ROM is anyway unsupported for 3C509B-TPO model.
 HWCW051_TARGET = hwcw-rom-unsupported
@@ -137,8 +137,8 @@ HWCW051_TARGET = hwcw-rom-disabled
 
 CARDTYPE = tp
 CARDNAME = 3C509-TP
-HWCW004_TARGET =
-HWCW006_TARGET =
+HWCW004_TARGET = hwcw004-unsupported
+HWCW006_TARGET = hwcw006-unsupported
 HWCW008_TARGET = hwcw008-tp
 !if $d(ROM_TEST)
 HWCW051_TARGET = hwcw-rom-not-implemented
@@ -181,7 +181,7 @@ complete:
 clean:
 	@echo Cleaning logs and test artifacts >> $(LOGFILE)
 	@echo Cleaning logs and test artifacts
-	@del $(ARTIFACTS)\*.*
+	@del $(ARTIFACTS)\HWCW*.*
 
 # Full hardware compliance write run.
 # Optional tests expand to an empty macro on
@@ -359,6 +359,12 @@ hwcw004:
 	@echo [hwcw004] PASSED >> $(LOGFILE)
 	@echo [hwcw004] PASSED
 
+hwcw004-unsupported:
+	@echo [hwcw004].[unsupported] PNP support is not supported by $(CARDNAME). >> $(LOGFILE)
+	@echo [hwcw004].[unsupported] PNP support is not supported by $(CARDNAME).
+	@echo [hwcw004].[unsupported] NOT SUPPORTED >> $(LOGFILE)
+	@echo [hwcw004].[unsupported] NOT SUPPORTED
+
 hwcw005:
 	@echo [hwcw005] 3CCFGCLI /MODEM writer, fresh LIST readback >> $(LOGFILE)
 	@echo [hwcw005] 3CCFGCLI /MODEM writer, fresh LIST readback
@@ -376,6 +382,12 @@ hwcw006:
 	FIND "Full Duplex = enabled" $(ARTIFACTS)\HWCW006.LOG > NUL
 	@echo [hwcw006] PASSED >> $(LOGFILE)
 	@echo [hwcw006] PASSED
+
+hwcw006-unsupported:
+	@echo [hwcw006].[unsupported] Full Duplex is not supported by $(CARDNAME). >> $(LOGFILE)
+	@echo [hwcw006].[unsupported] Full Duplex is not supported by $(CARDNAME).
+	@echo [hwcw006].[unsupported] NOT SUPPORTED >> $(LOGFILE)
+	@echo [hwcw006].[unsupported] NOT SUPPORTED
 
 hwcw007:
 	@echo [hwcw007] 3CCFGCLI /OPTIMIZE writer, fresh LIST readback >> $(LOGFILE)
@@ -433,6 +445,12 @@ hwcw008-btpc:
 	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCW008.LOG > NUL
 	@echo [hwcw008].[btpc] PASSED >> $(LOGFILE)
 	@echo [hwcw008].[btpc] PASSED
+
+hwcw008-btpo:
+	@echo [hwcw008].[btpo] /TR change is not supported by $(CARDNAME). >> $(LOGFILE)
+	@echo [hwcw008].[btpo] /TR change is not supported by $(CARDNAME).
+	@echo [hwcw008].[btpo] NOT SUPPORTED >> $(LOGFILE)
+	@echo [hwcw008].[btpo] NOT SUPPORTED
 
 hwcw008-tp:
 	@echo [hwcw008].[tp] 3CCFGCLI /TR:AUI writer, fresh LIST readback >> $(LOGFILE)
