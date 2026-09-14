@@ -23,9 +23,9 @@
 				<property name="artifact" value="ARTIFACT/HWCR003.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr004: PNP support is not supported by 3C509-TP" classname="HWCR_READ">
+		<testcase name="hwcr004: PNP support is not supported by 3C509-TP." classname="HWCR_READ">
 			<properties>
-				<property name="description" value="PNP support is not supported by 3C509-TP"/>
+				<property name="description" value="PNP support is not supported by 3C509-TP."/>
 			</properties>
 			<skipped message="NOT SUPPORTED"/>
 		</testcase>
@@ -35,9 +35,9 @@
 				<property name="artifact" value="ARTIFACT/HWCR005.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcr006: Full Duplex is not supported by 3C509-TP" classname="HWCR_READ">
+		<testcase name="hwcr006: Full Duplex is not supported by 3C509-TP." classname="HWCR_READ">
 			<properties>
-				<property name="description" value="Full Duplex is not supported by 3C509-TP"/>
+				<property name="description" value="Full Duplex is not supported by 3C509-TP."/>
 			</properties>
 			<skipped message="NOT SUPPORTED"/>
 		</testcase>

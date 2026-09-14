@@ -65,11 +65,11 @@
 				<property name="artifact" value="ARTIFACT/HWCW010.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcw051: Boot ROM testing is currently not implemented for 3C509B-TPCoax." classname="HWCW_WRITE">
+		<testcase name="hwcw051: Boot ROM testing is currently disabled for 3C509B-TPCoax." classname="HWCW_WRITE">
 			<properties>
-				<property name="description" value="Boot ROM testing is currently not implemented for 3C509B-TPCoax."/>
+				<property name="description" value="Boot ROM testing is currently disabled for 3C509B-TPCoax."/>
 			</properties>
-			<skipped message="NOT IMPLEMENTED"/>
+			<skipped message="DISABLED"/>
 		</testcase>
 		<testcase name="hwcs001: Verify 3C5X9CFG post HWC configuration dump" classname="HWCW_WRITE">
 			<properties>

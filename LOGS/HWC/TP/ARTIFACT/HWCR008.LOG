@@ -3,7 +3,7 @@ Copyright (C) 1991-1999, 3Com Corporation.  All Rights Reserved.
 
 
 The 3C5X9 NIC, NIC number 1, was successfully configured.
-3Com EtherLink III CLI Configuration Program v0.7.6
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -18,7 +18,7 @@ Number                       Description
        Plug and Play Capability = not supported
               ---
        IOBASE = 0280, IRQ = 3
-       Transceiver = external
+       Transceiver = external (AUX/DIX)
        Plug and Play = not supported
        Boot ROM = disabled
        Optimization = Server

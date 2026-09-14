@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.5
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -13,19 +13,19 @@ Number                       Description
        Plug and Play Capability = yes
               ---
        IOBASE = 0280, IRQ = 3
-       Transceiver = on-board TP
+       Transceiver = on-board coax
        Plug and Play = disabled
        Boot ROM = disabled
        Optimization = Server
        MODEM Interrupt Disable Time = 1300 us (1200 bd)
-       Full Duplex = enabled
+       Full Duplex = disabled
 Running test target hwcw for detected NIC: BTPC 
-invoke: MAKE -fHWCWRITE.MK -DCARD_BTPC -DROM_TEST hwcw 
+invoke: MAKE -fHWCWRITE.MK -DCARD_BTPC  hwcw 
 Cleaning logs and test artifacts 
 Running 3CCFGCLI Hardware Compliance Write checks 
 [HWCW00xx] Hardware Compliance Write checks for 3C509B-TPCoax 
 Saving original adapter configuration to HWCWREST.BAT 
-3Com EtherLink III CLI Configuration Program v0.7.5
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -53,16 +53,11 @@ Configuration restore batch file created: BTPC\ARTIFACT\HWCWREST.BAT
 [hwcw009].[btpc] PASSED 
 [hwcw010] 3CCFGCLI multi-property CONFIGURE transaction 
 [hwcw010] PASSED 
-[hwcw051] Boot ROM testing is currently not implemented for 3C509B-TPCoax. 
-[hwcw051] NOT IMPLEMENTED 
+[hwcw051] Boot ROM testing is currently disabled for 3C509B-TPCoax. 
+[hwcw051] DISABLED 
 Hardware Compliance Write checks completed. 
 Taking post-configuration dump using 3C5X9CFG 
 Hardware Compliance Test PASSED. 
-HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
-[hwcs001].[common] Verify 3C5X9CFG post HWC configuration dump
-[hwcs001].[btpc] Verifying specific 3C509B-TPCoax properties
-[hwcs001].[btpc] PASSED
-HWC SET verification: run completed
 HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
 [hwcs001].[common] Verify 3C5X9CFG post HWC configuration dump
 [hwcs001].[btpc] Verifying specific 3C509B-TPCoax properties

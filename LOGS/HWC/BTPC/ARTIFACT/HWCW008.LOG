@@ -1,11 +1,13 @@
-3Com EtherLink III CLI Configuration Program v0.7.5
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 TR parameter accepted. Requested transceiver: COAX
-Full duplex can only be enabled with the TP transceiver.
-3Com EtherLink III CLI Configuration Program v0.7.5
+
+Configuration completed successfully.
+NOTICE: Full Duplex was automatically disabled for the selected transceiver.
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -20,9 +22,9 @@ Number                       Description
        Plug and Play Capability = yes
               ---
        IOBASE = 0280, IRQ = 3
-       Transceiver = on-board TP
+       Transceiver = on-board coax
        Plug and Play = disabled
        Boot ROM = disabled
        Optimization = Server
        MODEM Interrupt Disable Time = 1300 us (1200 bd)
-       Full Duplex = enabled
+       Full Duplex = disabled

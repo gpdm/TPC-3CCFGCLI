@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.6
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -13,7 +13,7 @@ Number                       Description
        Plug and Play Capability = not supported
               ---
        IOBASE = 0280, IRQ = 3
-       Transceiver = external
+       Transceiver = external (AUX/DIX)
        Plug and Play = not supported
        Boot ROM = disabled
        Optimization = Server
@@ -25,7 +25,7 @@ Cleaning logs and test artifacts
 Running 3CCFGCLI Hardware Compliance Write checks 
 [HWCW00xx] Hardware Compliance Write checks for 3C509-TP 
 Saving original adapter configuration to HWCWREST.BAT 
-3Com EtherLink III CLI Configuration Program v0.7.6
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -39,12 +39,12 @@ Configuration restore batch file created: TP\ARTIFACT\HWCWREST.BAT
 [hwcw002] PASSED 
 [hwcw003] 3CCFGCLI /IOBASE writer, fresh LIST readback 
 [hwcw003] PASSED 
-[hwcw004].[unsupported] PNP support is not supported by 3C509-TP
-[hwcw004].[unsupported] NOT SUPPORTED
+[hwcw004].[unsupported] PNP support is not supported by 3C509-TP. 
+[hwcw004].[unsupported] NOT SUPPORTED 
 [hwcw005] 3CCFGCLI /MODEM writer, fresh LIST readback 
-[hwcw005] PASSED
-[hwcw006].[unsupported] Full Duplex is not supported by 3C509-TP
-[hwcw006].[unsupported] NOT SUPPORTED
+[hwcw005] PASSED 
+[hwcw006].[unsupported] Full Duplex is not supported by 3C509-TP. 
+[hwcw006].[unsupported] NOT SUPPORTED 
 [hwcw007] 3CCFGCLI /OPTIMIZE writer, fresh LIST readback 
 [hwcw007] PASSED 
 [hwcw008].[tp] 3CCFGCLI /TR:AUI writer, fresh LIST readback 

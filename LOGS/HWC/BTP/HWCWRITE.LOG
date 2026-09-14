@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.6
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -13,19 +13,19 @@ Number                       Description
        Plug and Play Capability = yes
               ---
        IOBASE = 0280, IRQ = 3
-       Transceiver = on-board TP
+       Transceiver = external (AUX/DIX)
        Plug and Play = disabled
        Boot ROM = disabled
        Optimization = Server
        MODEM Interrupt Disable Time = 1300 us (1200 bd)
-       Full Duplex = enabled
+       Full Duplex = disabled
 Running test target hwcw for detected NIC: BTP 
 invoke: MAKE -fHWCWRITE.MK -DCARD_BTP  hwcw 
 Cleaning logs and test artifacts 
 Running 3CCFGCLI Hardware Compliance Write checks 
 [HWCW00xx] Hardware Compliance Write checks for 3C509B-TP 
 Saving original adapter configuration to HWCWREST.BAT 
-3Com EtherLink III CLI Configuration Program v0.7.6
+3Com EtherLink III CLI Configuration Program v0.7.7
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -48,3 +48,18 @@ Configuration restore batch file created: BTP\ARTIFACT\HWCWREST.BAT
 [hwcw007] 3CCFGCLI /OPTIMIZE writer, fresh LIST readback 
 [hwcw007] PASSED 
 [hwcw008].[btp] 3CCFGCLI /TR:AUI writer, fresh LIST readback 
+[hwcw008].[btp] PASSED 
+[hwcw009].[common] Reading combined hardware state through SAVECONFIG 
+[hwcw009].[btp] PASSED 
+[hwcw010] 3CCFGCLI multi-property CONFIGURE transaction 
+[hwcw010] PASSED 
+[hwcw051] Boot ROM testing is currently disabled for 3C509B-TP. 
+[hwcw051] DISABLED 
+Hardware Compliance Write checks completed. 
+Taking post-configuration dump using 3C5X9CFG 
+Hardware Compliance Test PASSED. 
+HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
+[hwcs001].[common] Verify 3C5X9CFG post HWC configuration dump
+[hwcs001].[btp] Verifying specific 3C509B-TP properties
+[hwcs001].[btp] PASSED
+HWC SET verification: run completed
