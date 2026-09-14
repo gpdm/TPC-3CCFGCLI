@@ -8,6 +8,10 @@ Changelog 0.7.7
   - Fixed a verbose message bug where changing /OPTIMIZE could print an
     unrelated or garbled confirmation line.
   - Added regression tests covering these Full Duplex/TR interactions.
+  - CONFIGURE now shows a notice when Full Duplex was automatically disabled
+    by a transceiver change.
+  - Minor internal cleanup (removed an unused register save in the new
+    notice code).
 
 
 Changelog 0.7.6

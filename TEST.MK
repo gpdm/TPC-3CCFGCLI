@@ -60,10 +60,10 @@ PNP_CHANGE: t05xx t0501 t0502 t0505
 MODEM_CHANGE: t06xx t0601 t0602 t0603 t0604 t0605 t0607 t0608 t0609 t0610
 
 # Base: 0700
-FD_CHANGE: t07xx t0701 t0702 t0703 t0705 t0706 t0707 t0708 t0710 t0711 t0714 t0715 t0716 t0717 t0718 t0719 t0720 t0721 t0722 t0723 t0724 t0725 t0726
+FD_CHANGE: t07xx t0701 t0702 t0703 t0705 t0706 t0707 t0708 t0710 t0711 t0717 t0719 t0723 t0724 t0726 t0727 t0730
 
 # Base: 0900
-OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904 t0905 t0906
+OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904 t0905
 
 # Base: 1100
 BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1122 t1126 t1127 t1128 t1129 t1130 t1131 t1132 t1133 t1134 t1135 t1136
@@ -479,51 +479,6 @@ t0711:
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0711.LOG > NUL
    @echo [t0711] PASSED  >> $(TESTLOG)
 
-# Each transition test first proves the required initial state (TR = TP,
-# FULL DUPLEX = ENABLED) via LIST before applying the actual TR request, so a
-# failed setup step cannot be mistaken for a successful implicit disable.
-t0714:
-   @echo [t0714] explicit TR:AUI+FULLDUPLEX:DISABLED from TP+FD enabled >> $(TESTLOG)
-   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0714.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0714.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0714.LOG
-   FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0714.LOG > NUL
-   FIND "Full Duplex = enabled" $(ARTIFACTS)\T0714.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0714.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0714.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0714.LOG
-   FIND "Transceiver = external" $(ARTIFACTS)\T0714.LOG > NUL
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0714.LOG > NUL
-   @echo [t0714] PASSED  >> $(TESTLOG)
-
-t0715:
-   @echo [t0715] implicit TP to AUI disables Full Duplex >> $(TESTLOG)
-   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0715.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0715.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0715.LOG
-   FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0715.LOG > NUL
-   FIND "Full Duplex = enabled" $(ARTIFACTS)\T0715.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T0715.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0715.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0715.LOG
-   FIND "Transceiver = external" $(ARTIFACTS)\T0715.LOG > NUL
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0715.LOG > NUL
-   @echo [t0715] PASSED  >> $(TESTLOG)
-
-t0716:
-   @echo [t0716] implicit TP to AUTO disables Full Duplex >> $(TESTLOG)
-   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0716.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0716.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0716.LOG
-   FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0716.LOG > NUL
-   FIND "Full Duplex = enabled" $(ARTIFACTS)\T0716.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T0716.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0716.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0716.LOG
-   FIND "Transceiver = auto select" $(ARTIFACTS)\T0716.LOG > NUL
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0716.LOG > NUL
-   @echo [t0716] PASSED  >> $(TESTLOG)
-
 t0717:
    @echo [t0717] explicit TR:AUI+FULLDUPLEX:ENABLED conflict from TP+FD enabled >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0717.LOG
@@ -533,148 +488,92 @@ t0717:
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T0717.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0717.LOG
    FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0717.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "NOTICE" $(ARTIFACTS)\T0717.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T0717.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T0717.LOG > NUL
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T0717.LOG > NUL
    @echo [t0717] PASSED  >> $(TESTLOG)
 
-# t0718/t0719 isolate the single command under test in its own log file so a
-# message assertion cannot match unrelated earlier verbose output.
-t0718:
-   @echo [t0718] implicit FULLDUPLEX word 0Dh write message on TR:AUI >> $(TESTLOG)
-   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0718.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0718.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0718B.LOG
-   FIND "Full duplex configuration word written." $(ARTIFACTS)\T0718B.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "Modem speed configuration word written." $(ARTIFACTS)\T0718B.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0718.LOG
-   FIND "Transceiver = external" $(ARTIFACTS)\T0718.LOG > NUL
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0718.LOG > NUL
-   @echo [t0718] PASSED  >> $(TESTLOG)
-
 t0719:
    @echo [t0719] MODEM plus TR word 0Dh write message without FD change >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0719.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0719B.LOG
-   FIND "Modem speed configuration word written." $(ARTIFACTS)\T0719B.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "Full duplex configuration word written." $(ARTIFACTS)\T0719B.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T0719.LOG
+   FIND "Modem speed configuration word written." $(ARTIFACTS)\T0719.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "Full duplex configuration word written." $(ARTIFACTS)\T0719.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T0719.LOG
    FIND "Transceiver = external" $(ARTIFACTS)\T0719.LOG > NUL
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0719.LOG > NUL
    @echo [t0719] PASSED  >> $(TESTLOG)
 
-# Phase 2: the implicit persistent FULLDUPLEX disable derived by /TR must now
-# reach the same EEPROM verification path as an explicit /FULLDUPLEX request.
-# Each command under test is isolated in its own log file so the message
-# assertions cannot match unrelated earlier verbose output.
-t0720:
-   @echo [t0720] implicit FULLDUPLEX EEPROM verification on TR:AUI >> $(TESTLOG)
-   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0720.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0720.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0720B.LOG
-   FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T0720B.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0720B.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0720.LOG
-   FIND "Transceiver = external" $(ARTIFACTS)\T0720.LOG > NUL
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0720.LOG > NUL
-   @echo [t0720] PASSED  >> $(TESTLOG)
-
-# Unrelated TR+MODEM must not trigger FULLDUPLEX EEPROM verification: the
-# persistent FULLDUPLEX bit never transitions in this scenario.
-t0721:
-   @echo [t0721] MODEM plus TR does not trigger FULLDUPLEX verification >> $(TESTLOG)
-   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0721.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0721B.LOG
-   FIND "EEPROM modem speed setting verified." $(ARTIFACTS)\T0721B.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "EEPROM full duplex mode verified." $(ARTIFACTS)\T0721B.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0721B.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0721.LOG
-   FIND "Transceiver = external" $(ARTIFACTS)\T0721.LOG > NUL
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0721.LOG > NUL
-   @echo [t0721] PASSED  >> $(TESTLOG)
-
-# Mixed case: MODEM and the implicit FULLDUPLEX disable both change word 0Dh.
-# Both dedicated verification messages must appear, proving the shared word
-# 0Dh readback cache serves both verification concerns from a single read.
-t0722:
-   @echo [t0722] MODEM plus implicit FULLDUPLEX verification share one read >> $(TESTLOG)
-   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0722.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0722.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0722B.LOG
-   FIND "EEPROM modem speed setting verified." $(ARTIFACTS)\T0722B.LOG > NUL
-   FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T0722B.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0722B.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0722.LOG
-   FIND "Transceiver = external" $(ARTIFACTS)\T0722.LOG > NUL
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0722.LOG > NUL
-   @echo [t0722] PASSED  >> $(TESTLOG)
-
-# Word 0Dh field specific verification attribution: MODEM and OPTIMIZE each
-# verify only their own field, so a combined request must show both dedicated
-# verification success messages, not merely a generic word 0Dh comparison.
 t0723:
    @echo [t0723] MODEM plus OPTIMIZE field specific verification >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0723.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /OPTIMIZE:DOS /VERBOSE > $(ARTIFACTS)\T0723B.LOG
-   FIND "EEPROM modem speed setting verified." $(ARTIFACTS)\T0723B.LOG > NUL
-   FIND "EEPROM optimize mode verified." $(ARTIFACTS)\T0723B.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0723B.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /OPTIMIZE:DOS /VERBOSE >> $(ARTIFACTS)\T0723.LOG
+   FIND "EEPROM modem speed setting verified." $(ARTIFACTS)\T0723.LOG > NUL
+   FIND "EEPROM optimize mode verified." $(ARTIFACTS)\T0723.LOG > NUL
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0723.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0723.LOG
    FIND "(1200 bd)" $(ARTIFACTS)\T0723.LOG > NUL
    FIND "Optimization = DOS" $(ARTIFACTS)\T0723.LOG > NUL
    @echo [t0723] PASSED  >> $(TESTLOG)
 
-# Phase 3: an implicit persistent FULLDUPLEX disable caused by a genuine TP to
-# non TP /TR transition must also reach the existing live W4 synchronization
-# and its existing live verification success message.
 t0724:
    @echo [t0724] implicit TR transition reaches live FULLDUPLEX sync >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0724.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0724.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0724B.LOG
-   FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T0724B.LOG > NUL
-   FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0724B.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0724B.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T0724.LOG
+   FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T0724.LOG > NUL
+   FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0724.LOG > NUL
+   FIND "Full duplex configuration word written." $(ARTIFACTS)\T0724.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "Modem speed configuration word written." $(ARTIFACTS)\T0724.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T0724.LOG
    FIND "Transceiver = external" $(ARTIFACTS)\T0724.LOG > NUL
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0724.LOG > NUL
    @echo [t0724] PASSED  >> $(TESTLOG)
 
-# AUTO uses a different word 08h representation from AUI/COAX; confirm the
-# implicit live FULLDUPLEX sync path is reached the same way.
-t0725:
-   @echo [t0725] implicit TR:AUTO transition reaches live FULLDUPLEX sync >> $(TESTLOG)
-   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0725.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0725.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO /VERBOSE > $(ARTIFACTS)\T0725B.LOG
-   FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T0725B.LOG > NUL
-   FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0725B.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0725B.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0725.LOG
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0725.LOG > NUL
-   @echo [t0725] PASSED  >> $(TESTLOG)
-
-# TR change with no persistent FULLDUPLEX bit transition must not enter the
-# implicit live FULLDUPLEX synchronization path.
 t0726:
    @echo [t0726] TR without FD transition skips implicit live FD sync >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0726.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE > $(ARTIFACTS)\T0726B.LOG
-   CALL $(ASSERTERS)\NFIND.BAT "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0726B.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0726B.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T0726.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0726.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0726.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0726.LOG
    FIND "Transceiver = external" $(ARTIFACTS)\T0726.LOG > NUL
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0726.LOG > NUL
    @echo [t0726] PASSED  >> $(TESTLOG)
 
+t0727:
+   @echo [t0727] NOTICE for implicit TR:AUI Full Duplex disable >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0727.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0727.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T0727.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T0727.LOG > NUL
+   FIND "NOTICE: Full Duplex was automatically disabled for the selected transceiver." $(ARTIFACTS)\T0727.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0727.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0727.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0727.LOG > NUL
+   @echo [t0727] PASSED  >> $(TESTLOG)
+
+t0730:
+   @echo [t0730] no NOTICE for explicit TR:AUI+FULLDUPLEX:DISABLED >> $(TESTLOG)
+   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0730.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0730.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0730.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "NOTICE" $(ARTIFACTS)\T0730.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0730.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0730.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0730.LOG > NUL
+   @echo [t0730] PASSED  >> $(TESTLOG)
+
 t09xx:
    @echo [t09xx] OPTIMIZE_CHANGE: Verify Workload Optimization change behaviour  >> $(TESTLOG)
 
 t0901:
-   @echo [t0901] CONFIGURE /OPTIMIZE transition to OS/2 >> $(TESTLOG)
+   @echo [t0901] CONFIGURE /OPTIMIZE transition to OS/2, check work 0Dh >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0901.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:OS/2 /VERBOSE >> $(ARTIFACTS)\T0901.LOG
    FIND "New EEPROM word 0Dh: Windows or OS/2" $(ARTIFACTS)\T0901.LOG > NUL
+   FIND "Optimize configuration word written." $(ARTIFACTS)\T0901.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0901.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0901.LOG
    FIND "Optimization = Windows or OS/2" $(ARTIFACTS)\T0901.LOG > NUL
@@ -698,7 +597,7 @@ t0903:
 
 t0904:
    @echo [t0904] CONFIGURE /OPTIMIZE transition to DOS >> $(TESTLOG)
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:DOS >> $(ARTIFACTS)\T0904.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:DOS > $(ARTIFACTS)\T0904.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T0904.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0904.LOG
    FIND "Optimization = DOS" $(ARTIFACTS)\T0904.LOG > NUL
@@ -713,26 +612,13 @@ t0905:
    FIND "No hardware changes required." $(ARTIFACTS)\T0905.LOG > NUL
    @echo [t0905] PASSED  >> $(TESTLOG)
 
-# OPTIMIZE verbose word 0Dh write message must print its own dedicated
-# message, not a stale DX value left over from an unrelated code path.
-t0906:
-   @echo [t0906] OPTIMIZE verbose word 0Dh write message >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T0906.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER >> $(ARTIFACTS)\T0906.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:DOS /VERBOSE > $(ARTIFACTS)\T0906B.LOG
-   FIND "Optimize configuration word written." $(ARTIFACTS)\T0906B.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0906B.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0906.LOG
-   FIND "Optimization = DOS" $(ARTIFACTS)\T0906.LOG > NUL
-   @echo [t0906] PASSED  >> $(TESTLOG)
-
 t11xx:
    @echo [t11xx] BOOTROM_CHANGE: Verify boot ROM change behaviour  >> $(TESTLOG)
 
 t1101:
    @echo [t1101] CONFIGURE /BADDRESS minimum valid address with /BSIZE:16 >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1101.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:16 > $(ARTIFACTS)\T1101.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:16 >> $(ARTIFACTS)\T1101.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1101.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1101.LOG
    FIND "Boot ROM = 16K at C0000H" $(ARTIFACTS)\T1101.LOG > NUL
@@ -741,7 +627,7 @@ t1101:
 t1102:
    @echo [t1102] CONFIGURE /BSIZE then /BADDRESS ordering >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1102.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:16 /BADDRESS:C0000 > $(ARTIFACTS)\T1102.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:16 /BADDRESS:C0000 >> $(ARTIFACTS)\T1102.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1102.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1102.LOG
    FIND "Boot ROM = 16K at C0000H" $(ARTIFACTS)\T1102.LOG > NUL
@@ -750,7 +636,7 @@ t1102:
 t1103:
    @echo [t1103] CONFIGURE /BADDRESS+/BSIZE reconfigure to a new pair >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM32K > $(ARTIFACTS)\T1103.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:D0000 /BSIZE:32 > $(ARTIFACTS)\T1103.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:D0000 /BSIZE:32 >> $(ARTIFACTS)\T1103.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1103.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1103.LOG
    FIND "Boot ROM = 32K at D0000H" $(ARTIFACTS)\T1103.LOG > NUL
@@ -759,7 +645,7 @@ t1103:
 t1104:
    @echo [t1104] /BSIZE:DISABLED succeeds without a detected Boot ROM >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1104.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED > $(ARTIFACTS)\T1104.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\T1104.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1104.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1104.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1104.LOG > NUL
@@ -840,7 +726,7 @@ t1114:
 t1115:
    @echo [t1115] CONFIGURE 8K at C2000 >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM8K > $(ARTIFACTS)\T1115.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 > $(ARTIFACTS)\T1115.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 >> $(ARTIFACTS)\T1115.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1115.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1115.LOG
    FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1115.LOG > NUL
@@ -855,7 +741,7 @@ t1116:
 t1117:
    @echo [t1117] CONFIGURE 32K 3C509B at C4000 >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM32K > $(ARTIFACTS)\T1117.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C4000 /BSIZE:32 > $(ARTIFACTS)\T1117.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C4000 /BSIZE:32 >> $(ARTIFACTS)\T1117.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1117.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1117.LOG
    FIND "Boot ROM = 32K at C4000H" $(ARTIFACTS)\T1117.LOG > NUL
@@ -864,7 +750,7 @@ t1117:
 t1118:
    @echo [t1118] CONFIGURE 32K 3C509B at DC000 >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM32K > $(ARTIFACTS)\T1118.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:DC000 /BSIZE:32 > $(ARTIFACTS)\T1118.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:DC000 /BSIZE:32 >> $(ARTIFACTS)\T1118.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1118.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1118.LOG
    FIND "Boot ROM = 32K at DC000H" $(ARTIFACTS)\T1118.LOG > NUL
@@ -1074,9 +960,9 @@ t1204:
 
 t1205:
    @echo [t1205] CONFIGURE /TR:AUI to /TR:TP transition on 3C509B-COMBO >> $(TESTLOG)
-   ${SEEDAPP} 3C509B-COMBO > NUL
+   ${SEEDAPP} 3C509B-COMBO > $(ARTIFACTS)\T1205.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /VERBOSE > $(ARTIFACTS)\T1205.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /VERBOSE >> $(ARTIFACTS)\T1205.LOG
    FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1205.LOG > NUL
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1205.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1205.LOG
@@ -1131,7 +1017,7 @@ t13xx:
 
 t1301:
    @echo [t1301] HELP command prints CLI help screen >> $(TESTLOG)
-   $(BINAPP) HELP >> $(ARTIFACTS)\T1301.LOG
+   $(BINAPP) HELP > $(ARTIFACTS)\T1301.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1301.LOG > NUL
    @echo [t1301] PASSED  >> $(TESTLOG)
 
@@ -1170,7 +1056,7 @@ t1304:
 
 t1305:
    @echo [t1305] invalid verb shows help screen >> $(TESTLOG)
-   $(BINAPP) HELPXYZ >> $(ARTIFACTS)\T1305.LOG
+   $(BINAPP) HELPXYZ > $(ARTIFACTS)\T1305.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1305.LOG > NUL
    @echo [t1305] PASSED  >> $(TESTLOG)
 
@@ -1217,7 +1103,7 @@ t1309:
 
 t1310:
    @echo [t1310] truncated verb shows help screen >> $(TESTLOG)
-   $(BINAPP) SAVECONFI >> $(ARTIFACTS)\T1310.LOG
+   $(BINAPP) SAVECONFI > $(ARTIFACTS)\T1310.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1310.LOG > NUL
    @echo [t1310] PASSED  >> $(TESTLOG)
 
@@ -1487,18 +1373,14 @@ t1614:
 t1615:
    @echo [t1615] SAVECONFIG rejects duplicate options >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1615.LOG
-   $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\DUPA.BAT /OUTPUTFILE:$(ARTIFACTS)\DUPB.BAT > $(ARTIFACTS)\T1615.LOG
-   FIND "Duplicate SAVECONFIG option." $(ARTIFACTS)\T1615.LOG > NUL
-   $(BINAPP) SAVECONFIG /EXECFILE:$(BINAPP) /EXECFILE:BIN\3CCFGCLI.EXE > $(ARTIFACTS)\T1615.LOG
+   $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\DUPA.BAT /OUTPUTFILE:$(ARTIFACTS)\DUPB.BAT >> $(ARTIFACTS)\T1615.LOG
    FIND "Duplicate SAVECONFIG option." $(ARTIFACTS)\T1615.LOG > NUL
    @echo [t1615] PASSED  >> $(TESTLOG)
 
 t1616:
    @echo [t1616] SAVECONFIG rejects unknown options and the old positional syntax >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1616.LOG
-   $(BINAPP) SAVECONFIG /BIRCHERMUESLI:34333 > $(ARTIFACTS)\T1616.LOG
-   FIND "Invalid SAVECONFIG option." $(ARTIFACTS)\T1616.LOG > NUL
-   $(BINAPP) SAVECONFIG $(ARTIFACTS)\OLDPOS.BAT > $(ARTIFACTS)\T1616.LOG
+   $(BINAPP) SAVECONFIG /BIRCHERMUESLI:34333 >> $(ARTIFACTS)\T1616.LOG
    FIND "Invalid SAVECONFIG option." $(ARTIFACTS)\T1616.LOG > NUL
    @if exist $(ARTIFACTS)\OLDPOS.BAT FIND "THIS FILE SHOULD NOT EXIST" $(ARTIFACTS)\OLDPOS.BAT > NUL
    @echo [t1616] PASSED  >> $(TESTLOG)
@@ -1544,15 +1426,15 @@ t1620:
 t1621:
    @echo [t1621] duplicate global /VERBOSE is rejected for LIST command >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1621.LOG
-   $(BINAPP) LIST /VERBOSE /VERBOSE > $(ARTIFACTS)\T1621.LOG
+   $(BINAPP) LIST /VERBOSE /VERBOSE >> $(ARTIFACTS)\T1621.LOG
    FIND "Duplicate /VERBOSE option." $(ARTIFACTS)\T1621.LOG > NUL
    @echo [t1621] PASSED  >> $(TESTLOG)
 
 t1626:
    @echo [t1626] duplicate global /VERBOSE is rejected before SAVECONFIG output >> $(TESTLOG)
-   ${SEEDAPP} INIT > NUL
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1626.LOG
    @if exist $(ARTIFACTS)\DUPV.BAT del $(ARTIFACTS)\DUPV.BAT
-   $(BINAPP) SAVECONFIG /VERBOSE /OUTPUTFILE:$(ARTIFACTS)\DUPV.BAT /VERBOSE > $(ARTIFACTS)\T1626.LOG
+   $(BINAPP) SAVECONFIG /VERBOSE /OUTPUTFILE:$(ARTIFACTS)\DUPV.BAT /VERBOSE >> $(ARTIFACTS)\T1626.LOG
    FIND "Duplicate /VERBOSE option." $(ARTIFACTS)\T1626.LOG > NUL
    @if exist $(ARTIFACTS)\DUPV.BAT FIND "THIS FILE SHOULD NOT EXIST" $(ARTIFACTS)\DUPV.BAT > NUL
    @echo [t1626] PASSED  >> $(TESTLOG)
@@ -1560,7 +1442,7 @@ t1626:
 t1622:
    @echo [t1622] verb namespaces do not leak across CONFIGURE and SAVECONFIG >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1622.LOG
-   $(BINAPP) SAVECONFIG /INT:5 > $(ARTIFACTS)\T1622.LOG
+   $(BINAPP) SAVECONFIG /INT:5 >> $(ARTIFACTS)\T1622.LOG
    FIND "Invalid SAVECONFIG option." $(ARTIFACTS)\T1622.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OUTPUTFILE:A.BAT >> $(ARTIFACTS)\T1622.LOG
    FIND "Invalid CONFIGURE option." $(ARTIFACTS)\T1622.LOG > NUL

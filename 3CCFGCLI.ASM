@@ -451,6 +451,7 @@ msg_tr_aui  DB "AUI", '$'
 msg_tr_coax DB "COAX", '$'
 msg_tr_auto DB "AUTO", '$'
 msg_cfg_txn_completed DB 0Dh, 0Ah, "Configuration completed successfully.", 0Dh, 0Ah, '$'
+msg_cfg_fd_implicit_notice DB "NOTICE: Full Duplex was automatically disabled for the selected transceiver.", 0Dh, 0Ah, '$'
 msg_cfg_txn_read DB 0Dh, 0Ah, "Reading current configuration...", 0Dh, 0Ah, '$'
 msg_cfg_txn_prepare DB 0Dh, 0Ah, "Preparing requested configuration...", 0Dh, 0Ah, '$'
 msg_cfg_txn_no_changes DB "No hardware changes required.", 0Dh, 0Ah, '$'
@@ -522,7 +523,7 @@ msg_not_supported DB "not supported", '$'
 msg_unavailable DB  "unavailable", '$'
 msg_invalid_cfg DB  "invalid configuration", '$'
 msg_onboard_tp  DB  "on-board TP", '$'
-msg_external    DB  "external", '$'
+msg_external    DB  "external (AUX/DIX)", '$'
 msg_onboard_coax DB "on-board coax", '$'
 msg_auto_select DB  "auto select", '$'
 msg_unknown_value DB "unknown", '$'
@@ -7316,6 +7317,32 @@ PROC Cfg_Txn_Report_Success NEAR
     ret
 ENDP Cfg_Txn_Report_Success
 
+; Prints a NOTICE when an implicit FULLDUPLEX disable actually occurred as a
+; side effect of a /TR transceiver change (Cfg_Prepare_TR), i.e. /TR was
+; requested, /FULLDUPLEX was not explicitly requested, and the persistent
+; FULLDUPLEX bit transitioned from enabled to disabled. Must only be called
+; after the entire transaction has completed successfully.
+PROC Cfg_Txn_Report_Implicit_FD_Notice NEAR
+    push    dx
+
+    test    [cfg_parse_flags], CFG_PARSE_TR
+    jz      @@NoNotice
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jnz     @@NoNotice
+    test    [cfg_txn_old_word0d], EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jz      @@NoNotice
+    test    [cfg_txn_new_word0d], EEPROM_SOFTWARE_INFO_FULLDUPLEX
+    jnz     @@NoNotice
+
+    mov     dx, OFFSET msg_cfg_fd_implicit_notice
+    mov     ah, 09h
+    int     21h
+
+@@NoNotice:
+    pop     dx
+    ret
+ENDP Cfg_Txn_Report_Implicit_FD_Notice
+
 ; Single centralized CONFIGURE transaction entry point.
 PROC Cfg_Txn_Execute NEAR
     push    ax
@@ -7900,6 +7927,7 @@ PROC Cfg_Txn_Execute NEAR
 @@PrintSuccess:
     call    Cfg_Txn_Report_Success
     mov     [cfg_last_error], CFG_ERR_NONE
+    call    Cfg_Txn_Report_Implicit_FD_Notice
 
 @@Done:
     pop     si
