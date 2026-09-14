@@ -4,7 +4,7 @@ BUILD: Build 3CCFGCLI binaries
 [bld002] Link 3CCFGCLI hardware binary
 [bld002] PASSED
 [bld003] Optional: Compress 3CCFGCLI hardware binary with PKLITE
-[bld003] NOT APPLICABLE
+[bld003] PASSED
 [bld004] Assemble 3CHWMOCK binary
 [bld004] PASSED
 [bld005] Link 3CHWMOCK binary
@@ -22,9 +22,9 @@ Makefile       : MAKEFILE
 JUnit file     : LOGS/BUILD/BUILD.JUNIT.XML
 Test groups    : 1
 Tests defined  : 7
-Tests passed   : 6
+Tests passed   : 7
 Tests failed   : 0
-Tests skipped  : 1
+Tests skipped  : 0
 
 MAKE test groups
 ================
@@ -40,7 +40,7 @@ Test results
 BUILD
   bld001: PASS: Assemble 3CCFGCLI hardware binary
   bld002: PASS: Link 3CCFGCLI hardware binary
-  bld003: NOT APPLICABLE: Optional: Compress 3CCFGCLI hardware binary with PKLITE
+  bld003: PASS: Optional: Compress 3CCFGCLI hardware binary with PKLITE
   bld004: PASS: Assemble 3CHWMOCK binary
   bld005: PASS: Link 3CHWMOCK binary
   bld006: PASS: Assemble 3CSEED binary

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results" tests="7" failures="0" errors="0" skipped="1" time="0.0">
-	<testsuite name="BUILD" tests="7" errors="0" failures="0" skipped="1" time="0">
+<testsuites name="3CCFGCLI Test Results" tests="7" failures="0" errors="0" skipped="0" time="0.0">
+	<testsuite name="BUILD" tests="7" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="BLD0xx"/>
 		</properties>
@@ -21,7 +21,6 @@
 				<property name="description" value="Optional: Compress 3CCFGCLI hardware binary with PKLITE"/>
 				<property name="artifact" value="ARTIFACT/BLD003.LOG"/>
 			</properties>
-			<skipped message="NOT APPLICABLE"/>
 		</testcase>
 		<testcase name="bld004: Assemble 3CHWMOCK binary" classname="BUILD">
 			<properties>

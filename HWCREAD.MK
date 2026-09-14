@@ -415,6 +415,7 @@ hwcr008-btp:
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI > $(ARTIFACTS)\HWCR008.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
 	FIND "Transceiver = external" $(ARTIFACTS)\HWCR008.LOG > NUL
+	FIND "Full Duplex = disabled" $(ARTIFACTS)\HWCR008.LOG > NUL
 	@echo [hwcr008].[btp] PASSED >> $(LOGFILE)
 	@echo [hwcr008].[btp] PASSED
 
@@ -433,6 +434,7 @@ hwcr008-bcombo:
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
 	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
+	FIND "Full Duplex = disabled" $(ARTIFACTS)\HWCR008.LOG > NUL
 	@echo [hwcr008].[bcombo] PASSED >> $(LOGFILE)
 	@echo [hwcr008].[bcombo] PASSED
 
@@ -442,6 +444,7 @@ hwcr008-btpc:
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
 	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
 	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
+	FIND "Full Duplex = disabled" $(ARTIFACTS)\HWCR008.LOG > NUL
 	@echo [hwcr008].[btpc] PASSED >> $(LOGFILE)
 	@echo [hwcr008].[btpc] PASSED
 
