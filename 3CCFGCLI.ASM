@@ -792,6 +792,10 @@ save_asic_rev   DB  0FFh
 ; Cached product ID of the adapter currently being exported, copied from the
 ; NIC record for the same reason as save_asic_rev.
 save_product_id DW  0
+; SAVECONFIG export validity for fields whose persistent bits are meaningful
+; only when capability evidence is available.  These are not generation state.
+save_pnp_valid  DB  0
+save_fd_valid   DB  0
 save_configure_suffix DB ' CONFIGURE', 0
 save_adapternum DB  ' /ADAPTERNUM:', 0
 save_int        DB  ' /INT:', 0
@@ -2008,11 +2012,15 @@ PROC Save_Read_At_Base NEAR
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     mov     [save_product_id], ax
     mov     [save_word13], 0
+    mov     [save_pnp_valid], 0
+    mov     [save_fd_valid], 0
     mov     al, [save_asic_rev]
     cmp     al, 0FFh
     je      @@Done
     cmp     al, 2
     jb      @@Done
+    mov     [save_pnp_valid], 1
+    mov     [save_fd_valid], 1
     mov     al, EEPROM_CONFIG_CONTROL
     call    Nic_EEPROM_Read
     jc      @@Fail
@@ -2049,13 +2057,36 @@ PROC Save_Read_Id_Eeprom_Snapshot NEAR
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     mov     [save_product_id], ax
     mov     [save_word13], 0
+    mov     [save_pnp_valid], 0
+    mov     [save_fd_valid], 0
     mov     al, [save_asic_rev]
     cmp     al, 0FFh
-    je      @@Success
+    je      @@SnapshotCapabilities
     cmp     al, 2
     jb      @@Success
+    mov     [save_pnp_valid], 1
+    mov     [save_fd_valid], 1
     mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
     mov     [save_word13], ax
+    jmp     @@Success
+
+@@SnapshotCapabilities:
+    mov     ax, [WORD di + ID_EEPROM_CAPABILITY]
+    cmp     ax, EEPROM_CAPABILITY_3C509B
+    jne     @@Success
+    mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
+    mov     [save_word13], ax
+    mov     [save_pnp_valid], 1
+    mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
+    and     ax, 00FFh
+    cmp     ax, EEPROM_REVISION_3C509B
+    jb      @@Success
+    mov     ax, [save_product_id]
+    cmp     ax, PRODUCT_3C509
+    je      @@Success
+    cmp     ax, PRODUCT_3C509_TPC
+    je      @@Success
+    mov     [save_fd_valid], 1
 @@Success:
     pop     di
     pop     ax
@@ -2069,16 +2100,10 @@ PROC Save_Read_Id_Eeprom_Snapshot NEAR
 ENDP Save_Read_Id_Eeprom_Snapshot
 
 ; Read one logical NIC record's persistent configuration for SAVECONFIG,
-; independent of whether its logical IOBASE is shared with another active
-; adapter.  Input SI = logical NIC record with a nonzero NIC_IO_BASE.
+; preferring its ordinal-matched ID-port EEPROM snapshot.  Input SI = logical
+; NIC record with a nonzero NIC_IO_BASE.
 ; Output: CF clear and save_* snapshot filled on success.  CF set and
 ; AL = SAVE_ERR_READ or SAVE_ERR_AMBIGUOUS on failure.
-;
-; This is intentionally a small SAVECONFIG-specific wrapper around the
-; already shared Find_Record_By_Base / Cfg_Find_Temporary_Base /
-; Cfg_Id_Activate_At_Base primitives.  SAVECONFIG is not a configuration
-; transaction, so it does not reuse cfg_txn_access_base or
-; cfg_txn_targeted_access; those remain CONFIGURE-owned mutable state.
 PROC Save_Read_Adapter NEAR
     push    bx
     push    dx
@@ -2109,22 +2134,9 @@ PROC Save_Read_Adapter NEAR
     jmp     @@Fail
 
 @@Ambiguous:
-    ; Multiple records share this logical IOBASE. A valid ID tag is
-    ; required to isolate the correct physical adapter; there is no
-    ; first-record-wins fallback.
-    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
-    jz      @@NoTag
-    mov     al, [BYTE si + NIC_TAG]
-    or      al, al
-    jz      @@NoTag
-    cmp     al, MAX_CARDS
-    ja      @@NoTag
-
-    call    Save_Read_Targeted
-    jc      @@ReadFail
-    jmp     @@Success
-
-@@NoTag:
+    ; Multiple records share this logical IOBASE. Without a valid ID EEPROM
+    ; snapshot, persistent export is ambiguous and SAVECONFIG must not
+    ; temporarily relocate an adapter merely to read EEPROM state.
     mov     al, SAVE_ERR_AMBIGUOUS
     jmp     @@Fail
 
@@ -2141,87 +2153,6 @@ PROC Save_Read_Adapter NEAR
     clc
     ret
 ENDP Save_Read_Adapter
-
-; Read an ambiguous active ID-tagged record's persistent configuration
-; through a temporary live base, then restore it to its original logical
-; IOBASE before returning.  Input SI = selected NIC record.
-;
-; Sequence: pushf; cli; find a temporary base; activate the selected tag
-; there; read EEPROM using bounded no-DOS primitives; restore the live
-; window; reactivate the selected adapter at its original logical base;
-; confirm the scratch base no longer responds; popf; Nic_Sync_State.  No
-; DOS call occurs anywhere in this routine.
-PROC Save_Read_Targeted NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    dx
-
-    pushf
-    cli
-    call    Cfg_Find_Temporary_Base
-    jc      @@FailFlags
-    mov     [cfg_target_base], ax
-
-    mov     ax, [cfg_target_base]
-    call    Cfg_Id_Activate_At_Base
-
-    mov     dx, [cfg_target_base]
-    call    Nic_Check_3Com_Signature
-    jc      @@ReadAndRestore
-    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
-    jne     @@ReadAndRestore
-    mov     [BYTE si + NIC_ASIC_REV], bl
-
-@@ReadAndRestore:
-    mov     dx, [cfg_target_base]
-    call    Nic_Get_Current_Window
-    mov     [cfg_target_window], al
-
-    mov     dx, [cfg_target_base]
-    call    Save_Read_At_Base
-    mov     [cfg_target_result], 0
-    jnc     @@RestoreWindow
-    mov     [cfg_target_result], 1
-
-@@RestoreWindow:
-    mov     dx, [cfg_target_base]
-    mov     al, [cfg_target_window]
-    call    Nic_Select_Window
-
-    mov     ax, [WORD si + NIC_IO_BASE]
-    call    Cfg_Id_Activate_At_Base
-
-    mov     dx, [cfg_target_base]
-    call    Nic_Read_Status
-    cmp     ax, 0FFFFh
-    jne     @@RestorationFail
-    cmp     [cfg_target_result], 0
-    jne     @@RestorationFail
-
-    popf
-    call    Nic_Sync_State
-    clc
-    jmp     @@Done
-
-@@RestorationFail:
-    popf
-    call    Nic_Sync_State
-    stc
-    jmp     @@Done
-
-@@FailFlags:
-    popf
-    call    Nic_Sync_State
-    stc
-
-@@Done:
-    pop     dx
-    pop     cx
-    pop     bx
-    pop     ax
-    ret
-ENDP Save_Read_Targeted
 
 PROC Save_Build_Command NEAR
     push    ax
@@ -2265,14 +2196,10 @@ PROC Save_Build_Command NEAR
     call    Save_Append_Hex_Word
     jc      @@Fail
 
-    ; /PNP is exported only for the known 3C509B generation.  Word 13h was
-    ; deliberately not read for other generations and is never interpreted
-    ; here, so no stale value can leak into the export.
-    mov     al, [save_asic_rev]
-    cmp     al, 0FFh
+    ; /PNP is exported only when SAVECONFIG established that word 13h has
+    ; 3C509B Internal Configuration semantics.
+    cmp     [save_pnp_valid], 0
     je      @@SkipPnp
-    cmp     al, 2
-    jb      @@SkipPnp
     mov     ax, [save_word13]
     and     ax, 000Ch
     cmp     ax, 0004h
@@ -2301,13 +2228,10 @@ PROC Save_Build_Command NEAR
     jc      @@Fail
 @@SkipPnp:
 
-    ; Word 0Dh bit 15 is the utility's Full Duplex policy only on the known
-    ; 3C509B generation; other generations export no /FULLDUPLEX option.
-    mov     al, [save_asic_rev]
-    cmp     al, 0FFh
+    ; Word 0Dh bit 15 is exported only when SAVECONFIG established that the
+    ; Full Duplex policy bit is meaningful for this adapter.
+    cmp     [save_fd_valid], 0
     je      @@SkipFd
-    cmp     al, 2
-    jb      @@SkipFd
     mov     ax, [save_word0d]
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jz      @@FdOffLength
@@ -9423,75 +9347,11 @@ PROC Read_Extended_Nic_Info_At_Base NEAR
     ret
 ENDP Read_Extended_Nic_Info_At_Base
 
-; Read extended information for an ambiguous active ID-tagged record through
-; a temporary live base, then restore the adapter to its original IOBASE.
-; Input SI = selected NIC record.
-PROC Read_Extended_Nic_Info_Targeted NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    dx
-    push    di
-
-    pushf
-    cli
-    call    Cfg_Find_Temporary_Base
-    jc      @@FailFlags
-    mov     [cfg_target_base], ax
-
-    mov     ax, [cfg_target_base]
-    call    Cfg_Id_Activate_At_Base
-
-    mov     dx, [cfg_target_base]
-    call    Nic_Check_3Com_Signature
-    jc      @@ReadAndRestore
-    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
-    jne     @@ReadAndRestore
-    mov     [BYTE si + NIC_ASIC_REV], bl
-
-@@ReadAndRestore:
-    mov     dx, [cfg_target_base]
-    call    Read_Extended_Nic_Info_At_Base
-
-    mov     ax, [WORD si + NIC_IO_BASE]
-    call    Cfg_Id_Activate_At_Base
-
-    mov     dx, [cfg_target_base]
-    call    Nic_Read_Status
-    cmp     ax, 0FFFFh
-    jne     @@RestorationFail
-
-    popf
-    call    Nic_Sync_State
-    clc
-    jmp     @@Done
-
-@@RestorationFail:
-    ; Retain the normalized PNP bit sourced from the ID EEPROM snapshot, but
-    ; discard connector and Full Duplex capability data from the failed
-    ; temporary runtime access.
-    and     [ext_nic_capabilities], NIC_CAP_PNP
-    and     [ext_nic_capability_valid], NOT (NIC_CAP_VALID_CONNECTORS + NIC_CAP_VALID_FULLDUPLEX)
-    mov     [ext_secondary_checksum_valid], 0FFFFh
-
-@@FailFlags:
-    popf
-    call    Nic_Sync_State
-    stc
-
-@@Done:
-    pop     di
-    pop     dx
-    pop     cx
-    pop     bx
-    pop     ax
-    ret
-ENDP Read_Extended_Nic_Info_Targeted
-
 ; Read all additional LIST values from the activated adapter.
 ; Input SI = NIC record.
-; Determines whether ordinary access is unique or ambiguous, using targeted
-; temporary access when multiple active records share the logical IOBASE.
+; Determines whether ordinary access is unique or ambiguous.  Duplicate-base
+; records keep persistent snapshot-backed data but do not use temporary
+; relocation merely to improve runtime-only LIST fields.
 PROC Read_Extended_Nic_Info NEAR
     push    ax
     push    bx
@@ -9522,24 +9382,11 @@ PROC Read_Extended_Nic_Info NEAR
     cmp     di, 0
     je      @@Done
     cmp     di, 0FFFFh
-    je      @@Ambiguous
+    je      @@Done
 
     ; Exactly one record owns this logical IOBASE.
     mov     dx, [WORD si + NIC_IO_BASE]
     call    Read_Extended_Nic_Info_At_Base
-    jmp     @@Done
-
-@@Ambiguous:
-    ; Multiple records own the logical IOBASE. Check for valid ID tag.
-    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
-    jz      @@Done
-    mov     al, [BYTE si + NIC_TAG]
-    or      al, al
-    jz      @@Done
-    cmp     al, MAX_CARDS
-    ja      @@Done
-
-    call    Read_Extended_Nic_Info_Targeted
 
 @@Done:
     pop     di

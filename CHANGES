@@ -4,20 +4,25 @@ Changelog 0.7.8
   - Preserved per-adapter ID tag identity when multiple NICs share the same
     IOBASE.
   - Added ID tag selected temporary access for adapters sharing an IOBASE.
-  - LIST now reads extended adapter information correctly when multiple NICs
-    share an IOBASE.
+  - LIST now reports snapshot-backed persistent adapter information correctly
+    when multiple NICs share an IOBASE.
   - CONFIGURE now accesses tagged adapters independently when multiple NICs
     share an IOBASE.
-  - SAVECONFIG now reads tagged adapters independently when multiple NICs
+  - SAVECONFIG now exports tagged adapters independently when multiple NICs
     share an IOBASE.
   - Provisional / intermediate: Hardware and mock backends no longer mark an ID-port activated adapter
     as ACTIVE merely for issuing the D8h/E0h activation sequence; ACTIVE now
     requires separately proven normal-IOBASE runtime access.
   - Provisional / intermediate: ID-port discovery captures a compact
     per-adapter EEPROM snapshot while each physical contender owns the ID
-    port. LIST and SAVECONFIG consume it for persistent data, and CONFIGURE now
-    uses it as the preferred source for pre-transaction persistent EEPROM
-    state. Writes, live access and verification remain hardware-based.
+    port. LIST and SAVECONFIG consume it for persistent data, CONFIGURE uses
+    it for pre-transaction persistent state, and obsolete temporary
+    duplicate-IOBASE read paths in LIST and SAVECONFIG have been removed.
+    CONFIGURE retains targeted temporary access where real hardware isolation
+    is required for modification and verification.
+  - SAVECONFIG keeps detected ASIC revision separate from snapshot-backed
+    PNP and Full Duplex export validity, so unknown-revision adapters do not
+    enable unrelated 3C509B-only restore options.
   - Fixed CONFIGURE capability collection to restore the original register
     window after consulting an ID-port EEPROM snapshot.
 
