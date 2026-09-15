@@ -78,10 +78,10 @@ CLI_PARSER: t13xx t1301 t1302 t1303 t1304 t1305 t1306 t1307 t1308 t1309 t1310 t1
 COMBINED_TRANSACTIONS: t14xx t1401 t1402 t1403 t1405 t1406 t1407
 
 # Base: 1500
-MULTI_NIC: t15xx t1502 t1503 t1504 t1505 t1506 t1507 t1508 t1509
+MULTI_NIC: t15xx t1502 t1503 t1504 t1505 t1506 t1507 t1508 t1509 t1511 t1512
 
 # Base: 1600
-SAVECONFIG_TEST: t16xx t1602 t1603 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622 t1623 t1624 t1625 t1626
+SAVECONFIG_TEST: t16xx t1602 t1603 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622 t1623 t1624 t1625 t1626 t1627
 
 # Base: 1700
 VERIFICATION_CONTROL_FLOW: t17xx t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708 t1710 t1713 t1714
@@ -1254,9 +1254,13 @@ t1506:
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1506.LOG
    FIND "Boot ROM Size Valid = no" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1506.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1506.LOG
-   FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1506.LOG > NUL
-   FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1506.LOG > NUL
+   $(BINAPP) LIST > $(ARTIFACTS)\T1506F.LOG
+   FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1506F.LOG > NUL
+   FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1506F.LOG > NUL
+   FIND "3Com 3C509-TP" $(ARTIFACTS)\T1506F.LOG > NUL
+   FIND "3Com 3C509-Combo" $(ARTIFACTS)\T1506F.LOG > NUL
+   FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1506F.LOG > NUL
+   FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1506F.LOG > NUL
    @echo [t1506] PASSED  >> $(TESTLOG)
 
 t1507:
@@ -1275,6 +1279,15 @@ t1507:
    FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1507F.LOG > NUL
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T1507F.LOG > NUL
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T1507F.LOG > NUL
+   $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1507F.BAT > $(ARTIFACTS)\T1507S.LOG
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507F.BAT "ADAPTERNUM:1" "INT:10" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507F.BAT "ADAPTERNUM:1" "IOBASE:0300" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507F.BAT "ADAPTERNUM:1" "MODEM:25" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507F.BAT "ADAPTERNUM:1" "FULLDUPLEX:DISABLED" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507F.BAT "ADAPTERNUM:2" "INT:5" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507F.BAT "ADAPTERNUM:2" "IOBASE:0300" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507F.BAT "ADAPTERNUM:2" "MODEM:9600" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507F.BAT "ADAPTERNUM:2" "FULLDUPLEX:ENABLED" > NUL
    @echo [t1507] PASSED  >> $(TESTLOG)
 
 t1508:
@@ -1306,6 +1319,51 @@ t1509:
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1509F.LOG > NUL
    FIND "Transceiver = external" $(ARTIFACTS)\T1509F.LOG > NUL
    @echo [t1509] PASSED  >> $(TESTLOG)
+
+# Most prior duplicate-IOBASE coverage selects adapter 2. Select adapter 1
+# instead to prove the targeted access mechanism is not silently biased
+# toward the second table entry.
+t1511:
+   @echo [t1511] duplicate IOBASE CONFIGURE targets adapter 1 >> $(TESTLOG)
+   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1511.LOG
+   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1511.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1511.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 >> $(ARTIFACTS)\T1511.LOG
+   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1511.LOG > NUL
+   $(BINAPP) LIST > $(ARTIFACTS)\T1511F.LOG
+   FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1511F.LOG > NUL
+   FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1511F.LOG > NUL
+   FIND "IOBASE = 0300, IRQ = 9" $(ARTIFACTS)\T1511F.LOG > NUL
+   FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1511F.LOG > NUL
+   @echo [t1511] PASSED  >> $(TESTLOG)
+
+# Three active ID-discovered adapters sharing one logical IOBASE. The mock
+# ID-port wired-AND contention arbitration order is derived from each
+# contender's EEPROM bit pattern, not from ADD insertion order: adapter
+# table position 2 here resolves to the 3C509B-COAX record (MAC ...03,
+# originally /INT:3) and position 3 resolves to the 3C509B-COMBO record
+# (MAC ...02, originally /INT:5) -- i.e. positions 2 and 3 are swapped
+# relative to ADD order. CONFIGURE /ADAPTERNUM:2 therefore modifies the
+# COAX adapter (IRQ 3 -> 7), while the COMBO adapter at position 3 remains
+# unmodified at its original IRQ 5. Verified directly against LIST output
+# before writing these assertions; do not assume ADD order == table order
+# when duplicate-IOBASE contention is involved.
+t1512:
+   @echo [t1512] three duplicate IOBASE adapters remain independent >> $(TESTLOG)
+   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1512.LOG
+   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1512.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1512.LOG
+   ${SEEDAPP} ADD 3C509B-COAX /IOBASE:0300 /INT:3 >> $(ARTIFACTS)\T1512.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:2 /INT:7 >> $(ARTIFACTS)\T1512.LOG
+   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1512.LOG > NUL
+   $(BINAPP) LIST > $(ARTIFACTS)\T1512F.LOG
+   FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1512F.LOG > NUL
+   FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1512F.LOG > NUL
+   FIND "Ethernet Address = 02608C654303" $(ARTIFACTS)\T1512F.LOG > NUL
+   FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1512F.LOG > NUL
+   FIND "IOBASE = 0300, IRQ = 7" $(ARTIFACTS)\T1512F.LOG > NUL
+   FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1512F.LOG > NUL
+   @echo [t1512] PASSED  >> $(TESTLOG)
 
 t16xx:
    @echo [t16xx] SAVECONFIG_TEST: Verify save configuration behaviour  >> $(TESTLOG)
@@ -1563,6 +1621,32 @@ t1625:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:8 >> $(ARTIFACTS)\T1625.LOG
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1625.LOG > NUL
    @echo [t1625] PASSED  >> $(TESTLOG)
+
+# SAVECONFIG must read each duplicate-IOBASE adapter independently rather
+# than reusing whichever record's EEPROM happened to answer the shared
+# base first. Two adapters share 0300h with deliberately distinct IRQ,
+# MODEM, and OPTIMIZE persistent settings so the exported restore lines can
+# be proven to belong to the correct adapter, not merely present somewhere
+# in the file.
+t1627:
+   @echo [t1627] SAVECONFIG duplicate IOBASE exports each adapter independently >> $(TESTLOG)
+   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1627.LOG
+   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1627.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1627.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER >> $(ARTIFACTS)\T1627.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1627.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:2 /MODEM:9600 >> $(ARTIFACTS)\T1627.LOG
+   FIND "Configuration completed successfully." $(ARTIFACTS)\T1627.LOG > NUL
+   @if exist $(ARTIFACTS)\T1627.BAT del $(ARTIFACTS)\T1627.BAT
+   $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1627.BAT >> $(ARTIFACTS)\T1627.LOG
+   FIND "Configuration restore batch file created" $(ARTIFACTS)\T1627.LOG > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1627.BAT "ADAPTERNUM:1" "INT:10" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1627.BAT "ADAPTERNUM:1" "IOBASE:0300" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1627.BAT "ADAPTERNUM:1" "OPTIMIZE:SERVER" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1627.BAT "ADAPTERNUM:2" "INT:5" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1627.BAT "ADAPTERNUM:2" "IOBASE:0300" > NUL
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1627.BAT "ADAPTERNUM:2" "MODEM:9600" > NUL
+   @echo [t1627] PASSED  >> $(TESTLOG)
 
 # Focused cases verify that transaction verification continues correctly from
 # one requested property to the next. The final integration case verifies that

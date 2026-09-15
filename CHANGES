@@ -8,6 +8,8 @@ Changelog 0.7.8
     share an IOBASE.
   - CONFIGURE now accesses tagged adapters independently when multiple NICs
     share an IOBASE.
+  - SAVECONFIG now reads tagged adapters independently when multiple NICs
+    share an IOBASE.
 
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now

@@ -272,6 +272,7 @@ msg_save_execfile_not_found DB "SAVECONFIG /EXECFILE file not found.", 0Dh, 0Ah,
 msg_save_line_too_long DB "SAVECONFIG restore command line would exceed DOS batch line limit.", 0Dh, 0Ah, '$'
 msg_save_no_active DB "SAVECONFIG found no adapters with an active IOBASE.", 0Dh, 0Ah, '$'
 msg_save_read_fail DB "Unable to read adapter EEPROM for SAVECONFIG.", 0Dh, 0Ah, '$'
+msg_save_ambiguous DB "SAVECONFIG cannot isolate an adapter sharing an IOBASE without a valid ID tag.", 0Dh, 0Ah, '$'
 msg_save_write_fail DB "Unable to write SAVECONFIG output file.", 0Dh, 0Ah, '$'
 msg_save_ok DB "Configuration restore batch file created: ", '$'
 
@@ -706,6 +707,8 @@ SAVE_ERR_NONE EQU 0
 SAVE_ERR_WRITE EQU 1
 SAVE_ERR_LINE_TOO_LONG EQU 2
 SAVE_ERR_BAD_EXECFILE EQU 3
+SAVE_ERR_READ EQU 4
+SAVE_ERR_AMBIGUOUS EQU 5
 
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
@@ -1340,39 +1343,8 @@ PROC Cmd_SaveConfig NEAR
     or      dx, dx
     jz      @@SkipAdapter
 
-    mov     al, EEPROM_ADDR_CFG
-    call    Nic_EEPROM_Read
-    jc      @@ReadFail
-    mov     [save_word08], ax
-    mov     al, EEPROM_RESOURCE_CFG
-    call    Nic_EEPROM_Read
-    jc      @@ReadFail
-    mov     [save_word09], ax
-    mov     al, EEPROM_SOFTWARE_INFO
-    call    Nic_EEPROM_Read
-    jc      @@ReadFail
-    mov     [save_word0d], ax
-
-    ; Cache the record's generation and product identity for the export.
-    ; Word 13h carries 3C509B Internal Configuration semantics and is read
-    ; only for a known revision 2 or later.  Other generations neither read
-    ; nor interpret it; a harmless placeholder keeps stale data from a
-    ; previously exported adapter out of the export.
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    mov     [save_asic_rev], al
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    mov     [save_product_id], ax
-    mov     [save_word13], 0
-    mov     al, [save_asic_rev]
-    cmp     al, 0FFh
-    je      @@Word13Done
-    cmp     al, 2
-    jb      @@Word13Done
-    mov     al, EEPROM_CONFIG_CONTROL
-    call    Nic_EEPROM_Read
-    jc      @@ReadFail
-    mov     [save_word13], ax
-@@Word13Done:
+    call    Save_Read_Adapter
+    jc      @@ReadOrAmbiguous
 
     mov     ax, [current_card]
     inc     ax
@@ -1421,6 +1393,14 @@ PROC Cmd_SaveConfig NEAR
 @@ReadFail:
     call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_read_fail
+    jmp     @@Print
+@@ReadOrAmbiguous:
+    cmp     al, SAVE_ERR_AMBIGUOUS
+    je      @@Ambiguous
+    jmp     @@ReadFail
+@@Ambiguous:
+    call    Save_Cleanup_Partial_File
+    mov     dx, OFFSET msg_save_ambiguous
     jmp     @@Print
 @@NoActive:
     mov     dx, OFFSET msg_save_no_active
@@ -1956,6 +1936,209 @@ PROC Save_Cleanup_Partial_File NEAR
     pop     ax
     ret
 ENDP Save_Cleanup_Partial_File
+
+; Fill the save_* EEPROM snapshot for one logical NIC record from an explicit
+; physical access base in DX.  Input SI = logical NIC record, DX = physical
+; access base.  Reads the same words SAVECONFIG has always read: EEPROM word
+; 08h, 09h, 0Dh and, for a known revision 2 or later, 13h.  Does not change
+; SAVECONFIG semantics; only where the bytes are read from.
+PROC Save_Read_At_Base NEAR
+    push    ax
+    push    dx
+
+    mov     al, EEPROM_ADDR_CFG
+    call    Nic_EEPROM_Read
+    jc      @@Fail
+    mov     [save_word08], ax
+    mov     al, EEPROM_RESOURCE_CFG
+    call    Nic_EEPROM_Read
+    jc      @@Fail
+    mov     [save_word09], ax
+    mov     al, EEPROM_SOFTWARE_INFO
+    call    Nic_EEPROM_Read
+    jc      @@Fail
+    mov     [save_word0d], ax
+
+    ; Cache the record's generation and product identity for the export.
+    ; Word 13h carries 3C509B Internal Configuration semantics and is read
+    ; only for a known revision 2 or later.  Other generations neither read
+    ; nor interpret it; a harmless placeholder keeps stale data from a
+    ; previously exported adapter out of the export.
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    mov     [save_asic_rev], al
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    mov     [save_product_id], ax
+    mov     [save_word13], 0
+    mov     al, [save_asic_rev]
+    cmp     al, 0FFh
+    je      @@Done
+    cmp     al, 2
+    jb      @@Done
+    mov     al, EEPROM_CONFIG_CONTROL
+    call    Nic_EEPROM_Read
+    jc      @@Fail
+    mov     [save_word13], ax
+@@Done:
+    pop     dx
+    pop     ax
+    clc
+    ret
+@@Fail:
+    pop     dx
+    pop     ax
+    stc
+    ret
+ENDP Save_Read_At_Base
+
+; Read one logical NIC record's persistent configuration for SAVECONFIG,
+; independent of whether its logical IOBASE is shared with another active
+; adapter.  Input SI = logical NIC record with a nonzero NIC_IO_BASE.
+; Output: CF clear and save_* snapshot filled on success.  CF set and
+; AL = SAVE_ERR_READ or SAVE_ERR_AMBIGUOUS on failure.
+;
+; This is intentionally a small SAVECONFIG-specific wrapper around the
+; already shared Find_Record_By_Base / Cfg_Find_Temporary_Base /
+; Cfg_Id_Activate_At_Base primitives.  SAVECONFIG is not a configuration
+; transaction, so it does not reuse cfg_txn_access_base or
+; cfg_txn_targeted_access; those remain CONFIGURE-owned mutable state.
+PROC Save_Read_Adapter NEAR
+    push    bx
+    push    dx
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Find_Record_By_Base
+    cmp     di, 0FFFFh
+    je      @@Ambiguous
+    or      di, di
+    jz      @@Inconsistent
+
+    ; Exactly one logical owner: read normally at the logical base.
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Save_Read_At_Base
+    jc      @@ReadFail
+    jmp     @@Success
+
+@@Inconsistent:
+    ; A record with a nonzero IOBASE must find itself in nic_table; a
+    ; no-owner result here means the table state is internally
+    ; inconsistent. Fail conservatively rather than assume unique access.
+    mov     al, SAVE_ERR_READ
+    jmp     @@Fail
+
+@@Ambiguous:
+    ; Multiple records share this logical IOBASE. A valid ID tag is
+    ; required to isolate the correct physical adapter; there is no
+    ; first-record-wins fallback.
+    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
+    jz      @@NoTag
+    mov     al, [BYTE si + NIC_TAG]
+    or      al, al
+    jz      @@NoTag
+    cmp     al, MAX_CARDS
+    ja      @@NoTag
+
+    call    Save_Read_Targeted
+    jc      @@ReadFail
+    jmp     @@Success
+
+@@NoTag:
+    mov     al, SAVE_ERR_AMBIGUOUS
+    jmp     @@Fail
+
+@@ReadFail:
+    mov     al, SAVE_ERR_READ
+@@Fail:
+    pop     dx
+    pop     bx
+    stc
+    ret
+@@Success:
+    pop     dx
+    pop     bx
+    clc
+    ret
+ENDP Save_Read_Adapter
+
+; Read an ambiguous active ID-tagged record's persistent configuration
+; through a temporary live base, then restore it to its original logical
+; IOBASE before returning.  Input SI = selected NIC record.
+;
+; Sequence: pushf; cli; find a temporary base; activate the selected tag
+; there; read EEPROM using bounded no-DOS primitives; restore the live
+; window; reactivate the selected adapter at its original logical base;
+; confirm the scratch base no longer responds; popf; Nic_Sync_State.  No
+; DOS call occurs anywhere in this routine.
+PROC Save_Read_Targeted NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+
+    pushf
+    cli
+    call    Cfg_Find_Temporary_Base
+    jc      @@FailFlags
+    mov     [cfg_target_base], ax
+
+    mov     ax, [cfg_target_base]
+    call    Cfg_Id_Activate_At_Base
+
+    mov     dx, [cfg_target_base]
+    call    Nic_Check_3Com_Signature
+    jc      @@ReadAndRestore
+    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
+    jne     @@ReadAndRestore
+    mov     [BYTE si + NIC_ASIC_REV], bl
+
+@@ReadAndRestore:
+    mov     dx, [cfg_target_base]
+    call    Nic_Get_Current_Window
+    mov     [cfg_target_window], al
+
+    mov     dx, [cfg_target_base]
+    call    Save_Read_At_Base
+    mov     [cfg_target_result], 0
+    jnc     @@RestoreWindow
+    mov     [cfg_target_result], 1
+
+@@RestoreWindow:
+    mov     dx, [cfg_target_base]
+    mov     al, [cfg_target_window]
+    call    Nic_Select_Window
+
+    mov     ax, [WORD si + NIC_IO_BASE]
+    call    Cfg_Id_Activate_At_Base
+
+    mov     dx, [cfg_target_base]
+    call    Nic_Read_Status
+    cmp     ax, 0FFFFh
+    jne     @@RestorationFail
+    cmp     [cfg_target_result], 0
+    jne     @@RestorationFail
+
+    popf
+    call    Nic_Sync_State
+    clc
+    jmp     @@Done
+
+@@RestorationFail:
+    popf
+    call    Nic_Sync_State
+    stc
+    jmp     @@Done
+
+@@FailFlags:
+    popf
+    call    Nic_Sync_State
+    stc
+
+@@Done:
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Save_Read_Targeted
 
 PROC Save_Build_Command NEAR
     push    ax
@@ -5187,8 +5370,12 @@ PROC Cfg_Txn_Begin_Access NEAR
     mov     [cfg_txn_access_base], dx
     call    Find_Record_By_Base
     cmp     di, 0FFFFh
-    jne     @@Success
+    je      @@Targeted
+    or      di, di
+    jz      @@Fail
+    jmp     @@Success
 
+@@Targeted:
     call    Cfg_Txn_Has_Valid_Tag
     jc      @@Fail
     mov     si, [cfg_selected_ptr]
@@ -8075,6 +8262,12 @@ PROC Cfg_Txn_Execute NEAR
     mov     al, [cfg_int_value]
     mov     [BYTE si + NIC_IRQ_VAL], al
 @@ReportSuccess:
+    ; Cfg_Txn_End_Access clears cfg_txn_targeted_access on its first
+    ; successful call, so the common @@Done path below calling it a second
+    ; time on the success fall-through is a harmless no-op (it takes the
+    ; @@Success early-return branch immediately). Kept as-is: collapsing
+    ; the two call sites would require restructuring the success/failure
+    ; branches without a corresponding safety benefit.
     call    Cfg_Txn_End_Access
     jc      @@Exit
     cmp     [cfg_bootrom_rejected], 1
