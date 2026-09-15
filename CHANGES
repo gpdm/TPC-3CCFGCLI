@@ -13,12 +13,8 @@ Changelog 0.7.8
   - Provisional / intermediate: Hardware and mock backends no longer mark an ID-port activated adapter
     as ACTIVE merely for issuing the D8h/E0h activation sequence; ACTIVE now
     requires separately proven normal-IOBASE runtime access.
-  - Provisional / intermediate: ID-port discovery captures a compact
-    per-adapter EEPROM snapshot while each physical contender owns the ID
-    port, and LIST uses it for persistent EEPROM-derived information.
-    SAVECONFIG and CONFIGURE do not use this cache yet.
-  - Provisional / intermediate: snapshot-backed LIST handling is complete;
-    SAVECONFIG and CONFIGURE migration remains pending.
+  - Provisional / intermediate: per-adapter ID-port EEPROM snapshots now
+    supply persistent LIST and SAVECONFIG data; CONFIGURE remains unchanged.
 
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now

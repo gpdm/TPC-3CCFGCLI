@@ -2029,6 +2029,45 @@ PROC Save_Read_At_Base NEAR
     ret
 ENDP Save_Read_At_Base
 
+; Fill the SAVECONFIG persistent state directly from SI's ordinal-matched
+; ID-port EEPROM snapshot.  CF is clear only when a complete snapshot exists.
+PROC Save_Read_Id_Eeprom_Snapshot NEAR
+    push    ax
+    push    di
+
+    call    Get_Id_Eeprom_Snapshot
+    jc      @@Unavailable
+    mov     ax, [WORD di + ID_EEPROM_ADDR_CFG]
+    mov     [save_word08], ax
+    mov     ax, [WORD di + ID_EEPROM_RESOURCE_CFG]
+    mov     [save_word09], ax
+    mov     ax, [WORD di + ID_EEPROM_SOFTWARE_INFO]
+    mov     [save_word0d], ax
+
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    mov     [save_asic_rev], al
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    mov     [save_product_id], ax
+    mov     [save_word13], 0
+    mov     al, [save_asic_rev]
+    cmp     al, 0FFh
+    je      @@Success
+    cmp     al, 2
+    jb      @@Success
+    mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
+    mov     [save_word13], ax
+@@Success:
+    pop     di
+    pop     ax
+    clc
+    ret
+@@Unavailable:
+    pop     di
+    pop     ax
+    stc
+    ret
+ENDP Save_Read_Id_Eeprom_Snapshot
+
 ; Read one logical NIC record's persistent configuration for SAVECONFIG,
 ; independent of whether its logical IOBASE is shared with another active
 ; adapter.  Input SI = logical NIC record with a nonzero NIC_IO_BASE.
@@ -2043,6 +2082,11 @@ ENDP Save_Read_At_Base
 PROC Save_Read_Adapter NEAR
     push    bx
     push    dx
+
+    ; A valid physical ID-port snapshot is sufficient for persistent export;
+    ; it neither requires nor implies proven normal runtime access.
+    call    Save_Read_Id_Eeprom_Snapshot
+    jnc     @@Success
 
     mov     dx, [WORD si + NIC_IO_BASE]
     call    Find_Record_By_Base
@@ -4748,7 +4792,7 @@ ENDP Nic_Read_Capabilities
 ; Resolve the parallel ID-port EEPROM snapshot for SI's nic_table ordinal.
 ; CF is clear only when that record has an available snapshot.  This helper
 ; deliberately derives identity from the record address, never from IOBASE.
-PROC List_Get_Id_Eeprom_Snapshot NEAR
+PROC Get_Id_Eeprom_Snapshot NEAR
     push    ax
     push    bx
     push    cx
@@ -4780,7 +4824,7 @@ PROC List_Get_Id_Eeprom_Snapshot NEAR
     pop     bx
     pop     ax
     ret
-ENDP List_Get_Id_Eeprom_Snapshot
+ENDP Get_Id_Eeprom_Snapshot
 
 ; Populate LIST's persistent EEPROM state from the selected record snapshot.
 ; Input SI = nic_table record.  CF is clear when a snapshot was loaded.
@@ -4788,7 +4832,7 @@ PROC List_Load_Id_Eeprom_Snapshot NEAR
     push    ax
     push    di
 
-    call    List_Get_Id_Eeprom_Snapshot
+    call    Get_Id_Eeprom_Snapshot
     jc      @@Done
     mov     ax, [WORD di + ID_EEPROM_ADDR_CFG]
     mov     [ext_addr_cfg], ax
