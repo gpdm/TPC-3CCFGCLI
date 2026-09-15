@@ -354,12 +354,12 @@ PROC Nic_Activate_Tagged_Cards NEAR
     call    Nic_IdPort_Write_Command
     popf
 
-    ; The ID tag selected the adapter being activated.  Do not use a normal
-    ; IOBASE signature read as its identity proof: another active adapter may
-    ; decode the same base, making that response ambiguous.  Product identity
-    ; already came from the ID-port EEPROM record; active-base reconciliation
-    ; refreshes it only when the base has a unique owner.
-    or      [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
+    ; The ID tag selected the adapter and issued the E0h activation command,
+    ; but that alone does not prove the adapter is reachable through normal
+    ; runtime I/O (a second adapter can decode E0h yet fail to answer at its
+    ; IOBASE afterward).  Do not set NIC_FLAG_ACTIVE here; runtime
+    ; reachability is proven separately once normal-IOBASE access is
+    ; verified.
 @@Next:
     add     si, NIC_RECORD_SIZE
     loop    @@Loop

@@ -1375,7 +1375,11 @@ PROC Nic_Activate_Tagged_Cards NEAR
     mov     [word mock_active_base], ax
 @@KeepBase:
     mov     [byte mock_active], 1
-    or      [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
+    ; This still shortcuts real activation by writing mock_active_base
+    ; directly instead of issuing D8h/E0h (deferred to a later phase), but
+    ; it must no longer claim NIC_FLAG_ACTIVE: that flag is reserved for
+    ; adapters proven reachable through normal runtime I/O, which has not
+    ; happened yet at this point.
     mov     [byte mock_state_dirty], 1
     call    Mock_Commit_Loaded_Record
 @@Next:

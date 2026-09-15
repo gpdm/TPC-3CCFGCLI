@@ -10,6 +10,9 @@ Changelog 0.7.8
     share an IOBASE.
   - SAVECONFIG now reads tagged adapters independently when multiple NICs
     share an IOBASE.
+  - Hardware and mock backends no longer mark an ID-port activated adapter
+    as ACTIVE merely for issuing the D8h/E0h activation sequence; ACTIVE now
+    requires separately proven normal-IOBASE runtime access.
 
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now
