@@ -158,6 +158,14 @@ NIC_CAP_VALID_PNP        EQU 01h
 NIC_CAP_VALID_CONNECTORS EQU 02h
 NIC_CAP_VALID_FULLDUPLEX EQU 04h
 
+; Explicit validity for persistent EEPROM values consumed by LIST.  EEPROM
+; data itself, including FFFFh, is never used as an availability sentinel.
+LIST_EEPROM_VALID_ADDR_CFG       EQU 01h
+LIST_EEPROM_VALID_SOFTWARE_INFO  EQU 02h
+LIST_EEPROM_VALID_CONFIG_CONTROL EQU 04h
+LIST_EEPROM_VALID_CAPABILITY     EQU 08h
+LIST_EEPROM_VALID_REVISION_INFO  EQU 10h
+
 ; Common CONFIGURE result codes.
 CFG_ERR_NONE                EQU 0
 CFG_ERR_NO_NIC              EQU 1
@@ -562,8 +570,8 @@ msg_connector_separator DB ", ", '$'
 card_count      DW  0
 current_card    DW  0
 nic_table       DB  (MAX_CARDS * NIC_RECORD_SIZE) DUP(0)
-; One 37-byte record per nic_table entry: availability byte plus the 18
-; EEPROM words read by the original ISA record-building path.
+; One 37-byte record per nic_table entry: availability byte plus the 18-word
+; union of EEPROM reads used by the original ISA record-building paths.
 id_eeprom_cache DB  (MAX_CARDS * ID_EEPROM_SNAPSHOT_SIZE) DUP(0)
 
 ; Discovery state.
@@ -582,11 +590,14 @@ id_eeprom_contender DB ID_EEPROM_SNAPSHOT_SIZE DUP(0)
 pic_slave_present DB 0
 pic_gate_enforce   DB 0
 
-; Temporary live EEPROM values used only by the LIST output.
+; Temporary EEPROM values used only by the LIST output.
 ; These are deliberately separate from nic_table so the known good 16 byte
 ; enumeration record layout remains unchanged.
 ext_addr_cfg      DW 0FFFFh
 ext_config_ctrl   DW 0FFFFh
+ext_eeprom_capability DW 0FFFFh
+ext_revision_info DW 0FFFFh
+ext_eeprom_valid DW 0
 ext_nic_capabilities DW 0FFFFh
 ext_nic_capability_valid DW 0
 ; Raw EEPROM_SOFTWARE_INFO (word 0Dh), shared by the LIST
@@ -4733,6 +4744,159 @@ PROC Nic_Read_Capabilities NEAR
     pop     cx
     ret
 ENDP Nic_Read_Capabilities
+
+; Resolve the parallel ID-port EEPROM snapshot for SI's nic_table ordinal.
+; CF is clear only when that record has an available snapshot.  This helper
+; deliberately derives identity from the record address, never from IOBASE.
+PROC List_Get_Id_Eeprom_Snapshot NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+
+    mov     ax, si
+    sub     ax, OFFSET nic_table
+    mov     cl, 4
+    shr     ax, cl                  ; nic_table ordinal
+    mov     dx, ax
+    mov     di, ax
+    mov     cl, 5
+    shl     di, cl                  ; ordinal * 32
+    mov     bx, ax
+    mov     cl, 2
+    shl     bx, cl                  ; ordinal * 4
+    add     di, bx
+    add     di, dx                  ; ordinal * 37
+    add     di, OFFSET id_eeprom_cache
+    cmp     [BYTE di + ID_EEPROM_SNAPSHOT_VALID], 0
+    je      @@Unavailable
+    clc
+    jmp     @@Done
+@@Unavailable:
+    stc
+@@Done:
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP List_Get_Id_Eeprom_Snapshot
+
+; Populate LIST's persistent EEPROM state from the selected record snapshot.
+; Input SI = nic_table record.  CF is clear when a snapshot was loaded.
+PROC List_Load_Id_Eeprom_Snapshot NEAR
+    push    ax
+    push    di
+
+    call    List_Get_Id_Eeprom_Snapshot
+    jc      @@Done
+    mov     ax, [WORD di + ID_EEPROM_ADDR_CFG]
+    mov     [ext_addr_cfg], ax
+    mov     ax, [WORD di + ID_EEPROM_SOFTWARE_INFO]
+    mov     [ext_software_info], ax
+    mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
+    mov     [ext_config_ctrl], ax
+    mov     ax, [WORD di + ID_EEPROM_CAPABILITY]
+    mov     [ext_eeprom_capability], ax
+    mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
+    mov     [ext_revision_info], ax
+    mov     [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG + LIST_EEPROM_VALID_SOFTWARE_INFO + LIST_EEPROM_VALID_CONFIG_CONTROL + LIST_EEPROM_VALID_CAPABILITY + LIST_EEPROM_VALID_REVISION_INFO
+@@Done:
+    pop     di
+    pop     ax
+    ret
+ENDP List_Load_Id_Eeprom_Snapshot
+
+; LIST-specific capability collection.  Connector presence is runtime data;
+; 3C509B EEPROM capability/revision words use the ID snapshot when present.
+PROC List_Read_Capabilities NEAR
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    mov     ah, [BYTE si + NIC_ASIC_REV]
+    push    ax
+    mov     si, dx
+    call    Nic_Get_Current_Window
+    mov     di, ax
+    xor     bx, bx
+    xor     cx, cx
+
+    mov     dx, si
+    xor     al, al
+    call    Nic_Select_Window
+    mov     bx, EL3_W0_CONFIG_CONTROL
+    call    Nic_Reg_Read_Word
+    xor     bx, bx
+    cmp     ax, 0FFFFh
+    je      @@ReadPnp
+    or      bx, NIC_CAP_VALID_CONNECTORS
+    test    ax, W0_CONFIG_CONTROL_TP_PRESENT
+    jz      @@NoTp
+    or      cx, NIC_CAP_TP
+@@NoTp:
+    test    ax, W0_CONFIG_CONTROL_AUI_PRESENT
+    jz      @@NoAui
+    or      cx, NIC_CAP_AUI
+@@NoAui:
+    test    ax, W0_CONFIG_CONTROL_BNC_PRESENT
+    jz      @@ReadPnp
+    or      cx, NIC_CAP_BNC
+
+@@ReadPnp:
+    pop     ax
+    cmp     ah, 0FFh
+    je      @@Restore
+    cmp     ah, 2
+    jb      @@Restore
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_CAPABILITY
+    jnz     @@HaveCapability
+    mov     dx, si
+    mov     al, EEPROM_CAPABILITY
+    call    Nic_EEPROM_Read
+    jc      @@ReadRevision
+    mov     [ext_eeprom_capability], ax
+    or      [ext_eeprom_valid], LIST_EEPROM_VALID_CAPABILITY
+@@HaveCapability:
+    or      bx, NIC_CAP_VALID_PNP
+    test    [ext_eeprom_capability], EEPROM_CAPABILITY_PNP
+    jz      @@ReadRevision
+    or      cx, NIC_CAP_PNP
+
+@@ReadRevision:
+    test    bx, NIC_CAP_VALID_CONNECTORS
+    jz      @@Restore
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_REVISION_INFO
+    jnz     @@HaveRevision
+    mov     dx, si
+    mov     al, EEPROM_REVISION_INFO
+    call    Nic_EEPROM_Read
+    jc      @@Restore
+    mov     [ext_revision_info], ax
+    or      [ext_eeprom_valid], LIST_EEPROM_VALID_REVISION_INFO
+@@HaveRevision:
+    or      bx, NIC_CAP_VALID_FULLDUPLEX
+    test    cx, NIC_CAP_TP
+    jz      @@Restore
+    mov     ax, [ext_revision_info]
+    and     ax, 00FFh
+    cmp     ax, EEPROM_REVISION_3C509B
+    jb      @@Restore
+    or      cx, NIC_CAP_FULLDUPLEX
+
+@@Restore:
+    mov     ax, di
+    mov     dx, si
+    call    Nic_Select_Window
+    mov     ax, cx
+    clc
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    ret
+ENDP List_Read_Capabilities
 
 ; Build a record from an adapter that is already active at DX.
 ; Input DX = base, DI = destination record, AX = product ID, BL = ASIC rev.
@@ -8926,20 +9090,26 @@ PROC Read_Extended_Nic_Info_At_Base NEAR
     call    Nic_Get_Current_Window
     mov     di, ax
 
-    call    Nic_Read_Capabilities
+    call    List_Read_Capabilities
     mov     [ext_nic_capabilities], ax
     mov     [ext_nic_capability_valid], bx
 
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG
+    jnz     @@SkipAddrCfg
     mov     al, EEPROM_ADDR_CFG
     call    Nic_EEPROM_Read
     jc      @@SkipAddrCfg
     mov     [ext_addr_cfg], ax
+    or      [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG
 @@SkipAddrCfg:
 
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_SOFTWARE_INFO
+    jnz     @@SkipSoftwareInfo
     mov     al, EEPROM_SOFTWARE_INFO
     call    Nic_EEPROM_Read
     jc      @@SkipSoftwareInfo
     mov     [ext_software_info], ax
+    or      [ext_eeprom_valid], LIST_EEPROM_VALID_SOFTWARE_INFO
 @@SkipSoftwareInfo:
 
     ; EEPROM word 13h only carries Plug and Play state on the 3C509B.
@@ -8948,10 +9118,13 @@ PROC Read_Extended_Nic_Info_At_Base NEAR
     je      @@CheckVerbose
     cmp     al, 2
     jb      @@CheckVerbose
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_CONFIG_CONTROL
+    jnz     @@CheckVerbose
     mov     al, EEPROM_CONFIG_CONTROL
     call    Nic_EEPROM_Read
     jc      @@SkipConfigCtrl
     mov     [ext_config_ctrl], ax
+    or      [ext_eeprom_valid], LIST_EEPROM_VALID_CONFIG_CONTROL
 @@SkipConfigCtrl:
 
 @@CheckVerbose:
@@ -8964,9 +9137,15 @@ PROC Read_Extended_Nic_Info_At_Base NEAR
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 2
     jb      @@RestoreWindow
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_REVISION_INFO
+    jnz     @@HaveRevisionInfo
     mov     al, EEPROM_REVISION_INFO
     call    Nic_EEPROM_Read
     jc      @@SkipBootRomSizeValid
+    mov     [ext_revision_info], ax
+    or      [ext_eeprom_valid], LIST_EEPROM_VALID_REVISION_INFO
+@@HaveRevisionInfo:
+    mov     ax, [ext_revision_info]
     test    ax, EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
     jz      @@BootRomSizeInvalid
     mov     [ext_boot_rom_size_valid], 1
@@ -9049,12 +9228,11 @@ PROC Read_Extended_Nic_Info_Targeted NEAR
     jmp     @@Done
 
 @@RestorationFail:
-    mov     [ext_addr_cfg], 0FFFFh
-    mov     [ext_config_ctrl], 0FFFFh
-    mov     [ext_software_info], 0FFFFh
-    mov     [ext_nic_capabilities], 0FFFFh
-    mov     [ext_nic_capability_valid], 0
-    mov     [ext_boot_rom_size_valid], 0FFFFh
+    ; Retain the normalized PNP bit sourced from the ID EEPROM snapshot, but
+    ; discard connector and Full Duplex capability data from the failed
+    ; temporary runtime access.
+    and     [ext_nic_capabilities], NIC_CAP_PNP
+    and     [ext_nic_capability_valid], NOT (NIC_CAP_VALID_CONNECTORS + NIC_CAP_VALID_FULLDUPLEX)
     mov     [ext_secondary_checksum_valid], 0FFFFh
 
 @@FailFlags:
@@ -9084,11 +9262,16 @@ PROC Read_Extended_Nic_Info NEAR
 
     mov     [ext_addr_cfg], 0FFFFh
     mov     [ext_config_ctrl], 0FFFFh
+    mov     [ext_eeprom_capability], 0FFFFh
+    mov     [ext_revision_info], 0FFFFh
+    mov     [ext_eeprom_valid], 0
     mov     [ext_software_info], 0FFFFh
     mov     [ext_nic_capabilities], 0FFFFh
     mov     [ext_nic_capability_valid], 0
     mov     [ext_boot_rom_size_valid], 0FFFFh
     mov     [ext_secondary_checksum_valid], 0FFFFh
+
+    call    List_Load_Id_Eeprom_Snapshot
 
     mov     dx, [WORD si + NIC_IO_BASE]
     or      dx, dx
@@ -9134,8 +9317,8 @@ PROC Print_Transceiver_Value NEAR
     push    dx
 
     mov     ax, [ext_addr_cfg]
-    cmp     ax, 0FFFFh
-    je      @@Unavailable
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG
+    jz      @@Unavailable
 
     ; Address Configuration bit 7 means Auto Select only on the 3C509B; on the
     ; 3C509 and on an unknown revision decode the configured media.
@@ -9244,9 +9427,9 @@ PROC Print_Pnp_State_Value NEAR
     cmp     al, 2
     jb      @@NotSupported
 
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_CONFIG_CONTROL
+    jz      @@Unavailable
     mov     ax, [ext_config_ctrl]
-    cmp     ax, 0FFFFh
-    je      @@Unavailable
     and     ax, 000Ch
     cmp     ax, 0004h
     je      @@Disabled
@@ -9390,9 +9573,9 @@ PROC Print_Optimize_Value NEAR
     push    ax
     push    cx
 
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_SOFTWARE_INFO
+    jz      @@Unavailable
     mov     ax, [ext_software_info]
-    cmp     ax, 0FFFFh
-    je      @@Unavailable
     mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
     shr     ax, cl
     and     al, 03h
@@ -9479,9 +9662,9 @@ PROC Print_Modem_Value NEAR
     push    bx
     push    dx
 
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_SOFTWARE_INFO
+    jz      @@Unavailable
     mov     bx, [ext_software_info]
-    cmp     bx, 0FFFFh
-    je      @@Unavailable
     mov     ax, bx
     call    Decode_Modem_Value
     call    Print_DecWord
@@ -9555,9 +9738,9 @@ PROC Print_Full_Duplex_Value NEAR
     test    ax, NIC_CAP_FULLDUPLEX
     jz      @@NotSupported
 
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_SOFTWARE_INFO
+    jz      @@Unavailable
     mov     ax, [ext_software_info]
-    cmp     ax, 0FFFFh
-    je      @@Unavailable
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jz      @@Disabled
 
@@ -9606,9 +9789,9 @@ PROC Print_Boot_Rom_Value NEAR
     push    dx
     push    di
 
+    test    [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG
+    jz      @@Unavailable
     mov     ax, [ext_addr_cfg]
-    cmp     ax, 0FFFFh
-    je      @@Unavailable
 
     ; ASIC revision 1 is the 3C509; revision 2 or later is the
     ; 3C509B generation.  FFh means unknown and is not treated as 3C509B.
