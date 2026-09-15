@@ -4162,6 +4162,11 @@ PROC Scan_All_3Com_Cards NEAR
     ; The original program tags the contenders first and activates them later.
     call    Nic_Activate_Tagged_Cards
 
+    ; ID-port E0h activation only assigns the runtime decode address.  For
+    ; unique bases, finish the minimal window 0 enable step and prove normal
+    ; register access before marking those records active.
+    call    Finalize_Id_Activated_Cards
+
     ; Finally examine all valid active I O bases.  This also catches a board
     ; that was already active before the proprietary ID sequence was entered.
     call    Scan_Active_Base_Ports
@@ -4171,6 +4176,105 @@ PROC Scan_All_3Com_Cards NEAR
     pop     ax
     ret
 ENDP Scan_All_3Com_Cards
+
+; Finish minimal normal-I/O activation for ID-discovered records whose logical
+; IOBASE has exactly one owner.  Duplicate bases remain unresolved here so a
+; later targeted/scratch-base phase can isolate them explicitly.
+PROC Finalize_Id_Activated_Cards NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    mov     cx, [card_count]
+    or      cx, cx
+    jz      @@Done
+    mov     si, OFFSET nic_table
+@@Loop:
+    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
+    jz      @@Next
+    mov     dx, [WORD si + NIC_IO_BASE]
+    or      dx, dx
+    jz      @@Next
+    call    Find_Record_By_Base
+    cmp     di, 0FFFFh
+    je      @@Next
+    cmp     si, di
+    jne     @@Next
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Finalize_Id_Activated_Record
+@@Next:
+    add     si, NIC_RECORD_SIZE
+    loop    @@Loop
+
+@@Done:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Finalize_Id_Activated_Cards
+
+; Input: SI = unique ID-discovered record, DX = its logical IOBASE.
+; Output: NIC_FLAG_ACTIVE set only after Configuration Control ENA readback
+; and a successful normal-I/O 3Com signature probe.  Failures are non-fatal.
+PROC Finalize_Id_Activated_Record NEAR
+    push    ax
+    push    bx
+    push    dx
+    push    di
+
+    mov     bx, dx
+    call    Nic_Get_Current_Window
+    mov     di, ax
+
+    mov     dx, bx
+    xor     al, al
+    call    Nic_Select_Window
+
+    mov     dx, bx
+    mov     bx, EL3_W0_CONFIG_CONTROL
+    call    Nic_Reg_Read_Word
+    cmp     ax, 0FFFFh
+    je      @@RestoreFail
+    or      ax, W0_CONFIG_CONTROL_ENA
+    call    Nic_Reg_Write_Word
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     bx, EL3_W0_CONFIG_CONTROL
+    call    Nic_Reg_Read_Word
+    cmp     ax, 0FFFFh
+    je      @@RestoreFail
+    test    ax, W0_CONFIG_CONTROL_ENA
+    jz      @@RestoreFail
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     ax, di
+    call    Nic_Select_Window
+
+    mov     dx, [WORD si + NIC_IO_BASE]
+    call    Nic_Check_3Com_Signature
+    jc      @@Fail
+    or      [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
+    jmp     @@Done
+
+@@RestoreFail:
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     ax, di
+    call    Nic_Select_Window
+@@Fail:
+@@Done:
+    pop     di
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Finalize_Id_Activated_Record
 
 ; ============================================================================
 ; ISA ID port discovery
