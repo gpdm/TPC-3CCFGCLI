@@ -4942,6 +4942,119 @@ PROC List_Read_Capabilities NEAR
     ret
 ENDP List_Read_Capabilities
 
+; CONFIGURE-specific capability collection.
+; Input: SI = logical NIC record, DX = physical access base.
+; Output: AX = capability bits (NIC_CAP_*), BX = validity bits (NIC_CAP_VALID_*), CF clear.
+; Window 0 connector presence is runtime data read from live hardware.
+; 3C509B EEPROM capability (word 10h) and revision (word 14h) use the ID snapshot
+; when available, falling back to runtime EEPROM reads.
+PROC Cfg_Read_Capabilities NEAR
+    push    cx
+    push    dx
+    push    si
+    push    di
+    push    bp
+
+    mov     ah, [BYTE si + NIC_ASIC_REV]
+    push    ax                      ; AH = cached ASIC revision
+    mov     si, dx
+    call    Nic_Get_Current_Window
+    mov     bp, ax
+    xor     bx, bx
+    xor     cx, cx
+
+    mov     dx, si
+    xor     al, al
+    call    Nic_Select_Window
+    mov     bx, EL3_W0_CONFIG_CONTROL
+    call    Nic_Reg_Read_Word
+    xor     bx, bx
+    cmp     ax, 0FFFFh
+    je      @@ReadPnp
+    or      bx, NIC_CAP_VALID_CONNECTORS
+    test    ax, W0_CONFIG_CONTROL_TP_PRESENT
+    jz      @@NoTp
+    or      cx, NIC_CAP_TP
+@@NoTp:
+    test    ax, W0_CONFIG_CONTROL_AUI_PRESENT
+    jz      @@NoAui
+    or      cx, NIC_CAP_AUI
+@@NoAui:
+    test    ax, W0_CONFIG_CONTROL_BNC_PRESENT
+    jz      @@ReadPnp
+    or      cx, NIC_CAP_BNC
+
+@@ReadPnp:
+    pop     ax                      ; AH = cached ASIC revision
+    cmp     ah, 0FFh
+    je      @@Restore
+    cmp     ah, 2
+    jb      @@Restore
+
+    ; Check ID-port EEPROM snapshot for word 10h / 14h
+    mov     si, [cfg_selected_ptr]
+    call    Get_Id_Eeprom_Snapshot
+    jnc     @@FromSnapshot
+
+    ; Fallback to hardware EEPROM reads
+    mov     dx, [cfg_txn_access_base]
+    mov     al, EEPROM_CAPABILITY
+    call    Nic_EEPROM_Read
+    jc      @@ReadRevisionHw
+    or      bx, NIC_CAP_VALID_PNP
+    test    ax, EEPROM_CAPABILITY_PNP
+    jz      @@ReadRevisionHw
+    or      cx, NIC_CAP_PNP
+
+@@ReadRevisionHw:
+    test    bx, NIC_CAP_VALID_CONNECTORS
+    jz      @@Restore
+    mov     dx, [cfg_txn_access_base]
+    mov     al, EEPROM_REVISION_INFO
+    call    Nic_EEPROM_Read
+    jc      @@Restore
+    or      bx, NIC_CAP_VALID_FULLDUPLEX
+    test    cx, NIC_CAP_TP
+    jz      @@Restore
+    and     ax, 00FFh
+    cmp     ax, EEPROM_REVISION_3C509B
+    jb      @@Restore
+    or      cx, NIC_CAP_FULLDUPLEX
+    jmp     @@Restore
+
+@@FromSnapshot:
+    mov     ax, [WORD di + ID_EEPROM_CAPABILITY]
+    or      bx, NIC_CAP_VALID_PNP
+    test    ax, EEPROM_CAPABILITY_PNP
+    jz      @@RevisionFromSnapshot
+    or      cx, NIC_CAP_PNP
+
+@@RevisionFromSnapshot:
+    test    bx, NIC_CAP_VALID_CONNECTORS
+    jz      @@Restore
+    mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
+    or      bx, NIC_CAP_VALID_FULLDUPLEX
+    test    cx, NIC_CAP_TP
+    jz      @@Restore
+    and     ax, 00FFh
+    cmp     ax, EEPROM_REVISION_3C509B
+    jb      @@Restore
+    or      cx, NIC_CAP_FULLDUPLEX
+
+@@Restore:
+    mov     ax, bp
+    mov     dx, [cfg_txn_access_base]
+    call    Nic_Select_Window
+    mov     ax, cx
+    clc
+    pop     bp
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    ret
+ENDP Cfg_Read_Capabilities
+
 ; Build a record from an adapter that is already active at DX.
 ; Input DX = base, DI = destination record, AX = product ID, BL = ASIC rev.
 PROC Build_Record_From_Active NEAR
@@ -5803,10 +5916,13 @@ PROC Cfg_Txn_Read_Current NEAR
     push    bx
     push    dx
     push    si
+    push    di
 
     mov     si, [cfg_selected_ptr]
     test    [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
     jnz     @@HaveBase
+    cmp     [cfg_txn_targeted_access], 0
+    jne     @@HaveBase
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@InactiveINT
     mov     [cfg_last_error], CFG_ERR_IOBASE_INACTIVE
@@ -5854,7 +5970,12 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     [cfg_txn_old_base], dx
     mov     [cfg_txn_new_base], dx
-    mov     dx, [cfg_txn_access_base]
+
+    ; Check for a valid ID-port EEPROM snapshot
+    call    Get_Id_Eeprom_Snapshot
+    jnc     @@SnapshotReady
+    xor     di, di
+@@SnapshotReady:
 
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jnz     @@ReadWord08
@@ -5869,6 +5990,13 @@ PROC Cfg_Txn_Read_Current NEAR
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@NoWord08
 @@ReadWord08:
+    or      di, di
+    jz      @@ReadWord08Hw
+    mov     ax, [WORD di + ID_EEPROM_ADDR_CFG]
+    mov     [cfg_txn_old_word08], ax
+    jmp     @@Word08Done
+@@ReadWord08Hw:
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Read
     jc      @@ReadIOFail
@@ -5880,6 +6008,12 @@ PROC Cfg_Txn_Read_Current NEAR
 
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@NoWord09
+    or      di, di
+    jz      @@ReadWord09Hw
+    mov     ax, [WORD di + ID_EEPROM_RESOURCE_CFG]
+    mov     [cfg_txn_old_word09], ax
+    jmp     @@Word09Done
+@@ReadWord09Hw:
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_RESOURCE_CFG
     call    Cfg_Eeprom_Read
@@ -5892,6 +6026,12 @@ PROC Cfg_Txn_Read_Current NEAR
 
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@NoWord13
+    or      di, di
+    jz      @@ReadWord13Hw
+    mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
+    mov     [cfg_txn_old_word13], ax
+    jmp     @@Word13Done
+@@ReadWord13Hw:
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_CONFIG_CONTROL
     call    Cfg_Eeprom_Read
@@ -5917,6 +6057,12 @@ PROC Cfg_Txn_Read_Current NEAR
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@NoWord0D
 @@ReadWord0D:
+    or      di, di
+    jz      @@ReadWord0DHw
+    mov     ax, [WORD di + ID_EEPROM_SOFTWARE_INFO]
+    mov     [cfg_txn_old_word0d], ax
+    jmp     @@Word0DDone
+@@ReadWord0DHw:
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
@@ -5931,6 +6077,12 @@ PROC Cfg_Txn_Read_Current NEAR
     ; EEPROM word 0Fh being readable.
     test    [cfg_parse_flags], CFG_PARSE_INT + CFG_PARSE_IOBASE + CFG_PARSE_MODEM + CFG_PARSE_FULLDUPLEX + CFG_PARSE_OPTIMIZE + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_TR
     jz      @@NoWord0F
+    or      di, di
+    jz      @@ReadWord0FHw
+    mov     ax, [WORD di + ID_EEPROM_CHECKSUM]
+    mov     [cfg_txn_old_word0f], ax
+    jmp     @@Word0FDone
+@@ReadWord0FHw:
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Read
@@ -5986,6 +6138,7 @@ PROC Cfg_Txn_Read_Current NEAR
     and     bl, 0Fh
     mov     [cfg_txn_live_irq], bl
 
+    pop     di
     pop     si
     pop     dx
     pop     bx
@@ -6018,6 +6171,7 @@ PROC Cfg_Txn_Read_Current NEAR
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_OPTIMIZE_EEPROM_READ
 @@Fail:
+    pop     di
     pop     si
     pop     dx
     pop     bx
@@ -8056,7 +8210,7 @@ PROC Cfg_Txn_Execute NEAR
     jz      @@GatePNP
     mov     si, [cfg_selected_ptr]
     mov     dx, [cfg_txn_access_base]
-    call    Nic_Read_Capabilities
+    call    Cfg_Read_Capabilities
     mov     [cfg_txn_capabilities], ax
     mov     [cfg_txn_capability_valid], bx
 
@@ -8157,11 +8311,18 @@ PROC Cfg_Txn_Execute NEAR
     jb      @@BootRomUnsupportedCard
     ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration.
     ; Word 14h is snapshotted here as Boot ROM transaction state.
+    call    Get_Id_Eeprom_Snapshot
+    jnc     @@BootRomWord14FromSnapshot
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Read
     jc      @@BootRomCapReadFail
     mov     [cfg_txn_old_word14], ax
+    jmp     @@BootRomCheckTPO
+@@BootRomWord14FromSnapshot:
+    mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
+    mov     [cfg_txn_old_word14], ax
+@@BootRomCheckTPO:
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     cmp     ax, PRODUCT_3C509_TPO
     jne     @@Requested
@@ -8588,9 +8749,43 @@ PROC Cfg_Txn_Execute NEAR
     ; Keep the in memory record synchronized only after successful verification.
     mov     si, [cfg_selected_ptr]
     test    [cfg_parse_flags], CFG_PARSE_INT
-    jz      @@ReportSuccess
+    jz      @@UpdateSnapshot
     mov     al, [cfg_int_value]
     mov     [BYTE si + NIC_IRQ_VAL], al
+@@UpdateSnapshot:
+    ; If the selected record has an ID snapshot, update changed words with verified values.
+    mov     si, [cfg_selected_ptr]
+    call    Get_Id_Eeprom_Snapshot
+    jc      @@ReportSuccess
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
+    jz      @@Snap09
+    mov     ax, [cfg_txn_new_word08]
+    mov     [WORD di + ID_EEPROM_ADDR_CFG], ax
+@@Snap09:
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD09
+    jz      @@Snap0D
+    mov     ax, [cfg_txn_new_word09]
+    mov     [WORD di + ID_EEPROM_RESOURCE_CFG], ax
+@@Snap0D:
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
+    jz      @@Snap13
+    mov     ax, [cfg_txn_new_word0d]
+    mov     [WORD di + ID_EEPROM_SOFTWARE_INFO], ax
+@@Snap13:
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
+    jz      @@Snap14
+    mov     ax, [cfg_txn_new_word13]
+    mov     [WORD di + ID_EEPROM_CONFIG_CONTROL], ax
+@@Snap14:
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
+    jz      @@Snap0F
+    mov     ax, [cfg_txn_new_word14]
+    mov     [WORD di + ID_EEPROM_REVISION_INFO], ax
+@@Snap0F:
+    test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
+    jz      @@ReportSuccess
+    mov     ax, [cfg_txn_new_word0f]
+    mov     [WORD di + ID_EEPROM_CHECKSUM], ax
 @@ReportSuccess:
     ; Cfg_Txn_End_Access clears cfg_txn_targeted_access on its first
     ; successful call, so the common @@Done path below calling it a second

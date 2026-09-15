@@ -1277,14 +1277,14 @@ t1506:
    FIND "3Com 3C509-Combo" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1506.LOG > NUL
-   FIND "Connectors = TP, AUI" $(ARTIFACTS)\T1506.LOG > NUL
-   FIND "Connectors = TP, AUI, COAX" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "Connectors = unavailable" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "Full Duplex Capability = unavailable" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "Optimization = DOS" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 1300 us (1200 bd)" $(ARTIFACTS)\T1506.LOG > NUL
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1506.LOG
-   FIND "Boot ROM Size Valid = no" $(ARTIFACTS)\T1506.LOG > NUL
-   FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "ASIC Revision unavailable" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "Plug and Play Capability = unavailable" $(ARTIFACTS)\T1506.LOG > NUL
    $(BINAPP) LIST > $(ARTIFACTS)\T1506F.LOG
    FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1506F.LOG > NUL
    FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1506F.LOG > NUL
