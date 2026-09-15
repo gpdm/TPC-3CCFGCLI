@@ -20,8 +20,11 @@
 # Optional physical Boot ROM write test:
 #   HWCTEST.BAT ROMCONFIG
 #
+# Optional physical Boot ROM test:
+#   HWCTEST.BAT READMULTI
+#
 # If a run aborts after writes have started:
-#   MAKE -fHWCWRITE.MK CARDTYPE=<type> restore-config
+#   MAKE -fHWCREAD.MK -DCARDTYPE=CARD_<type> restore-config
 #
 
 # Utility definitions
@@ -58,6 +61,14 @@ TEST_BADDRESS = C8000
 TEST_BSIZE = 16
 TEST_FULLDUPLEX = ENABLED
 
+# Multi NIC defaults. The write check intentionally uses only IOBASE and IRQ
+# so it is valid for every supported 3C509 / 3C509B model. Exactly two cards
+# are required.
+MULTI_SHARED_IOBASE = 0300
+MULTI_BASELINE_IRQ = 5
+MULTI_TARGET_IOBASE = 0280
+MULTI_TARGET_IRQ = 3
+
 # CARDTYPE is supplied by HWCTEST.BAT, for example:
 #   MAKE -fHWCWRITE.MK CARD_BTP=1 hwcw
 #
@@ -65,7 +76,12 @@ TEST_FULLDUPLEX = ENABLED
 # optional tests supported by that model. Unknown card types are rejected
 # while the makefile is parsed, before any hardware test is started.
 #
-!if $d(CARD_BTP)
+!if $d(CARD_MULTI)
+
+CARDTYPE = multi
+CARDNAME = two EtherLink III adapters
+
+!elif $d(CARD_BTP)
 
 CARDTYPE = btp
 CARDNAME = 3C509B-TP
@@ -161,8 +177,7 @@ LOGFILE = $(OUTDIR)\HWCWRITE.LOG
 
 
 all:
-	@echo Start the hardware compliance checks with HWCTEST.BAT.
-	@echo Do not start HWCWRITE.MK directly.
+	@echo Start the normal hardware compliance checks with HWCTEST.BAT.
 
 prep:
 	@if not exist $(OUTDIR)\NUL mkdir $(OUTDIR)
@@ -173,6 +188,10 @@ prep:
 HWCW00xx:
 	@echo [HWCW00xx] Hardware Compliance Write checks for $(CARDNAME) >> $(LOGFILE)
 	@echo [HWCW00xx] Hardware Compliance Write checks for $(CARDNAME)
+
+HWCWM00xx:
+	@echo [HWCWM00xx] Multi NIC Hardware Compliance Write checks >> $(LOGFILE)
+	@echo [HWCWM00xx] Multi NIC Hardware Compliance Write checks
 
 complete:
 	@echo Hardware Compliance Write checks completed. >> $(LOGFILE)
@@ -189,10 +208,16 @@ clean:
 HWCW_WRITE: HWCW00xx hwcw001 hwcw002 hwcw003 hwcw004 hwcw005 hwcw006 hwcw007 hwcw008 hwcw009 hwcw010 hwcw051 hwcs001
 hwcw: clean prep HWCW00xx save-config set-default-$(CARDTYPE) hwcw001-$(CARDTYPE) hwcw002 hwcw003 $(HWCW004_TARGET) hwcw005 $(HWCW006_TARGET) hwcw007 $(HWCW008_TARGET) hwcw009-$(CARDTYPE) hwcw010 $(HWCW051_TARGET) complete
 
+# Two-card, model-independent physical write check. It stays separate from hwcw
+# so the normal compliance run remains valid with only one installed adapter.
+HWCW_MULTI: HWCWM00xx hwcwm001 hwcwm002 hwcwm003 hwcwm004 hwcwm005
+hwcwm: clean prep HWCWM00xx save-config hwcwm001 hwcwm002 hwcwm003 hwcwm004 hwcwm005 complete
+
+
 save-config:
 	@echo Saving original adapter configuration to $(RESTOREBAT) >> $(LOGFILE)
 	@echo Saving original adapter configuration to $(RESTOREBAT)
-	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\$(RESTOREBAT) /EXECFILE:%1 >> $(LOGFILE)
+	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\$(RESTOREBAT) /EXECFILE:$(WRITERAPP) >> $(LOGFILE)
 	FIND "Configuration restore batch file created:" $(LOGFILE) > NUL
 
 restore-config:
@@ -550,6 +575,76 @@ hwcw010:
 	FIND "Optimization = Server" $(ARTIFACTS)\HWCW010.LOG > NUL
 	@echo [hwcw010] PASSED >> $(LOGFILE)
 	@echo [hwcw010] PASSED
+
+
+
+# #################################
+# Multi NIC physical write check.
+# #################################
+#
+# Exactly two adapters are required. The original utility establishes a
+# deliberately ambiguous baseline in which both adapters use the same IOBASE
+# and IRQ. A fresh 3CCFGCLI LIST reads that baseline, then 3CCFGCLI moves
+# adapter 2 to a distinct IOBASE and IRQ. A second fresh LIST verifies that the
+# selected adapter moved while its peer remained at the shared starting state.
+
+hwcwm001:
+	@echo [hwcwm001] LIST with two adapters set at distinct IOBASE values >> $(LOGFILE)
+	@echo [hwcwm001] LIST with two adapters setat distinct IOBASE values
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(MULTI_CARD1_IOBASE) /INT:$(MULTI_CARD1_IRQ) > $(ARTIFACTS)\HWCWM001.LOG
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_CARD2_IOBASE) /INT:$(MULTI_CARD2_IRQ) >> $(ARTIFACTS)\HWCWM001.LOG
+	$(READERAPP) LIST >> $(ARTIFACTS)\HWCWM001.LOG
+	FIND "IOBASE = $(MULTI_CARD1_IOBASE), IRQ = $(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCWM001.LOG > NUL
+	FIND "IOBASE = $(MULTI_CARD2_IOBASE), IRQ = $(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCWM001.LOG > NUL
+	@echo [hwcwm001] PASSED >> $(LOGFILE)
+	@echo [hwcwm001] PASSED
+
+hwcwm002:
+	@echo [hwcwm002] SAVECONFIG with two adapters set at distinct IOBASE values >> $(LOGFILE)
+	@echo [hwcwm002] SAVECONFIG with two adapters set at distinct IOBASE values
+	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\HWCWM002.BAT > $(ARTIFACTS)\HWCWM002.LOG
+	FIND "IOBASE:$(MULTI_CARD1_IOBASE)" $(ARTIFACTS)\HWCWM002.BAT > NUL
+	FIND "INT:$(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCWM002.BAT > NUL
+	FIND "IOBASE:$(MULTI_CARD2_IOBASE)" $(ARTIFACTS)\HWCWM002.BAT > NUL
+	FIND "INT:$(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCWM002.BAT > NUL
+	@echo [hwcwm002] PASSED >> $(LOGFILE)
+	@echo [hwcwm002] PASSED
+
+hwcwm003:
+	@echo [hwcwm003] LIST with two adapters sharing one IOBASE >> $(LOGFILE)
+	@echo [hwcwm003] LIST with two adapters sharing one IOBASE
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_CARD1_IRQ) > $(ARTIFACTS)\HWCWM003.LOG
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_CARD2_IRQ) >> $(ARTIFACTS)\HWCWM003.LOG
+	$(READERAPP) LIST >> $(ARTIFACTS)\HWCWM003.LOG
+	FIND "IOBASE = $(MULTI_SHARED_IOBASE), IRQ = $(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCWM003.LOG > NUL
+	FIND "IOBASE = $(MULTI_SHARED_IOBASE), IRQ = $(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCWM003.LOG > NUL
+	@echo [hwcwm003] PASSED >> $(LOGFILE)
+	@echo [hwcwm003] PASSED
+
+hwcwm004:
+	@echo [hwcwm004] SAVECONFIG with two adapters sharing one IOBASE >> $(LOGFILE)
+	@echo [hwcwm004] SAVECONFIG with two adapters sharing one IOBASE
+	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\HWCWM004.BAT > $(ARTIFACTS)\HWCWM004.LOG
+	FIND "IOBASE:$(MULTI_SHARED_IOBASE)" $(ARTIFACTS)\HWCWM004.BAT > NUL
+	FIND "INT:$(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCWM004.BAT > NUL
+	FIND "INT:$(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCWM004.BAT > NUL
+	@echo [hwcwm004] PASSED >> $(LOGFILE)
+	@echo [hwcwm004] PASSED
+
+hwcwm005:
+	@echo [hwcwm005] selected adapter migrates out of a duplicate IOBASE state >> $(LOGFILE)
+	@echo [hwcwm005] selected adapter migrates out of a duplicate IOBASE state
+	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_BASELINE_IRQ) > $(ARTIFACTS)\HWCWM005.LOG
+	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_BASELINE_IRQ) >> $(ARTIFACTS)\HWCWM005.LOG
+	$(READERAPP) LIST > $(ARTIFACTS)\HWCWM005.PRE
+	FIND "IOBASE = $(MULTI_SHARED_IOBASE)" $(ARTIFACTS)\HWCWM005.PRE > NUL
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_TARGET_IOBASE) /INT:$(MULTI_TARGET_IRQ) > $(ARTIFACTS)\HWCWM005.LOG
+	FIND "Configuration completed successfully." $(ARTIFACTS)\HWCWM005.LOG > NUL
+	$(READERAPP) LIST > $(ARTIFACTS)\HWCWM005.LOG
+	FIND "IOBASE = $(MULTI_SHARED_IOBASE), IRQ = $(MULTI_BASELINE_IRQ)" $(ARTIFACTS)\HWCWM005.LOG > NUL
+	FIND "IOBASE = $(MULTI_TARGET_IOBASE), IRQ = $(MULTI_TARGET_IRQ)" $(ARTIFACTS)\HWCWM005.LOG > NUL
+	@echo [hwcwm005] PASSED >> $(LOGFILE)
+	@echo [hwcwm005] PASSED
 
 
 # #################################
