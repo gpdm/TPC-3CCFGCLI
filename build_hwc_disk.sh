@@ -147,7 +147,7 @@ copy_payload()
 	"3C5X9CFG/3.2/3C5X9CFG.EXE" \
         "TASM2/MAKE.EXE" \
         "STUFFIT/STUFFIT.COM" \
-        "BIN/3CCFGCLI.EXE" \
+        "BIN/PKLITE/3CCFGCLI.EXE" \
         "HWCREAD.MK" \
         "HWCTEST.BAT" \
         "HWCWRITE.MK" \
@@ -309,21 +309,25 @@ then
         "./BIN/HWCTEST_1440K.IMG" \
         2880 \
         1440
+    gzip -k -f ./BIN/HWCTEST_1440K.IMG
 
     create_image \
         "./BIN/HWCTEST_720K.IMG" \
         1440 \
         720
+    gzip -k -f ./BIN/HWCTEST_720K.IMG
 
     create_image \
         "./BIN/HWCTEST_1200K.IMG" \
         2400 \
         1200
+    gzip -k -f ./BIN/HWCTEST_1200K.IMG
 
     create_image \
         "./BIN/HWCTEST_360K.IMG" \
         720 \
         360
+    gzip -k -f ./BIN/HWCTEST_360K.IMG
 
     echo
     echo "All HWC test images created successfully."
