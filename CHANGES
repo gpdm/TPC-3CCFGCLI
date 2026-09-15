@@ -6,6 +6,8 @@ Changelog 0.7.8
   - Added ID tag selected temporary access for adapters sharing an IOBASE.
   - LIST now reads extended adapter information correctly when multiple NICs
     share an IOBASE.
+  - CONFIGURE now accesses tagged adapters independently when multiple NICs
+    share an IOBASE.
 
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now

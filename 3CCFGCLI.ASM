@@ -626,6 +626,8 @@ cfg_txn_verify_word0d_valid DW 0
 ; modified only by Cfg_Prepare_*** routines.
 cfg_txn_old_base          DW 0
 cfg_txn_new_base          DW 0
+cfg_txn_access_base       DW 0
+cfg_txn_targeted_access   DB 0
 cfg_txn_old_word08        DW 0
 cfg_txn_new_word08        DW 0
 cfg_txn_old_word09        DW 0
@@ -638,6 +640,7 @@ cfg_txn_old_word14        DW 0
 cfg_txn_new_word14        DW 0
 cfg_txn_old_live06        DW 0
 cfg_txn_new_live06        DW 0
+cfg_txn_probe_live06      DW 0
 cfg_txn_old_live08        DW 0
 cfg_txn_new_live08        DW 0
 cfg_txn_old_word0f        DW 0
@@ -5139,6 +5142,143 @@ PROC Cfg_Txn_Retag_Selected NEAR
     ret
 ENDP Cfg_Txn_Retag_Selected
 
+; Convert a valid configured I/O base to its low five bit Address Configuration
+; selector.  Input AX = base.  Output AL = selector.
+PROC Cfg_IOBASE_Base_To_Selector NEAR
+    push    cx
+    sub     ax, 0200h
+    mov     cl, 4
+    shr     ax, cl
+    and     al, 01Fh
+    pop     cx
+    ret
+ENDP Cfg_IOBASE_Base_To_Selector
+
+; Build the live Address Configuration value needed at the current physical
+; transaction base without changing the stored logical prospective image.
+; Input AX = logical live06.  Output AX = physical live06.
+PROC Cfg_Txn_Make_Physical_Live06 NEAR
+    push    bx
+
+    and     ax, 0FFE0h
+    mov     bx, ax
+    mov     ax, [cfg_txn_access_base]
+    call    Cfg_IOBASE_Base_To_Selector
+    or      al, bl
+    mov     ah, bh
+
+    pop     bx
+    ret
+ENDP Cfg_Txn_Make_Physical_Live06
+
+; Establish an unambiguous physical access base for the selected transaction.
+; Shared logical bases require an ID-tag-selected temporary activation.  Only
+; the selection and activation sequence runs with interrupts disabled.
+PROC Cfg_Txn_Begin_Access NEAR
+    push    ax
+    push    bx
+    push    dx
+    push    si
+    push    di
+
+    mov     [cfg_txn_targeted_access], 0
+    mov     si, [cfg_selected_ptr]
+    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     [cfg_txn_access_base], dx
+    call    Find_Record_By_Base
+    cmp     di, 0FFFFh
+    jne     @@Success
+
+    call    Cfg_Txn_Has_Valid_Tag
+    jc      @@Fail
+    mov     si, [cfg_selected_ptr]
+    call    Cfg_Find_Temporary_Base
+    jc      @@Fail
+    mov     [cfg_txn_access_base], ax
+
+    pushf
+    cli
+    call    Cfg_Id_Activate_At_Base
+    popf
+    mov     [cfg_txn_targeted_access], 1
+
+    mov     dx, [cfg_txn_access_base]
+    call    Nic_Check_3Com_Signature
+    jc      @@Fail
+    mov     si, [cfg_selected_ptr]
+    cmp     ax, [WORD si + NIC_PRODUCT_ID]
+    jne     @@Fail
+    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
+    jne     @@CheckAsic
+    mov     [BYTE si + NIC_ASIC_REV], bl
+    jmp     @@Success
+@@CheckAsic:
+    cmp     bl, [BYTE si + NIC_ASIC_REV]
+    jne     @@Fail
+
+@@Success:
+    pop     di
+    pop     si
+    pop     dx
+    pop     bx
+    pop     ax
+    clc
+    ret
+@@Fail:
+    mov     [cfg_last_error], CFG_ERR_REVALIDATE
+    pop     di
+    pop     si
+    pop     dx
+    pop     bx
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Txn_Begin_Access
+
+; Restore a scratch-relocated adapter to its logical configured base.  A real
+; IOBASE migration clears cfg_txn_targeted_access at the ownership boundary, so
+; this helper deliberately performs no rollback after that point.
+PROC Cfg_Txn_End_Access NEAR
+    push    ax
+    push    dx
+    push    si
+
+    cmp     [cfg_txn_targeted_access], 0
+    je      @@Success
+    mov     si, [cfg_selected_ptr]
+    pushf
+    cli
+    mov     ax, [WORD si + NIC_IO_BASE]
+    call    Cfg_Id_Activate_At_Base
+    mov     dx, [cfg_txn_access_base]
+    call    Nic_Read_Status
+    cmp     ax, 0FFFFh
+    jne     @@RestoreFail
+    popf
+    call    Nic_Sync_State
+    mov     [cfg_txn_targeted_access], 0
+    mov     ax, [WORD si + NIC_IO_BASE]
+    mov     [cfg_txn_access_base], ax
+@@Success:
+    pop     si
+    pop     dx
+    pop     ax
+    clc
+    ret
+@@RestoreFail:
+    popf
+    call    Nic_Sync_State
+    cmp     [cfg_last_error], CFG_ERR_NONE
+    jne     @@KeepError
+    mov     [cfg_last_error], CFG_ERR_REVALIDATE
+@@KeepError:
+    pop     si
+    pop     dx
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Txn_End_Access
+
 ; Snapshot current state required by all presently implemented properties.
 ; No hardware modification occurs here.
 PROC Cfg_Txn_Read_Current NEAR
@@ -5197,6 +5337,7 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     [cfg_txn_old_base], dx
     mov     [cfg_txn_new_base], dx
+    mov     dx, [cfg_txn_access_base]
 
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jnz     @@ReadWord08
@@ -5222,8 +5363,7 @@ PROC Cfg_Txn_Read_Current NEAR
 
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@NoWord09
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_RESOURCE_CFG
     call    Cfg_Eeprom_Read
     jc      @@ReadINTFail
@@ -5235,8 +5375,7 @@ PROC Cfg_Txn_Read_Current NEAR
 
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@NoWord13
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_CONFIG_CONTROL
     call    Cfg_Eeprom_Read
     jc      @@ReadPNPFail
@@ -5261,8 +5400,7 @@ PROC Cfg_Txn_Read_Current NEAR
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@NoWord0D
 @@ReadWord0D:
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
     jc      @@ReadMODEMFail
@@ -5276,8 +5414,7 @@ PROC Cfg_Txn_Read_Current NEAR
     ; EEPROM word 0Fh being readable.
     test    [cfg_parse_flags], CFG_PARSE_INT + CFG_PARSE_IOBASE + CFG_PARSE_MODEM + CFG_PARSE_FULLDUPLEX + CFG_PARSE_OPTIMIZE + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_TR
     jz      @@NoWord0F
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Read
     jc      @@ReadOptimizeFail
@@ -5289,8 +5426,7 @@ PROC Cfg_Txn_Read_Current NEAR
 
     ; Both live words are required because original ISA reactivation restores
     ; Address Configuration and Resource Configuration together.
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     xor     al, al
     call    Nic_Select_Window
     mov     bx, EL3_W0_ADDRESS_CFG
@@ -5299,6 +5435,18 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     bx, EL3_W0_RESOURCE_CFG
     call    Nic_Reg_Read_Word
     mov     [cfg_txn_old_live08], ax
+
+    cmp     [cfg_txn_targeted_access], 0
+    je      @@Live06Logical
+    mov     si, [cfg_selected_ptr]
+    mov     ax, [WORD si + NIC_IO_BASE]
+    call    Cfg_IOBASE_Base_To_Selector
+    mov     bl, al
+    mov     ax, [cfg_txn_old_live06]
+    and     ax, 0FFE0h
+    or      al, bl
+    mov     [cfg_txn_old_live06], ax
+@@Live06Logical:
 
     mov     ax, [cfg_txn_old_word08]
     and     al, 01Fh
@@ -5617,14 +5765,15 @@ PROC Cfg_Txn_Probe_Boot_ROM NEAR
     cmp     [cfg_bsize_disabled], 1
     je      @@Success
 
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     call    Nic_Get_Current_Window
     mov     di, ax
     xor     al, al
     call    Nic_Select_Window
 
-    mov     ax, [cfg_txn_old_live06]
+    mov     bx, EL3_W0_ADDRESS_CFG
+    call    Nic_Reg_Read_Word
+    mov     [cfg_txn_probe_live06], ax
     and     ax, 0C0FFh
     mov     bx, [cfg_txn_new_live06]
     and     bx, 3F00h
@@ -5651,10 +5800,10 @@ PROC Cfg_Txn_Probe_Boot_ROM NEAR
     pushf
 
     mov     bx, EL3_W0_ADDRESS_CFG
-    mov     ax, [cfg_txn_old_live06]
+    mov     ax, [cfg_txn_probe_live06]
     call    Nic_Reg_Write_Word
     call    Nic_Reg_Read_Word
-    cmp     ax, [cfg_txn_old_live06]
+    cmp     ax, [cfg_txn_probe_live06]
     jne     @@RestoreFail
     mov     ax, di
     call    Nic_Select_Window
@@ -5970,7 +6119,13 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     ; read only old base absence check for an actual migration.
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@Retag
+    cmp     [cfg_txn_targeted_access], 0
+    je      @@CheckOldLogicalBase
+    mov     dx, [cfg_txn_access_base]
+    jmp     @@CheckDeactivatedBase
+@@CheckOldLogicalBase:
     mov     dx, [cfg_txn_old_base]
+@@CheckDeactivatedBase:
     mov     bx, dx
     call    Nic_Read_Status
     cmp     ax, 0FFFFh
@@ -6006,18 +6161,30 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     mov     si, [cfg_selected_ptr]
     mov     ax, [cfg_txn_new_base]
     mov     [WORD si + NIC_IO_BASE], ax
+    mov     [cfg_txn_access_base], ax
+    mov     [cfg_txn_targeted_access], 0
 
 @@Activate:
     mov     si, [cfg_selected_ptr]
+    cmp     [cfg_txn_targeted_access], 0
+    je      @@ActivateLogical
+    pushf
+    cli
+    mov     ax, [cfg_txn_access_base]
+    call    Cfg_Id_Activate_At_Base
+    popf
+    jmp     @@RestoreLive
+@@ActivateLogical:
     call    Cfg_Id_Activate_Selected
 
+@@RestoreLive:
     ; Original sub_334 restores both live window 0 words before sub_342 commits
     ; persistent state.  Restore the complete prospective live image here.
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     xor     al, al
     call    Nic_Select_Window
     mov     ax, [cfg_txn_new_live06]
+    call    Cfg_Txn_Make_Physical_Live06
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Write_Word
     mov     ax, [cfg_txn_new_live08]
@@ -6027,7 +6194,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     ; Confirm that an EtherLink III register image is reachable.  At this stage
     ; keep the proven strict product and ASIC comparison before any EEPROM write.
     mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     call    Nic_Check_3Com_Signature
     jc      @@ActivationFail
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
@@ -6038,8 +6205,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     jne     @@ActivationFail
 @@SignatureGood:
 
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     xor     al, al
     call    Nic_Select_Window
 
@@ -6139,8 +6305,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@Word08:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jz      @@Word09
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     bx, [cfg_txn_new_word08]
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Write
@@ -6165,8 +6330,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@Word09:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD09
     jz      @@Word0D
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     bx, [cfg_txn_new_word09]
     mov     al, EEPROM_RESOURCE_CFG
     call    Cfg_Eeprom_Write
@@ -6180,8 +6344,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@Word0D:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jz      @@Word13
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     bx, [cfg_txn_new_word0d]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Write
@@ -6215,8 +6378,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@Word13:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
     jz      @@Word14
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     bx, [cfg_txn_new_word13]
     mov     al, EEPROM_CONFIG_CONTROL
     call    Cfg_Eeprom_Write
@@ -6230,8 +6392,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@Word14:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
     jz      @@Checksums
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     bx, [cfg_txn_new_word14]
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Write
@@ -6251,8 +6412,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@PrimaryChecksum:
     test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
     jz      @@SecondaryChecksum
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     call    Cfg_Checksum_0F_Low
     jc      @@ChecksumFail
     mov     [cfg_txn_checksum], al
@@ -6268,8 +6428,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     call    Cfg_Eeprom_Write
     jc      @@ChecksumWriteFail
 
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Read
     jc      @@ChecksumFail
@@ -6279,14 +6438,12 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@SecondaryChecksum:
     test    [cfg_txn_change_flags], CFG_TXN_SECONDARY_CHECKSUM_MASK
     jz      @@ChecksumUpdated
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SECONDARY_CHECKSUM
     call    Cfg_Eeprom_Read
     jc      @@ChecksumFail
     mov     [cfg_txn_checksum_word], ax
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     call    Cfg_Checksum_17_Low
     jc      @@ChecksumFail
     and     [cfg_txn_checksum_word], 0FF00h
@@ -6297,8 +6454,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_SECONDARY_CHECKSUM
     call    Cfg_Eeprom_Write
     jc      @@ChecksumWriteFail
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SECONDARY_CHECKSUM
     call    Cfg_Eeprom_Read
     jc      @@ChecksumFail
@@ -6425,20 +6581,23 @@ PROC Cfg_Txn_Write_Live NEAR
     int     21h
 
 @@Select:
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     xor     al, al
     call    Nic_Select_Window
 
     test    [cfg_txn_change_flags], CFG_TXN_LIVE06_MASK
     jz      @@BootRomLive06
     mov     ax, [cfg_txn_new_live06]
+    call    Cfg_Txn_Make_Physical_Live06
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Write_Word
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Read_Word
     and     al, 01Fh
-    cmp     al, [cfg_txn_io_selector]
+    mov     bl, al
+    mov     ax, [cfg_txn_access_base]
+    call    Cfg_IOBASE_Base_To_Selector
+    cmp     bl, al
     jne     @@IOFail
     jmp     @@INT
 
@@ -6455,6 +6614,7 @@ PROC Cfg_Txn_Write_Live NEAR
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jz      @@INT
     mov     ax, [cfg_txn_new_live06]
+    call    Cfg_Txn_Make_Physical_Live06
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Write_Word
 
@@ -6533,7 +6693,7 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@INTPersistent
 
     mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     call    Nic_Check_3Com_Signature
     jc      @@ReachFail
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
@@ -6551,8 +6711,7 @@ PROC Cfg_Txn_Verify NEAR
     int     21h
 
 @@IOPersistent:
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Read
     jc      @@IOVerifyFail
@@ -6577,8 +6736,7 @@ PROC Cfg_Txn_Verify NEAR
     int     21h
 
 @@IOLive:
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     xor     al, al
     call    Nic_Select_Window
     mov     bx, EL3_W0_ADDRESS_CFG
@@ -6607,8 +6765,7 @@ PROC Cfg_Txn_Verify NEAR
     test    [cfg_txn_change_flags], CFG_TXN_INT_MIGRATE_MASK
     jz      @@PNPPersistent
 
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_RESOURCE_CFG
     call    Cfg_Eeprom_Read
     jc      @@INTVerifyFail
@@ -6636,8 +6793,7 @@ PROC Cfg_Txn_Verify NEAR
     int     21h
 
 @@INTLive:
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     xor     al, al
     call    Nic_Select_Window
     mov     bx, EL3_W0_RESOURCE_CFG
@@ -6665,8 +6821,7 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@MODEMPersistent
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
     jz      @@MODEMPersistent
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_CONFIG_CONTROL
     call    Cfg_Eeprom_Read
     jc      @@PNPVerifyFail
@@ -6685,8 +6840,7 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@FDPersistent
     cmp     [cfg_txn_verify_word0d_valid], 1
     je      @@MODEMHaveWord0D
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
     jc      @@MODEMVerifyFail
@@ -6722,8 +6876,7 @@ PROC Cfg_Txn_Verify NEAR
 @@FDNeedVerify:
     cmp     [cfg_txn_verify_word0d_valid], 1
     je      @@FDHaveWord0D
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
     jc      @@FDVerifyFail
@@ -6750,8 +6903,7 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@BootRomPersistent
     cmp     [cfg_txn_verify_word0d_valid], 1
     je      @@OptimizeHaveWord0D
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
     jc      @@OptimizeVerifyFail
@@ -6782,8 +6934,7 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@BootRomLive
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
     jz      @@BootRomWord08
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Read
     jc      @@BootRomVerifyFail
@@ -6792,8 +6943,7 @@ PROC Cfg_Txn_Verify NEAR
 @@BootRomWord08:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jz      @@BootRomLive
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Read
     jc      @@BootRomVerifyFail
@@ -6823,8 +6973,7 @@ PROC Cfg_Txn_Verify NEAR
     cmp     [cfg_bootrom_rejected], 1
     je      @@TRPersistent
     push    di
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     call    Nic_Get_Current_Window
     mov     di, ax
     xor     al, al
@@ -6853,8 +7002,7 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@Success
     cmp     [cfg_txn_verify_word08_valid], 1
     je      @@TRHaveWord08
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Read
     jc      @@TRVerifyFail
@@ -6963,14 +7111,13 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
     jz      @@Success
 @@DoSync:
 
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     call    Nic_Get_Current_Window
     mov     di, ax
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, 4
     call    Nic_Select_Window
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
     call    Nic_Reg_Read_Word
     cmp     ax, 0FFFFh
@@ -7016,13 +7163,13 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
     mov     [cfg_last_error], CFG_ERR_FD_LIVE_VERIFY
 @@RestoreFail:
     mov     ax, di
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     call    Nic_Select_Window
     stc
     jmp     @@Done
 @@RestoreSuccess:
     mov     ax, di
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     call    Nic_Select_Window
 @@Success:
     clc
@@ -7359,6 +7506,8 @@ PROC Cfg_Txn_Execute NEAR
     mov     [cfg_last_error], CFG_ERR_NONE
     mov     [cfg_timeout_latched], 0
     mov     [cfg_bootrom_rejected], 0
+    call    Cfg_Txn_Begin_Access
+    jc      @@Done
 
     ; Adapter selection detail is global transaction output, not property output.
     test    [cli_flags], CLI_FLAG_VERBOSE
@@ -7389,7 +7538,7 @@ PROC Cfg_Txn_Execute NEAR
     test    [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_FULLDUPLEX + CFG_PARSE_TR
     jz      @@GatePNP
     mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     call    Nic_Read_Capabilities
     mov     [cfg_txn_capabilities], ax
     mov     [cfg_txn_capability_valid], bx
@@ -7491,7 +7640,7 @@ PROC Cfg_Txn_Execute NEAR
     jb      @@BootRomUnsupportedCard
     ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration.
     ; Word 14h is snapshotted here as Boot ROM transaction state.
-    mov     dx, [WORD si + NIC_IO_BASE]
+    mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Read
     jc      @@BootRomCapReadFail
@@ -7926,6 +8075,8 @@ PROC Cfg_Txn_Execute NEAR
     mov     al, [cfg_int_value]
     mov     [BYTE si + NIC_IRQ_VAL], al
 @@ReportSuccess:
+    call    Cfg_Txn_End_Access
+    jc      @@Exit
     cmp     [cfg_bootrom_rejected], 1
     jne     @@PrintSuccess
     mov     ax, [cfg_txn_change_flags]
@@ -7937,6 +8088,8 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Txn_Report_Implicit_FD_Notice
 
 @@Done:
+    call    Cfg_Txn_End_Access
+@@Exit:
     pop     si
     pop     dx
     pop     ax
