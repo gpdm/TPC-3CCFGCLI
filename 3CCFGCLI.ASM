@@ -50,6 +50,30 @@ NIC_FLAG_ACTIVE         EQU 01h
 NIC_FLAG_FROM_ID        EQU 02h
 NIC_FLAG_OEM_MAC        EQU 04h
 
+; ID-port EEPROM snapshots are parallel to nic_table by record ordinal.
+; They only exist for records built from an isolated ID-port contender.
+ID_EEPROM_SNAPSHOT_VALID EQU 0
+ID_EEPROM_SNAPSHOT_WORDS EQU 18
+ID_EEPROM_SNAPSHOT_SIZE  EQU 37
+ID_EEPROM_PRODUCT_ID     EQU 1
+ID_EEPROM_WORD_04        EQU 3
+ID_EEPROM_WORD_05        EQU 5
+ID_EEPROM_WORD_06        EQU 7
+ID_EEPROM_MFG_ID         EQU 9
+ID_EEPROM_ADDR_CFG       EQU 11
+ID_EEPROM_RESOURCE_CFG   EQU 13
+ID_EEPROM_OEM_NODE_0     EQU 15
+ID_EEPROM_OEM_NODE_1     EQU 17
+ID_EEPROM_OEM_NODE_2     EQU 19
+ID_EEPROM_SOFTWARE_INFO  EQU 21
+ID_EEPROM_COMPATIBILITY  EQU 23
+ID_EEPROM_CHECKSUM       EQU 25
+ID_EEPROM_CAPABILITY     EQU 27
+ID_EEPROM_INTERNAL_CONFIG_LO EQU 29
+ID_EEPROM_CONFIG_CONTROL EQU 31
+ID_EEPROM_REVISION_INFO  EQU 33
+ID_EEPROM_WORD_19        EQU 35
+
 ; CONFIGURE property identifiers.  XCVR maps to TR.  /PORT is deliberately absent.
 CFG_OPT_INT             EQU 1
 CFG_OPT_IOBASE          EQU 2
@@ -538,6 +562,9 @@ msg_connector_separator DB ", ", '$'
 card_count      DW  0
 current_card    DW  0
 nic_table       DB  (MAX_CARDS * NIC_RECORD_SIZE) DUP(0)
+; One 37-byte record per nic_table entry: availability byte plus the 18
+; EEPROM words read by the original ISA record-building path.
+id_eeprom_cache DB  (MAX_CARDS * ID_EEPROM_SNAPSHOT_SIZE) DUP(0)
 
 ; Discovery state.
 id_short_mode   DB  1
@@ -548,6 +575,7 @@ id_oem1         DW  0
 id_oem2         DW  0
 id_addr_cfg     DW  0
 id_resource_cfg DW  0
+id_eeprom_contender DB ID_EEPROM_SNAPSHOT_SIZE DUP(0)
 
 ; Host PIC topology state used only by the /INT configuration gate.
 ; pic_gate_enforce = 0 warns and continues, nonzero rejects the selection.
@@ -4156,6 +4184,13 @@ PROC Scan_All_3Com_Cards NEAR
     inc     di
     loop    @@ClearTable
 
+    mov     di, OFFSET id_eeprom_cache
+    mov     cx, MAX_CARDS * ID_EEPROM_SNAPSHOT_SIZE
+@@ClearIdEepromCache:
+    mov     [di], al
+    inc     di
+    loop    @@ClearIdEepromCache
+
     ; First perform the proprietary 3Com ISA ID port discovery.
     call    Discover_Id_Port_Cards
 
@@ -4206,29 +4241,87 @@ PROC Read_Id_Contender_Data NEAR
     mov     al, EEPROM_NODE_2
     call    Nic_IdPort_Read_Word
 
+    ; Retain the original ISA record-building EEPROM read set while this
+    ; particular contender remains the sole ID-port responder.
+    mov     al, EEPROM_PRODUCT_ID
+    call    Nic_IdPort_Read_Word
+    mov     [id_product], ax
+    mov     [WORD id_eeprom_contender + ID_EEPROM_PRODUCT_ID], ax
+
+    mov     al, EEPROM_WORD_04
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_WORD_04], ax
+
+    mov     al, EEPROM_WORD_05
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_WORD_05], ax
+
+    mov     al, EEPROM_WORD_06
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_WORD_06], ax
+
+    mov     al, EEPROM_MFG_ID
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_MFG_ID], ax
+
     mov     al, EEPROM_ADDR_CFG
     call    Nic_IdPort_Read_Word
     mov     [id_addr_cfg], ax
+    mov     [WORD id_eeprom_contender + ID_EEPROM_ADDR_CFG], ax
 
     mov     al, EEPROM_RESOURCE_CFG
     call    Nic_IdPort_Read_Word
     mov     [id_resource_cfg], ax
+    mov     [WORD id_eeprom_contender + ID_EEPROM_RESOURCE_CFG], ax
 
     ; Original sub_339 stores the OEM node address at words 0Ah through 0Ch.
     mov     al, EEPROM_OEM_NODE_0
     call    Nic_IdPort_Read_Word
     mov     [id_oem0], ax
+    mov     [WORD id_eeprom_contender + ID_EEPROM_OEM_NODE_0], ax
 
     mov     al, EEPROM_OEM_NODE_1
     call    Nic_IdPort_Read_Word
     mov     [id_oem1], ax
+    mov     [WORD id_eeprom_contender + ID_EEPROM_OEM_NODE_1], ax
 
     mov     al, EEPROM_OEM_NODE_2
     call    Nic_IdPort_Read_Word
     mov     [id_oem2], ax
+    mov     [WORD id_eeprom_contender + ID_EEPROM_OEM_NODE_2], ax
 
     mov     al, EEPROM_SOFTWARE_INFO
     call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_SOFTWARE_INFO], ax
+
+    mov     al, EEPROM_COMPATIBILITY
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_COMPATIBILITY], ax
+
+    mov     al, EEPROM_CHECKSUM
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_CHECKSUM], ax
+
+    mov     al, EEPROM_CAPABILITY
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_CAPABILITY], ax
+
+    mov     al, EEPROM_INTERNAL_CONFIG_LO
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_INTERNAL_CONFIG_LO], ax
+
+    mov     al, EEPROM_CONFIG_CONTROL
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_CONFIG_CONTROL], ax
+
+    mov     al, EEPROM_REVISION_INFO
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_REVISION_INFO], ax
+
+    mov     al, EEPROM_WORD_19
+    call    Nic_IdPort_Read_Word
+    mov     [WORD id_eeprom_contender + ID_EEPROM_WORD_19], ax
+    mov     [BYTE id_eeprom_contender + ID_EEPROM_SNAPSHOT_VALID], 1
 
     pop     ax
     ret
@@ -4275,6 +4368,7 @@ PROC Build_Record_From_Id NEAR
     push    bx
     push    cx
     push    dx
+    push    si
     push    di
 
     mov     [BYTE di + NIC_TAG], al
@@ -4327,8 +4421,36 @@ PROC Build_Record_From_Id NEAR
     mov     ax, [id_oem2]
     call    Store_Mac_Word
 
+    ; DI's original nic_table ordinal selects the corresponding parallel
+    ; snapshot record; it is never keyed by the potentially shared IOBASE.
+    pop     di
+    push    di
+    sub     di, OFFSET nic_table
+    mov     ax, di
+    mov     cl, 4
+    shr     ax, cl                  ; nic_table ordinal
+    mov     dx, ax
+    mov     di, ax
+    mov     cl, 5
+    shl     di, cl                  ; ordinal * 32
+    mov     bx, ax
+    mov     cl, 2
+    shl     bx, cl                  ; ordinal * 4
+    add     di, bx
+    add     di, dx                  ; ordinal * 37
+    add     di, OFFSET id_eeprom_cache
+    mov     si, OFFSET id_eeprom_contender
+    mov     cx, ID_EEPROM_SNAPSHOT_SIZE
+@@CopySnapshot:
+    mov     al, [si]
+    mov     [di], al
+    inc     si
+    inc     di
+    loop    @@CopySnapshot
+
 @@Done:
     pop     di
+    pop     si
     pop     dx
     pop     cx
     pop     bx
