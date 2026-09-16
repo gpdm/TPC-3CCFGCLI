@@ -3,6 +3,10 @@
 ; Real hardware backend primitives for 3CCFGCLI.
 ; ---------------------------------------------------------------------------
 
+PROC Nic_Sync_State NEAR
+    ret
+ENDP Nic_Sync_State
+
 PROC Nic_IdPort_Write_Command NEAR
     push    dx
     mov     dx, ID_PORT
@@ -350,12 +354,12 @@ PROC Nic_Activate_Tagged_Cards NEAR
     call    Nic_IdPort_Write_Command
     popf
 
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Nic_Check_3Com_Signature
-    jc      @@Next
-    mov     [WORD si + NIC_PRODUCT_ID], ax
-    mov     [BYTE si + NIC_ASIC_REV], bl
-    or      [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
+    ; The ID tag selected the adapter and issued the E0h activation command,
+    ; but that alone does not prove the adapter is reachable through normal
+    ; runtime I/O (a second adapter can decode E0h yet fail to answer at its
+    ; IOBASE afterward).  Do not set NIC_FLAG_ACTIVE here; runtime
+    ; reachability is proven separately once normal-IOBASE access is
+    ; verified.
 @@Next:
     add     si, NIC_RECORD_SIZE
     loop    @@Loop
@@ -409,4 +413,3 @@ PROC Nic_Rom_Set_Page NEAR
     pop     ax
     ret
 ENDP Nic_Rom_Set_Page
-

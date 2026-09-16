@@ -1,10 +1,10 @@
 [t01xx] LISTING: Verify general card listing behaviour
 [t0101] Clearing seed and checking no-card case
-3CSEED - 3C509B mock state seeder v0.7.7
+3CSEED - 3C509B mock state seeder v0.7.8
 Seed file deleted (or already absent).
 [t0101] PASSED
 [t0102] Seeding INIT profile and checking card listing
-3CSEED - 3C509B mock state seeder v0.7.7
+3CSEED - 3C509B mock state seeder v0.7.8
 Seed file created (INIT).
 [t0102] PASSED
 [t02xx] IRQ_CHANGE: Verify IRQ change behaviour
@@ -226,14 +226,28 @@ Seed file created (INIT).
 [t1407] combined CONFIGURE /PNP+/INT checksum domains
 [t1407] PASSED
 [t15xx] MULTI_NIC: Verify multi-NIC behaviour
+[t1500] duplicate IOBASE SAVECONFIG uses ID EEPROM snapshots
+[t1500] PASSED
 [t1502] multi-NIC CONFIGURE requires /ADAPTERNUM
 [t1502] PASSED
 [t1503] multi-NIC adapter selection changes only the targeted NIC
 [t1503] PASSED
 [t1504] multi-NIC /IOBASE conflict detection blocks duplicate base
 [t1504] PASSED
-[t1505] duplicate active-IOBASE conflict rejects targeted migration
+[t1505] duplicate IOBASE selected migration succeeds
 [t1505] PASSED
+[t1506] duplicate IOBASE LIST persistent fields only
+[t1506] PASSED
+[t1507] duplicate IOBASE persistent and FD transaction
+[t1507] PASSED
+[t1508] duplicate IOBASE live IRQ activation
+[t1508] PASSED
+[t1509] duplicate IOBASE live06 selector preservation
+[t1509] PASSED
+[t1511] duplicate IOBASE CONFIGURE targets adapter 1
+[t1511] PASSED
+[t1512] three duplicate IOBASE adapters remain independent
+[t1512] PASSED
 [t16xx] SAVECONFIG_TEST: Verify save configuration behaviour
 [t1602] SAVECONFIG rejects an empty /OUTPUTFILE value
 [t1602] PASSED
@@ -281,6 +295,8 @@ Seed file created (INIT).
 [t1625] PASSED
 [t1626] duplicate global /VERBOSE is rejected before SAVECONFIG output
 [t1626] PASSED
+[t1627] SAVECONFIG duplicate IOBASE exports each adapter independently
+[t1627] PASSED
 [t17xx] VERIFICATION_CONTROL_FLOW: verify transaction chain behaviour
 [t1701] INT+PNP verification chain without /VERBOSE
 [t1701] PASSED
@@ -322,7 +338,7 @@ Seed file created (INIT).
 [t1808] SAVECONFIG on 3C509-TP (ASIC rev. 1) emits only common properties
 [t1808] PASSED
 Cleaning seed file
-3CSEED - 3C509B mock state seeder v0.7.7
+3CSEED - 3C509B mock state seeder v0.7.8
 Seed file deleted (or already absent).
 Smoke test complete.
 Smoke test: run completed
@@ -355,8 +371,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 154
-    Executed Tests           : 154
+    Defined Tests            : 162
+    Executed Tests           : 162
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS

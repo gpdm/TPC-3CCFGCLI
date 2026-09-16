@@ -14,8 +14,11 @@
 # Optional physical Boot ROM test:
 #   HWCTEST.BAT READROM
 #
+# Optional physical Boot ROM test:
+#   HWCTEST.BAT READMULTI
+#
 # If a run aborts after writes have started:
-#   MAKE -fHWCREAD.MK CARDTYPE=<type> restore-config
+#   MAKE -fHWCREAD.MK -DCARDTYPE=CARD_<type> restore-config
 #
 
 # Utility definitions 
@@ -51,6 +54,15 @@ TEST_BADDRESS = C8000
 TEST_BSIZE = 16
 TEST_FULLDUPLEX = ENABLED
 
+# Multi NIC defaults. These checks intentionally use only IOBASE and IRQ so
+# they are valid for every supported 3C509 / 3C509B model. Exactly two cards
+# are required.
+MULTI_CARD1_IOBASE = 0300
+MULTI_CARD1_IRQ = 5
+MULTI_CARD2_IOBASE = 0280
+MULTI_CARD2_IRQ = 3
+MULTI_SHARED_IOBASE = 0300
+
 
 # CARDTYPE is supplied by HWCTEST.BAT, for example:
 #   MAKE -fHWCREAD.MK CARD_BTP=1 hwcr
@@ -59,7 +71,12 @@ TEST_FULLDUPLEX = ENABLED
 # optional tests supported by that model. Unknown card types are rejected
 # while the makefile is parsed, before any hardware test is started.
 #
-!if $d(CARD_BTP)
+!if $d(CARD_MULTI)
+
+CARDTYPE = multi
+CARDNAME = two EtherLink III adapters
+
+!elif $d(CARD_BTP)
 
 CARDTYPE = btp
 CARDNAME = 3C509B-TP
@@ -155,8 +172,7 @@ LOGFILE = $(OUTDIR)\HWCREAD.LOG
 
 
 all:
-	@echo Start the hardware compliance checks with HWCTEST.BAT.
-	@echo Do not start HWCREAD.MK directly.
+	@echo Start the normal hardware compliance checks with HWCTEST.BAT.
 
 prep:
 	@if not exist $(OUTDIR)\NUL mkdir $(OUTDIR)
@@ -167,6 +183,10 @@ prep:
 HWCR00xx:
 	@echo [HWCR00xx] Hardware Compliance Read checks for $(CARDNAME) >> $(LOGFILE)
 	@echo [HWCR00xx] Hardware Compliance Read checks for $(CARDNAME)
+
+HWCRM00xx:
+	@echo [HWCRM00xx] Multi NIC Hardware Compliance Read checks >> $(LOGFILE)
+	@echo [HWCRM00xx] Multi NIC Hardware Compliance Read checks
 
 complete:
 	@echo Hardware Compliance Read checks completed. >> $(LOGFILE)
@@ -183,10 +203,16 @@ clean:
 HWCR_READ: HWCR00xx hwcr001 hwcr002 hwcr003 hwcr004 hwcr005 hwcr006 hwcr007 hwcr008 hwcr009 hwcr051 hwcs001
 hwcr: clean prep HWCR00xx save-config set-default-$(CARDTYPE) hwcr001-$(CARDTYPE) hwcr002 hwcr003 $(HWCR004_TARGET) hwcr005 $(HWCR006_TARGET) hwcr007 $(HWCR008_TARGET) hwcr009-$(CARDTYPE) $(HWCR051_TARGET) complete
 
+# Two-card, model-independent hardware checks. These are deliberately separate
+# from hwcr because the normal compliance run must continue to work with one
+# installed adapter.
+HWCR_MULTI: HWCRM00xx hwcrm001 hwcrm002 hwcrm003 hwcrm004
+hwcrm: clean prep HWCRM00xx save-config hwcrm001 hwcrm002 hwcrm003 hwcrm004 complete
+
 save-config:
 	@echo Saving original adapter configuration to $(RESTOREBAT) >> $(LOGFILE)
 	@echo Saving original adapter configuration to $(RESTOREBAT)
-	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\$(RESTOREBAT) /EXECFILE:%1 >> $(LOGFILE)
+	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\$(RESTOREBAT) /EXECFILE:$(WRITERAPP) >> $(LOGFILE)
 	FIND "Configuration restore batch file created:" $(LOGFILE) > NUL
 
 restore-config:
@@ -528,6 +554,61 @@ hwcr009-tp: hwcr009-common
 	FIND "TR:AUI" $(ARTIFACTS)\HWCR009.BAT > NUL
 	@echo [hwcr009].[tp] PASSED >> $(LOGFILE)
 	@echo [hwcr009].[tp] PASSED
+
+
+
+# #################################
+# Multi NIC hardware read checks.
+# #################################
+#
+# These tests require exactly two installed adapters. The original 3Com
+# utility establishes each physical state. 3CCFGCLI is read-only here and must
+# report both adapters correctly. No model-specific capability is assumed.
+
+hwcrm001:
+	@echo [hwcrm001] LIST with two adapters set at distinct IOBASE values >> $(LOGFILE)
+	@echo [hwcrm001] LIST with two adapters setat distinct IOBASE values
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(MULTI_CARD1_IOBASE) /INT:$(MULTI_CARD1_IRQ) > $(ARTIFACTS)\HWCRM001.LOG
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_CARD2_IOBASE) /INT:$(MULTI_CARD2_IRQ) >> $(ARTIFACTS)\HWCRM001.LOG
+	$(READERAPP) LIST >> $(ARTIFACTS)\HWCRM001.LOG
+	FIND "IOBASE = $(MULTI_CARD1_IOBASE), IRQ = $(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCRM001.LOG > NUL
+	FIND "IOBASE = $(MULTI_CARD2_IOBASE), IRQ = $(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCRM001.LOG > NUL
+	@echo [hwcrm001] PASSED >> $(LOGFILE)
+	@echo [hwcrm001] PASSED
+
+hwcrm002:
+	@echo [hwcrm002] SAVECONFIG with two adapters set at distinct IOBASE values >> $(LOGFILE)
+	@echo [hwcrm002] SAVECONFIG with two adapters set at distinct IOBASE values
+	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\HWCRM002.BAT > $(ARTIFACTS)\HWCRM002.LOG
+	FIND "IOBASE:$(MULTI_CARD1_IOBASE)" $(ARTIFACTS)\HWCRM002.BAT > NUL
+	FIND "INT:$(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCRM002.BAT > NUL
+	FIND "IOBASE:$(MULTI_CARD2_IOBASE)" $(ARTIFACTS)\HWCRM002.BAT > NUL
+	FIND "INT:$(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCRM002.BAT > NUL
+	@echo [hwcrm002] PASSED >> $(LOGFILE)
+	@echo [hwcrm002] PASSED
+
+hwcrm003:
+	@echo [hwcrm003] LIST with two adapters sharing one IOBASE >> $(LOGFILE)
+	@echo [hwcrm003] LIST with two adapters sharing one IOBASE
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_CARD1_IRQ) > $(ARTIFACTS)\HWCRM003.LOG
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_CARD2_IRQ) >> $(ARTIFACTS)\HWCRM003.LOG
+	$(READERAPP) LIST >> $(ARTIFACTS)\HWCRM003.LOG
+	FIND "IOBASE = $(MULTI_SHARED_IOBASE), IRQ = $(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCRM003.LOG > NUL
+	FIND "IOBASE = $(MULTI_SHARED_IOBASE), IRQ = $(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCRM003.LOG > NUL
+	@echo [hwcrm003] PASSED >> $(LOGFILE)
+	@echo [hwcrm003] PASSED
+
+hwcrm004:
+	@echo [hwcrm004] SAVECONFIG with two adapters sharing one IOBASE >> $(LOGFILE)
+	@echo [hwcrm004] SAVECONFIG with two adapters sharing one IOBASE
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_CARD1_IRQ) > $(ARTIFACTS)\HWCRM004.LOG
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_CARD2_IRQ) >> $(ARTIFACTS)\HWCRM004.LOG
+	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\HWCRM004.BAT > $(ARTIFACTS)\HWCRM004.LOG
+	FIND "IOBASE:$(MULTI_SHARED_IOBASE)" $(ARTIFACTS)\HWCRM004.BAT > NUL
+	FIND "INT:$(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCRM004.BAT > NUL
+	FIND "INT:$(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCRM004.BAT > NUL
+	@echo [hwcrm004] PASSED >> $(LOGFILE)
+	@echo [hwcrm004] PASSED
 
 
 # #################################

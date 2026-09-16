@@ -1,3 +1,29 @@
+Changelog 0.7.8
+  - Physical adapter identity is now derived from ID-port record/tag
+    identity rather than IOBASE; IOBASE is treated purely as a runtime
+    resource that may legitimately be shared before it is repaired.
+  - Hardware and mock backends no longer silently resolve a duplicate active
+    IOBASE to an arbitrary adapter, and no longer mark an ID-port activated
+    adapter ACTIVE merely for issuing the D8h/E0h activation sequence; ACTIVE
+    now requires separately proven normal-IOBASE runtime access.
+  - ID-port discovery captures a compact per-adapter EEPROM snapshot while
+    each physical contender owns the ID port. LIST and SAVECONFIG consume
+    this snapshot for persistent, per-adapter data without relocating a
+    duplicate-IOBASE adapter merely to read it. CONFIGURE consults the same
+    snapshot for pre-transaction persistent state, and still retains targeted
+    temporary access (via the ID tag) so a selected physical adapter sharing
+    an IOBASE with another can be isolated for modification and
+    verification.
+  - SAVECONFIG keeps the detected ASIC revision separate from snapshot-backed
+    PNP and Full Duplex export validity, so unknown-revision adapters do not
+    enable unrelated 3C509B-only restore options (Boot ROM, /TR:AUTO).
+  - Fixed CONFIGURE capability collection to restore the original register
+    window after consulting an ID-port EEPROM snapshot.
+  - LIST now reports "read error (possible I/O conflict)" instead of the
+    ambiguous "unavailable" when adapter information cannot be read or
+    reliably determined. This is a diagnostic hint only and does not imply
+    general I/O conflict detection.
+
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now
     automatically disables Full Duplex, matching the original utility.
