@@ -184,12 +184,30 @@ ECHO Taking post-configuration dump using 3C5X9CFG >> %LOGFILE%
 ECHO Taking post-configuration dump using 3C5X9CFG
 REM clear keyboard input buffer
 stuffit 0
-REM load key macro sequence to control 3C5X9CFG to export a config dump
+
+IF "%TARGET%" == "hwcr" GOTO EXPSINGLE
+IF "%TARGET%" == "hwcw" GOTO EXPSINGLE
+IF "%TARGET%" == "hwcrm" GOTO EXPMULTI
+IF "%TARGET%" == "hwcwm" GOTO EXPMULTI
+
+:EXPSINGLE
+REM load macro sequence for 3C5X9CFG to export a config dump
 stuffit +2 @62 +2 9 9 13 +2 9 13 +2 "%ARTIFACT%\%TARGET%.SET" +2 13 +2 27 27 13
 3c5x9cfg
 IF NOT EXIST %ARTIFACT%\%TARGET%.SET GOTO FAIL
-
 GOTO OK
+
+:EXPMULTI
+REM load macro sequence for 3C5X9CFG to export first card's config
+stuffit +2 13 +2 @62 +2 9 9 13 +2 9 13 +2 "%ARTIFACT%\%TARGET%_1.SET" +2 13 +2 27 27 13
+3c5x9cfg
+REM load macro sequence for 3C5X9CFG to export second card's config
+stuffit +2 @80 13 +2 @62 +2 9 9 13 +2 9 13 +2 "%ARTIFACT%\%TARGET%_2.SET" +2 13 +2 27 27 13
+3c5x9cfg
+IF NOT EXIST %ARTIFACT%\%TARGET%_1.SET GOTO FAIL
+IF NOT EXIST %ARTIFACT%\%TARGET%_2.SET GOTO FAIL
+GOTO OK
+
 
 
 :FAIL
