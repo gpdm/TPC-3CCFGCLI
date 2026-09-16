@@ -1,0 +1,44 @@
+Configuration and Diagnostic Program  Version 3.2
+Copyright (C) 1991-1999, 3Com Corporation.  All Rights Reserved.
+
+
+The 3C5X9 NIC, NIC number 1, was successfully configured.
+Configuration and Diagnostic Program  Version 3.2
+Copyright (C) 1991-1999, 3Com Corporation.  All Rights Reserved.
+
+
+The 3C5X9 NIC, NIC number 2, was successfully configured.
+3Com EtherLink III CLI Configuration Program v0.7.8
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509-TP: Ethernet Address = 0020AFBD8850
+       EtherLink III 16-bit ISA NIC (ASIC Revision read error (possible I/O conflict))
+       Connectors = read error (possible I/O conflict)
+       Full Duplex Capability = read error (possible I/O conflict)
+       Plug and Play Capability = read error (possible I/O conflict)
+              ---
+       IOBASE = 0300, IRQ = 5
+       Transceiver = external (AUX/DIX)
+       Plug and Play = read error (possible I/O conflict)
+       Boot ROM = disabled
+       Optimization = Server
+       MODEM Interrupt Disable Time = 1300 us (1200 bd)
+       Full Duplex = read error (possible I/O conflict)
+  2    3Com 3C509-TP: Ethernet Address = 00608CE90C9B
+       EtherLink III 16-bit ISA NIC (ASIC Revision read error (possible I/O conflict))
+       Connectors = read error (possible I/O conflict)
+       Full Duplex Capability = read error (possible I/O conflict)
+       Plug and Play Capability = read error (possible I/O conflict)
+              ---
+       IOBASE = 0300, IRQ = 3
+       Transceiver = external (AUX/DIX)
+       Plug and Play = read error (possible I/O conflict)
+       Boot ROM = disabled
+       Optimization = Server
+       MODEM Interrupt Disable Time = 1300 us (1200 bd)
+       Full Duplex = read error (possible I/O conflict)

@@ -3,6 +3,11 @@ Copyright (C) 1991-1999, 3Com Corporation.  All Rights Reserved.
 
 
 The 3C5X9 NIC, NIC number 1, was successfully configured.
+Configuration and Diagnostic Program  Version 3.2
+Copyright (C) 1991-1999, 3Com Corporation.  All Rights Reserved.
+
+
+The 3C5X9 NIC, NIC number 2, was successfully configured.
 3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
@@ -17,10 +22,23 @@ Number                       Description
        Full Duplex Capability = yes
        Plug and Play Capability = yes
               ---
-       IOBASE = 0280, IRQ = 3
-       Transceiver = on-board TP
+       IOBASE = 0300, IRQ = 5
+       Transceiver = external (AUX/DIX)
        Plug and Play = disabled
        Boot ROM = disabled
-       Optimization = DOS
+       Optimization = Server
        MODEM Interrupt Disable Time = 1300 us (1200 bd)
-       Full Duplex = enabled
+       Full Duplex = disabled
+  2    3Com 3C509-TP: Ethernet Address = 00608CE90C9B
+       EtherLink III 16-bit ISA NIC (ASIC Revision 1)
+       Connectors = TP, AUI
+       Full Duplex Capability = not supported
+       Plug and Play Capability = not supported
+              ---
+       IOBASE = 0280, IRQ = 3
+       Transceiver = external (AUX/DIX)
+       Plug and Play = not supported
+       Boot ROM = disabled
+       Optimization = Server
+       MODEM Interrupt Disable Time = 1300 us (1200 bd)
+       Full Duplex = not supported

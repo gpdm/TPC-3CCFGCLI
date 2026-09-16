@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.7
+3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -12,7 +12,7 @@ Number                       Description
        Full Duplex Capability = not supported
        Plug and Play Capability = not supported
               ---
-       IOBASE = 0280, IRQ = 3
+       IOBASE = 0300, IRQ = 3
        Transceiver = external (AUX/DIX)
        Plug and Play = not supported
        Boot ROM = disabled
@@ -25,7 +25,7 @@ Cleaning logs and test artifacts
 Running 3CCFGCLI Hardware Compliance Read checks 
 [HWCR00xx] Hardware Compliance Read checks for 3C509-TP 
 Saving original adapter configuration to HWCRREST.BAT 
-3Com EtherLink III CLI Configuration Program v0.7.7
+3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -57,6 +57,11 @@ Configuration restore batch file created: TP\ARTIFACT\HWCRREST.BAT
 Hardware Compliance Read checks completed. 
 Taking post-configuration dump using 3C5X9CFG 
 Hardware Compliance Test PASSED. 
+HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
+[hwcs001].[common] Verify 3C5X9CFG post HWC configuration dump
+[hwcs001].[tp] Verifying specific 3C509-TP properties
+[hwcs001].[tp] PASSED
+HWC SET verification: run completed
 HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
 [hwcs001].[common] Verify 3C5X9CFG post HWC configuration dump
 [hwcs001].[tp] Verifying specific 3C509-TP properties
