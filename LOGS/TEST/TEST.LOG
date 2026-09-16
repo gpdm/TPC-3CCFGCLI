@@ -228,8 +228,6 @@ Seed file created (INIT).
 [t15xx] MULTI_NIC: Verify multi-NIC behaviour
 [t1500] duplicate IOBASE SAVECONFIG uses ID EEPROM snapshots
 [t1500] PASSED
-[t1501] duplicate IOBASE LIST uses per-adapter EEPROM snapshots
-[t1501] PASSED
 [t1502] multi-NIC CONFIGURE requires /ADAPTERNUM
 [t1502] PASSED
 [t1503] multi-NIC adapter selection changes only the targeted NIC
@@ -373,8 +371,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 163
-    Executed Tests           : 163
+    Defined Tests            : 162
+    Executed Tests           : 162
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS

@@ -53,7 +53,6 @@ NIC_FLAG_OEM_MAC        EQU 04h
 ; ID-port EEPROM snapshots are parallel to nic_table by record ordinal.
 ; They only exist for records built from an isolated ID-port contender.
 ID_EEPROM_SNAPSHOT_VALID EQU 0
-ID_EEPROM_SNAPSHOT_WORDS EQU 18
 ID_EEPROM_SNAPSHOT_SIZE  EQU 37
 ID_EEPROM_PRODUCT_ID     EQU 1
 ID_EEPROM_WORD_04        EQU 3
@@ -4103,8 +4102,7 @@ PROC Cmd_List NEAR
     mov     dx, OFFSET msg_indent
     mov     ah, 09h
     int     21h
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    call    Select_Nic_Description
+    mov     dx, OFFSET msg_a02c
     mov     ah, 09h
     int     21h
     mov     dx, OFFSET msg_asic_prefix
@@ -9021,16 +9019,6 @@ ENDP Cfg_Id_Activate_At_Base
 ; ============================================================================
 ; Extended LIST information
 ; ============================================================================
-
-; Select the original generic NIC description resource by product family.
-; Input AX = product ID.  Output DX = DOS string address.
-; The current executable accepts only the 9050h family; EISA, MCA and 3C508
-; resources have been removed, since none of them have a reachable selection
-; branch (see CHANGES for details).
-PROC Select_Nic_Description NEAR
-    mov     dx, OFFSET msg_a02c
-    ret
-ENDP Select_Nic_Description
 
 ; Read-only secondary low checksum: EEPROM words 13h through 16h.
 ; Input DX = physical base.  Output AL = checksum byte, CF set on read timeout.
