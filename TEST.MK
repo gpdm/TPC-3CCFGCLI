@@ -1262,14 +1262,14 @@ t1506:
    FIND "3Com 3C509-Combo" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1506.LOG > NUL
-   FIND "Connectors = unavailable" $(ARTIFACTS)\T1506.LOG > NUL
-   FIND "Full Duplex Capability = unavailable" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "Connectors = read error (possible I/O conflict)" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "Full Duplex Capability = read error (possible I/O conflict)" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "Optimization = DOS" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 1300 us (1200 bd)" $(ARTIFACTS)\T1506.LOG > NUL
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1506.LOG
-   FIND "ASIC Revision unavailable" $(ARTIFACTS)\T1506.LOG > NUL
-   FIND "Plug and Play Capability = unavailable" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "ASIC Revision read error (possible I/O conflict)" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "Plug and Play Capability = read error (possible I/O conflict)" $(ARTIFACTS)\T1506.LOG > NUL
    $(BINAPP) LIST > $(ARTIFACTS)\T1506F.LOG
    FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1506F.LOG > NUL
    FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1506F.LOG > NUL
@@ -1293,8 +1293,8 @@ t1507:
    FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1507F.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 25 us" $(ARTIFACTS)\T1507F.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1507F.LOG > NUL
-   FIND "Full Duplex Capability = unavailable" $(ARTIFACTS)\T1507F.LOG > NUL
-   FIND "Full Duplex = unavailable" $(ARTIFACTS)\T1507F.LOG > NUL
+   FIND "Full Duplex Capability = read error (possible I/O conflict)" $(ARTIFACTS)\T1507F.LOG > NUL
+   FIND "Full Duplex = read error (possible I/O conflict)" $(ARTIFACTS)\T1507F.LOG > NUL
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1507F.BAT > $(ARTIFACTS)\T1507S.LOG
    CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507F.BAT "ADAPTERNUM:1" "INT:10" > NUL
    CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507F.BAT "ADAPTERNUM:1" "IOBASE:0300" > NUL

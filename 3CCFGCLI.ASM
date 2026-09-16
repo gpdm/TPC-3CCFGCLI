@@ -552,7 +552,7 @@ msg_valid       DB  "valid", '$'
 msg_invalid     DB  "invalid", '$'
 msg_none        DB  "none", '$'
 msg_not_supported DB "not supported", '$'
-msg_unavailable DB  "unavailable", '$'
+msg_read_error  DB  "read error (possible I/O conflict)", '$'
 msg_invalid_cfg DB  "invalid configuration", '$'
 msg_onboard_tp  DB  "on-board TP", '$'
 msg_external    DB  "external (AUX/DIX)", '$'
@@ -4115,7 +4115,7 @@ PROC Cmd_List NEAR
     call    Print_DecByte
     jmp     @@AsicDone
 @@AsicUnavailable:
-    mov     dx, OFFSET msg_unavailable
+    mov     dx, OFFSET msg_read_error
     mov     ah, 09h
     int     21h
 @@AsicDone:
@@ -9311,7 +9311,7 @@ PROC Print_Transceiver_Value NEAR
     mov     dx, OFFSET msg_onboard_coax
     jmp     @@Print
 @@Unavailable:
-    mov     dx, OFFSET msg_unavailable
+    mov     dx, OFFSET msg_read_error
 @@Print:
     mov     ah, 09h
     int     21h
@@ -9349,7 +9349,7 @@ PROC Print_Pnp_Capability_Value NEAR
     mov     dx, OFFSET msg_not_supported
     jmp     @@Print
 @@Unavailable:
-    mov     dx, OFFSET msg_unavailable
+    mov     dx, OFFSET msg_read_error
 @@Print:
     mov     ah, 09h
     int     21h
@@ -9384,7 +9384,7 @@ PROC Print_Pnp_State_Value NEAR
     mov     dx, OFFSET msg_not_supported
     jmp     @@Print
 @@Unavailable:
-    mov     dx, OFFSET msg_unavailable
+    mov     dx, OFFSET msg_read_error
 @@Print:
     mov     ah, 09h
     int     21h
@@ -9433,7 +9433,7 @@ PROC Print_Connector_Capabilities NEAR
     mov     dx, OFFSET msg_none
     jmp     @@Print
 @@Unavailable:
-    mov     dx, OFFSET msg_unavailable
+    mov     dx, OFFSET msg_read_error
 @@Print:
     call    Print_String
 @@Done:
@@ -9468,7 +9468,7 @@ PROC Print_Full_Duplex_Capability NEAR
     mov     dx, OFFSET msg_not_supported
     jmp     @@Print
 @@Unavailable:
-    mov     dx, OFFSET msg_unavailable
+    mov     dx, OFFSET msg_read_error
 @@Print:
     call    Print_String
     pop     dx
@@ -9524,7 +9524,7 @@ PROC Print_Optimize_Value NEAR
     call    Decode_Optimize_Value
     jmp     @@Done
 @@Unavailable:
-    mov     dx, OFFSET msg_unavailable
+    mov     dx, OFFSET msg_read_error
     mov     ah, 09h
     int     21h
 @@Done:
@@ -9652,7 +9652,7 @@ PROC Print_Modem_Value NEAR
     call    Print_String
     jmp     @@Done
 @@Unavailable:
-    mov     dx, OFFSET msg_unavailable
+    mov     dx, OFFSET msg_read_error
     call    Print_String
 @@Done:
     pop     dx
@@ -9695,7 +9695,7 @@ PROC Print_Full_Duplex_Value NEAR
     mov     dx, OFFSET msg_not_supported
     jmp     @@Print
 @@Unavailable:
-    mov     dx, OFFSET msg_unavailable
+    mov     dx, OFFSET msg_read_error
 @@Print:
     mov     ah, 09h
     int     21h
@@ -9813,7 +9813,7 @@ PROC Print_Boot_Rom_Value NEAR
     mov     dx, OFFSET msg_invalid_cfg
     jmp     @@PrintString
 @@Unavailable:
-    mov     dx, OFFSET msg_unavailable
+    mov     dx, OFFSET msg_read_error
 @@PrintString:
     mov     ah, 09h
     int     21h
@@ -9933,7 +9933,7 @@ PROC Print_Extended_Nic_Info NEAR
    je      @@BootRomSizeValidYes
    cmp     ax, 0
    je      @@BootRomSizeValidNo
-   mov     dx, OFFSET msg_unavailable
+   mov     dx, OFFSET msg_read_error
    jmp     @@PrintBootRomSizeValid
 @@BootRomSizeValidYes:
    mov     dx, OFFSET msg_yes
@@ -9954,7 +9954,7 @@ PROC Print_Extended_Nic_Info NEAR
    je      @@SecondaryChecksumValid
    cmp     ax, 0
    je      @@SecondaryChecksumInvalid
-   mov     dx, OFFSET msg_unavailable
+   mov     dx, OFFSET msg_read_error
    jmp     @@PrintSecondaryChecksum
 @@SecondaryChecksumValid:
    mov     dx, OFFSET msg_valid

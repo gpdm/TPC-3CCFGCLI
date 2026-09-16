@@ -19,6 +19,10 @@ Changelog 0.7.8
     enable unrelated 3C509B-only restore options (Boot ROM, /TR:AUTO).
   - Fixed CONFIGURE capability collection to restore the original register
     window after consulting an ID-port EEPROM snapshot.
+  - LIST now reports "read error (possible I/O conflict)" instead of the
+    ambiguous "unavailable" when adapter information cannot be read or
+    reliably determined. This is a diagnostic hint only and does not imply
+    general I/O conflict detection.
 
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now
