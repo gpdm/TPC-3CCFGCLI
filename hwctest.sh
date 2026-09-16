@@ -20,7 +20,7 @@ TESTREPORT="./testreport.py"
 AUTOEXEC_TEST="./autoexec-test"
 DOSBOX_BIN=${DOSBOX_BIN:-/Applications/DOSBox-X.app/Contents/MacOS/dosbox-x}
 
-CARD_TYPES=(BTP BCOAX BCOMBO BTPO BTPC TP)
+CARD_TYPES=(BTP BCOAX BCOMBO BTPO BTPC TP COAX COMBO TPO TPC MULTI)
 LOCAL_HWC_DIRS=()
 LOCAL_HWC_DIR_COUNT=0
 MEDIA_CARDS=()
@@ -76,7 +76,7 @@ upper()
 is_card_type()
 {
     case "$1" in
-        BTP|BCOAX|BCOMBO|BTPO|BTPC|TP)
+        BTP|BCOAX|BCOMBO|BTPO|BTPC|TP|COAX|COMBO|TPO|TPC|MULTI)
             return 0
             ;;
         *)
