@@ -84,7 +84,7 @@ jobs:
           - COMBO
           - TPO
           - TPC
-	  - MULTI
+          - MULTI
 
     steps:
       - name: Checkout
