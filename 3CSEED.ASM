@@ -32,6 +32,10 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  3C509B-TPO           Product 9550h, Rev 2, TP only.', 0Dh, 0Ah
              DB '  3C509B-TPC           Product 9850h, Rev 2, BNC.', 0Dh, 0Ah
              DB '  3C509-TP             Product 9050h, Rev 1, TP + AUI.', 0Dh, 0Ah
+             DB '  3C509-COAX           Product 9150h, Rev 1, AUI + BNC.', 0Dh, 0Ah
+             DB '  3C509-COMBO          Product 9450h, Rev 1, TP + AUI + BNC.', 0Dh, 0Ah
+             DB '  3C509-TPO            Product 9550h, Rev 1, TP only.', 0Dh, 0Ah
+             DB '  3C509-TPC            Product 9850h, Rev 1, TP + BNC.', 0Dh, 0Ah
              DB '  /IOBASE:value        Set the initial I/O base address.', 0Dh, 0Ah
              DB '  /INT:value           Set the initial IRQ.', 0Dh, 0Ah
              DB '  /MODEMPRESERVE       Seed EEPROM word 0Dh preservation-test fields.', 0Dh, 0Ah
@@ -48,6 +52,10 @@ msg_ok_coax  DB 'Seed file created (3C509B-COAX).', 0Dh, 0Ah, '$'
 msg_ok_tpo   DB 'Seed file created (3C509B-TPO).', 0Dh, 0Ah, '$'
 msg_ok_tpc   DB 'Seed file created (3C509B-TPC).', 0Dh, 0Ah, '$'
 msg_ok_509tp DB 'Seed file created (3C509-TP).', 0Dh, 0Ah, '$'
+msg_ok_509coax DB 'Seed file created (3C509-COAX).', 0Dh, 0Ah, '$'
+msg_ok_509combo DB 'Seed file created (3C509-COMBO).', 0Dh, 0Ah, '$'
+msg_ok_509tpo DB 'Seed file created (3C509-TPO).', 0Dh, 0Ah, '$'
+msg_ok_509tpc DB 'Seed file created (3C509-TPC).', 0Dh, 0Ah, '$'
 msg_ok_add   DB 'Seed file updated (ADD).', 0Dh, 0Ah, '$'
 msg_fail_io  DB 'File I/O error.', 0Dh, 0Ah, '$'
 msg_bad_arg  DB 'Invalid command argument.', 0Dh, 0Ah, '$'
@@ -63,6 +71,10 @@ kw_coax      DB '3C509B-COAX', 0
 kw_tpo       DB '3C509B-TPO', 0
 kw_tpc       DB '3C509B-TPC', 0
 kw_509tp     DB '3C509-TP', 0
+kw_509coax   DB '3C509-COAX', 0
+kw_509combo  DB '3C509-COMBO', 0
+kw_509tpo    DB '3C509-TPO', 0
+kw_509tpc    DB '3C509-TPC', 0
 kw_opt_iobase DB '/IOBASE:', 0
 kw_opt_int DB '/INT:', 0
 kw_opt_modempreserve DB '/MODEMPRESERVE', 0
@@ -198,6 +210,18 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_509tp
     call    Match_Token
     jnc     @@Do509TP
+    mov     dx, OFFSET kw_509coax
+    call    Match_Token
+    jnc     @@Do509Coax
+    mov     dx, OFFSET kw_509combo
+    call    Match_Token
+    jnc     @@Do509Combo
+    mov     dx, OFFSET kw_509tpo
+    call    Match_Token
+    jnc     @@Do509TPO
+    mov     dx, OFFSET kw_509tpc
+    call    Match_Token
+    jnc     @@Do509TPC
     mov     dx, OFFSET msg_bad_arg
     mov     ah, 09h
     int     21h
@@ -298,6 +322,46 @@ PROC Parse_And_Run NEAR
     call    Seed_Direct
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_509tp
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@Do509Coax:
+    call    Set_Model_509_Coax
+    call    Consume_Token
+    call    Seed_Direct
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_509coax
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@Do509Combo:
+    call    Set_Model_509_Combo
+    call    Consume_Token
+    call    Seed_Direct
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_509combo
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@Do509TPO:
+    call    Set_Model_509_TPO
+    call    Consume_Token
+    call    Seed_Direct
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_509tpo
+    mov     ah, 09h
+    int     21h
+    jmp     @@Done
+
+@@Do509TPC:
+    call    Set_Model_509_TPC
+    call    Consume_Token
+    call    Seed_Direct
+    jc      @@IoFail
+    mov     dx, OFFSET msg_ok_509tpc
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -543,6 +607,18 @@ PROC Parse_Model_Token NEAR
     mov     dx, OFFSET kw_509tp
     call    Match_Token
     jnc     @@P509TP
+    mov     dx, OFFSET kw_509coax
+    call    Match_Token
+    jnc     @@P509Coax
+    mov     dx, OFFSET kw_509combo
+    call    Match_Token
+    jnc     @@P509Combo
+    mov     dx, OFFSET kw_509tpo
+    call    Match_Token
+    jnc     @@P509TPO
+    mov     dx, OFFSET kw_509tpc
+    call    Match_Token
+    jnc     @@P509TPC
     pop     dx
     stc
     ret
@@ -579,6 +655,30 @@ PROC Parse_Model_Token NEAR
     ret
 @@P509TP:
     call    Set_Model_509_TP
+    call    Consume_Token
+    pop     dx
+    clc
+    ret
+@@P509Coax:
+    call    Set_Model_509_Coax
+    call    Consume_Token
+    pop     dx
+    clc
+    ret
+@@P509Combo:
+    call    Set_Model_509_Combo
+    call    Consume_Token
+    pop     dx
+    clc
+    ret
+@@P509TPO:
+    call    Set_Model_509_TPO
+    call    Consume_Token
+    pop     dx
+    clc
+    ret
+@@P509TPC:
+    call    Set_Model_509_TPC
     call    Consume_Token
     pop     dx
     clc
@@ -1100,8 +1200,8 @@ PROC Set_Model_509B_TPC NEAR
     ret
 ENDP Set_Model_509B_TPC
 
-; 3C509-TP: 3C509-TP, ASIC revision 1, TP + AUI connectors.  Product ID
-; is the same 9050h family value as 3C509B-TP; the ASIC revision (obtained
+; Original 3C509 profiles use ASIC revision 1.  Product IDs are shared with
+; the corresponding 3C509B families; the ASIC revision (obtained
 ; through the normal Window 4 Network Diagnostic register path, not by any
 ; mock-only shortcut) is what distinguishes the 3C509 generation.  EEPROM
 ; words 10h/13h/14h/17h receive deterministic non-B-semantics sentinel values
@@ -1114,6 +1214,41 @@ PROC Set_Model_509_TP NEAR
     mov     [byte seed_asic_rev], 1
     ret
 ENDP Set_Model_509_TP
+
+PROC Set_Model_509_Coax NEAR
+    mov     [seed_product], PRODUCT_3C509
+    mov     [seed_media], 3
+    mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT
+    and     ax, NOT W0_CONFIG_CONTROL_TP_PRESENT
+    or      ax, W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
+    mov     [seed_config_control], ax
+    mov     [byte seed_asic_rev], 1
+    ret
+ENDP Set_Model_509_Coax
+
+PROC Set_Model_509_Combo NEAR
+    mov     [seed_product], PRODUCT_3C509_COMBO
+    mov     [seed_media], 0
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
+    mov     [byte seed_asic_rev], 1
+    ret
+ENDP Set_Model_509_Combo
+
+PROC Set_Model_509_TPO NEAR
+    mov     [seed_product], PRODUCT_3C509_TPO
+    mov     [seed_media], 0
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
+    mov     [byte seed_asic_rev], 1
+    ret
+ENDP Set_Model_509_TPO
+
+PROC Set_Model_509_TPC NEAR
+    mov     [seed_product], PRODUCT_3C509_TPC
+    mov     [seed_media], 3
+    mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_BNC_PRESENT
+    mov     [byte seed_asic_rev], 1
+    ret
+ENDP Set_Model_509_TPC
 
 PROC Build_Record_Current NEAR
     push    ax
