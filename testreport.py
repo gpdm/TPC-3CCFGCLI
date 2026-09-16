@@ -48,12 +48,12 @@ TARGET_RE = re.compile(
 )
 
 TEST_HEADER_RE = re.compile(
-    r"^[A-Za-z]{1,4}[0-9]{1,2}xx$",
+    r"^[A-Za-z]{1,5}[0-9]{1,2}xx$",
     re.IGNORECASE,
 )
 
 TEST_CASE_RE = re.compile(
-    r"^[A-Za-z]{1,4}[0-9]{2,4}$",
+    r"^[A-Za-z]{1,5}[0-9]{2,4}$",
     re.IGNORECASE,
 )
 
@@ -69,14 +69,14 @@ REPORT_GROUP_RE = re.compile(
 # generally, I don't care if the log redirectionis present.
 #
 MAKE_TESTLOG_ECHO_RE = re.compile(
-    r"^\s*@?echo\s+\[([A-Za-z]{1,4}(?:[0-9]{2,4}|[0-9]{2}xx))\]"
+    r"^\s*@?echo\s+\[([A-Za-z]{1,5}(?:[0-9]{2,4}|[0-9]{2}xx))\]"
     r"(?:\.\[([A-Za-z0-9_.%/+@\x2D]+)\])?\s*:?\s*"
     r"(.+?)(?=\s*>>|\s*$)(?:\s*>>.*)?\s*$",
     re.IGNORECASE,
 )
 
 LOG_PASS_RE = re.compile(
-    r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]"
+    r"^\[([A-Za-z]{1,5}[0-9]{2,4})\]"
     r"(?:\.\[[A-Za-z0-9_.%/+@\x2D]+\])?\s+PASSED\s*$",
     re.IGNORECASE,
 )
@@ -89,16 +89,21 @@ NONFAIL_STATUSES = {
 }
 
 LOG_NONFAIL_RE = re.compile(
-    r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]"
+    r"^\[([A-Za-z]{1,5}[0-9]{2,4})\]"
     r"(?:\.\[[A-Za-z0-9_.%/+@\x2D]+\])?\s+"
     r"(DISABLED|NOT IMPLEMENTED|NOT SUPPORTED|NOT APPLICABLE)\s*$",
     re.IGNORECASE,
 )
 
 LOG_TEST_RE = re.compile(
-    r"^\[([A-Za-z]{1,4}[0-9]{2,4})\]"
+    r"^\[([A-Za-z]{1,5}[0-9]{2,4})\]"
     r"(?:\.\[[A-Za-z0-9_.%/+@\x2D]+\])?\s*:?\s*"
     r"(?!PASSED\s*$)(.+?)\s*$",
+    re.IGNORECASE,
+)
+
+LOG_HEADER_RE = re.compile(
+    r"^\[([A-Za-z]{1,5}[0-9]{1,2}xx)\]\s*:?\s*(.*?)\s*$",
     re.IGNORECASE,
 )
 
@@ -281,6 +286,7 @@ def parse_logfile(logfile):
     started = {}
     passed = set()
     nonfails = {}
+    headers = set()
 
     with logfile.open(
         "r",
@@ -289,6 +295,12 @@ def parse_logfile(logfile):
     ) as file:
         for line_number, line in enumerate(file, start=1):
             line = line.rstrip("\r\n")
+
+            header_match = LOG_HEADER_RE.match(line)
+
+            if header_match:
+                headers.add(header_match.group(1).lower())
+                continue
 
             pass_match = LOG_PASS_RE.match(line)
 
@@ -318,7 +330,60 @@ def parse_logfile(logfile):
                         },
                     )
 
-    return started, passed, nonfails
+    return started, passed, nonfails, headers
+
+
+def select_active_groups(groups, headers):
+    # Most makefiles describe one complete test plan and all parsed groups
+    # belong to that run. TEST.MK is one example, some tests are emitted by
+    # test.sh itself and therefore do not necessarily emit their group header.
+    #
+    # The HWC makefiles are different. They contain an explicit *_MULTI
+    # alternative beside the normal single NIC group. In that case the group
+    # header written to the log tells us which alternative was actually run.
+    multi_groups = [
+        group
+        for group in groups
+        if group["name"].upper().endswith("_MULTI")
+    ]
+
+    if not multi_groups:
+        return groups
+
+    selected = list(groups)
+
+    for multi_group in multi_groups:
+        family_prefix = multi_group["name"].rsplit("_", 1)[0].upper()
+        family = [
+            group
+            for group in groups
+            if group["name"].upper().startswith(f"{family_prefix}_")
+        ]
+
+        active_family = [
+            group
+            for group in family
+            if group["header"].lower() in headers
+        ]
+
+        if not active_family:
+            raise ReportError(
+                f"No active {family_prefix} Makefile test group header found in log"
+            )
+
+        if len(active_family) > 1:
+            raise ReportError(
+                f"Multiple active {family_prefix} Makefile test group headers found in log: "
+                + ", ".join(group["header"] for group in active_family)
+            )
+
+        selected = [
+            group
+            for group in selected
+            if group not in family or group in active_family
+        ]
+
+    return selected
 
 
 # classiy the results retrieved from the log
@@ -673,7 +738,8 @@ def main():
 
         targets = load_makefile(args.makefile)
         groups = build_test_groups(targets)
-        started, passed, nonfails = parse_logfile(args.logfile)
+        started, passed, nonfails, headers = parse_logfile(args.logfile)
+        groups = select_active_groups(groups, headers)
         results, failed_test = classify_results(
             groups,
             started,
