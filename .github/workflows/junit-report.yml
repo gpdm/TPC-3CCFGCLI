@@ -80,6 +80,11 @@ jobs:
           - BTPO
           - BTPC
           - TP
+          - COAX
+          - COMBO
+          - TPO
+          - TPC
+	  - MULTI
 
     steps:
       - name: Checkout
