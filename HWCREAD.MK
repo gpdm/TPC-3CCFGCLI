@@ -123,7 +123,7 @@ CARDTYPE = btpo
 CARDNAME = 3C509B-TPO
 HWCR004_TARGET = hwcr004
 HWCR006_TARGET = hwcr006
-HWCR008_TARGET = hwcr008-unsupported
+HWCR008_TARGET = hwcr008-btpo
 !if $d(ROM_TEST)
 # Boot ROM is anyway unsupported for 3C509B-TPO model.
 HWCR051_TARGET = hwcr-rom-unsupported
@@ -151,6 +151,60 @@ CARDNAME = 3C509-TP
 HWCR004_TARGET = hwcr004-unsupported
 HWCR006_TARGET = hwcr006-unsupported
 HWCR008_TARGET = hwcr008-tp
+!if $d(ROM_TEST)
+HWCR051_TARGET = hwcr-rom-not-implemented
+!else
+HWCR051_TARGET = hwcr-rom-disabled
+!endif
+
+!elif $d(CARD_COAX)
+
+CARDTYPE = coax
+CARDNAME = 3C509-COAX
+DEFAULT_TRANSCEIVER = AUI
+HWCR004_TARGET = hwcr004-unsupported
+HWCR006_TARGET = hwcr006-unsupported
+HWCR008_TARGET = hwcr008-coax
+!if $d(ROM_TEST)
+HWCR051_TARGET = hwcr-rom-not-implemented
+!else
+HWCR051_TARGET = hwcr-rom-disabled
+!endif
+
+!elif $d(CARD_COMBO)
+
+CARDTYPE = combo
+CARDNAME = 3C509-Combo
+HWCR004_TARGET = hwcr004-unsupported
+HWCR006_TARGET = hwcr006-unsupported
+HWCR008_TARGET = hwcr008-combo
+!if $d(ROM_TEST)
+HWCR051_TARGET = hwcr-rom-not-implemented
+!else
+HWCR051_TARGET = hwcr-rom-disabled
+!endif
+
+!elif $d(CARD_TPO)
+
+CARDTYPE = tpo
+CARDNAME = 3C509-TPO
+HWCR004_TARGET = hwcr004-unsupported
+HWCR006_TARGET = hwcr006-unsupported
+HWCR008_TARGET = hwcr008-tpo
+!if $d(ROM_TEST)
+# Boot ROM is anyway unsupported for 3C509-TPO model.
+HWCR051_TARGET = hwcr-rom-unsupported
+!else
+HWCR051_TARGET = hwcr-rom-disabled
+!endif
+
+!elif $d(CARD_TPC)
+
+CARDTYPE = tpc
+CARDNAME = 3C509-TPCoax
+HWCR004_TARGET = hwcr004-unsupported
+HWCR006_TARGET = hwcr006-unsupported
+HWCR008_TARGET = hwcr008-tpc
 !if $d(ROM_TEST)
 HWCR051_TARGET = hwcr-rom-not-implemented
 !else
@@ -278,6 +332,29 @@ set-default-tp: set-default-common
 	@echo [set-default].[tp] PASSED >> $(LOGFILE)
 	@echo [set-default].[tp] PASSED
 
+# NOTE: does NOT include /FULLDUPLEX and /PNP verbs because 3C509-COAX does not support them
+set-default-coax: set-default-common
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
+	@echo [set-default].[coax] PASSED >> $(LOGFILE)
+	@echo [set-default].[coax] PASSED
+
+# NOTE: does NOT include /FULLDUPLEX and /PNP verbs because 3C509-Combo does not support them
+set-default-combo: set-default-common
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
+	@echo [set-default].[combo] PASSED >> $(LOGFILE)
+	@echo [set-default].[combo] PASSED
+
+# NOTE: does NOT include /FULLDUPLEX, /PNP, or /BSIZE:DISABLED because 3C509-TPO does not support them
+set-default-tpo: set-default-common
+	@echo [set-default].[tpo] PASSED >> $(LOGFILE)
+	@echo [set-default].[tpo] PASSED
+
+# NOTE: does NOT include /FULLDUPLEX and /PNP verbs because 3C509-TPCoax does not support them
+set-default-tpc: set-default-common
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
+	@echo [set-default].[tpc] PASSED >> $(LOGFILE)
+	@echo [set-default].[tpc] PASSED
+
 
 # #################################
 # Identity / capability checks.
@@ -351,6 +428,42 @@ hwcr001-tp: hwcr001-common
 	FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
 	@echo [hwcr001].[tp] PASSED >> $(LOGFILE)
 	@echo [hwcr001].[tp] PASSED
+
+hwcr001-coax: hwcr001-common
+	FIND "3Com 3C509:" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "(ASIC Revision 1)" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Connectors = AUI, COAX" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
+	@echo [hwcr001].[coax] PASSED >> $(LOGFILE)
+	@echo [hwcr001].[coax] PASSED
+
+hwcr001-combo: hwcr001-common
+	FIND "3Com 3C509-Combo:" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "(ASIC Revision 1)" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Connectors = TP, AUI, COAX" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
+	@echo [hwcr001].[combo] PASSED >> $(LOGFILE)
+	@echo [hwcr001].[combo] PASSED
+
+hwcr001-tpo: hwcr001-common
+	FIND "3Com 3C509-TPO:" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "(ASIC Revision 1)" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Connectors = TP" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
+	@echo [hwcr001].[tpo] PASSED >> $(LOGFILE)
+	@echo [hwcr001].[tpo] PASSED
+
+hwcr001-tpc: hwcr001-common
+	FIND "3Com 3C509-TPCoax:" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "(ASIC Revision 1)" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Connectors = TP, COAX" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
+	FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
+	@echo [hwcr001].[tpc] PASSED >> $(LOGFILE)
+	@echo [hwcr001].[tpc] PASSED
 
 
 # #################################
@@ -489,6 +602,39 @@ hwcr008-tp:
 	@echo [hwcr008].[tp] PASSED >> $(LOGFILE)
 	@echo [hwcr008].[tp] PASSED
 
+hwcr008-tpo:
+	@echo [hwcr008].[tpo] /TR change is not supported by $(CARDNAME). >> $(LOGFILE)
+	@echo [hwcr008].[tpo] /TR change is not supported by $(CARDNAME).
+	@echo [hwcr008].[tpo] NOT SUPPORTED >> $(LOGFILE)
+	@echo [hwcr008].[tpo] NOT SUPPORTED
+
+hwcr008-coax:
+	@echo [hwcr008].[coax] 9c5x9cfg /TR:COAX writer, 3CCFGCLI LIST reader >> $(LOGFILE)
+	@echo [hwcr008].[coax] 9c5x9cfg /TR:COAX writer, 3CCFGCLI LIST reader
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
+	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
+	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
+	@echo [hwcr008].[coax] PASSED >> $(LOGFILE)
+	@echo [hwcr008].[coax] PASSED
+
+hwcr008-combo:
+	@echo [hwcr008].[combo] 9c5x9cfg /TR:COAX writer, 3CCFGCLI LIST reader >> $(LOGFILE)
+	@echo [hwcr008].[combo] 9c5x9cfg /TR:COAX writer, 3CCFGCLI LIST reader
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
+	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
+	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
+	@echo [hwcr008].[combo] PASSED >> $(LOGFILE)
+	@echo [hwcr008].[combo] PASSED
+
+hwcr008-tpc:
+	@echo [hwcr008].[tpc] 9c5x9cfg /TR:COAX writer, 3CCFGCLI LIST reader >> $(LOGFILE)
+	@echo [hwcr008].[tpc] 9c5x9cfg /TR:COAX writer, 3CCFGCLI LIST reader
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
+	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
+	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
+	@echo [hwcr008].[tpc] PASSED >> $(LOGFILE)
+	@echo [hwcr008].[tpc] PASSED
+
 
 
 # #################################
@@ -554,6 +700,26 @@ hwcr009-tp: hwcr009-common
 	FIND "TR:AUI" $(ARTIFACTS)\HWCR009.BAT > NUL
 	@echo [hwcr009].[tp] PASSED >> $(LOGFILE)
 	@echo [hwcr009].[tp] PASSED
+
+hwcr009-coax: hwcr009-common
+	FIND "TR:COAX" $(ARTIFACTS)\HWCR009.BAT > NUL
+	@echo [hwcr009].[coax] PASSED >> $(LOGFILE)
+	@echo [hwcr009].[coax] PASSED
+
+hwcr009-combo: hwcr009-common
+	FIND "TR:COAX" $(ARTIFACTS)\HWCR009.BAT > NUL
+	@echo [hwcr009].[combo] PASSED >> $(LOGFILE)
+	@echo [hwcr009].[combo] PASSED
+
+hwcr009-tpo: hwcr009-common
+	FIND "TR:TP" $(ARTIFACTS)\HWCR009.BAT > NUL
+	@echo [hwcr009].[tpo] PASSED >> $(LOGFILE)
+	@echo [hwcr009].[tpo] PASSED
+
+hwcr009-tpc: hwcr009-common
+	FIND "TR:COAX" $(ARTIFACTS)\HWCR009.BAT > NUL
+	@echo [hwcr009].[tpc] PASSED >> $(LOGFILE)
+	@echo [hwcr009].[tpc] PASSED
 
 
 
