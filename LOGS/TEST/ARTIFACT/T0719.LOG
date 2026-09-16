@@ -1,6 +1,6 @@
-3CSEED - 3C509B mock state seeder v0.7.7
+3CSEED - 3C509B mock state seeder v0.7.8
 Seed file created (3C509B-TP).
-3Com EtherLink III CLI Configuration Program v0.7.7
+3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -32,7 +32,7 @@ EEPROM modem speed setting verified.
 EEPROM transceiver selection verified.
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.7.7
+3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -47,7 +47,7 @@ Number                       Description
        Plug and Play Capability = yes
               ---
        IOBASE = 0300, IRQ = 10
-       Transceiver = external
+       Transceiver = external (AUX/DIX)
        Plug and Play = enabled
        Boot ROM = disabled
        Optimization = DOS

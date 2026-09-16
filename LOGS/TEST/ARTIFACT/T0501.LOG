@@ -1,6 +1,6 @@
-3CSEED - 3C509B mock state seeder v0.7.7
+3CSEED - 3C509B mock state seeder v0.7.8
 Seed file created (INIT).
-3Com EtherLink III CLI Configuration Program v0.7.7
+3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -28,7 +28,7 @@ Verifying requested configuration...
 EEPROM Plug and Play mode verified.
 
 Plug and Play configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.7.7
+3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2

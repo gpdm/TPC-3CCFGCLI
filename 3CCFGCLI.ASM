@@ -4624,95 +4624,6 @@ ENDP Discover_Id_Port_Cards
 ; Active EEPROM access
 ; ============================================================================
 
-; Read hardware capability sources independently.
-; Input DX = active I/O base, SI = the corresponding NIC record.  Output AX =
-; NIC_CAP_* values, BX = NIC_CAP_VALID_* source-validity flags, CF always
-; clear.  The current window is restored.  A clear validity bit means that
-; capability group is unavailable.
-PROC Nic_Read_Capabilities NEAR
-    push    cx
-    push    dx
-    push    si
-    push    di
-
-    mov     ah, [BYTE si + NIC_ASIC_REV]
-    push    ax                      ; cached generation, consumed at @@ReadPnp
-    mov     si, dx
-    call    Nic_Get_Current_Window
-    mov     di, ax
-    xor     bx, bx                  ; validity result
-    xor     cx, cx                  ; normalized capability result
-
-    mov     dx, si
-    xor     al, al
-    call    Nic_Select_Window
-    mov     bx, EL3_W0_CONFIG_CONTROL
-    call    Nic_Reg_Read_Word
-    xor     bx, bx                  ; discard register offset; rebuild validity
-    cmp     ax, 0FFFFh
-    je      @@ReadPnp
-    or      bx, NIC_CAP_VALID_CONNECTORS
-    test    ax, W0_CONFIG_CONTROL_TP_PRESENT
-    jz      @@NoTp
-    or      cx, NIC_CAP_TP
-@@NoTp:
-    test    ax, W0_CONFIG_CONTROL_AUI_PRESENT
-    jz      @@NoAui
-    or      cx, NIC_CAP_AUI
-@@NoAui:
-    test    ax, W0_CONFIG_CONTROL_BNC_PRESENT
-    jz      @@ReadPnp
-    or      cx, NIC_CAP_BNC
-
-@@ReadPnp:
-    ; Window 0 connector presence above is generation independent, but EEPROM
-    ; 10h and 14h only carry capability meanings on the 3C509B; on the
-    ; 3C509 these words are Network Management Data. For an
-    ; unknown ASIC revision, do not assume the 3C509B capability layout.
-    pop     ax                      ; AH = cached ASIC revision
-    cmp     ah, 0FFh
-    je      @@Restore
-    cmp     ah, 2
-    jb      @@Restore
-
-    mov     dx, si
-    mov     al, EEPROM_CAPABILITY
-    call    Nic_EEPROM_Read
-    jc      @@ReadRevision
-    or      bx, NIC_CAP_VALID_PNP
-    test    ax, EEPROM_CAPABILITY_PNP
-    jz      @@ReadRevision
-    or      cx, NIC_CAP_PNP
-
-@@ReadRevision:
-    test    bx, NIC_CAP_VALID_CONNECTORS
-    jz      @@Restore
-    mov     dx, si
-    mov     al, EEPROM_REVISION_INFO
-    call    Nic_EEPROM_Read
-    jc      @@Restore
-    or      bx, NIC_CAP_VALID_FULLDUPLEX
-    test    cx, NIC_CAP_TP
-    jz      @@Restore
-    and     ax, 00FFh
-    cmp     ax, EEPROM_REVISION_3C509B
-    jb      @@Restore
-    or      cx, NIC_CAP_FULLDUPLEX
-
-@@Restore:
-    mov     ax, di
-    mov     dx, si
-    call    Nic_Select_Window
-    mov     ax, cx
-    clc
-@@Exit:
-    pop     di
-    pop     si
-    pop     dx
-    pop     cx
-    ret
-ENDP Nic_Read_Capabilities
-
 ; Resolve the parallel ID-port EEPROM snapshot for SI's nic_table ordinal.
 ; CF is clear only when that record has an available snapshot.  This helper
 ; deliberately derives identity from the record address, never from IOBASE.
@@ -5496,49 +5407,6 @@ PROC Cfg_Checksum_17_Low NEAR
 ENDP Cfg_Checksum_17_Low
 
 ; Secondary high checksum: EEPROM words 10h-12h and 20h-3Fh.
-PROC Cfg_Checksum_17_High NEAR
-    push    bx
-    push    cx
-    push    dx
-    push    si
-
-    xor     bx, bx
-    mov     si, EEPROM_SECONDARY_VITAL_START
-@@Vital:
-    mov     ax, si
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
-    call    Cfg_Checksum_Xor_Word
-    inc     si
-    cmp     si, EEPROM_SECONDARY_VITAL_END
-    jb      @@Vital
-
-    mov     si, EEPROM_SECONDARY_VITAL_PNP_START
-@@Pnp:
-    mov     ax, si
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
-    call    Cfg_Checksum_Xor_Word
-    inc     si
-    cmp     si, EEPROM_SECONDARY_VITAL_PNP_END
-    jb      @@Pnp
-
-    mov     al, bl
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    clc
-    ret
-@@Fail:
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    stc
-    ret
-ENDP Cfg_Checksum_17_High
-
 ; ============================================================================
 ; /IOBASE hardware transaction
 ; ============================================================================
@@ -8127,7 +7995,7 @@ PROC Cfg_Txn_Execute NEAR
 @@CapabilitySnapshot:
     ; OPT7: take one combined capability snapshot up front if any of the
     ; PNP/FULLDUPLEX/TR gates below will need it, instead of each gate
-    ; calling Nic_Read_Capabilities independently. Validity bits (BX) are
+    ; calling Cfg_Read_Capabilities independently. Validity bits (BX) are
     ; independent per property, so a failure to obtain one property's data
     ; (e.g. connectors) does not affect another property's validity (e.g. PNP).
     test    [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_FULLDUPLEX + CFG_PARSE_TR

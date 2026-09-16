@@ -998,7 +998,8 @@ PROC Mock_Resolve_And_Read_Word NEAR
     jne     @@RegisterPath
     xor     ax, ax
     mov     al, [byte mock_current_window]
-    shl     ax, 13
+    mov     cl, 13
+    shl     ax, cl
     and     ax, STATUS_WINDOW_MASK
     cmp     [byte mock_command_busy], 0
     je      @@ResolveDone

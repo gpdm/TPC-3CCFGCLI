@@ -1,10 +1,10 @@
-3Com EtherLink III CLI Configuration Program v0.7.7
+3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.
-3Com EtherLink III CLI Configuration Program v0.7.7
+3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
