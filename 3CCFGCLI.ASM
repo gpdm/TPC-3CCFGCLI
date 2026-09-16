@@ -4031,11 +4031,6 @@ PROC Cmd_List NEAR
     mov     ah, 09h
     int     21h
 
-    ; The original 9850h description is always 3C509B TPCoax.
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    cmp     ax, PRODUCT_3C509_TPC
-    je      @@ModelB
-
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 0FFh
     je      @@ModelUnknownRevision

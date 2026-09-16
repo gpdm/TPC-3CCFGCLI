@@ -41,8 +41,7 @@
 ;     9050h    3C509-TP / 3C509B-TP
 ;     9450h    3C509-COMBO / 3C509B-COMBO
 ;     9550h    3C509-TPO / 3C509B-TPO
-;
-; The reference does not document 9850h as a 3C509B Product ID.
+;     9850h    3C509-TPC / 3C509B-TPC
 ;
 ; The documented ISA connector configurations are:
 ;
