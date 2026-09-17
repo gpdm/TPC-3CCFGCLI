@@ -34,6 +34,11 @@ Changelog 0.7.8
   - CONFIGURE now retains one uniquely validated working IOBASE throughout
     the transaction, while a requested final IOBASE may intentionally
     duplicate another adapter's value, matching the original utility.
+  - CONFIGURE now uses one unified temporary working-base access model for all
+    adapter selection paths. The obsolete direct/targeted access split was
+    removed so the selected adapter always reaches a validated working I/O base
+    before transaction state is read or committed, while logical NIC_IO_BASE and
+    prospective final IOBASE remain distinct transaction concepts.
 
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now

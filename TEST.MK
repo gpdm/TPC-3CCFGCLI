@@ -1331,7 +1331,7 @@ t1509:
    @echo [t1509] PASSED  >> $(TESTLOG)
 
 # Most prior duplicate-IOBASE coverage selects adapter 2. Select adapter 1
-# instead to prove the targeted access mechanism is not silently biased
+# instead to prove the unified working-base access model is not silently biased
 # toward the second table entry.
 t1511:
    @echo [t1511] duplicate IOBASE CONFIGURE targets adapter 1 >> $(TESTLOG)

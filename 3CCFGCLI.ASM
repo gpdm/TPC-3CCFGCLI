@@ -669,7 +669,7 @@ cfg_txn_verify_word0d_valid DW 0
 cfg_txn_old_base          DW 0
 cfg_txn_new_base          DW 0
 cfg_txn_access_base       DW 0
-cfg_txn_targeted_access   DB 0
+cfg_txn_working_access    DB 0
 cfg_txn_old_word08        DW 0
 cfg_txn_new_word08        DW 0
 cfg_txn_old_word09        DW 0
@@ -3001,8 +3001,8 @@ PROC Cfg_Resolve_Adapter NEAR
 ENDP Cfg_Resolve_Adapter
 
 ; Dispatch ordered CONFIGURE hardware-property requests collected by
-; Cfg_Parse_Options after adapter selection and revalidation.  A handler error
-; stops later handlers, matching the original sub_377 loop.
+; Cfg_Parse_Options after adapter selection and working-base validation.  A
+; handler error stops later handlers, matching the original sub_377 loop.
 PROC Cfg_Dispatch_Parsed_Properties NEAR
     push    ax
     push    bx
@@ -5561,14 +5561,14 @@ PROC Cfg_Txn_Begin_Access NEAR
     push    si
     push    di
 
-    mov     [cfg_txn_targeted_access], 0
+    mov     [cfg_txn_working_access], 0
     call    Cfg_Txn_Has_Valid_Tag
     jc      @@Fail
     mov     si, [cfg_selected_ptr]
     call    Cfg_Find_Temporary_Base
     jc      @@Fail
     mov     [cfg_txn_access_base], ax
-    mov     [cfg_txn_targeted_access], 1
+    mov     [cfg_txn_working_access], 1
 
 @@Success:
     pop     di
@@ -5589,15 +5589,14 @@ PROC Cfg_Txn_Begin_Access NEAR
     ret
 ENDP Cfg_Txn_Begin_Access
 
-; Restore a scratch-relocated adapter to its logical configured base.  A real
-; IOBASE migration clears cfg_txn_targeted_access at the ownership boundary, so
-; this helper deliberately performs no rollback after that point.
+; Restore the selected adapter to its configured logical base once the
+; transaction has finished with the temporary working IOBASE.
 PROC Cfg_Txn_End_Access NEAR
     push    ax
     push    dx
     push    si
 
-    cmp     [cfg_txn_targeted_access], 0
+    cmp     [cfg_txn_working_access], 0
     je      @@Success
     mov     si, [cfg_selected_ptr]
     pushf
@@ -5610,7 +5609,7 @@ PROC Cfg_Txn_End_Access NEAR
     jne     @@RestoreFail
     popf
     call    Nic_Sync_State
-    mov     [cfg_txn_targeted_access], 0
+    mov     [cfg_txn_working_access], 0
     mov     ax, [WORD si + NIC_IO_BASE]
     mov     [cfg_txn_access_base], ax
 @@Success:
@@ -5645,7 +5644,7 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     si, [cfg_selected_ptr]
     test    [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
     jnz     @@HaveBase
-    cmp     [cfg_txn_targeted_access], 0
+    cmp     [cfg_txn_working_access], 0
     jne     @@HaveBase
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@InactiveINT
@@ -5829,7 +5828,7 @@ PROC Cfg_Txn_Read_Current NEAR
     call    Nic_Reg_Read_Word
     mov     [cfg_txn_old_live08], ax
 
-    cmp     [cfg_txn_targeted_access], 0
+    cmp     [cfg_txn_working_access], 0
     je      @@Live06Logical
     mov     si, [cfg_selected_ptr]
     mov     ax, [WORD si + NIC_IO_BASE]
@@ -6504,11 +6503,11 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     mov     si, [cfg_selected_ptr]
     call    Cfg_Id_Deactivate_Selected
 
-    ; The experimental IOBASE path proved useful on hardware, so retain its
-    ; read only old base absence check for an actual migration.
+    ; The working-base transaction path retains the read-only old-base absence
+    ; check when a true IOBASE migration is required.
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@Retag
-    cmp     [cfg_txn_targeted_access], 0
+    cmp     [cfg_txn_working_access], 0
     je      @@CheckOldLogicalBase
     mov     dx, [cfg_txn_access_base]
     jmp     @@CheckDeactivatedBase
@@ -6546,7 +6545,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
 
 @@Activate:
     mov     si, [cfg_selected_ptr]
-    cmp     [cfg_txn_targeted_access], 0
+    cmp     [cfg_txn_working_access], 0
     je      @@ActivateLogical
     pushf
     cli
@@ -7041,13 +7040,13 @@ ENDP Cfg_Txn_Write_Live
 
 ; Central verification.  Final reachability deliberately verifies the live 3Com
 ; signature and product identity but does not repeat the ASIC revision equality
-; test.  ASIC revision was already checked by Cfg_Revalidate_Selected and, when
-; activation occurred, by Cfg_Txn_Activate_If_Needed.  It is not a configured
-; property and should not turn successful EEPROM and live field readback into a
-; false IOBASE verification failure.  An accepted Boot ROM request additionally
-; read-back verifies the live Window 0 Address Configuration Boot ROM bits 13:8
-; against the staged image at the final active I/O base; a request rejected by
-; the pre-commit probe is skipped.  ROM contents are never re-probed here.
+; test.  ASIC revision was already validated at the working access base before
+; the transaction proceeds, and it is not a configured property.  It should not
+; turn successful EEPROM and live field readback into a false IOBASE
+; verification failure.  An accepted Boot ROM request additionally read-back
+; verifies the live Window 0 Address Configuration Boot ROM bits 13:8 against
+; the staged image at the final active I/O base; a request rejected by the
+; pre-commit probe is skipped.  ROM contents are never re-probed here.
 PROC Cfg_Txn_Verify NEAR
     push    ax
     push    bx
@@ -7494,7 +7493,7 @@ PROC Cfg_Txn_Finalize_IOBASE NEAR
     mov     ax, [cfg_txn_new_base]
     mov     [WORD si + NIC_IO_BASE], ax
     mov     [cfg_txn_access_base], ax
-    mov     [cfg_txn_targeted_access], 0
+    mov     [cfg_txn_working_access], 0
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_final_iobase_activated
@@ -8543,7 +8542,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     ax, [cfg_txn_new_word0f]
     mov     [WORD di + ID_EEPROM_CHECKSUM], ax
 @@ReportSuccess:
-    ; Cfg_Txn_End_Access clears cfg_txn_targeted_access on its first
+    ; Cfg_Txn_End_Access clears cfg_txn_working_access on its first
     ; successful call, so the common @@Done path below calling it a second
     ; time on the success fall-through is a harmless no-op (it takes the
     ; @@Success early-return branch immediately). Kept as-is: collapsing
@@ -8569,180 +8568,6 @@ PROC Cfg_Txn_Execute NEAR
     pop     ax
     ret
 ENDP Cfg_Txn_Execute
-
-; Revalidate the logical record selected from nic_table against live hardware.
-; Active records use the existing proven register signature path and then the
-; OEM station address from EEPROM.  An inactive ID port record can be checked
-; read only by selecting its existing tag and re-reading the same identity words.
-; Input SI = selected record.  Carry set with cfg_last_error on failure.
-PROC Cfg_Revalidate_Selected NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    dx
-    push    di
-    push    si
-
-    test    [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
-    jz      @@ByTag
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Find_Record_By_Base
-    cmp     di, 0FFFFh
-    je      @@TryTargeted
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Nic_Check_3Com_Signature
-    jc      @@Mismatch
-    cmp     ax, [WORD si + NIC_PRODUCT_ID]
-    jne     @@Mismatch
-    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
-    je      @@Mac
-    cmp     bl, [BYTE si + NIC_ASIC_REV]
-    jne     @@Mismatch
-
-@@Mac:
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Nic_Get_Current_Window
-    mov     ch, al
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_OEM_NODE_0
-    call    Cfg_Eeprom_Read
-    jc      @@RestoreReadError
-    cmp     ah, [BYTE si + NIC_MAC_ADDR]
-    jne     @@RestoreMismatch
-    cmp     al, [BYTE si + NIC_MAC_ADDR + 1]
-    jne     @@RestoreMismatch
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_OEM_NODE_1
-    call    Cfg_Eeprom_Read
-    jc      @@RestoreReadError
-    cmp     ah, [BYTE si + NIC_MAC_ADDR + 2]
-    jne     @@RestoreMismatch
-    cmp     al, [BYTE si + NIC_MAC_ADDR + 3]
-    jne     @@RestoreMismatch
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, EEPROM_OEM_NODE_2
-    call    Cfg_Eeprom_Read
-    jc      @@RestoreReadError
-    cmp     ah, [BYTE si + NIC_MAC_ADDR + 4]
-    jne     @@RestoreMismatch
-    cmp     al, [BYTE si + NIC_MAC_ADDR + 5]
-    jne     @@RestoreMismatch
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, ch
-    call    Nic_Select_Window
-    jmp     @@Good
-
-@@TryTargeted:
-    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
-    jz      @@Mismatch
-    mov     al, [BYTE si + NIC_TAG]
-    or      al, al
-    jz      @@Mismatch
-    cmp     al, 7
-    ja      @@Mismatch
-    ; CONFIGURE acquires and validates one transaction-lifetime working base
-    ; in Cfg_Txn_Begin_Access.  Do not relocate to a scratch base here and
-    ; immediately restore the ambiguous logical base before that transaction.
-    jmp     @@Good
-
-@@RestoreReadError:
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, ch
-    call    Nic_Select_Window
-    jmp     @@Fail
-@@RestoreMismatch:
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     al, ch
-    call    Nic_Select_Window
-    jmp     @@Mismatch
-
-@@ByTag:
-    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
-    jz      @@Mismatch
-    mov     al, [BYTE si + NIC_TAG]
-    or      al, al
-    jz      @@Mismatch
-    cmp     al, 7
-    ja      @@Mismatch
-
-    pushf
-    cli
-    cmp     [BYTE si + NIC_ID_MODE], 0
-    je      @@FullSequence
-    call    Nic_IdPort_Send_Short_Sequence
-    jmp     @@SelectTag
-@@FullSequence:
-    call    Nic_IdPort_Send_Full_Sequence
-@@SelectTag:
-    mov     dx, ID_PORT
-    mov     al, ID_CMD_SELECT_TAG
-    or      al, [BYTE si + NIC_TAG]
-    call    Nic_IdPort_Write_Command
-
-    mov     al, EEPROM_MFG_ID
-    call    Nic_IdPort_Read_Word
-    cmp     ax, 06D50h
-    jne     @@TagMismatch
-    mov     al, EEPROM_PRODUCT_ID
-    call    Nic_IdPort_Read_Word
-    cmp     ax, [WORD si + NIC_PRODUCT_ID]
-    jne     @@TagMismatch
-    call    Is_3C509_Family
-    jc      @@TagUnsupported
-
-    mov     al, EEPROM_OEM_NODE_0
-    call    Nic_IdPort_Read_Word
-    cmp     ah, [BYTE si + NIC_MAC_ADDR]
-    jne     @@TagMismatch
-    cmp     al, [BYTE si + NIC_MAC_ADDR + 1]
-    jne     @@TagMismatch
-    mov     al, EEPROM_OEM_NODE_1
-    call    Nic_IdPort_Read_Word
-    cmp     ah, [BYTE si + NIC_MAC_ADDR + 2]
-    jne     @@TagMismatch
-    cmp     al, [BYTE si + NIC_MAC_ADDR + 3]
-    jne     @@TagMismatch
-    mov     al, EEPROM_OEM_NODE_2
-    call    Nic_IdPort_Read_Word
-    cmp     ah, [BYTE si + NIC_MAC_ADDR + 4]
-    jne     @@TagMismatch
-    cmp     al, [BYTE si + NIC_MAC_ADDR + 5]
-    jne     @@TagMismatch
-    popf
-    jmp     @@Good
-
-@@TagUnsupported:
-    popf
-    mov     [cfg_last_error], CFG_ERR_UNSUPPORTED_PRODUCT
-    jmp     @@Fail
-@@TagMismatch:
-    popf
-@@Mismatch:
-    mov     [cfg_last_error], CFG_ERR_REVALIDATE
-@@Fail:
-    pop     si
-    pop     di
-    pop     dx
-    pop     cx
-    pop     bx
-    pop     ax
-    stc
-    ret
-@@Good:
-    pop     si
-    pop     di
-    pop     dx
-    pop     cx
-    pop     bx
-    pop     ax
-    clc
-    ret
-ENDP Cfg_Revalidate_Selected
 
 ; Acquire a validated temporary live IOBASE for the selected record.
 ; Input SI = selected NIC record.  Output AX = temporary base, CF on failure.
@@ -8893,50 +8718,6 @@ PROC Cfg_Validate_Temporary_Base NEAR
     stc
     ret
 ENDP Cfg_Validate_Temporary_Base
-
-; Revalidate one selected active ID-tagged adapter through a temporary live
-; base after the caller established that its normal IOBASE has multiple
-; logical owners.
-; Input SI = selected NIC record.  CF indicates validation or restoration
-; failure.  The selected adapter is always restored to NIC_IO_BASE before
-; returning once temporary activation has succeeded.
-PROC Cfg_Targeted_Revalidate NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    dx
-    push    di
-    push    si
-
-    pushf
-    cli
-    call    Cfg_Find_Temporary_Base
-    jc      @@FailFlags
-    mov     [cfg_target_base], ax
-@@Restore:
-    mov     ax, [WORD si + NIC_IO_BASE]
-    call    Cfg_Id_Activate_At_Base
-    mov     dx, [cfg_target_base]
-    call    Nic_Read_Status
-    cmp     ax, 0FFFFh
-    jne     @@FailFlags
-    popf
-    call    Nic_Sync_State
-    clc
-    jmp     @@Done
-@@FailFlags:
-    popf
-    call    Nic_Sync_State
-    stc
-@@Done:
-    pop     si
-    pop     di
-    pop     dx
-    pop     cx
-    pop     bx
-    pop     ax
-    ret
-ENDP Cfg_Targeted_Revalidate
 
 ; ISA deactivation core recovered from original sub_335.
 ; Input SI = selected ID record.  D8h plus tag selects it, C0h deactivates it.
