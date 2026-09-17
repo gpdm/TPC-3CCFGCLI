@@ -63,8 +63,3 @@ HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
 [hwcs001].[btp] Verifying specific 3C509B-TP properties
 [hwcs001].[btp] PASSED
 HWC SET verification: run completed
-HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
-[hwcs001].[common] Verify 3C5X9CFG post HWC configuration dump
-[hwcs001].[btp] Verifying specific 3C509B-TP properties
-[hwcs001].[btp] PASSED
-HWC SET verification: run completed
