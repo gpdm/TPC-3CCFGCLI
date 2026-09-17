@@ -1,4 +1,7 @@
 Changelog 0.7.8
+  - Phase 1 analysis verified from the current 3C5X9CFG.LST that original-style
+    temporary working-base selection is distinct from requested persistent
+    IOBASE validation; no functional behavior was changed.
   - Physical adapter identity is now derived from ID-port record/tag
     identity rather than IOBASE; IOBASE is treated purely as a runtime
     resource that may legitimately be shared before it is repaired.
@@ -26,6 +29,8 @@ Changelog 0.7.8
   - LIST now uses a neutral "3C509/3C509B" model prefix when the ASIC
     revision cannot be determined, instead of incorrectly assuming the
     original 3C509 generation.
+  - Mock ID-port short-sequence handling now follows the modeled byte/state
+    transition path instead of forcing command-ready state.
 
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now

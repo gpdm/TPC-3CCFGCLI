@@ -84,6 +84,7 @@ mock_id_bits_left DB 0
 mock_id_state DB MCK_ID_WAIT
 mock_id_sequence_expected DB 0
 mock_id_sequence_count DW 0
+mock_id_sequence_length DW 255
 mock_id_zero_count DB 0
 mock_id_command_ready DB 0
 mock_id_contention_active DB 0
@@ -1479,6 +1480,7 @@ ENDP Nic_Check_3Com_Signature
 PROC Mock_Id_Reset_Sequence NEAR
     mov     [byte mock_id_sequence_expected], 0FFh
     mov     [word mock_id_sequence_count], 0
+    mov     [word mock_id_sequence_length], 255
     mov     [byte mock_id_zero_count], 0
     mov     [byte mock_id_command_ready], 0
     mov     [byte mock_contender_visible], 0
@@ -1519,6 +1521,39 @@ PROC Mock_Id_Enter_Command NEAR
     pop     ax
     ret
 ENDP Mock_Id_Enter_Command
+
+; The short re-entry sequence returns every adapter currently in ID_WAIT to
+; ID_CMD. Tagged adapters therefore become selectable by D8h-DFh, while
+; contention reads still restrict themselves to the untagged population.
+PROC Mock_Id_Enter_Short_Command NEAR
+    push    ax
+    push    cx
+    push    di
+
+    xor     ax, ax
+    mov     cl, [byte mock_record_count]
+    xor     ch, ch
+@@Loop:
+    or      cx, cx
+    jz      @@Done
+    push    ax
+    call    Mock_Get_Record_Ptr
+    pop     ax
+    cmp     [BYTE di + MCK3R_PRESENT], 0
+    je      @@Next
+    cmp     [BYTE di + MCK3R_ID_STATE], MCK_ID_WAIT
+    jne     @@Next
+    mov     [BYTE di + MCK3R_ID_STATE], MCK_ID_CMD
+@@Next:
+    inc     al
+    dec     cx
+    jmp     @@Loop
+@@Done:
+    pop     di
+    pop     cx
+    pop     ax
+    ret
+ENDP Mock_Id_Enter_Short_Command
 
 ; Input AL = EEPROM word.  Each untagged ID_CMD adapter receives its own
 ; serial register; subsequent reads implement wired-AND contention.
@@ -1684,10 +1719,17 @@ PROC Mock_Id_Process_Sequence_Byte NEAR
     shl     bl, 1
 @@NextExpected:
     mov     [byte mock_id_sequence_expected], bl
-    cmp     [word mock_id_sequence_count], 255
+    mov     bx, [word mock_id_sequence_length]
+    cmp     [word mock_id_sequence_count], bx
     jb      @@Done
     mov     [byte mock_id_command_ready], 1
+    cmp     [word mock_id_sequence_length], 8
+    jne     @@FullSequence
+    call    Mock_Id_Enter_Short_Command
+    jmp     @@FindContender
+@@FullSequence:
     call    Mock_Id_Enter_Command
+@@FindContender:
     call    Mock_Find_First_Command_Contender
     jc      @@Done
     mov     [byte mock_contender_index], al
@@ -2056,22 +2098,35 @@ PROC Nic_IdPort_Send_Full_Sequence NEAR
 ENDP Nic_IdPort_Send_Full_Sequence
 
 PROC Nic_IdPort_Send_Short_Sequence NEAR
-    ; Existing CLI flows use the measured short reentry sequence.  Preserve
-    ; that compatibility until its exact device-state semantics are verified.
-    ; It re-enters the ID command population; untagged-only filtering occurs
-    ; later at contention-read time, while D8h-DFh narrows tagged targets.
+    ; The hardware sends two zero bytes followed by the first eight bytes of
+    ; the FFh-seeded LFSR sequence.  Feed those bytes through the same
+    ; decoder as the full sequence; do not grant command access directly.
+    push    ax
+    push    cx
+
     mov     [byte mock_selected_valid], 0
     mov     [byte mock_selected_tag], 0
-    mov     [byte mock_id_command_ready], 1
-    call    Mock_Id_Enter_Command
-    call    Mock_Find_First_Untagged_Record
-    jc      @@NoCard
-    mov     [byte mock_contender_index], al
-    mov     [byte mock_contender_visible], 1
-    ret
-@@NoCard:
-    mov     [byte mock_contender_visible], 0
-    mov     [byte mock_contender_index], 0FFh
+    call    Mock_Id_Reset_Sequence
+    mov     [word mock_id_sequence_length], 8
+    xor     al, al
+    call    Mock_Id_Process_Sequence_Byte
+    call    Mock_Id_Process_Sequence_Byte
+    mov     al, 0FFh
+    mov     cx, 8
+@@Loop:
+    call    Mock_Id_Process_Sequence_Byte
+    test    al, 80h
+    jz      @@ShiftOnly
+    shl     al, 1
+    xor     al, 0CFh
+    jmp     @@Next
+@@ShiftOnly:
+    shl     al, 1
+@@Next:
+    loop    @@Loop
+
+    pop     cx
+    pop     ax
     ret
 ENDP Nic_IdPort_Send_Short_Sequence
 
