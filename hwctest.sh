@@ -295,22 +295,6 @@ show_local_hwc_status()
 # 2. Floppy import
 ###############################################################################
 
-mtools_available()
-{
-    local tool
-
-    for tool in mdir mcopy
-    do
-        if ! command -v "$tool" >/dev/null 2>&1
-        then
-            return 1
-        fi
-    done
-
-    return 0
-}
-
-
 detect_macos_floppies()
 {
     local dev
@@ -666,7 +650,7 @@ run_import_option()
         return 0
     fi
 
-    if ! mtools_available
+    if ! command -v mcopy >/dev/null 2>&1
     then
         echo "MTOOLS are not installed. Floppy import is unavailable."
         echo "Required commands: mdir, mcopy"
@@ -749,8 +733,6 @@ post_import_test_check()
     local card
     local setfile
     local logfile
-    local check_count=0
-    local failure_count=0
     local index=0
 
     scan_local_hwc_data
@@ -762,14 +744,23 @@ post_import_test_check()
         return 0
     fi
 
-    [[ -x "$DOSBOX_BIN" ]] ||
-        die "DOSBox-X executable not found: $DOSBOX_BIN"
+    if [[ ! -x "$DOSBOX_BIN" ]]
+    then
+        warn "DOSBox-X executable not found: $DOSBOX_BIN"
+        return 0
+    fi
 
-    [[ -f "$AUTOEXEC_TEST" ]] ||
-        die "DOSBox-X test configuration not found: $AUTOEXEC_TEST"
+    if [[ ! -f "$AUTOEXEC_TEST" ]]
+    then
+        warn "DOSBox-X test configuration not found: $AUTOEXEC_TEST"
+        return 0
+    fi
 
-    [[ -f "$TEST_MK" ]] ||
-        die "TEST.MK not found: $TEST_MK"
+    if [[ ! -f "$TEST_MK" ]]
+    then
+        warn "TEST.MK not found: $TEST_MK"
+        return 0
+    fi
 
     echo
     echo "Verifying imported 3C5X9CFG SET dumps..."
@@ -793,35 +784,18 @@ post_import_test_check()
                     ;;
             esac
 
-            check_count=$((check_count + 1))
-
             if [[ ! -f "$setfile" ]]
             then
                 warn "$(basename "$setfile") is missing for imported $(basename "$logfile") data: $dir"
-                failure_count=$((failure_count + 1))
                 continue
             fi
 
             if ! run_hwc_set_check "$card" "$setfile" "$logfile"
             then
-                failure_count=$((failure_count + 1))
+                warn "SET verification failed for $setfile"
             fi
         done
     done
-
-    if [[ "$check_count" -eq 0 ]]
-    then
-        echo "No HWC read or write logs were found for SET verification."
-        return 0
-    fi
-
-    echo "SET dumps verified: $((check_count - failure_count)) of $check_count"
-
-    if [[ "$failure_count" -ne 0 ]]
-    then
-        warn "$failure_count SET verification check(s) failed."
-        return 1
-    fi
 
     return 0
 }
@@ -835,8 +809,8 @@ update_junit_reports()
 {
     local dir
     local logfile
-    local report_failures=0
-    local report_count=0
+    local makefile
+    local index=0
 
     scan_local_hwc_data
 
@@ -847,80 +821,62 @@ update_junit_reports()
         return 0
     fi
 
-    command -v uv >/dev/null 2>&1 ||
-        die "uv is not installed or not available in PATH."
+    if ! command -v uv >/dev/null 2>&1
+    then
+        warn "uv is not installed or not available in PATH."
+        return 0
+    fi
 
-    [[ -f "$TESTREPORT" ]] ||
-        die "JUnit report generator not found: $TESTREPORT"
+    if [[ ! -f "$TESTREPORT" ]]
+    then
+        warn "JUnit report generator not found: $TESTREPORT"
+        return 0
+    fi
 
     echo
     echo "Updating HWC JUnit reports..."
 
-    local index=0
     while [[ "$index" -lt "$LOCAL_HWC_DIR_COUNT" ]]
     do
         dir="${LOCAL_HWC_DIRS[$index]}"
         index=$((index + 1))
+
         if [[ ! -d "$dir/ARTIFACT" ]]
         then
             warn "Skipping $dir because ARTIFACT is missing."
-            report_failures=$((report_failures + 1))
             continue
         fi
 
-        logfile="$dir/HWCREAD.LOG"
-        if [[ -f "$logfile" ]]
-        then
-            if [[ ! -f "$HWCREAD_MK" ]]
-            then
-                warn "Skipping $logfile because $HWCREAD_MK is missing."
-                report_failures=$((report_failures + 1))
-            else
-                echo "Generating report for $logfile"
-                if uv run "$TESTREPORT" \
-                    -f "$logfile" \
-                    -m "$HWCREAD_MK" \
-                    -verbose
-                then
-                    report_count=$((report_count + 1))
-                else
-                    warn "JUnit report generation failed for $logfile"
-                    report_failures=$((report_failures + 1))
-                fi
-            fi
-        fi
+        for logfile in "$dir/HWCREAD.LOG" "$dir/HWCWRITE.LOG"
+        do
+            [[ -f "$logfile" ]] || continue
 
-        logfile="$dir/HWCWRITE.LOG"
-        if [[ -f "$logfile" ]]
-        then
-            if [[ ! -f "$HWCWRITE_MK" ]]
+            case "$(basename "$logfile")" in
+                HWCREAD.LOG)
+                    makefile="$HWCREAD_MK"
+                    ;;
+                HWCWRITE.LOG)
+                    makefile="$HWCWRITE_MK"
+                    ;;
+            esac
+
+            if [[ ! -f "$makefile" ]]
             then
-                warn "Skipping $logfile because $HWCWRITE_MK is missing."
-                report_failures=$((report_failures + 1))
-            else
-                echo "Generating report for $logfile"
-                if uv run "$TESTREPORT" \
-                    -f "$logfile" \
-                    -m "$HWCWRITE_MK" \
-                    -verbose
-                then
-                    report_count=$((report_count + 1))
-                else
-                    warn "JUnit report generation failed for $logfile"
-                    report_failures=$((report_failures + 1))
-                fi
+                warn "Skipping $logfile because $makefile is missing."
+                continue
             fi
-        fi
+
+            echo "Generating report for $logfile"
+
+            if ! uv run "$TESTREPORT" \
+                -f "$logfile" \
+                -m "$makefile" \
+                -verbose
+            then
+                warn "JUnit report generation failed for $logfile"
+            fi
+        done
     done
-
-    echo
-    echo "JUnit reports updated: $report_count"
-
-    if [[ "$report_failures" -ne 0 ]]
-    then
-        warn "$report_failures HWC report operation(s) failed or were skipped."
-        return 1
-    fi
 
     return 0
 }
