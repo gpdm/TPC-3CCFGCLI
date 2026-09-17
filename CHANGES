@@ -23,6 +23,9 @@ Changelog 0.7.8
     ambiguous "unavailable" when adapter information cannot be read or
     reliably determined. This is a diagnostic hint only and does not imply
     general I/O conflict detection.
+  - LIST now uses a neutral "3C509/3C509B" model prefix when the ASIC
+    revision cannot be determined, instead of incorrectly assuming the
+    original 3C509 generation.
 
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now

@@ -506,6 +506,8 @@ msg_a02c        DB  "EtherLink III 16-bit ISA NIC", '$'
 msg_3com_prefix DB  "3Com ", '$'
 msg_3c509       DB  "3C509", '$'
 msg_3c509b      DB  "3C509B", '$'
+; Used when the ASIC revision cannot be read, so the generation is unknown.
+msg_3c509_unknown DB "3C509/3C509B", '$'
 msg_plain       DB  "", '$'
 msg_tp          DB  "-TP", '$'
 msg_combo       DB  "-Combo", '$'
@@ -4036,8 +4038,10 @@ PROC Cmd_List NEAR
     je      @@ModelUnknownRevision
     cmp     al, 2
     jae     @@ModelB
-@@ModelUnknownRevision:
     mov     dx, OFFSET msg_3c509
+    jmp     @@PrintModel
+@@ModelUnknownRevision:
+    mov     dx, OFFSET msg_3c509_unknown
     jmp     @@PrintModel
 @@ModelB:
     mov     dx, OFFSET msg_3c509b
