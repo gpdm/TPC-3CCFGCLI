@@ -67,6 +67,10 @@ Nic_Check_3Com_Signature
     CF clear means a supported adapter signature was found
     CF set means the signature check failed
 
+Cfg_Validate_Temporary_Base
+    CF clear means the selected adapter matches at the working access base
+    CF set means identity validation failed or the base could not be restored
+
 Cfg_Probe_Boot_ROM
     CF clear means a valid ROM was found
     CF set means invalid or inaccessible ROM
@@ -428,11 +432,11 @@ only assign a higher level contextual error when no stronger error has already b
 
 For CONFIGURE routines that advertise both a CF result and `cfg_last_error`, failure requires both pieces of state to remain meaningful.
 
-For example, `Cfg_Revalidate_Selected` documents:
+For example, `Cfg_Validate_Temporary_Base` documents:
 
 ```text
 CF set
-    validation failed
+    working-base validation failed
     cfg_last_error contains the reason
 ```
 
@@ -555,9 +559,9 @@ First, a result produced inside a `PUSHF` and `POPF` region is discarded by the 
 
 Second, a procedure that promises a CF result must establish that result after its final `POPF`, or explicitly save and restore the intended result as `Cfg_Probe_Boot_ROM` does.
 
-`Cfg_Revalidate_Selected` follows this discipline.
+`Cfg_Validate_Temporary_Base` follows this discipline.
 
-Its ID port critical section restores FLAGS first.
+Its working-base validation restores the selected window first.
 
 Its final success or failure path then explicitly executes `CLC` or `STC`.
 
@@ -613,7 +617,7 @@ Current examples include:
 
 * initial real hardware ID port initialization
 * ID port discovery
-* selected adapter revalidation through its tag
+* selected adapter working-base validation through its tag
 * retagging after deactivation
 * selected adapter deactivation
 * selected adapter activation

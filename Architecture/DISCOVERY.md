@@ -703,24 +703,25 @@ merely assume that a record containing an I/O base is live.
 This distinction matters to `CONFIGURE`, capability reads, extended
 information, verification, and other hardware-facing operations.
 
-# Discovery versus revalidation
+# Discovery versus working-base validation
 
-Initial discovery and later selected-adapter revalidation are related but are
-not the same operation.
+Initial discovery and later selected-adapter working-base validation are related
+but are not the same operation.
 
 Discovery builds the candidate table.
 
-Once `CONFIGURE` selects a particular record, later code may revalidate that
-specific adapter before modifying it.
+Once `CONFIGURE` selects a particular record, the transaction obtains a unique
+working base for that selected adapter before it reads or writes hardware state.
 
-The purpose of revalidation is to make sure that the adapter selected from the
-discovery result is still the adapter the transaction is about to operate on.
+The purpose of working-base validation is to ensure that the adapter selected
+from the discovery result is still the adapter the transaction is about to
+operate on.
 
 It should not be replaced by another complete enumeration pass inside an
 individual configuration property handler.
 
-The transaction and selected-adapter revalidation flow is documented in
-[`TRANSACTIONS.md`](TRANSACTIONS.md).
+The transaction and selected-adapter working-base validation flow is documented
+in [`TRANSACTIONS.md`](TRANSACTIONS.md).
 
 # Discovery and the backend boundary
 

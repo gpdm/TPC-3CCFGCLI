@@ -1,0 +1,69 @@
+3CSEED - 3C509B mock state seeder v0.7.8
+Seed file deleted (or already absent).
+3CSEED - 3C509B mock state seeder v0.7.8
+Seed file updated (ADD).
+3CSEED - 3C509B mock state seeder v0.7.8
+Seed file updated (ADD).
+3CSEED - 3C509B mock state seeder v0.7.8
+Seed file updated (ADD).
+3Com EtherLink III CLI Configuration Program v0.7.8
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+IOBASE parameter accepted. Requested IOBASE: 0310
+
+IOBASE configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.7.8
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+NIC                            NIC
+Number                       Description
+--------------------------------------------------------------------------
+  1    3Com 3C509B-TP: Ethernet Address = 02608C654301
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
+       Connectors = TP, AUI
+       Full Duplex Capability = yes
+       Plug and Play Capability = yes
+              ---
+       IOBASE = 0300, IRQ = 10
+       Transceiver = on-board TP
+       Plug and Play = enabled
+       Boot ROM = disabled
+       Optimization = DOS
+       MODEM Interrupt Disable Time = 25 us
+       Full Duplex = disabled
+  2    3Com 3C509/3C509B: Ethernet Address = 02608C654303
+       EtherLink III 16-bit ISA NIC (ASIC Revision read error (possible I/O conflict))
+       Connectors = read error (possible I/O conflict)
+       Full Duplex Capability = read error (possible I/O conflict)
+       Plug and Play Capability = read error (possible I/O conflict)
+              ---
+       IOBASE = 0310, IRQ = 3
+       Transceiver = on-board coax
+       Plug and Play = read error (possible I/O conflict)
+       Boot ROM = disabled
+       Optimization = DOS
+       MODEM Interrupt Disable Time = 25 us
+       Full Duplex = read error (possible I/O conflict)
+  3    3Com 3C509/3C509B-Combo: Ethernet Address = 02608C654302
+       EtherLink III 16-bit ISA NIC (ASIC Revision read error (possible I/O conflict))
+       Connectors = read error (possible I/O conflict)
+       Full Duplex Capability = read error (possible I/O conflict)
+       Plug and Play Capability = read error (possible I/O conflict)
+              ---
+       IOBASE = 0310, IRQ = 5
+       Transceiver = on-board TP
+       Plug and Play = read error (possible I/O conflict)
+       Boot ROM = disabled
+       Optimization = DOS
+       MODEM Interrupt Disable Time = 25 us
+       Full Duplex = read error (possible I/O conflict)
+3Com EtherLink III CLI Configuration Program v0.7.8
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Configuration restore batch file created: LOGS\TEST\ARTIFACT\T1513.BAT

@@ -772,6 +772,14 @@ cli_kw_list     DB 'LIST', 0
 cli_kw_saveconfig DB 'SAVECONFIG', 0
 cli_kw_configure DB 'CONFIGURE', 0
 cli_kw_verbose  DB 'VERBOSE', 0
+IFDEF MOCKHW
+cli_kw_mocktest DB 'MOCKTEST', 0
+cli_kw_mock_invalid_tag DB 'INVALIDTAG', 0
+cli_kw_mock_no_select DB 'NOSELECT', 0
+cli_kw_mock_temporary_base DB 'TEMPBASE', 0
+msg_mocktest_pass DB 'HWMOCK contract test passed.', 0Dh, 0Ah, '$'
+msg_mocktest_fail DB 'HWMOCK contract test failed.', 0Dh, 0Ah, '$'
+ENDIF
 save_execfile_kw DB 'EXECFILE:', 0
 save_buffer     DB  SAVE_BUFFER_SIZE DUP(0)
 save_length     DW  0
@@ -1113,6 +1121,12 @@ PROC Parse_And_Execute NEAR
     call    Cli_Match_Token
     jnc     @@List
 
+IFDEF MOCKHW
+    mov     bx, OFFSET cli_kw_mocktest
+    call    Cli_Match_Token
+    jnc     @@MockTest
+ENDIF
+
     mov     bx, OFFSET cli_kw_saveconfig
     call    Cli_Match_Token
     jc      @@CheckConfig
@@ -1142,6 +1156,45 @@ PROC Parse_And_Execute NEAR
     jne     @@Help
     call    Cmd_List
     ret
+
+IFDEF MOCKHW
+@@MockTest:
+    add     si, 8
+    call    Cli_Collect_Args
+    jc      @@Done
+    cmp     [cli_arg_count], 1
+    jne     @@Help
+    call    Cli_Next_Arg
+    jc      @@Help
+    mov     bx, OFFSET cli_kw_mock_invalid_tag
+    call    Cli_Match_Token
+    jnc     @@MockInvalidTag
+    mov     bx, OFFSET cli_kw_mock_no_select
+    call    Cli_Match_Token
+    jnc     @@MockNoSelect
+    mov     bx, OFFSET cli_kw_mock_temporary_base
+    call    Cli_Match_Token
+    jc      @@Help
+    mov     al, 3
+    jmp     @@RunMockTest
+@@MockInvalidTag:
+    mov     al, 1
+    jmp     @@RunMockTest
+@@MockNoSelect:
+    mov     al, 2
+@@RunMockTest:
+    call    Mock_Run_Contract_Test
+    jc      @@MockFail
+    mov     dx, OFFSET msg_mocktest_pass
+    mov     ah, 09h
+    int     21h
+    ret
+@@MockFail:
+    mov     dx, OFFSET msg_mocktest_fail
+    mov     ah, 09h
+    int     21h
+    ret
+ENDIF
 
 @@Help:
     mov     dx, OFFSET msg_help
@@ -5551,9 +5604,9 @@ PROC Cfg_Txn_Make_Physical_Live06 NEAR
     ret
 ENDP Cfg_Txn_Make_Physical_Live06
 
-; Establish an unambiguous physical access base for the selected transaction.
-; Shared logical bases require an ID-tag-selected temporary activation.  Only
-; the selection and activation sequence runs with interrupts disabled.
+; Establish a unique temporary working IOBASE for every CONFIGURE transaction.
+; The selected ID-tagged adapter is explicitly activated and validated there.
+; Only the selection and activation sequence runs with interrupts disabled.
 PROC Cfg_Txn_Begin_Access NEAR
     push    ax
     push    bx

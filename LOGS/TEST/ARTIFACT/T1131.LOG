@@ -37,7 +37,7 @@ EEPROM checksum updated.
 Synchronizing live configuration...
 
 Verifying requested configuration...
-Adapter reachable at working IOBASE: 0300
+Adapter reachable at working IOBASE: 0310
 EEPROM final IOBASE verified: 0280
 Working IOBASE verified: 0280
 EEPROM Boot ROM base address verified.
