@@ -31,6 +31,9 @@ Changelog 0.7.8
     original 3C509 generation.
   - Mock ID-port short-sequence handling now follows the modeled byte/state
     transition path instead of forcing command-ready state.
+  - CONFIGURE now retains one uniquely validated working IOBASE throughout
+    the transaction, while a requested final IOBASE may intentionally
+    duplicate another adapter's value, matching the original utility.
 
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now

@@ -384,10 +384,11 @@ msg_cfg_new_live08 DB "New live Resource Configuration: ", '$'
 msg_cfg_iobase_unchanged DB 0Dh, 0Ah, "IOBASE is already configured to the requested value.", 0Dh, 0Ah
                          DB "No IOBASE hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_deactivate_iobase DB 0Dh, 0Ah, "Deactivating selected adapter at old IOBASE...", 0Dh, 0Ah, '$'
-msg_cfg_reactivate_iobase DB "Reactivating adapter at requested IOBASE...", 0Dh, 0Ah, '$'
+msg_cfg_reactivate_iobase DB "Reactivating adapter at working IOBASE...", 0Dh, 0Ah, '$'
 msg_cfg_iobase_word_written DB "I/O configuration word written.", 0Dh, 0Ah, '$'
-msg_cfg_eeprom_iobase_verified DB "EEPROM IOBASE verified: ", '$'
-msg_cfg_live_iobase_verified DB "Live IOBASE verified: ", '$'
+msg_cfg_eeprom_iobase_verified DB "EEPROM final IOBASE verified: ", '$'
+msg_cfg_live_iobase_verified DB "Working IOBASE verified: ", '$'
+msg_cfg_final_iobase_activated DB "Final IOBASE activated: ", '$'
 msg_cfg_iobase_completed DB 0Dh, 0Ah, "IOBASE configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_combined_completed DB 0Dh, 0Ah, "IOBASE and IRQ configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_unchanged DB 0Dh, 0Ah, "Plug and Play mode is already configured to the requested value.", 0Dh, 0Ah
@@ -493,7 +494,7 @@ msg_cfg_txn_verify DB 0Dh, 0Ah, "Verifying requested configuration...", 0Dh, 0Ah
 msg_cfg_txn_current_active_base DB "Current active IOBASE: ", '$'
 msg_cfg_txn_current_live_irq DB "Current live IRQ: ", '$'
 msg_cfg_txn_new_base DB "Prospective active IOBASE: ", '$'
-msg_cfg_txn_reachable DB "Adapter reachable at active IOBASE: ", '$'
+msg_cfg_txn_reachable DB "Adapter reachable at working IOBASE: ", '$'
 
 msg_list_hdr    DB  "NIC                            NIC", 0Dh, 0Ah
                 DB  "Number                       Description", 0Dh, 0Ah
@@ -5441,45 +5442,12 @@ ENDP Cfg_IOBASE_Selector_To_Base
 
 ; Read only conflict guard.  The original full utility has resource manager
 ; conflict processing which is not retained here.  This reduced build never
-; changes another NIC merely to free an address.  Carry set means another LIST
-; record already occupies cfg_iobase_value.
+; Requested final IOBASE duplication is legal.  Working-base occupancy is
+; checked separately by Cfg_Find_Temporary_Base.
 PROC Cfg_IOBASE_Check_Conflict NEAR
-    push    ax
-    push    cx
-    push    dx
-    push    si
-    push    di
-
-    mov     dx, [cfg_iobase_value]
-    mov     di, [cfg_selected_ptr]
-    mov     cx, [card_count]
-    mov     si, OFFSET nic_table
-@@Loop:
-    or      cx, cx
-    jz      @@Clear
-    cmp     si, di
-    je      @@Next
-    cmp     [WORD si + NIC_IO_BASE], dx
-    je      @@Conflict
-@@Next:
-    add     si, NIC_RECORD_SIZE
-    dec     cx
-    jmp     @@Loop
-@@Clear:
-    pop     di
-    pop     si
-    pop     dx
-    pop     cx
-    pop     ax
+    ; Duplicate requested final IOBASE values are legal.  Physical working
+    ; base conflicts are handled independently by Cfg_Find_Temporary_Base.
     clc
-    ret
-@@Conflict:
-    pop     di
-    pop     si
-    pop     dx
-    pop     cx
-    pop     ax
-    stc
     ret
 ENDP Cfg_IOBASE_Check_Conflict
 
@@ -6499,12 +6467,6 @@ ENDP Cfg_Txn_Detect_Changes
 PROC Cfg_Txn_Preflight NEAR
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@ActivationChoice
-    call    Cfg_IOBASE_Check_Conflict
-    jnc     @@NeedMigrationTag
-    mov     [cfg_last_error], CFG_ERR_IOBASE_CONFLICT
-    stc
-    ret
-@@NeedMigrationTag:
     call    Cfg_Txn_Has_Valid_Tag
     jnc     @@MarkActivation
     mov     [cfg_last_error], CFG_ERR_IOBASE_REACTIVATE
@@ -6590,21 +6552,12 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     call    Cfg_Txn_Retag_Selected
 
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@MigrateRecord
+    jz      @@Activate
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
-    jz      @@MigrateRecord
+    jz      @@Activate
     mov     dx, OFFSET msg_cfg_reactivate_iobase
     mov     ah, 09h
     int     21h
-
-@@MigrateRecord:
-    test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
-    jz      @@Activate
-    mov     si, [cfg_selected_ptr]
-    mov     ax, [cfg_txn_new_base]
-    mov     [WORD si + NIC_IO_BASE], ax
-    mov     [cfg_txn_access_base], ax
-    mov     [cfg_txn_targeted_access], 0
 
 @@Activate:
     mov     si, [cfg_selected_ptr]
@@ -6656,7 +6609,10 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Read_Word
     and     al, 01Fh
-    cmp     al, [cfg_txn_io_selector]
+    mov     bl, al
+    mov     ax, [cfg_txn_access_base]
+    call    Cfg_IOBASE_Base_To_Selector
+    cmp     bl, al
     jne     @@ActivationLiveFail
 
 @@CheckIRQ:
@@ -7146,7 +7102,7 @@ PROC Cfg_Txn_Verify NEAR
     mov     dx, OFFSET msg_cfg_txn_reachable
     mov     ah, 09h
     int     21h
-    mov     ax, [WORD si + NIC_IO_BASE]
+    mov     ax, [cfg_txn_access_base]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
     mov     ah, 09h
@@ -7184,7 +7140,11 @@ PROC Cfg_Txn_Verify NEAR
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Read_Word
     and     al, 01Fh
-    cmp     al, [cfg_txn_io_selector]
+    mov     bx, ax
+    and     bx, 01Fh
+    mov     ax, [cfg_txn_access_base]
+    call    Cfg_IOBASE_Base_To_Selector
+    cmp     bl, al
     jne     @@IOVerifyFail
 
     test    [cli_flags], CLI_FLAG_VERBOSE
@@ -7529,6 +7489,44 @@ PROC Cfg_Txn_Verify NEAR
     stc
     ret
 ENDP Cfg_Txn_Verify
+
+; Commit the requested final IOBASE only after all unique working-base
+; verification has completed.  ID-tag activation performs the final live
+; transition without requiring a uniquely readable normal-I/O address.
+PROC Cfg_Txn_Finalize_IOBASE NEAR
+    push    ax
+    push    dx
+    push    si
+
+    test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
+    jz      @@Success
+    mov     si, [cfg_selected_ptr]
+    pushf
+    cli
+    mov     ax, [cfg_txn_new_base]
+    call    Cfg_Id_Activate_At_Base
+    popf
+    mov     ax, [cfg_txn_new_base]
+    mov     [WORD si + NIC_IO_BASE], ax
+    mov     [cfg_txn_access_base], ax
+    mov     [cfg_txn_targeted_access], 0
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@Success
+    mov     dx, OFFSET msg_cfg_final_iobase_activated
+    mov     ah, 09h
+    int     21h
+    mov     ax, [cfg_txn_new_base]
+    call    Print_HexWord
+    mov     dx, OFFSET msg_crlf
+    mov     ah, 09h
+    int     21h
+@@Success:
+    pop     si
+    pop     dx
+    pop     ax
+    clc
+    ret
+ENDP Cfg_Txn_Finalize_IOBASE
 
 ; Enforce the requested persistent Full Duplex policy in the live Network
 ; Diagnostic register only after Cfg_Txn_Verify has confirmed the EEPROM
@@ -8515,6 +8513,8 @@ PROC Cfg_Txn_Execute NEAR
     jc      @@Done
     call    Cfg_Txn_Sync_Live_FullDuplex
     jc      @@Done
+    call    Cfg_Txn_Finalize_IOBASE
+    jc      @@Done
 
 @@Success:
     ; Keep the in memory record synchronized only after successful verification.
@@ -8660,8 +8660,9 @@ PROC Cfg_Revalidate_Selected NEAR
     jz      @@Mismatch
     cmp     al, 7
     ja      @@Mismatch
-    call    Cfg_Targeted_Revalidate
-    jc      @@Mismatch
+    ; CONFIGURE acquires and validates one transaction-lifetime working base
+    ; in Cfg_Txn_Begin_Access.  Do not relocate to a scratch base here and
+    ; immediately restore the ambiguous logical base before that transaction.
     jmp     @@Good
 
 @@RestoreReadError:

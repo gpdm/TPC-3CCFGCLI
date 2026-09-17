@@ -28,7 +28,7 @@ New EEPROM word 09h: 5000
 New live Resource Configuration: 5000
 
 Deactivating selected adapter at old IOBASE...
-Reactivating adapter at requested IOBASE...
+Reactivating adapter at working IOBASE...
 
 Writing changed EEPROM configuration...
 I/O configuration word written.
@@ -40,11 +40,12 @@ EEPROM checksum updated.
 Synchronizing live configuration...
 
 Verifying requested configuration...
-Adapter reachable at active IOBASE: 0280
-EEPROM IOBASE verified: 0280
-Live IOBASE verified: 0280
+Adapter reachable at working IOBASE: 0300
+EEPROM final IOBASE verified: 0280
+Working IOBASE verified: 0280
 EEPROM IRQ verified: 5
 Live IRQ verified: 5
+Final IOBASE activated: 0280
 
 IOBASE and IRQ configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.7.8
