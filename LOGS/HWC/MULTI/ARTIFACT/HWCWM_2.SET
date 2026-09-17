@@ -1,15 +1,13 @@
 ;
 ; NIC Setup file for a 3C5X9 NIC.
 ;
-; Created 01/29/24, 23:32:32.
+; Created 01/29/24, 23:42:55.
 ;
 ;
 
-@I/O base address:                 300H
-@Interrupt request level:          5
+@I/O base address:                 280H
+@Interrupt request level:          3
 @Boot PROM size:                   disabled
 @Transceiver type:                 external
-@Plug and Play Capability:         disabled
 @Network driver optimization:      server
 @Maximum interrupt disable time:   1300 microseconds
-@Full Duplex:                      disabled

@@ -32,26 +32,3 @@ Number                       Description
        Optimization = Server
        MODEM Interrupt Disable Time = 1300 us (1200 bd)
        Full Duplex = read error (possible I/O conflict)
-Running test target hwcrm for detected NIC: MULTI 
-invoke: MAKE -fHWCREAD.MK -DCARD_MULTI  hwcrm 
-Cleaning logs and test artifacts 
-Running 3CCFGCLI Hardware Compliance Read checks 
-[HWCRM00xx] Multi NIC Hardware Compliance Read checks 
-Saving original adapter configuration to HWCRREST.BAT 
-3Com EtherLink III CLI Configuration Program v0.7.8
-by The Phintage Collector (Gianpaolo Del Matto)
-https://github.com/gpdm/TPC-3CCFGCLI
-reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
-
-Configuration restore batch file created: MULTI\ARTIFACT\HWCRREST.BAT
-[hwcrm001] LIST with two adapters set at distinct IOBASE values 
-[hwcrm001] PASSED 
-[hwcrm002] SAVECONFIG with two adapters set at distinct IOBASE values 
-[hwcrm002] PASSED 
-[hwcrm003] LIST with two adapters sharing one IOBASE 
-[hwcrm003] PASSED 
-[hwcrm004] SAVECONFIG with two adapters sharing one IOBASE 
-[hwcrm004] PASSED 
-Hardware Compliance Read checks completed. 
-Taking post-configuration dump using 3C5X9CFG 
-Hardware Compliance Test PASSED. 
