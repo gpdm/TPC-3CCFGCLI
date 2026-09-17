@@ -2550,10 +2550,6 @@ PROC Cmd_Configure NEAR
     call    Cfg_Resolve_Adapter
     jc      @@Report
 
-    mov     si, [cfg_selected_ptr]
-    call    Cfg_Revalidate_Selected
-    jc      @@Report
-
     cmp     [cfg_property_count], 0
     jne     @@Dispatch
     mov     [cfg_last_error], CFG_ERR_NO_PROPERTY
@@ -5566,17 +5562,6 @@ PROC Cfg_Txn_Begin_Access NEAR
     push    di
 
     mov     [cfg_txn_targeted_access], 0
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [WORD si + NIC_IO_BASE]
-    mov     [cfg_txn_access_base], dx
-    call    Find_Record_By_Base
-    cmp     di, 0FFFFh
-    je      @@Targeted
-    or      di, di
-    jz      @@Fail
-    jmp     @@Success
-
-@@Targeted:
     call    Cfg_Txn_Has_Valid_Tag
     jc      @@Fail
     mov     si, [cfg_selected_ptr]
