@@ -78,7 +78,7 @@ CLI_PARSER: t13xx t1301 t1302 t1303 t1304 t1305 t1306 t1307 t1308 t1309 t1310 t1
 COMBINED_TRANSACTIONS: t14xx t1401 t1402 t1403 t1405 t1406 t1407
 
 # Base: 1500
-MULTI_NIC: t15xx t1500 t1502 t1503 t1504 t1505 t1506 t1507 t1508 t1509 t1511 t1512 t1513
+MULTI_NIC: t15xx t1500 t1502 t1503 t1504 t1505 t1506 t1507 t1508 t1509 t1511 t1512 t1513 t1514 t1515 t1516 t1517
 
 # Base: 1600
 SAVECONFIG_TEST: t16xx t1602 t1603 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622 t1623 t1624 t1625 t1626 t1627
@@ -1399,6 +1399,48 @@ t1513:
    CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1513.BAT "ADAPTERNUM:3" "INT:5"
    CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1513.BAT "ADAPTERNUM:3" "IOBASE:0310"
    @echo [t1513] PASSED  >> $(TESTLOG)
+
+# CONFIGURE must repeatedly isolate the selected tag at a temporary working
+# base: configuring adapter 2 must not leave adapter 1 unable to be selected
+# and configured through the same common access model.
+t1514:
+   @echo [t1514] multi-NIC sequential selected access remains isolated >> $(TESTLOG)
+   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1514.LOG
+   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1514.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 /INT:5 >> $(ARTIFACTS)\T1514.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:2 /INT:7 >> $(ARTIFACTS)\T1514.LOG
+   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1514.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 >> $(ARTIFACTS)\T1514.LOG
+   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1514.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1514.LOG
+   FIND "IOBASE = 0300, IRQ = 9" $(ARTIFACTS)\T1514.LOG > NUL
+   FIND "IOBASE = 0310, IRQ = 7" $(ARTIFACTS)\T1514.LOG > NUL
+   @echo [t1514] PASSED  >> $(TESTLOG)
+
+t1515:
+   @echo [t1515] invalid ID tag does not activate another adapter >> $(TESTLOG)
+   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1515.LOG
+   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 >> $(ARTIFACTS)\T1515.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 >> $(ARTIFACTS)\T1515.LOG
+   $(BINAPP) MOCKTEST INVALIDTAG >> $(ARTIFACTS)\T1515.LOG
+   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1515.LOG > NUL
+   @echo [t1515] PASSED  >> $(TESTLOG)
+
+t1516:
+   @echo [t1516] activation without tag selection has no target >> $(TESTLOG)
+   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1516.LOG
+   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 >> $(ARTIFACTS)\T1516.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 >> $(ARTIFACTS)\T1516.LOG
+   $(BINAPP) MOCKTEST NOSELECT >> $(ARTIFACTS)\T1516.LOG
+   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1516.LOG > NUL
+   @echo [t1516] PASSED  >> $(TESTLOG)
+
+t1517:
+   @echo [t1517] temporary activation preserves persistent IOBASE >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1517.LOG
+   $(BINAPP) MOCKTEST TEMPBASE >> $(ARTIFACTS)\T1517.LOG
+   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1517.LOG > NUL
+   @echo [t1517] PASSED  >> $(TESTLOG)
 
 t16xx:
    @echo [t16xx] SAVECONFIG_TEST: Verify save configuration behaviour  >> $(TESTLOG)

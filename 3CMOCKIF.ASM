@@ -19,9 +19,9 @@
 ;     silently resolving to the first record; see Mock_Find_Record_By_Port.
 ;     ID-port identity (discovery, contention, tags, SELECT_TAG,
 ;     EEPROM-via-ID-port reads, and activation) remains valid and continues
-;     to distinguish adapters by tag.  Targeted temporary access is now used
-;     for selected revalidation; LIST and transaction paths remain ordinary
-;     access until later phases.
+;     to distinguish adapters by tag. CONFIGURE uses selected-tag explicit
+;     activation to establish one temporary working base before transaction
+;     normal-I/O access begins.
 ; ---------------------------------------------------------------------------
 ; ID-port scratch state classification:
 ;
@@ -1400,7 +1400,9 @@ ENDP Mock_Reset_Loaded_Record
 
 PROC Nic_Activate_Tagged_Cards NEAR
     push    ax
+    push    bx
     push    cx
+    push    dx
     push    si
 
     mov     cx, [card_count]
@@ -1408,35 +1410,45 @@ PROC Nic_Activate_Tagged_Cards NEAR
     jz      @@Done
     mov     si, OFFSET nic_table
 @@Loop:
-    mov     al, [BYTE si + NIC_TAG]
-    or      al, al
+    mov     dx, [WORD si + NIC_IO_BASE]
+    or      dx, dx
     jz      @@Next
-    call    Mock_Ensure_Record_By_Tag
-    jc      @@Next
-    ; Identity comes from the selected ID tag and the NIC table record.
-    ; Do not perform a normal-IOBASE verification here: Phase 1 correctly
-    ; makes duplicate active-base access ambiguous, while ID-port selection
-    ; remains individually addressable.
+
+    ; Follow the same ID-port transition as the hardware backend: re-enter
+    ; command state, isolate the tagged adapter, then activate it explicitly.
+    pushf
+    cli
+    cmp     [BYTE si + NIC_ID_MODE], 0
+    je      @@Full
+    call    Nic_IdPort_Send_Short_Sequence
+    jmp     @@SelectTag
+@@Full:
+    call    Nic_IdPort_Send_Full_Sequence
+@@SelectTag:
+    mov     al, [BYTE si + NIC_TAG]
+    and     al, 07h
+    or      al, ID_CMD_SELECT_TAG
+    call    Nic_IdPort_Write_Command
+
     mov     ax, [WORD si + NIC_IO_BASE]
-    or      ax, ax
-    jz      @@KeepBase
-    mov     [word mock_active_base], ax
-@@KeepBase:
-    mov     [byte mock_active], 1
-    ; This still shortcuts real activation by writing mock_active_base
-    ; directly instead of issuing D8h/E0h (deferred to a later phase), but
-    ; it must no longer claim NIC_FLAG_ACTIVE: that flag is reserved for
-    ; adapters proven reachable through normal runtime I/O, which has not
-    ; happened yet at this point.
-    mov     [byte mock_state_dirty], 1
-    call    Mock_Commit_Loaded_Record
+    sub     ax, 0200h
+    shr     ax, 1
+    shr     ax, 1
+    shr     ax, 1
+    shr     ax, 1
+    and     al, 1Fh
+    or      al, ID_CMD_ACTIVATE
+    call    Nic_IdPort_Write_Command
+    popf
+
 @@Next:
     add     si, NIC_RECORD_SIZE
     loop    @@Loop
-    call    Save_State
 @@Done:
     pop     si
+    pop     dx
     pop     cx
+    pop     bx
     pop     ax
     ret
 ENDP Nic_Activate_Tagged_Cards
@@ -2147,6 +2159,9 @@ PROC Nic_IdPort_Send_Short_Sequence NEAR
     ; The hardware sends two zero bytes followed by the first eight bytes of
     ; the FFh-seeded LFSR sequence.  Feed those bytes through the same
     ; decoder as the full sequence; do not grant command access directly.
+    ; The backend API still exposes sequence submission separately from raw
+    ; ID-port command writes, so this models accepted sequence semantics rather
+    ; than every raw ID-port byte through Nic_IdPort_Write_Command.
     push    ax
     push    cx
 
@@ -2175,6 +2190,74 @@ PROC Nic_IdPort_Send_Short_Sequence NEAR
     pop     ax
     ret
 ENDP Nic_IdPort_Send_Short_Sequence
+
+; MOCKHW-only low-level contract probe invoked by the hidden MOCKTEST verb.
+; Input AL: 1 invalid tag, 2 activation without selection, 3 temporary base.
+; Output CF clear when the requested observable contract holds.
+PROC Mock_Run_Contract_Test NEAR
+    push    ax
+    push    bx
+    push    dx
+
+    mov     bl, al
+    call    Scan_All_3Com_Cards
+    cmp     [card_count], 0
+    je      @@Fail
+    cmp     bl, 1
+    je      @@InvalidTag
+    cmp     bl, 2
+    je      @@NoSelect
+
+    ; Tag 1 is explicitly moved to 0280h. Normal I/O must work at the
+    ; temporary base, while its persistent EEPROM selector remains 0300h.
+    call    Nic_IdPort_Send_Short_Sequence
+    mov     al, ID_CMD_SELECT_TAG OR 1
+    call    Nic_IdPort_Write_Command
+    mov     al, ID_CMD_ACTIVATE OR 08h
+    call    Nic_IdPort_Write_Command
+    mov     dx, 0280h
+    call    Nic_Check_3Com_Signature
+    jc      @@Fail
+    mov     al, EEPROM_ADDR_CFG
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    and     al, 1Fh
+    cmp     al, 10h
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@InvalidTag:
+    ; Tag 7 does not exist in the two-adapter contract fixture. Its following
+    ; activation must not move either adapter to 0280h.
+    call    Nic_IdPort_Send_Short_Sequence
+    mov     al, ID_CMD_SELECT_TAG OR 7
+    call    Nic_IdPort_Write_Command
+    mov     al, ID_CMD_ACTIVATE OR 08h
+    call    Nic_IdPort_Write_Command
+    jmp     @@NoTargetAtTemporaryBase
+
+@@NoSelect:
+    ; Scan leaves adapters outside ID_CMD after their configured activation.
+    ; An explicit activation without re-entry and tag selection has no target.
+    mov     al, ID_CMD_ACTIVATE OR 08h
+    call    Nic_IdPort_Write_Command
+
+@@NoTargetAtTemporaryBase:
+    mov     dx, 0280h
+    call    Nic_Check_3Com_Signature
+    jnc     @@Fail
+    clc
+    jmp     @@Done
+
+@@Fail:
+    stc
+@@Done:
+    pop     dx
+    pop     bx
+    pop     ax
+    ret
+ENDP Mock_Run_Contract_Test
 
 PROC Nic_IdPort_Eeprom_Delay NEAR
     ret
