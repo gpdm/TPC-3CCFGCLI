@@ -112,6 +112,12 @@ PROC Nic_IO_Read_Word NEAR
     ret
 ENDP Nic_IO_Read_Word
 
+; Read one raw ISA byte for temporary I/O-range occupancy probing.
+PROC Nic_Probe_IO_Byte NEAR
+    in      al, dx
+    ret
+ENDP Nic_Probe_IO_Byte
+
 PROC Nic_IO_Write_Word NEAR
     out     dx, ax
     ret

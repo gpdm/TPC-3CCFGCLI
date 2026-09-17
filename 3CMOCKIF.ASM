@@ -1040,6 +1040,52 @@ PROC Nic_IO_Read_Word NEAR
     ret
 ENDP Nic_IO_Read_Word
 
+; Raw occupancy probing is different from register access: any active
+; decoder makes the port occupied, including multiple simultaneous decoders.
+PROC Nic_Probe_IO_Byte NEAR
+    push    bx
+    push    cx
+    push    si
+    push    di
+
+    xor     bl, bl
+    xor     ax, ax
+    mov     cl, [byte mock_record_count]
+    xor     ch, ch
+@@Loop:
+    or      cx, cx
+    jz      @@Done
+    push    ax
+    call    Mock_Get_Record_Ptr
+    pop     ax
+    cmp     [BYTE di + MCK3R_PRESENT], 0
+    je      @@Next
+    test    [BYTE di + MCK3R_FLAGS], MCKRF_ACTIVE
+    jz      @@Next
+    mov     si, [WORD di + MCK3R_ACTIVE_BASE]
+    cmp     dx, si
+    jb      @@Next
+    add     si, 000Fh
+    cmp     dx, si
+    ja      @@Next
+    mov     bl, 1
+@@Next:
+    inc     al
+    dec     cx
+    jmp     @@Loop
+@@Done:
+    mov     al, 0FFh
+    cmp     bl, 0
+    je      @@Return
+    xor     al, al
+@@Return:
+    pop     di
+    pop     si
+    pop     cx
+    pop     bx
+    ret
+ENDP Nic_Probe_IO_Byte
+
 PROC Nic_Reg_Read_Word NEAR
     push    dx
     add     dx, bx

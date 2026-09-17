@@ -702,6 +702,7 @@ cfg_wait_start_hi     DW 0
 cfg_target_base       DW 0
 cfg_target_window     DB 0
 cfg_target_result     DB 0
+cfg_target_asic       DB 0
 
 ; Original CONFIGURE property order is retained for prefix resolution.
 cfg_name_adapternum DB 'ADAPTERNUM', 0
@@ -5614,26 +5615,7 @@ PROC Cfg_Txn_Begin_Access NEAR
     call    Cfg_Find_Temporary_Base
     jc      @@Fail
     mov     [cfg_txn_access_base], ax
-
-    pushf
-    cli
-    call    Cfg_Id_Activate_At_Base
-    popf
     mov     [cfg_txn_targeted_access], 1
-
-    mov     dx, [cfg_txn_access_base]
-    call    Nic_Check_3Com_Signature
-    jc      @@Fail
-    mov     si, [cfg_selected_ptr]
-    cmp     ax, [WORD si + NIC_PRODUCT_ID]
-    jne     @@Fail
-    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
-    jne     @@CheckAsic
-    mov     [BYTE si + NIC_ASIC_REV], bl
-    jmp     @@Success
-@@CheckAsic:
-    cmp     bl, [BYTE si + NIC_ASIC_REV]
-    jne     @@Fail
 
 @@Success:
     pop     di
@@ -8776,10 +8758,8 @@ PROC Cfg_Revalidate_Selected NEAR
     ret
 ENDP Cfg_Revalidate_Selected
 
-; Find a valid temporary live IOBASE for the selected record.
+; Acquire a validated temporary live IOBASE for the selected record.
 ; Input SI = selected NIC record.  Output AX = temporary base, CF on failure.
-; The candidate is not the selected logical base, is not assigned to any NIC
-; record, and has no normal status response.  NIC_IO_BASE is never changed.
 PROC Cfg_Find_Temporary_Base NEAR
     push    bx
     push    cx
@@ -8810,10 +8790,37 @@ PROC Cfg_Find_Temporary_Base NEAR
     jmp     @@Record
 
 @@CheckPhysical:
+    pushf
+    cli
+    xor     di, di
+@@Port:
     mov     dx, [cfg_target_base]
-    call    Nic_Read_Status
-    cmp     ax, 0FFFFh
-    jne     @@Candidate
+    add     dx, di
+    mov     cx, 10h
+@@ReadPort:
+    call    Nic_Probe_IO_Byte
+    loop    @@ReadPort
+    cmp     al, 0FFh
+    jne     @@ProbeFail
+    inc     di
+    cmp     di, 10h
+    jb      @@Port
+    mov     ax, [cfg_target_base]
+    call    Cfg_Id_Activate_At_Base
+    popf
+    call    Cfg_Validate_Temporary_Base
+    jnc     @@Success
+
+    pushf
+    cli
+    mov     ax, bx
+    call    Cfg_Id_Activate_At_Base
+    popf
+    jmp     @@Candidate
+@@ProbeFail:
+    popf
+    jmp     @@Candidate
+@@Success:
     mov     ax, [cfg_target_base]
     pop     bp
     pop     di
@@ -8832,6 +8839,74 @@ PROC Cfg_Find_Temporary_Base NEAR
     stc
     ret
 ENDP Cfg_Find_Temporary_Base
+
+PROC Cfg_Validate_Temporary_Base NEAR
+    push    ax
+    push    bx
+    push    dx
+    mov     dx, [cfg_target_base]
+    call    Nic_Get_Current_Window
+    mov     [cfg_target_window], al
+    mov     dx, [cfg_target_base]
+    call    Nic_Check_3Com_Signature
+    jc      @@Fail
+    cmp     ax, [WORD si + NIC_PRODUCT_ID]
+    jne     @@Fail
+    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
+    je      @@Mac
+    cmp     bl, [BYTE si + NIC_ASIC_REV]
+    jne     @@Fail
+    jmp     @@Mac
+@@Mac:
+    mov     [cfg_target_asic], bl
+@@ReadMac:
+    mov     dx, [cfg_target_base]
+    mov     al, EEPROM_OEM_NODE_0
+    call    Nic_EEPROM_Read
+    jc      @@Fail
+    cmp     ah, [BYTE si + NIC_MAC_ADDR]
+    jne     @@Fail
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 1]
+    jne     @@Fail
+    mov     dx, [cfg_target_base]
+    mov     al, EEPROM_OEM_NODE_1
+    call    Nic_EEPROM_Read
+    jc      @@Fail
+    cmp     ah, [BYTE si + NIC_MAC_ADDR + 2]
+    jne     @@Fail
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 3]
+    jne     @@Fail
+    mov     dx, [cfg_target_base]
+    mov     al, EEPROM_OEM_NODE_2
+    call    Nic_EEPROM_Read
+    jc      @@Fail
+    cmp     ah, [BYTE si + NIC_MAC_ADDR + 4]
+    jne     @@Fail
+    cmp     al, [BYTE si + NIC_MAC_ADDR + 5]
+    jne     @@Fail
+    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
+    jne     @@RestoreWindow
+    mov     al, [cfg_target_asic]
+    mov     [BYTE si + NIC_ASIC_REV], al
+@@RestoreWindow:
+    mov     dx, [cfg_target_base]
+    mov     al, [cfg_target_window]
+    call    Nic_Select_Window
+    pop     dx
+    pop     bx
+    pop     ax
+    clc
+    ret
+@@Fail:
+    mov     dx, [cfg_target_base]
+    mov     al, [cfg_target_window]
+    call    Nic_Select_Window
+    pop     dx
+    pop     bx
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Validate_Temporary_Base
 
 ; Revalidate one selected active ID-tagged adapter through a temporary live
 ; base after the caller established that its normal IOBASE has multiple
@@ -8852,69 +8927,12 @@ PROC Cfg_Targeted_Revalidate NEAR
     call    Cfg_Find_Temporary_Base
     jc      @@FailFlags
     mov     [cfg_target_base], ax
-
-    mov     ax, [cfg_target_base]
-    call    Cfg_Id_Activate_At_Base
-
-    mov     dx, [cfg_target_base]
-    call    Nic_Get_Current_Window
-    mov     [cfg_target_window], al
-    mov     [cfg_target_result], 0
-
-    mov     dx, [cfg_target_base]
-    call    Nic_Check_3Com_Signature
-    jc      @@ValidationFail
-    cmp     ax, [WORD si + NIC_PRODUCT_ID]
-    jne     @@ValidationFail
-    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
-    je      @@ReadMac
-    cmp     bl, [BYTE si + NIC_ASIC_REV]
-    jne     @@ValidationFail
-
-@@ReadMac:
-    mov     dx, [cfg_target_base]
-    mov     al, EEPROM_OEM_NODE_0
-    call    Nic_EEPROM_Read
-    jc      @@ValidationFail
-    cmp     ah, [BYTE si + NIC_MAC_ADDR]
-    jne     @@ValidationFail
-    cmp     al, [BYTE si + NIC_MAC_ADDR + 1]
-    jne     @@ValidationFail
-    mov     dx, [cfg_target_base]
-    mov     al, EEPROM_OEM_NODE_1
-    call    Nic_EEPROM_Read
-    jc      @@ValidationFail
-    cmp     ah, [BYTE si + NIC_MAC_ADDR + 2]
-    jne     @@ValidationFail
-    cmp     al, [BYTE si + NIC_MAC_ADDR + 3]
-    jne     @@ValidationFail
-    mov     dx, [cfg_target_base]
-    mov     al, EEPROM_OEM_NODE_2
-    call    Nic_EEPROM_Read
-    jc      @@ValidationFail
-    cmp     ah, [BYTE si + NIC_MAC_ADDR + 4]
-    jne     @@ValidationFail
-    cmp     al, [BYTE si + NIC_MAC_ADDR + 5]
-    jne     @@ValidationFail
-
-    mov     dx, [cfg_target_base]
-    mov     al, [cfg_target_window]
-    call    Nic_Select_Window
-    jmp     @@Restore
-
-@@ValidationFail:
-    mov     [cfg_target_result], 1
-    mov     dx, [cfg_target_base]
-    mov     al, [cfg_target_window]
-    call    Nic_Select_Window
 @@Restore:
     mov     ax, [WORD si + NIC_IO_BASE]
     call    Cfg_Id_Activate_At_Base
     mov     dx, [cfg_target_base]
     call    Nic_Read_Status
     cmp     ax, 0FFFFh
-    jne     @@FailFlags
-    cmp     [cfg_target_result], 0
     jne     @@FailFlags
     popf
     call    Nic_Sync_State

@@ -1,7 +1,7 @@
 Changelog 0.7.8
-  - Phase 1 analysis verified from the current 3C5X9CFG.LST that original-style
-    temporary working-base selection is distinct from requested persistent
-    IOBASE validation; no functional behavior was changed.
+  - CONFIGURE temporary working-base acquisition now probes the complete
+    16-port ISA range with the original repeated-read pattern and validates
+    the selected tagged adapter after temporary activation before accepting it.
   - Physical adapter identity is now derived from ID-port record/tag
     identity rather than IOBASE; IOBASE is treated purely as a runtime
     resource that may legitimately be shared before it is repaired.
