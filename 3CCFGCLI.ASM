@@ -2181,7 +2181,7 @@ PROC Save_Build_Command NEAR
     jc      @@Fail
 
     mov     ax, [save_word09]
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     ax, cl
     call    Save_Dec_Word_Length
     add     cx, SAVE_LEN_INT
@@ -2192,7 +2192,7 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     jc      @@Fail
     mov     ax, [save_word09]
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     ax, cl
     call    Save_Append_Dec_Word
     jc      @@Fail
@@ -2205,10 +2205,10 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     jc      @@Fail
     mov     ax, [save_word08]
-    and     ax, 001Fh
-    mov     cl, 4
+    and     ax, W0_ADDRESS_CFG_IOBASE_MASK
+    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
     shl     ax, cl
-    add     ax, 0200h
+    add     ax, VALID_IOBASE_MIN
     call    Save_Append_Hex_Word
     jc      @@Fail
 
@@ -2466,7 +2466,7 @@ PROC Save_Build_Command NEAR
     ; The value string and its option length are decoded exactly once here
     ; so length accounting and emission cannot diverge.
     mov     ax, [save_word08]
-    test    ax, 0080h
+    test    ax, W0_ADDRESS_CFG_AUTO_SELECT
     jz      @@TrExplicit
     mov     bl, [save_asic_rev]
     cmp     bl, 0FFh
@@ -2477,7 +2477,7 @@ PROC Save_Build_Command NEAR
     mov     cx, SAVE_LEN_TR + SAVE_LEN_AUTO
     jmp     @@TrEmit
 @@TrExplicit:
-    mov     cl, 14
+    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shr     ax, cl
     cmp     al, 1
     je      @@TrAui
@@ -3274,9 +3274,9 @@ PROC Cfg_Parse_IOBASE_Hex NEAR
 @@Converted:
     or      di, di
     jz      @@Bad
-    cmp     ax, 0200h
+    cmp     ax, VALID_IOBASE_MIN
     jb      @@Bad
-    cmp     ax, 03E0h
+    cmp     ax, VALID_IOBASE_MAX
     ja      @@Bad
     mov     bx, ax
     and     bx, 000Fh
@@ -4372,24 +4372,24 @@ PROC Build_Record_From_Id NEAR
     ; Discover_Id_Port_Cards before normal ISA record construction, so the
     ; selector decoded here is always in the range 00h through 1Eh.
     mov     ax, [id_addr_cfg]
-    and     ax, 001Fh
-    mov     cl, 4
+    and     ax, W0_ADDRESS_CFG_IOBASE_MASK
+    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
     shl     ax, cl
-    add     ax, 0200h
+    add     ax, VALID_IOBASE_MIN
     mov     [WORD di + NIC_IO_BASE], ax
 
     ; Resource Configuration bits 15 to 12 contain the actual IRQ number.
     mov     ax, [id_resource_cfg]
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     ax, cl
     call    Normalize_IRQ
     mov     [BYTE di + NIC_IRQ_VAL], al
 
     ; Address Configuration bits 15 to 14 contain the media selection.
     mov     ax, [id_addr_cfg]
-    mov     cl, 14
+    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shr     ax, cl
-    and     al, 03h
+    and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
     cmp     al, 2
     jne     @@MediaGood
     mov     al, 1
@@ -4530,7 +4530,7 @@ PROC Discover_Id_Port_Cards NEAR
     ; The original presence test is manufacturer word 7, not node word 0.
     mov     al, EEPROM_MFG_ID
     call    Nic_IdPort_Read_Word
-    cmp     ax, 06D50h
+    cmp     ax, EEPROM_MFG_ID_3COM
     je      @@ManufacturerGood
 
     popf
@@ -4562,7 +4562,7 @@ PROC Discover_Id_Port_Cards NEAR
     ; which this ISA only utility does not support.  Reject the contender
     ; before normal record construction.
     mov     ax, [id_addr_cfg]
-    and     ax, 001Fh
+    and     ax, W0_ADDRESS_CFG_IOBASE_MASK
     cmp     ax, 001Fh
     je      @@SkipEisaContender
 
@@ -4945,15 +4945,15 @@ PROC Build_Record_From_Active NEAR
     mov     [id_oem2], ax
 
     mov     ax, [id_resource_cfg]
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     ax, cl
     call    Normalize_IRQ
     mov     [BYTE di + NIC_IRQ_VAL], al
 
     mov     ax, [id_addr_cfg]
-    mov     cl, 14
+    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shr     ax, cl
-    and     al, 03h
+    and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
     cmp     al, 2
     jne     @@MediaGood
     mov     al, 1
@@ -5239,7 +5239,7 @@ PROC Cfg_Eeprom_Read NEAR
     call    Nic_Select_Window
 
     mov     ax, si
-    or      ax, 0080h
+    or      ax, EEPROM_CMD_READ
     mov     bx, EL3_W0_EEPROM_COMMAND
     call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
@@ -5269,8 +5269,8 @@ ENDP Cfg_Eeprom_Read
 ; EEPROM word write, original sub_315, confirmed independently in 3CCFG.EXE.
 ; Input DX = base, AL = word number, BX = data word.
 ; Exact command sequence:
-;   window 0, 0030h, wait, 00C0h OR word, wait, write data,
-;   0030h, wait, 0040h OR word, wait.
+;   window 0, WRITE_ENABLE, wait, ERASE OR word, wait, write data,
+;   WRITE_ENABLE, wait, WRITE OR word, wait.
 ; The original continues through the sequence after a Busy failure, so this
 ; helper does the same and returns the latched EEPROM Busy failure in carry.
 ; The centralized CONFIGURE transaction calls this helper for EEPROM writes.
@@ -5289,12 +5289,12 @@ PROC Cfg_Eeprom_Write NEAR
     xor     al, al
     call    Nic_Select_Window
 
-    mov     ax, 0030h
+    mov     ax, EEPROM_CMD_WRITE_ENABLE
     mov     bx, EL3_W0_EEPROM_COMMAND
     call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
-    mov     ax, 00C0h
+    mov     ax, EEPROM_CMD_ERASE
     or      ax, si
     mov     bx, EL3_W0_EEPROM_COMMAND
     call    Nic_Reg_Write_Word
@@ -5304,12 +5304,12 @@ PROC Cfg_Eeprom_Write NEAR
     mov     bx, EL3_W0_EEPROM_DATA
     call    Nic_Reg_Write_Word
 
-    mov     ax, 0030h
+    mov     ax, EEPROM_CMD_WRITE_ENABLE
     mov     bx, EL3_W0_EEPROM_COMMAND
     call    Nic_Reg_Write_Word
     call    Cfg_Eeprom_Wait_Ready
 
-    mov     ax, 0040h
+    mov     ax, EEPROM_CMD_WRITE
     or      ax, si
     mov     bx, EL3_W0_EEPROM_COMMAND
     call    Nic_Reg_Write_Word
@@ -5435,12 +5435,12 @@ ENDP Cfg_Checksum_17_Low
 PROC Cfg_IOBASE_Selector_To_Base NEAR
     push    cx
     xor     ah, ah
-    and     ax, 001Fh
+    and     ax, W0_ADDRESS_CFG_IOBASE_MASK
     cmp     ax, 001Fh
     je      @@Unassigned
-    mov     cl, 4
+    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
     shl     ax, cl
-    add     ax, 0200h
+    add     ax, VALID_IOBASE_MIN
     pop     cx
     ret
 @@Unassigned:
@@ -5528,10 +5528,10 @@ ENDP Cfg_Txn_Retag_Selected
 ; selector.  Input AX = base.  Output AL = selector.
 PROC Cfg_IOBASE_Base_To_Selector NEAR
     push    cx
-    sub     ax, 0200h
-    mov     cl, 4
+    sub     ax, VALID_IOBASE_MIN
+    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
     shr     ax, cl
-    and     al, 01Fh
+    and     al, W0_ADDRESS_CFG_IOBASE_MASK
     pop     cx
     ret
 ENDP Cfg_IOBASE_Base_To_Selector
@@ -5542,7 +5542,7 @@ ENDP Cfg_IOBASE_Base_To_Selector
 PROC Cfg_Txn_Make_Physical_Live06 NEAR
     push    bx
 
-    and     ax, 0FFE0h
+    and     ax, NOT W0_ADDRESS_CFG_IOBASE_MASK
     mov     bx, ax
     mov     ax, [cfg_txn_access_base]
     call    Cfg_IOBASE_Base_To_Selector
@@ -5843,22 +5843,22 @@ PROC Cfg_Txn_Read_Current NEAR
 @@Live06Logical:
 
     mov     ax, [cfg_txn_old_word08]
-    and     al, 01Fh
+    and     al, W0_ADDRESS_CFG_IOBASE_MASK
     mov     [cfg_txn_old_io_selector], al
     mov     ax, [cfg_txn_old_live06]
-    and     al, 01Fh
+    and     al, W0_ADDRESS_CFG_IOBASE_MASK
     mov     [cfg_txn_live_io_selector], al
 
     mov     ax, [cfg_txn_old_word09]
     mov     bx, ax
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     bx, cl
     and     bl, 0Fh
     mov     [cfg_txn_old_irq], bl
 
     mov     ax, [cfg_txn_old_live08]
     mov     bx, ax
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     bx, cl
     and     bl, 0Fh
     mov     [cfg_txn_live_irq], bl
@@ -5919,21 +5919,21 @@ PROC Cfg_Prepare_IOBASE NEAR
 
     mov     ax, [cfg_iobase_value]
     mov     [cfg_txn_new_base], ax
-    sub     ax, 0200h
-    mov     cl, 4
+    sub     ax, VALID_IOBASE_MIN
+    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
     shr     ax, cl
-    and     al, 01Fh
+    and     al, W0_ADDRESS_CFG_IOBASE_MASK
     mov     [cfg_txn_io_selector], al
 
     mov     ax, [cfg_txn_new_word08]
-    and     ax, 0FFE0h
+    and     ax, NOT W0_ADDRESS_CFG_IOBASE_MASK
     xor     bx, bx
     mov     bl, [cfg_txn_io_selector]
     or      ax, bx
     mov     [cfg_txn_new_word08], ax
 
     mov     ax, [cfg_txn_new_live06]
-    and     ax, 0FFE0h
+    and     ax, NOT W0_ADDRESS_CFG_IOBASE_MASK
     or      ax, bx
     mov     [cfg_txn_new_live06], ax
 
@@ -5952,16 +5952,16 @@ PROC Cfg_Prepare_INT NEAR
 
     xor     bx, bx
     mov     bl, [cfg_int_value]
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shl     bx, cl
 
     mov     ax, [cfg_txn_new_word09]
-    and     ax, 0FFFh
+    and     ax, NOT W0_RESOURCE_CFG_IRQ_MASK
     or      ax, bx
     mov     [cfg_txn_new_word09], ax
 
     mov     ax, [cfg_txn_new_live08]
-    and     ax, 0FFFh
+    and     ax, NOT W0_RESOURCE_CFG_IRQ_MASK
     or      ax, bx
     mov     [cfg_txn_new_live08], ax
 
@@ -6012,10 +6012,10 @@ PROC Cfg_Prepare_FULLDUPLEX NEAR
     push    ax
 
     mov     ax, [cfg_txn_new_word0d]
-    and     ax, 7FFFh               ; clear bit 15
+    and     ax, NOT EEPROM_SOFTWARE_INFO_FULLDUPLEX
     cmp     [cfg_fullduplex_value], 0
     je      @@Store
-    or      ax, 8000h               ; set bit 15 if requested
+    or      ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
 @@Store:
     mov     [cfg_txn_new_word0d], ax
 
@@ -6026,20 +6026,20 @@ ENDP Cfg_Prepare_FULLDUPLEX
 ; Merge only the documented Software Optimization field into EEPROM word 0Dh.
 PROC Cfg_Prepare_OPTIMIZE NEAR
     push    ax
+    push    bx
     push    cx
 
     mov     ax, [cfg_txn_new_word0d]
-    and     ax, 0FFCFh
-    xor     cx, cx
-    mov     cl, [cfg_optimize_value]
-    shl     cx, 1
-    shl     cx, 1
-    shl     cx, 1
-    shl     cx, 1
-    or      ax, cx
+    and     ax, NOT EEPROM_SOFTWARE_INFO_OPTIMIZE_MASK
+    xor     bx, bx
+    mov     bl, [cfg_optimize_value]
+    mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
+    shl     bx, cl
+    or      ax, bx
     mov     [cfg_txn_new_word0d], ax
 
     pop     cx
+    pop     bx
     pop     ax
     ret
 ENDP Cfg_Prepare_OPTIMIZE
@@ -6236,15 +6236,16 @@ PROC Cfg_Prepare_TR NEAR
     push    cx
 
     mov     ax, [cfg_txn_new_word08]
-    and     ax, 3F7Fh               ; clear bits 15:14 and bit 7
+    and     ax, NOT W0_ADDRESS_CFG_XCVR_MASK
+    and     ax, NOT W0_ADDRESS_CFG_AUTO_SELECT
     mov     bl, [cfg_tr_value]
     cmp     bl, 0FFh
     jne     @@NotAuto
-    or      ax, 0080h               ; AUTO: set bit 7 only
+    or      ax, W0_ADDRESS_CFG_AUTO_SELECT
     jmp     @@Done
 @@NotAuto:
     xor     bh, bh
-    mov     cl, 14
+    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shl     bx, cl                  ; shift raw value into bits 15:14
     or      ax, bx
 @@Done:
@@ -6570,7 +6571,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     jz      @@CheckIRQ
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Read_Word
-    and     al, 01Fh
+    and     al, W0_ADDRESS_CFG_IOBASE_MASK
     mov     bl, al
     mov     ax, [cfg_txn_access_base]
     call    Cfg_IOBASE_Base_To_Selector
@@ -6585,7 +6586,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     mov     bx, EL3_W0_RESOURCE_CFG
     call    Nic_Reg_Read_Word
     mov     bx, ax
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     bx, cl
     and     bl, 0Fh
     cmp     bl, [cfg_int_value]
@@ -6599,11 +6600,11 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     mov     bx, EL3_W0_RESOURCE_CFG
     call    Nic_Reg_Read_Word
     mov     bx, ax
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     bx, cl
     and     bl, 0Fh
     mov     ax, [cfg_txn_old_live08]
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     ax, cl
     and     al, 0Fh
     cmp     bl, al
@@ -6894,7 +6895,7 @@ PROC Cfg_Txn_Write_Live NEAR
     call    Nic_Reg_Write_Word
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Read_Word
-    and     al, 01Fh
+    and     al, W0_ADDRESS_CFG_IOBASE_MASK
     mov     bl, al
     mov     ax, [cfg_txn_access_base]
     call    Cfg_IOBASE_Base_To_Selector
@@ -6928,7 +6929,7 @@ PROC Cfg_Txn_Write_Live NEAR
     mov     bx, EL3_W0_RESOURCE_CFG
     call    Nic_Reg_Read_Word
     mov     bx, ax
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     bx, cl
     and     bl, 0Fh
     cmp     bl, [cfg_int_value]
@@ -7021,7 +7022,7 @@ PROC Cfg_Txn_Verify NEAR
     cmp     ax, [cfg_txn_new_word08]
     jne     @@IOVerifyFail
 @@IOField:
-    and     al, 01Fh
+    and     al, W0_ADDRESS_CFG_IOBASE_MASK
     cmp     al, [cfg_txn_io_selector]
     jne     @@IOVerifyFail
 
@@ -7042,9 +7043,9 @@ PROC Cfg_Txn_Verify NEAR
     call    Nic_Select_Window
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Read_Word
-    and     al, 01Fh
+    and     al, W0_ADDRESS_CFG_IOBASE_MASK
     mov     bx, ax
-    and     bx, 01Fh
+    and     bx, W0_ADDRESS_CFG_IOBASE_MASK
     mov     ax, [cfg_txn_access_base]
     call    Cfg_IOBASE_Base_To_Selector
     cmp     bl, al
@@ -7080,7 +7081,7 @@ PROC Cfg_Txn_Verify NEAR
     jne     @@INTVerifyFail
 @@INTField:
     mov     bx, ax
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     bx, cl
     and     bl, 0Fh
     cmp     bl, [cfg_int_value]
@@ -7104,7 +7105,7 @@ PROC Cfg_Txn_Verify NEAR
     mov     bx, EL3_W0_RESOURCE_CFG
     call    Nic_Reg_Read_Word
     mov     bx, ax
-    mov     cl, 12
+    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     bx, cl
     and     bl, 0Fh
     cmp     bl, [cfg_int_value]
@@ -7190,9 +7191,9 @@ PROC Cfg_Txn_Verify NEAR
 @@FDHaveWord0D:
     mov     ax, [cfg_txn_verify_word0d]
     ; Verify the undocumented persistent Full Duplex policy bit only.
-    and     ax, 8000h
+    and     ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     mov     bx, [cfg_txn_new_word0d]
-    and     bx, 8000h
+    and     bx, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     cmp     ax, bx
     jne     @@FDVerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
@@ -8600,7 +8601,7 @@ PROC Cfg_Id_Deactivate_Selected NEAR
     mov     al, ID_CMD_SELECT_TAG
     or      al, [BYTE si + NIC_TAG]
     call    Nic_IdPort_Write_Command
-    mov     al, 0C0h
+    mov     al, ID_CMD_GLOBAL_RESET
     call    Nic_IdPort_Write_Command
     popf
 
@@ -8649,8 +8650,8 @@ PROC Cfg_Id_Activate_At_Base NEAR
     call    Nic_IdPort_Write_Command
 
     mov     ax, bx
-    sub     ax, 0200h
-    mov     bx, 0010h
+    sub     ax, VALID_IOBASE_MIN
+    mov     bx, VALID_IOBASE_STEP
     xor     dx, dx
     div     bx
     or      al, ID_CMD_ACTIVATE
@@ -8916,7 +8917,7 @@ PROC Print_Transceiver_Value NEAR
     jb      @@ConfiguredMedia
 
     mov     ax, [ext_addr_cfg]
-    test    ax, 0080h
+    test    ax, W0_ADDRESS_CFG_AUTO_SELECT
     jz      @@ConfiguredMedia
     test    [ext_nic_capability_valid], NIC_CAP_VALID_CONNECTORS
     jz      @@Unavailable
@@ -8931,9 +8932,9 @@ PROC Print_Transceiver_Value NEAR
 
 @@ConfiguredMedia:
     mov     ax, [ext_addr_cfg]
-    mov     cl, 14
+    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shr     ax, cl
-    and     al, 03h
+    and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
     cmp     al, 2
     jne     @@MediaNormalized
     mov     al, 1

@@ -16,6 +16,8 @@ Changelog 0.7.9
     property. The global "No hardware changes required." message is emitted
     once only when the complete CONFIGURE transaction requires no hardware or
     EEPROM changes.
+  - Cleanup: replaced remaining semantically equivalent raw hardware and
+    EEPROM constants in 3CCFGCLI with existing symbolic definitions.
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete
