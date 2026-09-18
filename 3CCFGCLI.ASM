@@ -189,7 +189,7 @@ CFG_ERR_VERIFY              EQU 19
 CFG_ERR_INT_INACTIVE        EQU 20
 CFG_ERR_BAD_IOBASE          EQU 21
 CFG_ERR_IOBASE_INACTIVE     EQU 22
-CFG_ERR_IOBASE_CONFLICT     EQU 23
+CFG_ERR_IOBASE_CONFLICT     EQU 23      ; retired; slot retained for compatibility
 CFG_ERR_IOBASE_DEACTIVATE   EQU 24
 CFG_ERR_IOBASE_REACTIVATE   EQU 25
 CFG_ERR_IOBASE_EEPROM_READ  EQU 26
@@ -363,7 +363,6 @@ msg_cfg_fd_inactive DB "Selected adapter has no active IOBASE for /FULLDUPLEX co
 ; /IOBASE diagnostics.
 msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_inactive DB "Selected adapter has no active IOBASE for /IOBASE configuration.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_conflict DB "Requested IOBASE is already used by another discovered adapter.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_deactivate_fail DB "Selected adapter deactivation failed before IOBASE migration.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_reactivate_fail DB "Adapter reactivation at the requested IOBASE failed.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_eeprom_read_fail DB "EEPROM read timed out while reading I/O configuration.", 0Dh, 0Ah, '$'
@@ -883,7 +882,7 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_int_inactive                  ; 20 CFG_ERR_INT_INACTIVE
     DW      OFFSET msg_cfg_bad_iobase                    ; 21 CFG_ERR_BAD_IOBASE
     DW      OFFSET msg_cfg_iobase_inactive               ; 22 CFG_ERR_IOBASE_INACTIVE
-    DW      OFFSET msg_cfg_iobase_conflict               ; 23 CFG_ERR_IOBASE_CONFLICT
+    DW      0                                             ; 23 CFG_ERR_IOBASE_CONFLICT, retired
     DW      OFFSET msg_cfg_iobase_deactivate_fail        ; 24 CFG_ERR_IOBASE_DEACTIVATE
     DW      OFFSET msg_cfg_iobase_reactivate_fail        ; 25 CFG_ERR_IOBASE_REACTIVATE
     DW      OFFSET msg_cfg_iobase_eeprom_read_fail       ; 26 CFG_ERR_IOBASE_EEPROM_READ
@@ -5481,17 +5480,6 @@ PROC Cfg_IOBASE_Selector_To_Base NEAR
     pop     cx
     ret
 ENDP Cfg_IOBASE_Selector_To_Base
-
-; Read only conflict guard.  The original full utility has resource manager
-; conflict processing which is not retained here.  This reduced build never
-; Requested final IOBASE duplication is legal.  Working-base occupancy is
-; checked separately by Cfg_Find_Temporary_Base.
-PROC Cfg_IOBASE_Check_Conflict NEAR
-    ; Duplicate requested final IOBASE values are legal.  Physical working
-    ; base conflicts are handled independently by Cfg_Find_Temporary_Base.
-    clc
-    ret
-ENDP Cfg_IOBASE_Check_Conflict
 
 ; ============================================================================
 ; Central staged CONFIGURE transaction facility

@@ -4,6 +4,8 @@ Changelog 0.7.9
   - Removed the redundant CONFIGURE success-reporting wrapper and print the
     general completion message directly from the transaction success path.
   - Removed obsolete reference to cfg_target_result
+  - Retired the obsolete IOBASE conflict error path; duplicate final IOBASE
+    values remain legal and slot 23 is preserved as a retired error entry.
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete
