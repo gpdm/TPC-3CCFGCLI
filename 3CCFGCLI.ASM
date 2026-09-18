@@ -3848,111 +3848,66 @@ PROC Cfg_Handle_OPTIMIZE NEAR
     ret
 ENDP Cfg_Handle_OPTIMIZE
 
-PROC Cfg_Handle_PNP NEAR
+; Shared ENABLED/DISABLED value parser used by property handlers whose
+; accepted syntax is exactly those two tokens.  Reuses the save_enabled and
+; save_disabled strings and the Cfg_Match_Name_Prefix comparison helper.
+; Input SI = option value text, CX = option value length.
+; Output AL = 1 for ENABLED, AL = 0 for DISABLED, CF clear on success.
+; CF set on invalid value.  Does not touch cfg_parse_flags or cfg_last_error;
+; callers remain responsible for their own staging and error reporting.
+PROC Cfg_Parse_EnableDisable NEAR
     cmp     cx, 7
-    je      @@CheckEnabled
+    je      @@TryEnabled
     cmp     cx, 8
-    je      @@CheckDisabled
+    je      @@TryDisabled
     jmp     @@Invalid
 
-@@CheckEnabled:
-    cmp     [BYTE si], 'E'
-    jne     @@Invalid
-    cmp     [BYTE si+1], 'N'
-    jne     @@Invalid
-    cmp     [BYTE si+2], 'A'
-    jne     @@Invalid
-    cmp     [BYTE si+3], 'B'
-    jne     @@Invalid
-    cmp     [BYTE si+4], 'L'
-    jne     @@Invalid
-    cmp     [BYTE si+5], 'E'
-    jne     @@Invalid
-    cmp     [BYTE si+6], 'D'
-    jne     @@Invalid
-    mov     [cfg_pnp_value], 1
-    jmp     @@Accept
+@@TryEnabled:
+    push    di
+    mov     di, OFFSET save_enabled
+    call    Cfg_Match_Name_Prefix
+    pop     di
+    jc      @@Invalid
+    mov     al, 1
+    clc
+    ret
 
-@@CheckDisabled:
-    cmp     [BYTE si], 'D'
-    jne     @@Invalid
-    cmp     [BYTE si+1], 'I'
-    jne     @@Invalid
-    cmp     [BYTE si+2], 'S'
-    jne     @@Invalid
-    cmp     [BYTE si+3], 'A'
-    jne     @@Invalid
-    cmp     [BYTE si+4], 'B'
-    jne     @@Invalid
-    cmp     [BYTE si+5], 'L'
-    jne     @@Invalid
-    cmp     [BYTE si+6], 'E'
-    jne     @@Invalid
-    cmp     [BYTE si+7], 'D'
-    jne     @@Invalid
-    mov     [cfg_pnp_value], 0
+@@TryDisabled:
+    push    di
+    mov     di, OFFSET save_disabled
+    call    Cfg_Match_Name_Prefix
+    pop     di
+    jc      @@Invalid
+    mov     al, 0
+    clc
+    ret
 
-@@Accept:
+@@Invalid:
+    stc
+    ret
+ENDP Cfg_Parse_EnableDisable
+
+PROC Cfg_Handle_PNP NEAR
+    call    Cfg_Parse_EnableDisable
+    jc      @@Invalid
+    mov     [cfg_pnp_value], al
     or      [cfg_parse_flags], CFG_PARSE_PNP
     mov     [cfg_last_error], CFG_ERR_NONE
-    jmp     @@Done
+    ret
 @@Invalid:
     mov     [cfg_last_error], CFG_ERR_BAD_PNP
-@@Done:
     ret
 ENDP Cfg_Handle_PNP
 
 PROC Cfg_Handle_FULLDUPLEX NEAR
-    cmp     cx, 7
-    je      @@CheckEnabled
-    cmp     cx, 8
-    je      @@CheckDisabled
-    jmp     @@Invalid
-
-@@CheckEnabled:
-    cmp     [BYTE si], 'E'
-    jne     @@Invalid
-    cmp     [BYTE si+1], 'N'
-    jne     @@Invalid
-    cmp     [BYTE si+2], 'A'
-    jne     @@Invalid
-    cmp     [BYTE si+3], 'B'
-    jne     @@Invalid
-    cmp     [BYTE si+4], 'L'
-    jne     @@Invalid
-    cmp     [BYTE si+5], 'E'
-    jne     @@Invalid
-    cmp     [BYTE si+6], 'D'
-    jne     @@Invalid
-    mov     [cfg_fullduplex_value], 1
-    jmp     @@Accept
-
-@@CheckDisabled:
-    cmp     [BYTE si], 'D'
-    jne     @@Invalid
-    cmp     [BYTE si+1], 'I'
-    jne     @@Invalid
-    cmp     [BYTE si+2], 'S'
-    jne     @@Invalid
-    cmp     [BYTE si+3], 'A'
-    jne     @@Invalid
-    cmp     [BYTE si+4], 'B'
-    jne     @@Invalid
-    cmp     [BYTE si+5], 'L'
-    jne     @@Invalid
-    cmp     [BYTE si+6], 'E'
-    jne     @@Invalid
-    cmp     [BYTE si+7], 'D'
-    jne     @@Invalid
-    mov     [cfg_fullduplex_value], 0
-
-@@Accept:
+    call    Cfg_Parse_EnableDisable
+    jc      @@Invalid
+    mov     [cfg_fullduplex_value], al
     or      [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     mov     [cfg_last_error], CFG_ERR_NONE
-    jmp     @@Done
+    ret
 @@Invalid:
     mov     [cfg_last_error], CFG_ERR_BAD_FULLDUPLEX
-@@Done:
     ret
 ENDP Cfg_Handle_FULLDUPLEX
 

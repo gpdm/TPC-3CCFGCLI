@@ -28,6 +28,10 @@ Changelog 0.7.9
   - Cleanup: consolidated the repeated per-property duplicate detection in
     Cfg_Parse_Options into a shared table-driven helper, preserving all
     existing duplicate option semantics.
+  - Cleanup: consolidated the duplicated ENABLED/DISABLED value parsing in
+    Cfg_Handle_PNP and Cfg_Handle_FULLDUPLEX into a shared
+    Cfg_Parse_EnableDisable helper, reusing the existing save_enabled and
+    save_disabled strings and the Cfg_Match_Name_Prefix comparison routine.
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete
