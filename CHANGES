@@ -22,6 +22,9 @@ Changelog 0.7.9
     Print_String routine where register semantics are equivalent.
   - Cleanup: consolidated property-specific inactive CONFIGURE diagnostics
     into one shared message while preserving the existing error-code slots.
+  - Cleanup: removed unconditional jumps whose target was the immediately
+    following instruction, and removed local fallthrough labels left with
+    no remaining incoming reference.
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete

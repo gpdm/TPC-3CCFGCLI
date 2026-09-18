@@ -1427,7 +1427,6 @@ PROC Cmd_SaveConfig NEAR
 @@SaveFail:
     cmp     [save_error], SAVE_ERR_LINE_TOO_LONG
     je      @@LineTooLong
-    jmp     @@WriteFail
 @@WriteFail:
     call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_write_fail
@@ -2313,7 +2312,6 @@ PROC Save_Build_Command NEAR
     jmp     @@OptLengthDone
 @@OptServerLength:
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_SERVER
-    jmp     @@OptLengthDone
 @@OptLengthDone:
     call    Save_Ensure_Option_Length
     jc      @@Fail
@@ -2343,7 +2341,6 @@ PROC Save_Build_Command NEAR
     jmp     @@OptDone
 @@OptServer:
     mov     si, OFFSET save_server
-    jmp     @@OptDone
 @@OptDone:
     call    Save_Append_String
     jc      @@Fail
@@ -4403,7 +4400,6 @@ PROC Build_Record_From_Id NEAR
     inc     di
     loop    @@CopySnapshot
 
-@@Done:
     pop     di
     pop     si
     pop     dx
@@ -5045,7 +5041,6 @@ PROC Scan_Active_Base_Ports NEAR
     ; Find_Record_By_Base returned the sole matching record pointer.  Refresh
     ; it only when the active response has an unambiguous owner.
     mov     dx, [si-2]
-@@Refresh:
     mov     [WORD di + NIC_PRODUCT_ID], ax
     mov     [BYTE di + NIC_ASIC_REV], bl
     or      [BYTE di + NIC_FLAGS], NIC_FLAG_ACTIVE
@@ -5540,7 +5535,6 @@ PROC Cfg_Txn_Begin_Access NEAR
     mov     [cfg_txn_access_base], ax
     mov     [cfg_txn_working_access], 1
 
-@@Success:
     pop     di
     pop     si
     pop     dx
@@ -5737,7 +5731,6 @@ PROC Cfg_Txn_Read_Current NEAR
 
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
     jnz     @@Word14Done
-@@NoWord14:
     mov     [cfg_txn_old_word14], 0
 @@Word14Done:
 
@@ -7836,7 +7829,6 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@Done
 
 @@Requested:
-@@GateTR:
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@GateTR_Pass
     ; Auto Select is the 3C509B meaning of Address Configuration bit 7, so
@@ -7888,7 +7880,6 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@Done
 
 @@GateTR_Pass:
-@@RequestedIOBASE:
     ; Preserve normal requested parameter output.
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@RequestedINT
@@ -7941,7 +7932,6 @@ PROC Cfg_Txn_Execute NEAR
 @@PrintModemNone:
     mov     dx, OFFSET msg_none
     call    Print_String
-    jmp     @@AfterRequestedModem
 @@AfterRequestedModem:
     mov     dx, OFFSET msg_crlf
     call    Print_String
@@ -8387,10 +8377,8 @@ PROC Cfg_Validate_Temporary_Base NEAR
     je      @@Mac
     cmp     bl, [BYTE si + NIC_ASIC_REV]
     jne     @@Fail
-    jmp     @@Mac
 @@Mac:
     mov     [cfg_target_asic], bl
-@@ReadMac:
     mov     dx, [cfg_target_base]
     mov     al, EEPROM_OEM_NODE_0
     call    Nic_EEPROM_Read
@@ -8692,7 +8680,6 @@ PROC Read_Extended_Nic_Info_At_Base NEAR
     jmp     @@RestoreWindow
 @@SecondaryChecksumInvalid:
     mov     [ext_secondary_checksum_valid], 0
-    jmp     @@RestoreWindow
 @@SkipBootRomSizeValid:
 
 @@RestoreWindow:
@@ -9280,7 +9267,6 @@ PROC Print_Boot_Rom_Value NEAR
 
     call    Normalize_Boot_Rom_Selector
 
-@@BuildAddress:
     mov     ax, bx
     mov     cx, 2000h
     mul     cx
