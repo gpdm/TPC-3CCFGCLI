@@ -7655,6 +7655,11 @@ PROC Cfg_Txn_Execute NEAR
     ; EEPROM_CAPABILITY bit 0 is the authoritative PNP capability source.
     mov     ax, [cfg_txn_capabilities]
     mov     bx, [cfg_txn_capability_valid]
+    ; In the reachable CONFIGURE path, ASIC revision FFh was already
+    ; resolved by Cfg_Txn_Begin_Access via temporary-base validation and
+    ; signature checking.  Revisions below 2 were rejected above; therefore
+    ; for revision 2+, a missing PNP validity bit means the snapshot was
+    ; unavailable and Nic_EEPROM_Read timed out, its only reported failure.
     test    bx, NIC_CAP_VALID_PNP
     jz      @@PNPCapReadFail
     test    ax, NIC_CAP_PNP
