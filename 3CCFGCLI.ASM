@@ -8661,6 +8661,9 @@ PROC Cfg_Find_Temporary_Base NEAR
     mov     dx, [cfg_target_base]
     add     dx, di
     mov     cx, 10h
+    ; Intentionally sample each of the 16 ports 16 times as part of the
+    ; hardware detection sequence. This behavior is retained from the
+    ; original implementation and must not be reduced to a single read.
 @@ReadPort:
     call    Nic_Probe_IO_Byte
     loop    @@ReadPort
