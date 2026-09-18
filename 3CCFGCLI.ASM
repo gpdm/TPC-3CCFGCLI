@@ -349,7 +349,6 @@ msg_cfg_update_checksum DB 0Dh, 0Ah, "Updating EEPROM checksum...", 0Dh, 0Ah, '$
 msg_cfg_checksum_updated DB "EEPROM checksum updated.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_verified DB "EEPROM IRQ verified: ", '$'
 msg_cfg_live_verified DB "Live IRQ verified: ", '$'
-msg_cfg_completed DB 0Dh, 0Ah, "IRQ configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_read_fail DB "EEPROM read timed out while reading IRQ configuration.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_write_fail DB "EEPROM write timed out while writing IRQ configuration.", 0Dh, 0Ah, '$'
 msg_cfg_checksum_fail DB "EEPROM checksum update failed.", 0Dh, 0Ah, '$'
@@ -389,8 +388,6 @@ msg_cfg_iobase_word_written DB "I/O configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_iobase_verified DB "EEPROM final IOBASE verified: ", '$'
 msg_cfg_live_iobase_verified DB "Working IOBASE verified: ", '$'
 msg_cfg_final_iobase_activated DB "Final IOBASE activated: ", '$'
-msg_cfg_iobase_completed DB 0Dh, 0Ah, "IOBASE configuration completed successfully.", 0Dh, 0Ah, '$'
-msg_cfg_combined_completed DB 0Dh, 0Ah, "IOBASE and IRQ configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_unchanged DB 0Dh, 0Ah, "Plug and Play mode is already configured to the requested value.", 0Dh, 0Ah
                       DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_word_written DB "Plug and Play configuration word written.", 0Dh, 0Ah, '$'
@@ -398,7 +395,6 @@ msg_cfg_pnp_eeprom_read_fail DB "EEPROM read timed out while reading Plug and Pl
 msg_cfg_pnp_eeprom_write_fail DB "EEPROM write timed out while writing Plug and Play configuration.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_verified DB "EEPROM Plug and Play mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_verify_fail DB "Plug and Play configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_pnp_completed DB 0Dh, 0Ah, "Plug and Play configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_modem_unchanged DB 0Dh, 0Ah, "Modem speed setting is already configured to the requested value.", 0Dh, 0Ah
                         DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_modem_word_written DB "Modem speed configuration word written.", 0Dh, 0Ah, '$'
@@ -406,7 +402,6 @@ msg_cfg_modem_eeprom_read_fail DB "EEPROM read timed out while reading modem spe
 msg_cfg_modem_eeprom_write_fail DB "EEPROM write timed out while writing modem speed configuration.", 0Dh, 0Ah, '$'
 msg_cfg_modem_verified DB "EEPROM modem speed setting verified.", 0Dh, 0Ah, '$'
 msg_cfg_modem_verify_fail DB "Modem speed configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_modem_completed DB 0Dh, 0Ah, "Modem speed configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_unchanged DB 0Dh, 0Ah, "Optimize mode is already configured to the requested value.", 0Dh, 0Ah
                       DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_word_written DB "Optimize configuration word written.", 0Dh, 0Ah, '$'
@@ -426,7 +421,6 @@ msg_cfg_fd_eeprom_write_fail DB "EEPROM write timed out while writing full duple
 msg_cfg_fd_verified DB "EEPROM full duplex mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_fd_live_verified DB "Live Network Diagnostic full duplex mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_fd_verify_fail DB "Full duplex configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_fd_completed DB 0Dh, 0Ah, "Full duplex configuration completed successfully.", 0Dh, 0Ah, '$'
 msg_cfg_fd_not_capable DB "This adapter does not support full duplex configuration.", 0Dh, 0Ah, '$'
 msg_cfg_fd_unsupported_card DB "Full duplex is not supported for this card type.", 0Dh, 0Ah, '$'
 msg_cfg_fd_capability_read_fail DB "Hardware capability data is unavailable for full duplex configuration.", 0Dh, 0Ah, '$'
@@ -7886,62 +7880,7 @@ ENDP Cfg_Txn_Report_Prospective
 PROC Cfg_Txn_Report_Success NEAR
     push    dx
 
-    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
-    jnz     @@Generic
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jnz     @@Generic
-    test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jnz     @@Generic
-    test    [cfg_parse_flags], CFG_PARSE_TR
-    jnz     @@Generic
-    test    [cfg_parse_flags], CFG_PARSE_PNP
-    jz      @@NoPNP
-    test    [cfg_parse_flags], CFG_PARSE_IOBASE
-    jnz     @@Generic
-    test    [cfg_parse_flags], CFG_PARSE_INT
-    jnz     @@Generic
-    test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jnz     @@Generic
-    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    jnz     @@Generic
-    mov     dx, OFFSET msg_cfg_pnp_completed
-    jmp     @@Print
-@@Generic:
     mov     dx, OFFSET msg_cfg_txn_completed
-    jmp     @@Print
-@@NoPNP:
-    test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@NoMODEM
-    test    [cfg_parse_flags], CFG_PARSE_IOBASE
-    jnz     @@Generic
-    test    [cfg_parse_flags], CFG_PARSE_INT
-    jnz     @@Generic
-    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    jnz     @@Generic
-    mov     dx, OFFSET msg_cfg_modem_completed
-    jmp     @@Print
-@@NoMODEM:
-    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    jz      @@NoFD
-    test    [cfg_parse_flags], CFG_PARSE_IOBASE
-    jnz     @@Generic
-    test    [cfg_parse_flags], CFG_PARSE_INT
-    jnz     @@Generic
-    mov     dx, OFFSET msg_cfg_fd_completed
-    jmp     @@Print
-@@NoFD:
-    test    [cfg_parse_flags], CFG_PARSE_IOBASE
-    jz      @@INTOnly
-    test    [cfg_parse_flags], CFG_PARSE_INT
-    jz      @@IOOnly
-    mov     dx, OFFSET msg_cfg_combined_completed
-    jmp     @@Print
-@@IOOnly:
-    mov     dx, OFFSET msg_cfg_iobase_completed
-    jmp     @@Print
-@@INTOnly:
-    mov     dx, OFFSET msg_cfg_completed
-@@Print:
     mov     ah, 09h
     int     21h
     pop     dx

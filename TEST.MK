@@ -151,7 +151,7 @@ t0203:
    @echo [t0203] CONFIGURE /INT transition to 5  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 > $(ARTIFACTS)\T0203.LOG
    FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T0203.LOG > NUL
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0203.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0203.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0203.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T0203.LOG > NUL
    @echo [t0203] PASSED  >> $(TESTLOG)
@@ -160,7 +160,7 @@ t0204:
    @echo [t0204] CONFIGURE /INT transition back to 9  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 > $(ARTIFACTS)\T0204.LOG
    FIND "INT parameter accepted. Requested IRQ: 9" $(ARTIFACTS)\T0204.LOG > NUL
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0204.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0204.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0204.LOG
    FIND "IRQ = 9" $(ARTIFACTS)\T0204.LOG > NUL
    @echo [t0204] PASSED  >> $(TESTLOG)
@@ -170,7 +170,7 @@ t0205:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0205.LOG
    $(BINAPP) CONFIGURE /INT:5 >> $(ARTIFACTS)\T0205.LOG
    FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T0205.LOG > NUL
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T0205.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0205.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0205.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T0205.LOG > NUL
    @echo [t0205] PASSED  >> $(TESTLOG)
@@ -208,7 +208,7 @@ t0404:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0404.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0280 >> $(ARTIFACTS)\T0404.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T0404.LOG > NUL
-   FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0404.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0404.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0404.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T0404.LOG > NUL
    @echo [t0404] PASSED  >> $(TESTLOG)
@@ -218,7 +218,7 @@ t0406:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0406.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:280 >> $(ARTIFACTS)\T0406.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T0406.LOG > NUL
-   FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T0406.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0406.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0406.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T0406.LOG > NUL
    @echo [t0406] PASSED  >> $(TESTLOG)
@@ -252,7 +252,7 @@ t0501:
    FIND "Plug and Play configuration word written." $(ARTIFACTS)\T0501.LOG > NUL
    FIND "Updating EEPROM checksum" $(ARTIFACTS)\T0501.LOG > NUL
    FIND "EEPROM checksum updated." $(ARTIFACTS)\T0501.LOG > NUL
-   FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0501.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0501.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0501.LOG
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0501.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T0501.LOG > NUL
@@ -262,7 +262,7 @@ t0502:
    @echo [t0502] CONFIGURE /PNP transition back to enabled  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED /VERBOSE > $(ARTIFACTS)\T0502.LOG
    FIND "PNP parameter accepted. Requested Plug and Play mode: enabled" $(ARTIFACTS)\T0502.LOG > NUL
-   FIND "Plug and Play configuration completed successfully." $(ARTIFACTS)\T0502.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0502.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED /VERBOSE >> $(ARTIFACTS)\T0502.LOG
    FIND "Plug and Play mode is already configured to the requested value." $(ARTIFACTS)\T0502.LOG > NUL
    FIND "No hardware changes required." $(ARTIFACTS)\T0502.LOG > NUL
@@ -284,7 +284,7 @@ t0601:
    @echo [t0601] CONFIGURE /MODEM transition to 1200  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 > $(ARTIFACTS)\T0601.LOG
    FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T0601.LOG > NUL
-   FIND "Modem speed configuration completed successfully." $(ARTIFACTS)\T0601.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0601.LOG > NUL
    @echo [t0601] PASSED  >> $(TESTLOG)
 
 t0602:
@@ -298,7 +298,7 @@ t0603:
    @echo [t0603] CONFIGURE /MODEM transition to NONE  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:NONE > $(ARTIFACTS)\T0603.LOG
    FIND "MODEM parameter accepted. Requested setting: none" $(ARTIFACTS)\T0603.LOG > NUL
-   FIND "Modem speed configuration completed successfully." $(ARTIFACTS)\T0603.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0603.LOG > NUL
    @echo [t0603] PASSED  >> $(TESTLOG)
 
 t0604:
@@ -402,7 +402,7 @@ t0701:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0701.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T0701.LOG
    FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T0701.LOG > NUL
-   FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0701.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0701.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0701.LOG > NUL
    @echo [t0701] PASSED  >> $(TESTLOG)
 
@@ -418,7 +418,7 @@ t0703:
    @echo [t0703] CONFIGURE /FULLDUPLEX transition to disabled  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED /VERBOSE > $(ARTIFACTS)\T0703.LOG
    FIND "FULLDUPLEX parameter accepted. Requested mode: disabled" $(ARTIFACTS)\T0703.LOG > NUL
-   FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0703.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0703.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0703.LOG > NUL
    @echo [t0703] PASSED  >> $(TESTLOG)
 
@@ -457,7 +457,7 @@ t0708:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0708.LOG
    FIND "Full duplex can only be enabled with the TP transceiver." $(ARTIFACTS)\T0708.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0708.LOG
-   FIND "Full duplex configuration completed successfully." $(ARTIFACTS)\T0708.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0708.LOG > NUL
    @echo [t0708] PASSED  >> $(TESTLOG)
 
 t0710:
@@ -510,7 +510,7 @@ t0723:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /OPTIMIZE:DOS /VERBOSE >> $(ARTIFACTS)\T0723.LOG
    FIND "EEPROM modem speed setting verified." $(ARTIFACTS)\T0723.LOG > NUL
    FIND "EEPROM optimize mode verified." $(ARTIFACTS)\T0723.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0723.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0723.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0723.LOG
    FIND "(1200 bd)" $(ARTIFACTS)\T0723.LOG > NUL
    FIND "Optimization = DOS" $(ARTIFACTS)\T0723.LOG > NUL
@@ -535,7 +535,7 @@ t0726:
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0726.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T0726.LOG
    CALL $(ASSERTERS)\NFIND.BAT "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0726.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0726.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0726.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0726.LOG
    FIND "Transceiver = external" $(ARTIFACTS)\T0726.LOG > NUL
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0726.LOG > NUL
@@ -546,7 +546,7 @@ t0727:
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0727.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0727.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T0727.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0727.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0727.LOG > NUL
    FIND "NOTICE: Full Duplex was automatically disabled for the selected transceiver." $(ARTIFACTS)\T0727.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0727.LOG
    FIND "Transceiver = external" $(ARTIFACTS)\T0727.LOG > NUL
@@ -573,7 +573,7 @@ t0901:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:OS/2 /VERBOSE >> $(ARTIFACTS)\T0901.LOG
    FIND "New EEPROM word 0Dh: Windows or OS/2" $(ARTIFACTS)\T0901.LOG > NUL
    FIND "Optimize configuration word written." $(ARTIFACTS)\T0901.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0901.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0901.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0901.LOG
    FIND "Optimization = Windows or OS/2" $(ARTIFACTS)\T0901.LOG > NUL
    @echo [t0901] PASSED  >> $(TESTLOG)
@@ -589,7 +589,7 @@ t0902:
 t0903:
    @echo [t0903] CONFIGURE /OPTIMIZE transition to SERVER >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER > $(ARTIFACTS)\T0903.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0903.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0903.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0903.LOG
    FIND "Optimization = Server" $(ARTIFACTS)\T0903.LOG > NUL
    @echo [t0903] PASSED  >> $(TESTLOG)
@@ -597,7 +597,7 @@ t0903:
 t0904:
    @echo [t0904] CONFIGURE /OPTIMIZE transition to DOS >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:DOS > $(ARTIFACTS)\T0904.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T0904.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T0904.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0904.LOG
    FIND "Optimization = DOS" $(ARTIFACTS)\T0904.LOG > NUL
    @echo [t0904] PASSED  >> $(TESTLOG)
@@ -618,7 +618,7 @@ t1101:
    @echo [t1101] CONFIGURE /BADDRESS minimum valid address with /BSIZE:16 >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1101.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:16 >> $(ARTIFACTS)\T1101.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1101.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1101.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1101.LOG
    FIND "Boot ROM = 16K at C0000H" $(ARTIFACTS)\T1101.LOG > NUL
    @echo [t1101] PASSED  >> $(TESTLOG)
@@ -627,7 +627,7 @@ t1102:
    @echo [t1102] CONFIGURE /BSIZE then /BADDRESS ordering >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1102.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:16 /BADDRESS:C0000 >> $(ARTIFACTS)\T1102.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1102.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1102.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1102.LOG
    FIND "Boot ROM = 16K at C0000H" $(ARTIFACTS)\T1102.LOG > NUL
    @echo [t1102] PASSED  >> $(TESTLOG)
@@ -636,7 +636,7 @@ t1103:
    @echo [t1103] CONFIGURE /BADDRESS+/BSIZE reconfigure to a new pair >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM32K > $(ARTIFACTS)\T1103.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:D0000 /BSIZE:32 >> $(ARTIFACTS)\T1103.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1103.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1103.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1103.LOG
    FIND "Boot ROM = 32K at D0000H" $(ARTIFACTS)\T1103.LOG > NUL
    @echo [t1103] PASSED  >> $(TESTLOG)
@@ -645,7 +645,7 @@ t1104:
    @echo [t1104] /BSIZE:DISABLED succeeds without a detected Boot ROM >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1104.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\T1104.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1104.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1104.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1104.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1104.LOG > NUL
    @echo [t1104] PASSED  >> $(TESTLOG)
@@ -726,7 +726,7 @@ t1115:
    @echo [t1115] CONFIGURE 8K at C2000 >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM8K > $(ARTIFACTS)\T1115.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 >> $(ARTIFACTS)\T1115.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1115.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1115.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1115.LOG
    FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1115.LOG > NUL
    @echo [t1115] PASSED  >> $(TESTLOG)
@@ -741,7 +741,7 @@ t1117:
    @echo [t1117] CONFIGURE 32K 3C509B at C4000 >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM32K > $(ARTIFACTS)\T1117.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C4000 /BSIZE:32 >> $(ARTIFACTS)\T1117.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1117.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1117.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1117.LOG
    FIND "Boot ROM = 32K at C4000H" $(ARTIFACTS)\T1117.LOG > NUL
    @echo [t1117] PASSED  >> $(TESTLOG)
@@ -750,7 +750,7 @@ t1118:
    @echo [t1118] CONFIGURE 32K 3C509B at DC000 >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM32K > $(ARTIFACTS)\T1118.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:DC000 /BSIZE:32 >> $(ARTIFACTS)\T1118.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1118.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1118.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1118.LOG
    FIND "Boot ROM = 32K at DC000H" $(ARTIFACTS)\T1118.LOG > NUL
    @echo [t1118] PASSED  >> $(TESTLOG)
@@ -770,7 +770,7 @@ t1120:
    $(BINAPP) CONFIGURE /VERBOSE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1120.LOG
    FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1120.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "already configured to the requested value" $(ARTIFACTS)\T1120.LOG
-   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1120.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed" $(ARTIFACTS)\T1120.LOG
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1120.LOG
    FIND "Boot ROM Size Valid = no" $(ARTIFACTS)\T1120.LOG > NUL
    FIND "Secondary EEPROM checksum = valid" $(ARTIFACTS)\T1120.LOG > NUL
@@ -783,7 +783,7 @@ t1122:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1122.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /INT:5 >> $(ARTIFACTS)\T1122.LOG
    FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1122.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1122.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1122.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1122.LOG
    FIND "Boot ROM = disabled" $(ARTIFACTS)\T1122.LOG > NUL
    FIND "IRQ = 5" $(ARTIFACTS)\T1122.LOG > NUL
@@ -814,7 +814,7 @@ t1128:
    ${SEEDAPP} INIT /ROM8K > $(ARTIFACTS)\T1128.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 /VERBOSE >> $(ARTIFACTS)\T1128.LOG
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1128.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1128.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1128.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1128.LOG
    FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1128.LOG > NUL
    @echo [t1128] PASSED  >> $(TESTLOG)
@@ -824,7 +824,7 @@ t1129:
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1129.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T1129.LOG
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1129.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1129.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1129.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1129.LOG
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1129.LOG > NUL
    @echo [t1129] PASSED  >> $(TESTLOG)
@@ -834,7 +834,7 @@ t1130:
    ${SEEDAPP} INIT /ROM32K > $(ARTIFACTS)\T1130.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:32 /VERBOSE >> $(ARTIFACTS)\T1130.LOG
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1130.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1130.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1130.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1130.LOG
    FIND "Boot ROM = 32K at C8000H" $(ARTIFACTS)\T1130.LOG > NUL
    @echo [t1130] PASSED  >> $(TESTLOG)
@@ -845,7 +845,7 @@ t1131:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /IOBASE:0280 /VERBOSE >> $(ARTIFACTS)\T1131.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T1131.LOG > NUL
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1131.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1131.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1131.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1131.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T1131.LOG > NUL
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1131.LOG > NUL
@@ -858,7 +858,7 @@ t1132:
    FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1132.LOG > NUL
    FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1132.LOG > NUL
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1132.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1132.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1132.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1132.LOG
    FIND "Transceiver = external" $(ARTIFACTS)\T1132.LOG > NUL
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1132.LOG > NUL
@@ -870,7 +870,7 @@ t1133:
    @echo [t1133] enabled Boot ROM can be fully disabled and verified >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1133.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1133.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1133.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1133.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED /VERBOSE >> $(ARTIFACTS)\T1133.LOG
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1133.LOG > NUL
    $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1133.LOG
@@ -884,7 +884,7 @@ t1134:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1134.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /INT:5 /VERBOSE >> $(ARTIFACTS)\T1134.LOG
    FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1134.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1134.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1134.LOG > NUL
    FIND "EEPROM IRQ verified: 5" $(ARTIFACTS)\T1134.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "Live Boot ROM configuration verified." $(ARTIFACTS)\T1134.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T1134.LOG
@@ -896,7 +896,7 @@ t1135:
    @echo [t1135] combined Boot ROM + /PNP transaction >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1135.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /PNP:DISABLED /VERBOSE >> $(ARTIFACTS)\T1135.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1135.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1135.LOG > NUL
    FIND "EEPROM Boot ROM base address verified." $(ARTIFACTS)\T1135.LOG > NUL
    FIND "EEPROM Boot ROM size verified." $(ARTIFACTS)\T1135.LOG > NUL
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1135.LOG > NUL
@@ -911,7 +911,7 @@ t1136:
    @echo [t1136] idempotent Boot ROM re-request reports no changes >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1136.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 >> $(ARTIFACTS)\T1136.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1136.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1136.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T1136.LOG
    FIND "Boot ROM base address is already configured to the requested value." $(ARTIFACTS)\T1136.LOG > NUL
    FIND "Boot ROM size is already configured to the requested value." $(ARTIFACTS)\T1136.LOG > NUL
@@ -963,7 +963,7 @@ t1205:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /VERBOSE >> $(ARTIFACTS)\T1205.LOG
    FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1205.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1205.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1205.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1205.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1205.LOG > NUL
    @echo [t1205] PASSED  >> $(TESTLOG)
@@ -1031,7 +1031,7 @@ t1302:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1302.LOG
    $(BINAPP) CONFIGURE -ADAPTERNUM:1 -INT:5 >> $(ARTIFACTS)\T1302.LOG
    FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T1302.LOG > NUL
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1302.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1302.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1302.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1302.LOG > NUL
    @echo [t1302] PASSED  >> $(TESTLOG)
@@ -1041,7 +1041,7 @@ t1303:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1303.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM=1 /INT=5 >> $(ARTIFACTS)\T1303.LOG
    FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T1303.LOG > NUL
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1303.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1303.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1303.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1303.LOG > NUL
    @echo [t1303] PASSED  >> $(TESTLOG)
@@ -1087,7 +1087,7 @@ t1308:
    @echo [t1308] CONFIGURE token boundaries and arguments >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1308.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 >> $(ARTIFACTS)\T1308.LOG
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1308.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1308.LOG > NUL
    $(BINAPP) CONFIGUREXYZ >> $(ARTIFACTS)\T1308.LOG
    FIND "Usage: 3CCFGCLI [COMMAND]" $(ARTIFACTS)\T1308.LOG > NUL
    @echo [t1308] PASSED  >> $(TESTLOG)
@@ -1115,7 +1115,7 @@ t1401:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0280 /INT:5 /VERBOSE >> $(ARTIFACTS)\T1401.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T1401.LOG > NUL
    FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T1401.LOG > NUL
-   FIND "IOBASE and IRQ configuration completed successfully." $(ARTIFACTS)\T1401.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1401.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1401.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T1401.LOG > NUL
    FIND "IRQ = 5" $(ARTIFACTS)\T1401.LOG > NUL
@@ -1130,7 +1130,7 @@ t1402:
    FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T1402.LOG > NUL
    FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T1402.LOG > NUL
    FIND "New EEPROM word 0Dh: " $(ARTIFACTS)\T1402.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1402.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1402.LOG > NUL
    @echo [t1402] PASSED  >> $(TESTLOG)
 
 t1403:
@@ -1139,7 +1139,7 @@ t1403:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0280 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T1403.LOG
    FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T1403.LOG > NUL
    FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1403.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1403.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1403.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1403.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T1403.LOG > NUL
    FIND "Transceiver = external" $(ARTIFACTS)\T1403.LOG > NUL
@@ -1151,7 +1151,7 @@ t1405:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER /MODEM:1200 /VERBOSE >> $(ARTIFACTS)\T1405.LOG
    FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T1405.LOG > NUL
    FIND "New EEPROM word 0Dh: Server" $(ARTIFACTS)\T1405.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1405.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1405.LOG > NUL
    @echo [t1405] PASSED  >> $(TESTLOG)
 
 t1406:
@@ -1159,7 +1159,7 @@ t1406:
    ${SEEDAPP} 3C509B-COMBO /ROM16K > $(ARTIFACTS)\T1406.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T1406.LOG
    FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1406.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1406.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1406.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1406.LOG
    FIND "Transceiver = auto select" $(ARTIFACTS)\T1406.LOG > NUL
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1406.LOG > NUL
@@ -1213,7 +1213,7 @@ t1503:
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1503.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 /INT:5 >> $(ARTIFACTS)\T1503.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /INT:7 >> $(ARTIFACTS)\T1503.LOG
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1503.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1503.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1503.LOG
    FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1503.LOG > NUL
    FIND "IOBASE = 0310, IRQ = 7" $(ARTIFACTS)\T1503.LOG > NUL
@@ -1225,7 +1225,7 @@ t1504:
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1504.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 /INT:5 >> $(ARTIFACTS)\T1504.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:0300 >> $(ARTIFACTS)\T1504.LOG
-   FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T1504.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1504.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1504.LOG
    FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1504.LOG > NUL
    FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1504.LOG > NUL
@@ -1239,7 +1239,7 @@ t1505:
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1505.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1505.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:0310 >> $(ARTIFACTS)\T1505.LOG
-   FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T1505.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1505.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1505.LOG
    FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1505.LOG > NUL
    FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1505.LOG > NUL
@@ -1274,7 +1274,7 @@ t1507:
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 /ROM16K >> $(ARTIFACTS)\T1507.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 /INT:5 >> $(ARTIFACTS)\T1507.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:0300 /MODEM:9600 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T1507.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1507.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1507.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1507.LOG
    FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1507.LOG > NUL
    FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1507.LOG > NUL
@@ -1305,7 +1305,7 @@ t1508:
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1508.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1508.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /INT:7 >> $(ARTIFACTS)\T1508.LOG
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1508.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1508.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1508.LOG
    FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1508.LOG > NUL
    FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1508.LOG > NUL
@@ -1319,7 +1319,7 @@ t1509:
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1509.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1509.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /INT:7 /TR:AUI >> $(ARTIFACTS)\T1509.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1509.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1509.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1509.LOG
    FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1509.LOG > NUL
    FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1509.LOG > NUL
@@ -1338,7 +1338,7 @@ t1511:
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1511.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1511.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 >> $(ARTIFACTS)\T1511.LOG
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1511.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1511.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1511.LOG
    FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1511.LOG > NUL
    FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1511.LOG > NUL
@@ -1364,7 +1364,7 @@ t1512:
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1512.LOG
    ${SEEDAPP} ADD 3C509B-COAX /IOBASE:0300 /INT:3 >> $(ARTIFACTS)\T1512.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /INT:7 >> $(ARTIFACTS)\T1512.LOG
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1512.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1512.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1512.LOG
    FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1512.LOG > NUL
    FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1512.LOG > NUL
@@ -1382,7 +1382,7 @@ t1513:
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1513.LOG
    ${SEEDAPP} ADD 3C509B-COAX /IOBASE:0310 /INT:3 >> $(ARTIFACTS)\T1513.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:3 /IOBASE:0310 >> $(ARTIFACTS)\T1513.LOG
-   FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T1513.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1513.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1513.LOG
    FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1513.LOG > NUL
    FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1513.LOG > NUL
@@ -1408,9 +1408,9 @@ t1514:
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1514.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 /INT:5 >> $(ARTIFACTS)\T1514.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /INT:7 >> $(ARTIFACTS)\T1514.LOG
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1514.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1514.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 >> $(ARTIFACTS)\T1514.LOG
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1514.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1514.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1514.LOG
    FIND "IOBASE = 0300, IRQ = 9" $(ARTIFACTS)\T1514.LOG > NUL
    FIND "IOBASE = 0310, IRQ = 7" $(ARTIFACTS)\T1514.LOG > NUL
@@ -1472,7 +1472,7 @@ t1606:
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1606.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0280 /INT:5 /PNP:ENABLED /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T1606.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /OPTIMIZE:SERVER /BADDRESS:C8000 /BSIZE:16 /TR:TP >> $(ARTIFACTS)\T1606.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1606.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1606.LOG > NUL
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\RESTORE.BAT /EXECFILE:$(BINAPP) >> $(ARTIFACTS)\T1606.LOG
    FIND "BIN\3CHWMOCK.EXE CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /TR:TP" $(ARTIFACTS)\RESTORE.BAT > NUL
    ${SEEDAPP} INIT /ROM16K >> $(ARTIFACTS)\T1606.LOG
@@ -1666,7 +1666,7 @@ t1623:
    @echo [t1623] SAVECONFIG normalizes a 16K Boot ROM at C0000 (selector alias) >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM16K > $(ARTIFACTS)\T1623.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:16 >> $(ARTIFACTS)\T1623.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1623.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1623.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1623.LOG
    FIND "Boot ROM = 16K at C0000H" $(ARTIFACTS)\T1623.LOG > NUL
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1623.BAT /EXECFILE:$(BINAPP) >> $(ARTIFACTS)\T1623.LOG
@@ -1678,7 +1678,7 @@ t1624:
    @echo [t1624] SAVECONFIG normalizes a 32K Boot ROM at C0000 (selector alias) >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM32K > $(ARTIFACTS)\T1624.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:32 >> $(ARTIFACTS)\T1624.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1624.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1624.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1624.LOG
    FIND "Boot ROM = 32K at C0000H" $(ARTIFACTS)\T1624.LOG > NUL
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1624.BAT /EXECFILE:$(BINAPP) >> $(ARTIFACTS)\T1624.LOG
@@ -1689,7 +1689,7 @@ t1625:
    @echo [t1625] SAVECONFIG still exports an unaliased 8K Boot ROM at C2000 >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM8K > $(ARTIFACTS)\T1625.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 >> $(ARTIFACTS)\T1625.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1625.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1625.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1625.LOG
    FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1625.LOG > NUL
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1625.BAT /EXECFILE:$(BINAPP) >> $(ARTIFACTS)\T1625.LOG
@@ -1710,9 +1710,9 @@ t1627:
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1627.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1627.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER >> $(ARTIFACTS)\T1627.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1627.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1627.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /MODEM:9600 >> $(ARTIFACTS)\T1627.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1627.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1627.LOG > NUL
    @if exist $(ARTIFACTS)\T1627.BAT del $(ARTIFACTS)\T1627.BAT
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1627.BAT >> $(ARTIFACTS)\T1627.LOG
    FIND "Configuration restore batch file created" $(ARTIFACTS)\T1627.LOG > NUL
@@ -1735,7 +1735,7 @@ t1701:
    @echo [t1701] INT+PNP verification chain without /VERBOSE >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1701.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 /PNP:DISABLED >> $(ARTIFACTS)\T1701.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1701.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1701.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1701.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1701.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1701.LOG > NUL
@@ -1748,7 +1748,7 @@ t1702:
    FIND "EEPROM IRQ verified: 5" $(ARTIFACTS)\T1702.LOG > NUL
    FIND "Live IRQ verified: 5" $(ARTIFACTS)\T1702.LOG > NUL
    FIND "EEPROM Plug and Play mode verified." $(ARTIFACTS)\T1702.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1702.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1702.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1702.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1702.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1702.LOG > NUL
@@ -1758,7 +1758,7 @@ t1703:
    @echo [t1703] unchanged INT+PNP verification chain without /VERBOSE >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1703.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:10 /PNP:DISABLED >> $(ARTIFACTS)\T1703.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1703.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1703.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1703.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T1703.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1703.LOG > NUL
@@ -1770,7 +1770,7 @@ t1704:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:10 /PNP:DISABLED /VERBOSE >> $(ARTIFACTS)\T1704.LOG
    FIND "IRQ is already configured to the requested value." $(ARTIFACTS)\T1704.LOG > NUL
    FIND "EEPROM Plug and Play mode verified." $(ARTIFACTS)\T1704.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1704.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1704.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1704.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T1704.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1704.LOG > NUL
@@ -1780,7 +1780,7 @@ t1705:
    @echo [t1705] PNP+MODEM verification chain without /VERBOSE >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1705.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED /MODEM:9600 >> $(ARTIFACTS)\T1705.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1705.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1705.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1705.LOG
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1705.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1705.LOG > NUL
@@ -1792,7 +1792,7 @@ t1706:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED /MODEM:9600 /VERBOSE >> $(ARTIFACTS)\T1706.LOG
    FIND "EEPROM Plug and Play mode verified." $(ARTIFACTS)\T1706.LOG > NUL
    FIND "EEPROM modem speed setting verified." $(ARTIFACTS)\T1706.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1706.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1706.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1706.LOG
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1706.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1706.LOG > NUL
@@ -1802,7 +1802,7 @@ t1707:
    @echo [t1707] FULLDUPLEX+OPTIMIZE verification chain without /VERBOSE >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1707.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /OPTIMIZE:SERVER >> $(ARTIFACTS)\T1707.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1707.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1707.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1707.LOG
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T1707.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1707.LOG > NUL
@@ -1814,7 +1814,7 @@ t1708:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /OPTIMIZE:SERVER /VERBOSE >> $(ARTIFACTS)\T1708.LOG
    FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T1708.LOG > NUL
    FIND "EEPROM optimize mode verified." $(ARTIFACTS)\T1708.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1708.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1708.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1708.LOG
    FIND "Full Duplex = enabled" $(ARTIFACTS)\T1708.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1708.LOG > NUL
@@ -1839,7 +1839,7 @@ t1710:
    FIND "EEPROM optimize mode verified." $(ARTIFACTS)\T1710.LOG > NUL
    FIND "EEPROM Boot ROM base address verified." $(ARTIFACTS)\T1710.LOG > NUL
    FIND "EEPROM Boot ROM size verified." $(ARTIFACTS)\T1710.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1710.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1710.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1710.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1710.LOG > NUL
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1710.LOG > NUL
@@ -1854,7 +1854,7 @@ t1713:
    ${SEEDAPP} 3C509B-COMBO > $(ARTIFACTS)\T1713.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T1713.LOG
    FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1713.LOG > NUL
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1713.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1713.LOG > NUL
    @echo [t1713] PASSED  >> $(TESTLOG)
 
 t1714:
@@ -1887,7 +1887,7 @@ t1802:
    ${SEEDAPP} 3C509-TP > $(ARTIFACTS)\T1802.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED >> $(ARTIFACTS)\T1802.LOG
    FIND "PNP is not supported for this card type." $(ARTIFACTS)\T1802.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1802.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed" $(ARTIFACTS)\T1802.LOG
    @echo [t1802] PASSED  >> $(TESTLOG)
 
 t1803:
@@ -1895,7 +1895,7 @@ t1803:
    ${SEEDAPP} 3C509-TP > $(ARTIFACTS)\T1803.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T1803.LOG
    FIND "Full duplex is not supported for this card type." $(ARTIFACTS)\T1803.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1803.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed" $(ARTIFACTS)\T1803.LOG
    @echo [t1803] PASSED  >> $(TESTLOG)
 
 t1804:
@@ -1903,7 +1903,7 @@ t1804:
    ${SEEDAPP} 3C509-TP > $(ARTIFACTS)\T1804.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1804.LOG
    FIND "AUTO transceiver selection requires a 3C509B-generation adapter." $(ARTIFACTS)\T1804.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1804.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed" $(ARTIFACTS)\T1804.LOG
    @echo [t1804] PASSED  >> $(TESTLOG)
 
 t1805:
@@ -1911,17 +1911,17 @@ t1805:
    ${SEEDAPP} 3C509-TP > $(ARTIFACTS)\T1805.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:8 >> $(ARTIFACTS)\T1805.LOG
    FIND "Boot ROM configuration requires a 3C509B-generation adapter." $(ARTIFACTS)\T1805.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "completed successfully." $(ARTIFACTS)\T1805.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed" $(ARTIFACTS)\T1805.LOG
    @echo [t1805] PASSED  >> $(TESTLOG)
 
 t1806:
    @echo [t1806] combined valid + reject options perform no partial write >> $(TESTLOG)
    ${SEEDAPP} 3C509-TP > $(ARTIFACTS)\T1806.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:3 >> $(ARTIFACTS)\T1806.LOG
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1806.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1806.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 /PNP:DISABLED >> $(ARTIFACTS)\T1806.LOG
    FIND "PNP is not supported for this card type." $(ARTIFACTS)\T1806.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed successfully." $(ARTIFACTS)\T1806.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "Configuration completed" $(ARTIFACTS)\T1806.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T1806.LOG
    FIND "IRQ = 3" $(ARTIFACTS)\T1806.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "IRQ = 5" $(ARTIFACTS)\T1806.LOG
@@ -1931,7 +1931,7 @@ t1807:
    @echo [t1807] common CONFIGURE properties on 3C509-TP (ASIC revision 1) >> $(TESTLOG)
    ${SEEDAPP} 3C509-TP > $(ARTIFACTS)\T1807.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 /IOBASE:0210 /MODEM:9600 /OPTIMIZE:SERVER /TR:TP >> $(ARTIFACTS)\T1807.LOG
-   FIND "Configuration completed successfully." $(ARTIFACTS)\T1807.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1807.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1807.LOG
    FIND "IOBASE = 0210, IRQ = 5" $(ARTIFACTS)\T1807.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1807.LOG > NUL
@@ -1963,7 +1963,7 @@ t1901:
    @echo [t1901] single PIC permits low IRQ without warning  >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1901.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 >> $(ARTIFACTS)\T1901.LOG
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1901.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1901.LOG > NUL
    CALL $(ASSERTERS)\NFIND.BAT "secondary interrupt controller" $(ARTIFACTS)\T1901.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T1901.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1901.LOG > NUL
@@ -1975,7 +1975,7 @@ t1902:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 >> $(ARTIFACTS)\T1902.LOG
    FIND "WARNING: IRQ 9 requires a secondary interrupt controller," $(ARTIFACTS)\T1902.LOG > NUL
    FIND "but no secondary PIC was detected on this system." $(ARTIFACTS)\T1902.LOG > NUL
-   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1902.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T1902.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1902.LOG
    FIND "IRQ = 9" $(ARTIFACTS)\T1902.LOG > NUL
    @echo [t1902] PASSED  >> $(TESTLOG)

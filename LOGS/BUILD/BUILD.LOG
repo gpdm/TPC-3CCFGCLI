@@ -20,19 +20,15 @@ Log directory  : LOGS/BUILD
 Artifact dir   : LOGS/BUILD/ARTIFACT
 Makefile       : MAKEFILE
 JUnit file     : LOGS/BUILD/BUILD.JUNIT.XML
-Test groups    : 1
+
+Report summary
+==============
+
+Active groups  : 1
 Tests defined  : 7
 Tests passed   : 7
 Tests failed   : 0
 Tests skipped  : 0
-
-MAKE test groups
-================
-
-BUILD:
-  header      : BLD0xx
-  description : None
-  tests       : bld001 bld002 bld003 bld004 bld005 bld006 bld007
 
 Test results
 ============
