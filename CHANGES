@@ -20,6 +20,8 @@ Changelog 0.7.9
     EEPROM constants in 3CCFGCLI with existing symbolic definitions.
   - Cleanup: replaced direct DOS string output calls with the shared
     Print_String routine where register semantics are equivalent.
+  - Cleanup: consolidated property-specific inactive CONFIGURE diagnostics
+    into one shared message while preserving the existing error-code slots.
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete

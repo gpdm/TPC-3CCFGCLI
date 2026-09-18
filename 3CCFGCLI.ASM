@@ -347,15 +347,10 @@ msg_cfg_live_verified DB "Live IRQ verified: ", '$'
 msg_cfg_checksum_fail DB "EEPROM checksum update failed.", 0Dh, 0Ah, '$'
 msg_cfg_live_fail DB "Live IRQ configuration update failed.", 0Dh, 0Ah, '$'
 msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_int_inactive DB "Selected adapter has no active IOBASE for /INT configuration.", 0Dh, 0Ah, '$'
-msg_cfg_pnp_inactive DB "Selected adapter has no active IOBASE for /PNP configuration.", 0Dh, 0Ah, '$'
-msg_cfg_modem_inactive DB "Selected adapter has no active IOBASE for /MODEM configuration.", 0Dh, 0Ah, '$'
-msg_cfg_optimize_inactive DB "Selected adapter has no active IOBASE for /OPTIMIZE configuration.", 0Dh, 0Ah, '$'
-msg_cfg_fd_inactive DB "Selected adapter has no active IOBASE for /FULLDUPLEX configuration.", 0Dh, 0Ah, '$'
+msg_cfg_inactive DB "Selected adapter has no active IOBASE for configuration.", 0Dh, 0Ah, '$'
 
 ; /IOBASE diagnostics.
 msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_inactive DB "Selected adapter has no active IOBASE for /IOBASE configuration.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_deactivate_fail DB "Selected adapter deactivation failed before IOBASE migration.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_reactivate_fail DB "Adapter reactivation at the requested IOBASE failed.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_live_fail DB "Live I/O configuration access or update failed.", 0Dh, 0Ah, '$'
@@ -412,8 +407,6 @@ msg_cfg_bad_bsize DB "Invalid /BSIZE parameter. Use 8, 16, 32, or DISABLED.", 0D
 msg_cfg_bootrom_incomplete DB "/BADDRESS and /BSIZE must be specified together (or use /BSIZE:DISABLED alone to disable).", 0Dh, 0Ah, '$'
 msg_cfg_baddress_ok DB "BADDRESS parameter accepted. Requested base address: ", '$'
 msg_cfg_bsize_ok DB "BSIZE parameter accepted. Requested size: ", '$'
-msg_cfg_baddress_inactive DB "Selected adapter has no active IOBASE for /BADDRESS configuration.", 0Dh, 0Ah, '$'
-msg_cfg_bsize_inactive DB "Selected adapter has no active IOBASE for /BSIZE configuration.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_unchanged DB 0Dh, 0Ah, "Boot ROM base address is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_unchanged DB 0Dh, 0Ah, "Boot ROM size is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_word_written DB "Boot ROM configuration word written.", 0Dh, 0Ah, '$'
@@ -430,7 +423,6 @@ msg_cfg_bootrom_unsupported_card DB "Boot ROM configuration requires a 3C509B-ge
 ; /TR (/XCVR) diagnostics.  Transceiver selection shares EEPROM word 08h
 ; bits 15:14 (and bit 7 for AUTO) with /IOBASE, /BADDRESS, and /BSIZE.
 msg_cfg_bad_tr DB "Invalid /TR parameter. Use TP, AUI, COAX, or AUTO.", 0Dh, 0Ah, '$'
-msg_cfg_tr_inactive DB "Selected adapter has no active IOBASE for /TR configuration.", 0Dh, 0Ah, '$'
 msg_cfg_tr_not_capable DB "This adapter does not support the requested transceiver type.", 0Dh, 0Ah, '$'
 msg_cfg_tr_auto_unsupported_card DB "AUTO transceiver selection requires a 3C509B-generation adapter.", 0Dh, 0Ah, '$'
 msg_cfg_tr_capability_read_fail DB "Hardware connector capability data is unavailable for transceiver configuration.", 0Dh, 0Ah, '$'
@@ -847,9 +839,9 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_checksum_fail                 ; 17 CFG_ERR_CHECKSUM_UPDATE
     DW      OFFSET msg_cfg_live_fail                     ; 18 CFG_ERR_LIVE_UPDATE
     DW      OFFSET msg_cfg_verify_fail                   ; 19 CFG_ERR_VERIFY
-    DW      OFFSET msg_cfg_int_inactive                  ; 20 CFG_ERR_INT_INACTIVE
+    DW      OFFSET msg_cfg_inactive                      ; 20 CFG_ERR_INT_INACTIVE
     DW      OFFSET msg_cfg_bad_iobase                    ; 21 CFG_ERR_BAD_IOBASE
-    DW      OFFSET msg_cfg_iobase_inactive               ; 22 CFG_ERR_IOBASE_INACTIVE
+    DW      OFFSET msg_cfg_inactive                      ; 22 CFG_ERR_IOBASE_INACTIVE
     DW      0                                             ; 23 CFG_ERR_IOBASE_CONFLICT, retired
     DW      OFFSET msg_cfg_iobase_deactivate_fail        ; 24 CFG_ERR_IOBASE_DEACTIVATE
     DW      OFFSET msg_cfg_iobase_reactivate_fail        ; 25 CFG_ERR_IOBASE_REACTIVATE
@@ -859,42 +851,42 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_iobase_verify_fail            ; 29 CFG_ERR_IOBASE_VERIFY
     DW      OFFSET msg_cfg_iobase_activate_fail          ; 30 CFG_ERR_IOBASE_ACTIVATE
     DW      OFFSET msg_cfg_bad_pnp                       ; 31 CFG_ERR_BAD_PNP
-    DW      OFFSET msg_cfg_pnp_inactive                  ; 32 CFG_ERR_PNP_INACTIVE
+    DW      OFFSET msg_cfg_inactive                      ; 32 CFG_ERR_PNP_INACTIVE
     DW      0                                             ; 33 CFG_ERR_PNP_EEPROM_READ, retired
     DW      0                                             ; 34 CFG_ERR_PNP_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_pnp_verify_fail               ; 35 CFG_ERR_PNP_VERIFY
     DW      OFFSET msg_cfg_bad_modem                     ; 36 CFG_ERR_BAD_MODEM
-    DW      OFFSET msg_cfg_modem_inactive                ; 37 CFG_ERR_MODEM_INACTIVE
+    DW      OFFSET msg_cfg_inactive                      ; 37 CFG_ERR_MODEM_INACTIVE
     DW      0                                             ; 38 CFG_ERR_MODEM_EEPROM_READ, retired
     DW      0                                             ; 39 CFG_ERR_MODEM_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_modem_verify_fail             ; 40 CFG_ERR_MODEM_VERIFY
     DW      OFFSET msg_cfg_pnp_not_capable               ; 41 CFG_ERR_PNP_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_fullduplex                ; 42 CFG_ERR_BAD_FULLDUPLEX
-    DW      OFFSET msg_cfg_fd_inactive                   ; 43 CFG_ERR_FD_INACTIVE
+    DW      OFFSET msg_cfg_inactive                      ; 43 CFG_ERR_FD_INACTIVE
     DW      0                                             ; 44 CFG_ERR_FD_EEPROM_READ, retired
     DW      0                                             ; 45 CFG_ERR_FD_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_fd_verify_fail                ; 46 CFG_ERR_FD_VERIFY
     DW      OFFSET msg_cfg_fd_not_capable                ; 47 CFG_ERR_FD_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_optimize                  ; 48 CFG_ERR_BAD_OPTIMIZE
-    DW      OFFSET msg_cfg_optimize_inactive             ; 49 CFG_ERR_OPTIMIZE_INACTIVE
+    DW      OFFSET msg_cfg_inactive                      ; 49 CFG_ERR_OPTIMIZE_INACTIVE
     DW      0                                             ; 50 CFG_ERR_OPTIMIZE_EEPROM_READ, retired
     DW      0                                             ; 51 CFG_ERR_OPTIMIZE_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_optimize_verify_fail          ; 52 CFG_ERR_OPTIMIZE_VERIFY
     DW      OFFSET msg_cfg_bad_baddress                  ; 53 CFG_ERR_BAD_BADDRESS
-    DW      OFFSET msg_cfg_baddress_inactive             ; 54 CFG_ERR_BADDRESS_INACTIVE
+    DW      OFFSET msg_cfg_inactive                      ; 54 CFG_ERR_BADDRESS_INACTIVE
     DW      0                                             ; 55 CFG_ERR_BADDRESS_EEPROM_READ, retired
     DW      0                                             ; 56 CFG_ERR_BADDRESS_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_baddress_verify_fail          ; 57 CFG_ERR_BADDRESS_VERIFY
     DW      OFFSET msg_cfg_baddress_not_capable          ; 58 CFG_ERR_BADDRESS_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_bsize                     ; 59 CFG_ERR_BAD_BSIZE
-    DW      OFFSET msg_cfg_bsize_inactive                ; 60 CFG_ERR_BSIZE_INACTIVE
+    DW      OFFSET msg_cfg_inactive                      ; 60 CFG_ERR_BSIZE_INACTIVE
     DW      0                                             ; 61 CFG_ERR_BSIZE_EEPROM_READ, retired
     DW      0                                             ; 62 CFG_ERR_BSIZE_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_bsize_verify_fail             ; 63 CFG_ERR_BSIZE_VERIFY
     DW      0                                             ; 64 CFG_ERR_BSIZE_NOT_CAPABLE, retired
     DW      OFFSET msg_cfg_bootrom_incomplete            ; 65 CFG_ERR_BOOTROM_INCOMPLETE
     DW      OFFSET msg_cfg_bad_tr                        ; 66 CFG_ERR_BAD_TR
-    DW      OFFSET msg_cfg_tr_inactive                   ; 67 CFG_ERR_TR_INACTIVE
+    DW      OFFSET msg_cfg_inactive                      ; 67 CFG_ERR_TR_INACTIVE
     DW      0                                             ; 68 CFG_ERR_TR_EEPROM_READ, retired
     DW      0                                             ; 69 CFG_ERR_TR_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_tr_verify_fail                ; 70 CFG_ERR_TR_VERIFY
