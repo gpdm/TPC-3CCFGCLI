@@ -143,6 +143,25 @@ It is not a serialization defect.
 `SAVECONFIG` is expected to generate valid supported CLI configuration, not a bit exact representation of every technically possible EEPROM state.
 
 
+## No CLI Exit Code Support
+
+### Decision
+
+`3CCFGCLI` does not currently implement distinct DOS process exit codes for success or failure conditions.
+
+The program exits with the same process return code regardless of the result of the requested operation.
+
+### Rationale
+
+There is currently no clear practical benefit from introducing a separate exit code model.
+
+`3CCFGCLI` is expected to be used primarily as an interactive, one off configuration utility. Outside the project's own regression tests, it is unlikely to be a significant component of automated DOS batch workflows that depend on `ERRORLEVEL`.
+
+This also follows the behavior of the original 3Com configuration utility, which did not provide a meaningful CLI exit code interface.
+
+For these reasons, implementing distinct exit codes is not currently considered necessary.
+
+
 ## Unsupported IRQ Values In EEPROM
 
 ### Decision
