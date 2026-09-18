@@ -170,13 +170,13 @@ CFG_ERR_NONE                EQU 0
 CFG_ERR_NO_NIC              EQU 1
 CFG_ERR_BAD_ADAPTER         EQU 2
 CFG_ERR_REVALIDATE          EQU 3
-CFG_ERR_UNSUPPORTED_PRODUCT EQU 4
-CFG_ERR_UNSUPPORTED_ASIC    EQU 5
+CFG_ERR_UNSUPPORTED_PRODUCT EQU 4       ; retired; slot retained for compatibility
+CFG_ERR_UNSUPPORTED_ASIC    EQU 5       ; retired; slot retained for compatibility
 CFG_ERR_EEPROM_TIMEOUT      EQU 6
-CFG_ERR_COMMAND_TIMEOUT     EQU 7
+CFG_ERR_COMMAND_TIMEOUT     EQU 7       ; retired; slot retained for compatibility
 CFG_ERR_BAD_OPTION          EQU 8
 CFG_ERR_MISSING_VALUE       EQU 9
-CFG_ERR_NOT_IMPLEMENTED     EQU 10
+CFG_ERR_NOT_IMPLEMENTED     EQU 10      ; retired; slot retained for compatibility
 CFG_ERR_ADAPTER_REQUIRED    EQU 11
 CFG_ERR_DUP_PROPERTY        EQU 12
 CFG_ERR_NO_PROPERTY         EQU 13
@@ -210,7 +210,7 @@ CFG_ERR_MODEM_VERIFY        EQU 40
 CFG_ERR_PNP_NOT_CAPABLE     EQU 41
 CFG_ERR_BAD_FULLDUPLEX      EQU 42
 CFG_ERR_FD_INACTIVE         EQU 43
-CFG_ERR_FD_EEPROM_READ      EQU 44
+CFG_ERR_FD_EEPROM_READ      EQU 44      ; retired; slot retained for compatibility
 CFG_ERR_FD_EEPROM_WRITE     EQU 45
 CFG_ERR_FD_VERIFY           EQU 46
 CFG_ERR_FD_NOT_CAPABLE      EQU 47
@@ -227,15 +227,15 @@ CFG_ERR_BADDRESS_VERIFY     EQU 57
 CFG_ERR_BADDRESS_NOT_CAPABLE EQU 58
 CFG_ERR_BAD_BSIZE           EQU 59
 CFG_ERR_BSIZE_INACTIVE      EQU 60
-CFG_ERR_BSIZE_EEPROM_READ   EQU 61
+CFG_ERR_BSIZE_EEPROM_READ   EQU 61      ; retired; slot retained for compatibility
 CFG_ERR_BSIZE_EEPROM_WRITE  EQU 62
 CFG_ERR_BSIZE_VERIFY        EQU 63
-CFG_ERR_BSIZE_NOT_CAPABLE   EQU 64
+CFG_ERR_BSIZE_NOT_CAPABLE   EQU 64      ; retired; slot retained for compatibility
 CFG_ERR_BOOTROM_INCOMPLETE  EQU 65
 CFG_ERR_BAD_TR              EQU 66
 CFG_ERR_TR_INACTIVE         EQU 67
-CFG_ERR_TR_EEPROM_READ      EQU 68
-CFG_ERR_TR_EEPROM_WRITE     EQU 69
+CFG_ERR_TR_EEPROM_READ      EQU 68      ; retired; slot retained for compatibility
+CFG_ERR_TR_EEPROM_WRITE     EQU 69      ; retired; slot retained for compatibility
 CFG_ERR_TR_VERIFY           EQU 70
 CFG_ERR_TR_NOT_CAPABLE      EQU 71
 CFG_ERR_TR_CAPABILITY_READ  EQU 72
@@ -312,14 +312,10 @@ msg_cfg_bad_adapter DB "Invalid ADAPTERNUM value.", 0Dh, 0Ah, '$'
 msg_cfg_need_adapter DB "ADAPTERNUM is required when more than one adapter is installed.", 0Dh, 0Ah, '$'
 msg_cfg_dup_property DB "Duplicate CONFIGURE property.", 0Dh, 0Ah, '$'
 msg_cfg_revalidate DB "Selected adapter no longer matches the discovered NIC.", 0Dh, 0Ah, '$'
-msg_cfg_unsupported_product DB "Unsupported EtherLink III product.", 0Dh, 0Ah, '$'
-msg_cfg_unsupported_asic DB "Unsupported ASIC revision.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_timeout DB "EEPROM access timed out.", 0Dh, 0Ah, '$'
-msg_cfg_command_timeout DB "Adapter command timed out.", 0Dh, 0Ah, '$'
 msg_cfg_bad_option DB "Invalid CONFIGURE option.", 0Dh, 0Ah, '$'
 msg_cfg_missing_value DB "Missing CONFIGURE option value.", 0Dh, 0Ah, '$'
 msg_cfg_no_property DB "No CONFIGURE property was specified.", 0Dh, 0Ah, '$'
-msg_cfg_not_implemented DB "CONFIGURE option not implemented in this release.", 0Dh, 0Ah, '$'
 msg_cfg_bad_int DB "Invalid /INT parameter. Value must be either of", 0Dh, 0Ah
                 DB "Systems with 8-bit Bus: 3, 5, 7", 0Dh, 0Ah
                 DB "Systems with 16-bit Bus: 3, 5, 7, 9, 10, 11, 12, or 15.", 0Dh, 0Ah, '$'
@@ -415,7 +411,6 @@ msg_cfg_fullduplex_ok DB "FULLDUPLEX parameter accepted. Requested mode: ", '$'
 msg_cfg_fd_unchanged DB 0Dh, 0Ah, "Full duplex mode is already configured to the requested value.", 0Dh, 0Ah
                      DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_fd_word_written DB "Full duplex configuration word written.", 0Dh, 0Ah, '$'
-msg_cfg_fd_eeprom_read_fail DB "EEPROM read timed out while reading full duplex configuration.", 0Dh, 0Ah, '$'
 msg_cfg_fd_eeprom_write_fail DB "EEPROM write timed out while writing full duplex configuration.", 0Dh, 0Ah, '$'
 msg_cfg_fd_verified DB "EEPROM full duplex mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_fd_live_verified DB "Live Network Diagnostic full duplex mode verified.", 0Dh, 0Ah, '$'
@@ -448,12 +443,10 @@ msg_cfg_baddress_verify_fail DB "Boot ROM base address configuration verificatio
 msg_cfg_baddress_not_capable DB "This adapter does not support Boot ROM configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_not_detected DB "No valid Boot ROM detected at the requested address.", 0Dh, 0Ah
                              DB "Boot ROM configuration was skipped.", 0Dh, 0Ah, '$'
-msg_cfg_bsize_eeprom_read_fail DB "EEPROM read timed out while reading Boot ROM size configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_eeprom_write_fail DB "EEPROM write timed out while writing Boot ROM size configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verified DB "EEPROM Boot ROM size verified.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_live_verified DB "Live Boot ROM configuration verified.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verify_fail DB "Boot ROM size configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_bsize_not_capable DB "This adapter does not support Boot ROM configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_unsupported_card DB "Boot ROM configuration requires a 3C509B-generation adapter.", 0Dh, 0Ah, '$'
 
 ; /TR (/XCVR) diagnostics.  Transceiver selection shares EEPROM word 08h
@@ -466,8 +459,6 @@ msg_cfg_tr_capability_read_fail DB "Hardware connector capability data is unavai
 msg_cfg_tr_ok DB "TR parameter accepted. Requested transceiver: ", '$'
 msg_cfg_tr_unchanged DB 0Dh, 0Ah, "Transceiver type is already configured to the requested value.", 0Dh, 0Ah
                DB "No hardware changes required.", 0Dh, 0Ah, '$'
-msg_cfg_tr_eeprom_read_fail DB "EEPROM read timed out while reading transceiver configuration.", 0Dh, 0Ah, '$'
-msg_cfg_tr_eeprom_write_fail DB "EEPROM write timed out while writing transceiver configuration.", 0Dh, 0Ah, '$'
 msg_cfg_tr_verified DB "EEPROM transceiver selection verified.", 0Dh, 0Ah, '$'
 msg_cfg_tr_verify_fail DB "Transceiver configuration verification failed.", 0Dh, 0Ah, '$'
 
@@ -863,13 +854,13 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_no_cards                          ; 1 CFG_ERR_NO_NIC
     DW      OFFSET msg_cfg_bad_adapter                   ; 2 CFG_ERR_BAD_ADAPTER
     DW      OFFSET msg_cfg_revalidate                    ; 3 CFG_ERR_REVALIDATE
-    DW      OFFSET msg_cfg_unsupported_product           ; 4 CFG_ERR_UNSUPPORTED_PRODUCT
-    DW      OFFSET msg_cfg_unsupported_asic              ; 5 CFG_ERR_UNSUPPORTED_ASIC
+    DW      0                                             ; 4 CFG_ERR_UNSUPPORTED_PRODUCT, retired
+    DW      0                                             ; 5 CFG_ERR_UNSUPPORTED_ASIC, retired
     DW      OFFSET msg_cfg_eeprom_timeout                ; 6 CFG_ERR_EEPROM_TIMEOUT
-    DW      OFFSET msg_cfg_command_timeout               ; 7 CFG_ERR_COMMAND_TIMEOUT
+    DW      0                                             ; 7 CFG_ERR_COMMAND_TIMEOUT, retired
     DW      OFFSET msg_cfg_bad_option                    ; 8 CFG_ERR_BAD_OPTION
     DW      OFFSET msg_cfg_missing_value                 ; 9 CFG_ERR_MISSING_VALUE
-    DW      OFFSET msg_cfg_not_implemented               ; 10 CFG_ERR_NOT_IMPLEMENTED
+    DW      0                                             ; 10 CFG_ERR_NOT_IMPLEMENTED, retired
     DW      OFFSET msg_cfg_need_adapter                  ; 11 CFG_ERR_ADAPTER_REQUIRED
     DW      OFFSET msg_cfg_dup_property                  ; 12 CFG_ERR_DUP_PROPERTY
     DW      OFFSET msg_cfg_no_property                   ; 13 CFG_ERR_NO_PROPERTY
@@ -903,7 +894,7 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_pnp_not_capable               ; 41 CFG_ERR_PNP_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_fullduplex                ; 42 CFG_ERR_BAD_FULLDUPLEX
     DW      OFFSET msg_cfg_fd_inactive                   ; 43 CFG_ERR_FD_INACTIVE
-    DW      OFFSET msg_cfg_fd_eeprom_read_fail           ; 44 CFG_ERR_FD_EEPROM_READ
+    DW      0                                             ; 44 CFG_ERR_FD_EEPROM_READ, retired
     DW      OFFSET msg_cfg_fd_eeprom_write_fail          ; 45 CFG_ERR_FD_EEPROM_WRITE
     DW      OFFSET msg_cfg_fd_verify_fail                ; 46 CFG_ERR_FD_VERIFY
     DW      OFFSET msg_cfg_fd_not_capable                ; 47 CFG_ERR_FD_NOT_CAPABLE
@@ -920,15 +911,15 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_baddress_not_capable          ; 58 CFG_ERR_BADDRESS_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_bsize                     ; 59 CFG_ERR_BAD_BSIZE
     DW      OFFSET msg_cfg_bsize_inactive                ; 60 CFG_ERR_BSIZE_INACTIVE
-    DW      OFFSET msg_cfg_bsize_eeprom_read_fail        ; 61 CFG_ERR_BSIZE_EEPROM_READ
+    DW      0                                             ; 61 CFG_ERR_BSIZE_EEPROM_READ, retired
     DW      OFFSET msg_cfg_bsize_eeprom_write_fail       ; 62 CFG_ERR_BSIZE_EEPROM_WRITE
     DW      OFFSET msg_cfg_bsize_verify_fail             ; 63 CFG_ERR_BSIZE_VERIFY
-    DW      OFFSET msg_cfg_bsize_not_capable             ; 64 CFG_ERR_BSIZE_NOT_CAPABLE
+    DW      0                                             ; 64 CFG_ERR_BSIZE_NOT_CAPABLE, retired
     DW      OFFSET msg_cfg_bootrom_incomplete            ; 65 CFG_ERR_BOOTROM_INCOMPLETE
     DW      OFFSET msg_cfg_bad_tr                        ; 66 CFG_ERR_BAD_TR
     DW      OFFSET msg_cfg_tr_inactive                   ; 67 CFG_ERR_TR_INACTIVE
-    DW      OFFSET msg_cfg_tr_eeprom_read_fail           ; 68 CFG_ERR_TR_EEPROM_READ
-    DW      OFFSET msg_cfg_tr_eeprom_write_fail          ; 69 CFG_ERR_TR_EEPROM_WRITE
+    DW      0                                             ; 68 CFG_ERR_TR_EEPROM_READ, retired
+    DW      0                                             ; 69 CFG_ERR_TR_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_tr_verify_fail                ; 70 CFG_ERR_TR_VERIFY
     DW      OFFSET msg_cfg_tr_not_capable                ; 71 CFG_ERR_TR_NOT_CAPABLE
     DW      OFFSET msg_cfg_tr_capability_read_fail       ; 72 CFG_ERR_TR_CAPABILITY_READ
