@@ -1,6 +1,6 @@
-3CSEED - 3C509B mock state seeder v0.7.8
+3CSEED - 3C509B mock state seeder v0.7.9
 Seed file created (3C509B-COMBO).
-3Com EtherLink III CLI Configuration Program v0.7.8
+3Com EtherLink III CLI Configuration Program v0.7.9
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -42,7 +42,7 @@ EEPROM transceiver selection verified.
 Final IOBASE activated: 0280
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.7.8
+3Com EtherLink III CLI Configuration Program v0.7.9
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2

@@ -12,6 +12,10 @@ Changelog 0.7.9
     condition, with property-specific read error fallbacks retired.
   - Retired unreachable property-specific EEPROM write errors; failed writes
     now consistently propagate the shared EEPROM Busy condition.
+  - CONFIGURE unchanged-property messages now describe only the unchanged
+    property. The global "No hardware changes required." message is emitted
+    once only when the complete CONFIGURE transaction requires no hardware or
+    EEPROM changes.
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete

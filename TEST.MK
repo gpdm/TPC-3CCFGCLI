@@ -412,6 +412,7 @@ t0702:
    FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T0702.LOG > NUL
    FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0702.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0702.LOG > NUL
+   FIND "No hardware changes required." $(ARTIFACTS)\T0702.LOG > NUL
    @echo [t0702] PASSED  >> $(TESTLOG)
 
 t0703:
@@ -1770,6 +1771,7 @@ t1704:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:10 /PNP:DISABLED /VERBOSE >> $(ARTIFACTS)\T1704.LOG
    FIND "IRQ is already configured to the requested value." $(ARTIFACTS)\T1704.LOG > NUL
    FIND "EEPROM Plug and Play mode verified." $(ARTIFACTS)\T1704.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "No hardware changes required." $(ARTIFACTS)\T1704.LOG
    FIND "Configuration completed" $(ARTIFACTS)\T1704.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1704.LOG
    FIND "IRQ = 10" $(ARTIFACTS)\T1704.LOG > NUL
@@ -1862,6 +1864,7 @@ t1714:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1714.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /VERBOSE >> $(ARTIFACTS)\T1714.LOG
    FIND "Transceiver type is already configured to the requested value." $(ARTIFACTS)\T1714.LOG > NUL
+   FIND "No hardware changes required." $(ARTIFACTS)\T1714.LOG > NUL
    @echo [t1714] PASSED  >> $(TESTLOG)
 
 t18xx:

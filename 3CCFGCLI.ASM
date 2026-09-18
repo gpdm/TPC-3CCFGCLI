@@ -338,8 +338,7 @@ msg_cfg_current_word0d DB "Current EEPROM word 0Dh: ", '$'
 msg_cfg_new_word09 DB "New EEPROM word 09h: ", '$'
 msg_cfg_new_word0d DB "New EEPROM word 0Dh: ", '$'
 msg_cfg_prepare_active DB 0Dh, 0Ah, "Preparing adapter using original ISA activation sequence...", 0Dh, 0Ah, '$'
-msg_cfg_irq_unchanged DB 0Dh, 0Ah, "IRQ is already configured to the requested value.", 0Dh, 0Ah
-                      DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_irq_unchanged DB 0Dh, 0Ah, "IRQ is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_irq_word_written DB "IRQ configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_update_checksum DB 0Dh, 0Ah, "Updating EEPROM checksum...", 0Dh, 0Ah, '$'
 msg_cfg_checksum_updated DB "EEPROM checksum updated.", 0Dh, 0Ah, '$'
@@ -371,26 +370,22 @@ msg_cfg_current_live08 DB "Current live Resource Configuration: ", '$'
 msg_cfg_new_word08 DB "New EEPROM word 08h: ", '$'
 msg_cfg_new_live06 DB "New live Address Configuration: ", '$'
 msg_cfg_new_live08 DB "New live Resource Configuration: ", '$'
-msg_cfg_iobase_unchanged DB 0Dh, 0Ah, "IOBASE is already configured to the requested value.", 0Dh, 0Ah
-                         DB "No IOBASE hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_iobase_unchanged DB 0Dh, 0Ah, "IOBASE is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_deactivate_iobase DB 0Dh, 0Ah, "Deactivating selected adapter at old IOBASE...", 0Dh, 0Ah, '$'
 msg_cfg_reactivate_iobase DB "Reactivating adapter at working IOBASE...", 0Dh, 0Ah, '$'
 msg_cfg_iobase_word_written DB "I/O configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_iobase_verified DB "EEPROM final IOBASE verified: ", '$'
 msg_cfg_live_iobase_verified DB "Working IOBASE verified: ", '$'
 msg_cfg_final_iobase_activated DB "Final IOBASE activated: ", '$'
-msg_cfg_pnp_unchanged DB 0Dh, 0Ah, "Plug and Play mode is already configured to the requested value.", 0Dh, 0Ah
-                      DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_unchanged DB 0Dh, 0Ah, "Plug and Play mode is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_word_written DB "Plug and Play configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_verified DB "EEPROM Plug and Play mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_verify_fail DB "Plug and Play configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_modem_unchanged DB 0Dh, 0Ah, "Modem speed setting is already configured to the requested value.", 0Dh, 0Ah
-                        DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_modem_unchanged DB 0Dh, 0Ah, "Modem speed setting is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_modem_word_written DB "Modem speed configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_modem_verified DB "EEPROM modem speed setting verified.", 0Dh, 0Ah, '$'
 msg_cfg_modem_verify_fail DB "Modem speed configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_optimize_unchanged DB 0Dh, 0Ah, "Optimize mode is already configured to the requested value.", 0Dh, 0Ah
-                      DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_optimize_unchanged DB 0Dh, 0Ah, "Optimize mode is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_word_written DB "Optimize configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_verified DB "EEPROM optimize mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_verify_fail DB "Optimize mode configuration verification failed.", 0Dh, 0Ah, '$'
@@ -398,8 +393,7 @@ msg_cfg_pnp_not_capable DB "This adapter does not support Plug and Play configur
 msg_cfg_pnp_unsupported_card DB "PNP is not supported for this card type.", 0Dh, 0Ah, '$'
 msg_cfg_bad_fullduplex DB "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_fullduplex_ok DB "FULLDUPLEX parameter accepted. Requested mode: ", '$'
-msg_cfg_fd_unchanged DB 0Dh, 0Ah, "Full duplex mode is already configured to the requested value.", 0Dh, 0Ah
-                     DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_fd_unchanged DB 0Dh, 0Ah, "Full duplex mode is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_fd_word_written DB "Full duplex configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_fd_verified DB "EEPROM full duplex mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_fd_live_verified DB "Live Network Diagnostic full duplex mode verified.", 0Dh, 0Ah, '$'
@@ -420,10 +414,8 @@ msg_cfg_baddress_ok DB "BADDRESS parameter accepted. Requested base address: ", 
 msg_cfg_bsize_ok DB "BSIZE parameter accepted. Requested size: ", '$'
 msg_cfg_baddress_inactive DB "Selected adapter has no active IOBASE for /BADDRESS configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_inactive DB "Selected adapter has no active IOBASE for /BSIZE configuration.", 0Dh, 0Ah, '$'
-msg_cfg_baddress_unchanged DB 0Dh, 0Ah, "Boot ROM base address is already configured to the requested value.", 0Dh, 0Ah
-                           DB "No hardware changes required.", 0Dh, 0Ah, '$'
-msg_cfg_bsize_unchanged DB 0Dh, 0Ah, "Boot ROM size is already configured to the requested value.", 0Dh, 0Ah
-                        DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_baddress_unchanged DB 0Dh, 0Ah, "Boot ROM base address is already configured to the requested value.", 0Dh, 0Ah, '$'
+msg_cfg_bsize_unchanged DB 0Dh, 0Ah, "Boot ROM size is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_word_written DB "Boot ROM configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_verified DB "EEPROM Boot ROM base address verified.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_verify_fail DB "Boot ROM base address configuration verification failed.", 0Dh, 0Ah, '$'
@@ -443,8 +435,7 @@ msg_cfg_tr_not_capable DB "This adapter does not support the requested transceiv
 msg_cfg_tr_auto_unsupported_card DB "AUTO transceiver selection requires a 3C509B-generation adapter.", 0Dh, 0Ah, '$'
 msg_cfg_tr_capability_read_fail DB "Hardware connector capability data is unavailable for transceiver configuration.", 0Dh, 0Ah, '$'
 msg_cfg_tr_ok DB "TR parameter accepted. Requested transceiver: ", '$'
-msg_cfg_tr_unchanged DB 0Dh, 0Ah, "Transceiver type is already configured to the requested value.", 0Dh, 0Ah
-               DB "No hardware changes required.", 0Dh, 0Ah, '$'
+msg_cfg_tr_unchanged DB 0Dh, 0Ah, "Transceiver type is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_tr_verified DB "EEPROM transceiver selection verified.", 0Dh, 0Ah, '$'
 msg_cfg_tr_verify_fail DB "Transceiver configuration verification failed.", 0Dh, 0Ah, '$'
 
@@ -8335,6 +8326,7 @@ PROC Cfg_Txn_Execute NEAR
     jnz     @@Preflight
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jnz     @@SyncUnchangedFD
+@@ReportNoChanges:
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_txn_no_changes
@@ -8344,7 +8336,7 @@ PROC Cfg_Txn_Execute NEAR
 @@SyncUnchangedFD:
     call    Cfg_Txn_Sync_Live_FullDuplex
     jc      @@Done
-    jmp     @@Success
+    jmp     @@ReportNoChanges
 
 @@Preflight:
     call    Cfg_Txn_Preflight
