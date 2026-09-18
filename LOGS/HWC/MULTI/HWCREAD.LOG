@@ -55,3 +55,7 @@ Configuration restore batch file created: MULTI\ARTIFACT\HWCRREST.BAT
 Hardware Compliance Read checks completed. 
 Taking post-configuration dump using 3C5X9CFG 
 Hardware Compliance Test PASSED. 
+HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
+[hwcs001].[multi] Verifying specific Multi-NIC properties
+[hwcs001].[multi] PASSED
+HWC SET verification: run completed

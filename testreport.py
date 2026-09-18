@@ -140,7 +140,14 @@ def parse_arguments():
         "-verbose",
         dest="verbose",
         action="store_true",
-        help="Enable verbose output"
+        help="Enable verbose report output"
+    )
+
+    parser.add_argument(
+        "-debug",
+        dest="debug",
+        action="store_true",
+        help="Enable parser debug output"
     )
 
     return parser.parse_args()
@@ -773,14 +780,7 @@ def main():
         groups = build_test_groups(targets)
         started, passed, nonfails, headers = parse_logfile(args.logfile)
 
-        if args.verbose:
-            print(f"Log file       : {args.logfile}")
-            print(f"Log directory  : {log_dir}")
-            print(f"Artifact dir   : {artifact_dir}")
-            print(f"Makefile       : {args.makefile}")
-            print(f"JUnit file     : {junit_file}")
-            print(f"Parsed groups  : {len(groups)}")
-
+        if args.debug:
             print_makefile_debug(
                 targets,
                 groups,
@@ -790,12 +790,13 @@ def main():
 
         groups = select_active_groups(groups, headers)
 
-        if args.verbose:
+        if args.debug:
             print_makefile_debug(
                 targets,
                 groups,
                 "Active MAKE test groups",
             )
+            sys.stdout.flush()
 
         results, failed_test = classify_results(
             groups,
@@ -835,8 +836,13 @@ def main():
         for status in results.values()
     )
 
-    # let's see what was going on when parsing ...
     if args.verbose:
+        print(f"Log file       : {args.logfile}")
+        print(f"Log directory  : {log_dir}")
+        print(f"Artifact dir   : {artifact_dir}")
+        print(f"Makefile       : {args.makefile}")
+        print(f"JUnit file     : {junit_file}")
+        print()
         print("Report summary")
         print("==============")
         print()

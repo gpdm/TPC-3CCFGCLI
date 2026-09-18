@@ -98,7 +98,7 @@ PIC_GATE: t19xx t1901 t1902
 # NOTE: This group is deliberately not included in smoke-core.
 #       The HWCSET names intentionally do not use the tNNNN namespace, because
 #       these checks are not part of the normal test.sh regression count.
-HWC_SET_VERIFY: hwcs001
+#HWC_SET_VERIFY: hwcs001
 hwc_set_verify: hwcs0xx hwcs001-$(HWC_CARD) hwcs-complete
 
 

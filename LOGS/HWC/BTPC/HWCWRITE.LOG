@@ -58,3 +58,8 @@ Configuration restore batch file created: BTPC\ARTIFACT\HWCWREST.BAT
 Hardware Compliance Write checks completed. 
 Taking post-configuration dump using 3C5X9CFG 
 Hardware Compliance Test PASSED. 
+HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
+[hwcs001].[common] Verify 3C5X9CFG post HWC configuration dump
+[hwcs001].[btpc] Verifying specific 3C509B-TPCoax properties
+[hwcs001].[btpc] PASSED
+HWC SET verification: run completed
