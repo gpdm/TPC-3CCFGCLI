@@ -675,25 +675,58 @@ def build_junit_report(
     xml.write(junit_file, pretty=True)
 
 
-# some debug header when parsing the makefile
-def print_makefile_debug(targets, groups):
+# verbose diagnostics for parsed/selected MAKE groups
+def print_makefile_debug(targets, groups, title):
     print()
-    print("MAKE test groups")
-    print("================")
+    print(title)
+    print("=" * len(title))
     print()
+
+    if not groups:
+        print("  <none>")
+        print()
+        return
 
     for group in groups:
         header = group["header"]
+        group_target = targets.get(group["name"], {})
+        header_target = targets.get(header, {})
+
         description = clean_group_description(
             group["name"],
-            targets[header].get("description"),
+            header_target.get("description"),
         )
 
         print(f"{group['name']}:")
+        print(f"  target      : {group['name']}")
+        print(
+            f"  prerequisites: "
+            f"{' '.join(group_target.get('prerequisites', []))}"
+        )
         print(f"  header      : {header}")
         print(f"  description : {description}")
         print(f"  tests       : {' '.join(group['tests'])}")
         print()
+
+
+def print_log_debug(headers, started, passed, nonfails):
+    print("Log parser state")
+    print("================")
+    print()
+    print(f"  headers     : {' '.join(sorted(headers)) or '<none>'}")
+    print(f"  started     : {' '.join(sorted(started)) or '<none>'}")
+    print(f"  passed      : {' '.join(sorted(passed)) or '<none>'}")
+
+    if nonfails:
+        values = " ".join(
+            f"{test_id}={status}"
+            for test_id, status in sorted(nonfails.items())
+        )
+    else:
+        values = "<none>"
+
+    print(f"  non-fail    : {values}")
+    print()
 
 
 # and some debug header for the results
@@ -739,7 +772,31 @@ def main():
         targets = load_makefile(args.makefile)
         groups = build_test_groups(targets)
         started, passed, nonfails, headers = parse_logfile(args.logfile)
+
+        if args.verbose:
+            print(f"Log file       : {args.logfile}")
+            print(f"Log directory  : {log_dir}")
+            print(f"Artifact dir   : {artifact_dir}")
+            print(f"Makefile       : {args.makefile}")
+            print(f"JUnit file     : {junit_file}")
+            print(f"Parsed groups  : {len(groups)}")
+
+            print_makefile_debug(
+                targets,
+                groups,
+                "Parsed MAKE test groups",
+            )
+            print_log_debug(headers, started, passed, nonfails)
+
         groups = select_active_groups(groups, headers)
+
+        if args.verbose:
+            print_makefile_debug(
+                targets,
+                groups,
+                "Active MAKE test groups",
+            )
+
         results, failed_test = classify_results(
             groups,
             started,
@@ -780,18 +837,16 @@ def main():
 
     # let's see what was going on when parsing ...
     if args.verbose:
-        print(f"Log file       : {args.logfile}")
-        print(f"Log directory  : {log_dir}")
-        print(f"Artifact dir   : {artifact_dir}")
-        print(f"Makefile       : {args.makefile}")
-        print(f"JUnit file     : {junit_file}")
-        print(f"Test groups    : {len(groups)}")
+        print("Report summary")
+        print("==============")
+        print()
+        print(f"Active groups  : {len(groups)}")
         print(f"Tests defined  : {len(results)}")
         print(f"Tests passed   : {passed_count}")
         print(f"Tests failed   : {failed_count}")
         print(f"Tests skipped  : {skipped_count}")
+        print()
 
-        print_makefile_debug(targets, groups)
         print_result_debug(groups, targets, started, results)
 
     print(f"JUnit report written: {junit_file}")

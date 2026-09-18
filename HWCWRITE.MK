@@ -266,7 +266,7 @@ hwcw: clean prep HWCW00xx save-config set-default-$(CARDTYPE) hwcw001-$(CARDTYPE
 
 # Two-card, model-independent physical write check. It stays separate from hwcw
 # so the normal compliance run remains valid with only one installed adapter.
-HWCW_MULTI: HWCWM00xx hwcwm001 hwcwm002 hwcwm003 hwcwm004 hwcwm005
+HWCW_MULTI: HWCWM00xx hwcwm001 hwcwm002 hwcwm003 hwcwm004 hwcwm005 hwcs001
 hwcwm: clean prep HWCWM00xx save-config hwcwm001 hwcwm002 hwcwm003 hwcwm004 hwcwm005 complete
 
 

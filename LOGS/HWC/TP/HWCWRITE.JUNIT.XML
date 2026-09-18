@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results" tests="12" failures="0" errors="0" skipped="3" time="0.0">
-	<testsuite name="HWCW_WRITE: Hardware Compliance Write checks for $(CARDNAME)" tests="12" errors="0" failures="0" skipped="3" time="0">
+<testsuites name="3CCFGCLI Test Results" tests="12" failures="1" errors="0" skipped="3" time="0.0">
+	<testsuite name="HWCW_WRITE: Hardware Compliance Write checks for $(CARDNAME)" tests="12" errors="0" failures="1" skipped="3" time="0">
 		<properties>
 			<property name="header_id" value="HWCW00xx"/>
 			<property name="description" value="Hardware Compliance Write checks for $(CARDNAME)"/>
@@ -71,10 +71,11 @@
 			</properties>
 			<skipped message="DISABLED"/>
 		</testcase>
-		<testcase name="hwcs001: Verify 3C5X9CFG post HWC configuration dump" classname="HWCW_WRITE">
+		<testcase name="hwcs001: HWC SET verification: Verify 3C5X9CFG post HWC configuration dump" classname="HWCW_WRITE">
 			<properties>
-				<property name="description" value="Verify 3C5X9CFG post HWC configuration dump"/>
+				<property name="description" value="HWC SET verification: Verify 3C5X9CFG post HWC configuration dump"/>
 			</properties>
+			<failure message="PASSED marker missing" type="assertion">hwcs001 is the first planned test without a PASSED marker.</failure>
 		</testcase>
 	</testsuite>
 </testsuites>
