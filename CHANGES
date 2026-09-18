@@ -10,6 +10,8 @@ Changelog 0.7.9
     stable numeric slots in the error table.
   - Cleanup: failed CONFIGURE EEPROM reads now report the shared EEPROM Busy
     condition, with property-specific read error fallbacks retired.
+  - Retired unreachable property-specific EEPROM write errors; failed writes
+    now consistently propagate the shared EEPROM Busy condition.
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete

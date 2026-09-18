@@ -407,10 +407,11 @@ When a lower level access has already set:
 CFG_ERR_EEPROM_BUSY
 ```
 
-transaction stages check for that error before translating the failure into a property specific error such as:
+transaction stages preserve that error instead of translating the failure into
+a property-specific EEPROM write error. Higher-level errors remain separate,
+including:
 
 ```text
-CFG_ERR_BADDRESS_EEPROM_WRITE
 CFG_ERR_VERIFY
 ```
 

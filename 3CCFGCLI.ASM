@@ -182,7 +182,7 @@ CFG_ERR_DUP_PROPERTY        EQU 12
 CFG_ERR_NO_PROPERTY         EQU 13
 CFG_ERR_BAD_INT             EQU 14
 CFG_ERR_EEPROM_READ         EQU 15      ; retired; slot retained for compatibility
-CFG_ERR_EEPROM_WRITE        EQU 16
+CFG_ERR_EEPROM_WRITE        EQU 16      ; retired; slot retained for compatibility
 CFG_ERR_CHECKSUM_UPDATE     EQU 17
 CFG_ERR_LIVE_UPDATE         EQU 18
 CFG_ERR_VERIFY              EQU 19
@@ -193,42 +193,42 @@ CFG_ERR_IOBASE_CONFLICT     EQU 23      ; retired; slot retained for compatibili
 CFG_ERR_IOBASE_DEACTIVATE   EQU 24
 CFG_ERR_IOBASE_REACTIVATE   EQU 25
 CFG_ERR_IOBASE_EEPROM_READ  EQU 26      ; retired; slot retained for compatibility
-CFG_ERR_IOBASE_EEPROM_WRITE EQU 27
+CFG_ERR_IOBASE_EEPROM_WRITE EQU 27      ; retired; slot retained for compatibility
 CFG_ERR_IOBASE_LIVE         EQU 28
 CFG_ERR_IOBASE_VERIFY       EQU 29
 CFG_ERR_IOBASE_ACTIVATE     EQU 30
 CFG_ERR_BAD_PNP             EQU 31
 CFG_ERR_PNP_INACTIVE        EQU 32
 CFG_ERR_PNP_EEPROM_READ     EQU 33      ; retired; slot retained for compatibility
-CFG_ERR_PNP_EEPROM_WRITE    EQU 34
+CFG_ERR_PNP_EEPROM_WRITE    EQU 34      ; retired; slot retained for compatibility
 CFG_ERR_PNP_VERIFY          EQU 35
 CFG_ERR_BAD_MODEM           EQU 36
 CFG_ERR_MODEM_INACTIVE      EQU 37
 CFG_ERR_MODEM_EEPROM_READ   EQU 38      ; retired; slot retained for compatibility
-CFG_ERR_MODEM_EEPROM_WRITE  EQU 39
+CFG_ERR_MODEM_EEPROM_WRITE  EQU 39      ; retired; slot retained for compatibility
 CFG_ERR_MODEM_VERIFY        EQU 40
 CFG_ERR_PNP_NOT_CAPABLE     EQU 41
 CFG_ERR_BAD_FULLDUPLEX      EQU 42
 CFG_ERR_FD_INACTIVE         EQU 43
 CFG_ERR_FD_EEPROM_READ      EQU 44      ; retired; slot retained for compatibility
-CFG_ERR_FD_EEPROM_WRITE     EQU 45
+CFG_ERR_FD_EEPROM_WRITE     EQU 45      ; retired; slot retained for compatibility
 CFG_ERR_FD_VERIFY           EQU 46
 CFG_ERR_FD_NOT_CAPABLE      EQU 47
 CFG_ERR_BAD_OPTIMIZE        EQU 48
 CFG_ERR_OPTIMIZE_INACTIVE   EQU 49
 CFG_ERR_OPTIMIZE_EEPROM_READ EQU 50     ; retired; slot retained for compatibility
-CFG_ERR_OPTIMIZE_EEPROM_WRITE EQU 51
+CFG_ERR_OPTIMIZE_EEPROM_WRITE EQU 51    ; retired; slot retained for compatibility
 CFG_ERR_OPTIMIZE_VERIFY     EQU 52
 CFG_ERR_BAD_BADDRESS        EQU 53
 CFG_ERR_BADDRESS_INACTIVE   EQU 54
 CFG_ERR_BADDRESS_EEPROM_READ  EQU 55    ; retired; slot retained for compatibility
-CFG_ERR_BADDRESS_EEPROM_WRITE EQU 56
+CFG_ERR_BADDRESS_EEPROM_WRITE EQU 56    ; retired; slot retained for compatibility
 CFG_ERR_BADDRESS_VERIFY     EQU 57
 CFG_ERR_BADDRESS_NOT_CAPABLE EQU 58
 CFG_ERR_BAD_BSIZE           EQU 59
 CFG_ERR_BSIZE_INACTIVE      EQU 60
 CFG_ERR_BSIZE_EEPROM_READ   EQU 61      ; retired; slot retained for compatibility
-CFG_ERR_BSIZE_EEPROM_WRITE  EQU 62
+CFG_ERR_BSIZE_EEPROM_WRITE  EQU 62      ; retired; slot retained for compatibility
 CFG_ERR_BSIZE_VERIFY        EQU 63
 CFG_ERR_BSIZE_NOT_CAPABLE   EQU 64      ; retired; slot retained for compatibility
 CFG_ERR_BOOTROM_INCOMPLETE  EQU 65
@@ -345,7 +345,6 @@ msg_cfg_update_checksum DB 0Dh, 0Ah, "Updating EEPROM checksum...", 0Dh, 0Ah, '$
 msg_cfg_checksum_updated DB "EEPROM checksum updated.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_verified DB "EEPROM IRQ verified: ", '$'
 msg_cfg_live_verified DB "Live IRQ verified: ", '$'
-msg_cfg_eeprom_write_fail DB "EEPROM write timed out while writing IRQ configuration.", 0Dh, 0Ah, '$'
 msg_cfg_checksum_fail DB "EEPROM checksum update failed.", 0Dh, 0Ah, '$'
 msg_cfg_live_fail DB "Live IRQ configuration update failed.", 0Dh, 0Ah, '$'
 msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
@@ -360,7 +359,6 @@ msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 0
 msg_cfg_iobase_inactive DB "Selected adapter has no active IOBASE for /IOBASE configuration.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_deactivate_fail DB "Selected adapter deactivation failed before IOBASE migration.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_reactivate_fail DB "Adapter reactivation at the requested IOBASE failed.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_eeprom_write_fail DB "EEPROM write timed out while writing I/O configuration.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_live_fail DB "Live I/O configuration access or update failed.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_verify_fail DB "IOBASE configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_activate_fail DB "Adapter did not become reachable at the requested IOBASE.", 0Dh, 0Ah, '$'
@@ -384,19 +382,16 @@ msg_cfg_final_iobase_activated DB "Final IOBASE activated: ", '$'
 msg_cfg_pnp_unchanged DB 0Dh, 0Ah, "Plug and Play mode is already configured to the requested value.", 0Dh, 0Ah
                       DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_word_written DB "Plug and Play configuration word written.", 0Dh, 0Ah, '$'
-msg_cfg_pnp_eeprom_write_fail DB "EEPROM write timed out while writing Plug and Play configuration.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_verified DB "EEPROM Plug and Play mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_verify_fail DB "Plug and Play configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_modem_unchanged DB 0Dh, 0Ah, "Modem speed setting is already configured to the requested value.", 0Dh, 0Ah
                         DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_modem_word_written DB "Modem speed configuration word written.", 0Dh, 0Ah, '$'
-msg_cfg_modem_eeprom_write_fail DB "EEPROM write timed out while writing modem speed configuration.", 0Dh, 0Ah, '$'
 msg_cfg_modem_verified DB "EEPROM modem speed setting verified.", 0Dh, 0Ah, '$'
 msg_cfg_modem_verify_fail DB "Modem speed configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_unchanged DB 0Dh, 0Ah, "Optimize mode is already configured to the requested value.", 0Dh, 0Ah
                       DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_word_written DB "Optimize configuration word written.", 0Dh, 0Ah, '$'
-msg_cfg_optimize_eeprom_write_fail DB "EEPROM write timed out while writing optimize configuration.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_verified DB "EEPROM optimize mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_verify_fail DB "Optimize mode configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_not_capable DB "This adapter does not support Plug and Play configuration.", 0Dh, 0Ah, '$'
@@ -406,7 +401,6 @@ msg_cfg_fullduplex_ok DB "FULLDUPLEX parameter accepted. Requested mode: ", '$'
 msg_cfg_fd_unchanged DB 0Dh, 0Ah, "Full duplex mode is already configured to the requested value.", 0Dh, 0Ah
                      DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_fd_word_written DB "Full duplex configuration word written.", 0Dh, 0Ah, '$'
-msg_cfg_fd_eeprom_write_fail DB "EEPROM write timed out while writing full duplex configuration.", 0Dh, 0Ah, '$'
 msg_cfg_fd_verified DB "EEPROM full duplex mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_fd_live_verified DB "Live Network Diagnostic full duplex mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_fd_verify_fail DB "Full duplex configuration verification failed.", 0Dh, 0Ah, '$'
@@ -431,13 +425,11 @@ msg_cfg_baddress_unchanged DB 0Dh, 0Ah, "Boot ROM base address is already config
 msg_cfg_bsize_unchanged DB 0Dh, 0Ah, "Boot ROM size is already configured to the requested value.", 0Dh, 0Ah
                         DB "No hardware changes required.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_word_written DB "Boot ROM configuration word written.", 0Dh, 0Ah, '$'
-msg_cfg_baddress_eeprom_write_fail DB "EEPROM write timed out while writing Boot ROM base address configuration.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_verified DB "EEPROM Boot ROM base address verified.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_verify_fail DB "Boot ROM base address configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_not_capable DB "This adapter does not support Boot ROM configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_not_detected DB "No valid Boot ROM detected at the requested address.", 0Dh, 0Ah
                              DB "Boot ROM configuration was skipped.", 0Dh, 0Ah, '$'
-msg_cfg_bsize_eeprom_write_fail DB "EEPROM write timed out while writing Boot ROM size configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verified DB "EEPROM Boot ROM size verified.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_live_verified DB "Live Boot ROM configuration verified.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verify_fail DB "Boot ROM size configuration verification failed.", 0Dh, 0Ah, '$'
@@ -860,7 +852,7 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_no_property                   ; 13 CFG_ERR_NO_PROPERTY
     DW      OFFSET msg_cfg_bad_int                       ; 14 CFG_ERR_BAD_INT
     DW      0                                             ; 15 CFG_ERR_EEPROM_READ, retired
-    DW      OFFSET msg_cfg_eeprom_write_fail             ; 16 CFG_ERR_EEPROM_WRITE
+    DW      0                                             ; 16 CFG_ERR_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_checksum_fail                 ; 17 CFG_ERR_CHECKSUM_UPDATE
     DW      OFFSET msg_cfg_live_fail                     ; 18 CFG_ERR_LIVE_UPDATE
     DW      OFFSET msg_cfg_verify_fail                   ; 19 CFG_ERR_VERIFY
@@ -871,42 +863,42 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_iobase_deactivate_fail        ; 24 CFG_ERR_IOBASE_DEACTIVATE
     DW      OFFSET msg_cfg_iobase_reactivate_fail        ; 25 CFG_ERR_IOBASE_REACTIVATE
     DW      0                                             ; 26 CFG_ERR_IOBASE_EEPROM_READ, retired
-    DW      OFFSET msg_cfg_iobase_eeprom_write_fail      ; 27 CFG_ERR_IOBASE_EEPROM_WRITE
+    DW      0                                             ; 27 CFG_ERR_IOBASE_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_iobase_live_fail              ; 28 CFG_ERR_IOBASE_LIVE
     DW      OFFSET msg_cfg_iobase_verify_fail            ; 29 CFG_ERR_IOBASE_VERIFY
     DW      OFFSET msg_cfg_iobase_activate_fail          ; 30 CFG_ERR_IOBASE_ACTIVATE
     DW      OFFSET msg_cfg_bad_pnp                       ; 31 CFG_ERR_BAD_PNP
     DW      OFFSET msg_cfg_pnp_inactive                  ; 32 CFG_ERR_PNP_INACTIVE
     DW      0                                             ; 33 CFG_ERR_PNP_EEPROM_READ, retired
-    DW      OFFSET msg_cfg_pnp_eeprom_write_fail         ; 34 CFG_ERR_PNP_EEPROM_WRITE
+    DW      0                                             ; 34 CFG_ERR_PNP_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_pnp_verify_fail               ; 35 CFG_ERR_PNP_VERIFY
     DW      OFFSET msg_cfg_bad_modem                     ; 36 CFG_ERR_BAD_MODEM
     DW      OFFSET msg_cfg_modem_inactive                ; 37 CFG_ERR_MODEM_INACTIVE
     DW      0                                             ; 38 CFG_ERR_MODEM_EEPROM_READ, retired
-    DW      OFFSET msg_cfg_modem_eeprom_write_fail       ; 39 CFG_ERR_MODEM_EEPROM_WRITE
+    DW      0                                             ; 39 CFG_ERR_MODEM_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_modem_verify_fail             ; 40 CFG_ERR_MODEM_VERIFY
     DW      OFFSET msg_cfg_pnp_not_capable               ; 41 CFG_ERR_PNP_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_fullduplex                ; 42 CFG_ERR_BAD_FULLDUPLEX
     DW      OFFSET msg_cfg_fd_inactive                   ; 43 CFG_ERR_FD_INACTIVE
     DW      0                                             ; 44 CFG_ERR_FD_EEPROM_READ, retired
-    DW      OFFSET msg_cfg_fd_eeprom_write_fail          ; 45 CFG_ERR_FD_EEPROM_WRITE
+    DW      0                                             ; 45 CFG_ERR_FD_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_fd_verify_fail                ; 46 CFG_ERR_FD_VERIFY
     DW      OFFSET msg_cfg_fd_not_capable                ; 47 CFG_ERR_FD_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_optimize                  ; 48 CFG_ERR_BAD_OPTIMIZE
     DW      OFFSET msg_cfg_optimize_inactive             ; 49 CFG_ERR_OPTIMIZE_INACTIVE
     DW      0                                             ; 50 CFG_ERR_OPTIMIZE_EEPROM_READ, retired
-    DW      OFFSET msg_cfg_optimize_eeprom_write_fail    ; 51 CFG_ERR_OPTIMIZE_EEPROM_WRITE
+    DW      0                                             ; 51 CFG_ERR_OPTIMIZE_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_optimize_verify_fail          ; 52 CFG_ERR_OPTIMIZE_VERIFY
     DW      OFFSET msg_cfg_bad_baddress                  ; 53 CFG_ERR_BAD_BADDRESS
     DW      OFFSET msg_cfg_baddress_inactive             ; 54 CFG_ERR_BADDRESS_INACTIVE
     DW      0                                             ; 55 CFG_ERR_BADDRESS_EEPROM_READ, retired
-    DW      OFFSET msg_cfg_baddress_eeprom_write_fail    ; 56 CFG_ERR_BADDRESS_EEPROM_WRITE
+    DW      0                                             ; 56 CFG_ERR_BADDRESS_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_baddress_verify_fail          ; 57 CFG_ERR_BADDRESS_VERIFY
     DW      OFFSET msg_cfg_baddress_not_capable          ; 58 CFG_ERR_BADDRESS_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_bsize                     ; 59 CFG_ERR_BAD_BSIZE
     DW      OFFSET msg_cfg_bsize_inactive                ; 60 CFG_ERR_BSIZE_INACTIVE
     DW      0                                             ; 61 CFG_ERR_BSIZE_EEPROM_READ, retired
-    DW      OFFSET msg_cfg_bsize_eeprom_write_fail       ; 62 CFG_ERR_BSIZE_EEPROM_WRITE
+    DW      0                                             ; 62 CFG_ERR_BSIZE_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_bsize_verify_fail             ; 63 CFG_ERR_BSIZE_VERIFY
     DW      0                                             ; 64 CFG_ERR_BSIZE_NOT_CAPABLE, retired
     DW      OFFSET msg_cfg_bootrom_incomplete            ; 65 CFG_ERR_BOOTROM_INCOMPLETE
@@ -6686,7 +6678,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     bx, [cfg_txn_new_word08]
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Write
-    jc      @@Write08Fail
+    jc      @@Fail
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word09
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
@@ -6711,7 +6703,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     bx, [cfg_txn_new_word09]
     mov     al, EEPROM_RESOURCE_CFG
     call    Cfg_Eeprom_Write
-    jc      @@Write09Fail
+    jc      @@Fail
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word0D
     mov     dx, OFFSET msg_cfg_irq_word_written
@@ -6725,7 +6717,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     bx, [cfg_txn_new_word0d]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Write
-    jc      @@Write0DFail
+    jc      @@Fail
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word13
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
@@ -6759,7 +6751,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     bx, [cfg_txn_new_word13]
     mov     al, EEPROM_CONFIG_CONTROL
     call    Cfg_Eeprom_Write
-    jc      @@Write13Fail
+    jc      @@Fail
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word14
     mov     dx, OFFSET msg_cfg_pnp_word_written
@@ -6773,7 +6765,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     bx, [cfg_txn_new_word14]
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Write
-    jc      @@Write14Fail
+    jc      @@Fail
 
 @@Checksums:
     test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
@@ -6803,7 +6795,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     bx, ax
     mov     al, EEPROM_CHECKSUM
     call    Cfg_Eeprom_Write
-    jc      @@ChecksumWriteFail
+    jc      @@Fail
 
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_CHECKSUM
@@ -6830,7 +6822,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     bx, [cfg_txn_checksum_word]
     mov     al, EEPROM_SECONDARY_CHECKSUM
     call    Cfg_Eeprom_Write
-    jc      @@ChecksumWriteFail
+    jc      @@Fail
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SECONDARY_CHECKSUM
     call    Cfg_Eeprom_Read
@@ -6852,65 +6844,6 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     clc
     ret
 
-@@Write08Fail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    test    [cfg_parse_flags], CFG_PARSE_IOBASE
-    jnz     @@Write08FailIOBase
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jnz     @@Write08FailBAddress
-    mov     [cfg_last_error], CFG_ERR_BSIZE_EEPROM_WRITE
-    jmp     @@Fail
-@@Write08FailBAddress:
-    mov     [cfg_last_error], CFG_ERR_BADDRESS_EEPROM_WRITE
-    jmp     @@Fail
-@@Write08FailIOBase:
-    mov     [cfg_last_error], CFG_ERR_IOBASE_EEPROM_WRITE
-    jmp     @@Fail
-@@Write09Fail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    mov     [cfg_last_error], CFG_ERR_EEPROM_WRITE
-    jmp     @@Fail
-@@Write0DFail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    ; Attribution priority: FULLDUPLEX bit transition (explicit /FULLDUPLEX or
-    ; implicit disable derived by Cfg_Prepare_TR for TP to non-TP) takes
-    ; priority, then OPTIMIZE, otherwise MODEM. This mirrors the same actual
-    ; bit transition test used for the verbose write message above so FULL
-    ; DUPLEX no longer falls through to MODEM merely because word 0Dh is
-    ; shared.
-    mov     ax, [cfg_txn_old_word0d]
-    xor     ax, [cfg_txn_new_word0d]
-    test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
-    jnz     @@Write0DFailFD
-    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
-    jnz     @@OptimizeWriteFail
-    mov     [cfg_last_error], CFG_ERR_MODEM_EEPROM_WRITE
-    jmp     @@Fail
-@@Write0DFailFD:
-    mov     [cfg_last_error], CFG_ERR_FD_EEPROM_WRITE
-    jmp     @@Fail
-@@OptimizeWriteFail:
-    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_EEPROM_WRITE
-    jmp     @@Fail
-@@Write13Fail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    mov     [cfg_last_error], CFG_ERR_PNP_EEPROM_WRITE
-    jmp     @@Fail
-@@Write14Fail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jnz     @@Write14FailBAddress
-    mov     [cfg_last_error], CFG_ERR_BSIZE_EEPROM_WRITE
-    jmp     @@Fail
-@@Write14FailBAddress:
-    mov     [cfg_last_error], CFG_ERR_BADDRESS_EEPROM_WRITE
-    jmp     @@Fail
-@@ChecksumWriteFail:
 @@ChecksumFail:
     cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
     je      @@Fail
@@ -8741,7 +8674,7 @@ ENDP Cfg_Id_Activate_At_Base
 ; ============================================================================
 
 ; Read-only secondary low checksum: EEPROM words 13h through 16h.
-; Input DX = physical base.  Output AL = checksum byte, CF set on read timeout.
+; Input DX = physical base.  Output AL = checksum byte, CF set if EEPROM Busy does not clear.
 PROC List_Checksum_17_Low NEAR
     push    bx
     push    dx
@@ -8772,7 +8705,7 @@ PROC List_Checksum_17_Low NEAR
 ENDP List_Checksum_17_Low
 
 ; Read-only secondary high checksum: EEPROM words 10h-12h and 20h-3Fh.
-; Input DX = physical base.  Output AL = checksum byte, CF set on read timeout.
+; Input DX = physical base.  Output AL = checksum byte, CF set if EEPROM Busy does not clear.
 PROC List_Checksum_17_High NEAR
     push    bx
     push    cx
