@@ -1,6 +1,9 @@
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
     transaction instead of property-specific completion messages.
+  - Removed the redundant CONFIGURE success-reporting wrapper and print the
+    general completion message directly from the transaction success path.
+  - Removed obsolete reference to cfg_target_result
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete

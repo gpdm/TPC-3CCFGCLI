@@ -696,7 +696,6 @@ cfg_wait_start_lo     DW 0
 cfg_wait_start_hi     DW 0
 cfg_target_base       DW 0
 cfg_target_window     DB 0
-cfg_target_result     DB 0
 cfg_target_asic       DB 0
 
 ; Original CONFIGURE property order is retained for prefix resolution.
@@ -7876,17 +7875,6 @@ PROC Cfg_Txn_Report_Prospective NEAR
     ret
 ENDP Cfg_Txn_Report_Prospective
 
-; Print final success message once after centralized verification.
-PROC Cfg_Txn_Report_Success NEAR
-    push    dx
-
-    mov     dx, OFFSET msg_cfg_txn_completed
-    mov     ah, 09h
-    int     21h
-    pop     dx
-    ret
-ENDP Cfg_Txn_Report_Success
-
 ; Prints a NOTICE when an implicit FULLDUPLEX disable actually occurred as a
 ; side effect of a /TR transceiver change (Cfg_Prepare_TR), i.e. /TR was
 ; requested, /FULLDUPLEX was not explicitly requested, and the persistent
@@ -8548,7 +8536,11 @@ PROC Cfg_Txn_Execute NEAR
     and     ax, CFG_TXN_COMMIT_MASK
     jz      @@Done
 @@PrintSuccess:
-    call    Cfg_Txn_Report_Success
+    push    dx
+    mov     dx, OFFSET msg_cfg_txn_completed
+    mov     ah, 09h
+    int     21h
+    pop     dx
     mov     [cfg_last_error], CFG_ERR_NONE
     call    Cfg_Txn_Report_Implicit_FD_Notice
 
