@@ -1036,16 +1036,13 @@ Start:
     mov     ds, ax
 
     mov     dx, OFFSET msg_banner_prefix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     dx, OFFSET VERSION_STRING
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     dx, OFFSET msg_banner_suffix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     call    Parse_And_Execute
     call    Nic_Sync_State
@@ -1146,20 +1143,17 @@ IFDEF MOCKHW
     call    Mock_Run_Contract_Test
     jc      @@MockFail
     mov     dx, OFFSET msg_mocktest_pass
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     ret
 @@MockFail:
     mov     dx, OFFSET msg_mocktest_fail
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     ret
 ENDIF
 
 @@Help:
     mov     dx, OFFSET msg_help
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Done:
     ret
 ENDP Parse_And_Execute
@@ -1246,8 +1240,7 @@ PROC Cli_Collect_Args NEAR
 @@TooMany:
     mov     dx, OFFSET msg_cli_too_many_args
 @@Fail:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     stc
 @@Done:
     pop     dx
@@ -1427,13 +1420,11 @@ PROC Cmd_SaveConfig NEAR
     jc      @@WriteFail
     mov     [save_file_open], 0
     mov     dx, OFFSET msg_save_ok
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     si, OFFSET save_filename
     call    Save_Print_Filename
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Done
 @@PrepareFail:
     cmp     al, SAVE_ERR_WRITE
@@ -1489,8 +1480,7 @@ PROC Cmd_SaveConfig NEAR
 @@BadName:
     mov     dx, OFFSET msg_save_bad_name
 @@Print:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Done:
     pop     di
     pop     si
@@ -3989,8 +3979,7 @@ PROC Cfg_Report_Error NEAR
     mov     dx, [cfg_error_messages+bx]
     or      dx, dx
     jz      @@Done
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Done:
     pop     dx
@@ -4009,14 +3998,12 @@ PROC Cmd_List NEAR
     jne     @@HaveCards
 
     mov     dx, OFFSET msg_no_cards
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     ret
 
 @@HaveCards:
     mov     dx, OFFSET msg_list_hdr
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     [current_card], 0
     mov     si, OFFSET nic_table
@@ -4041,8 +4028,7 @@ PROC Cmd_List NEAR
     int     21h
 
     mov     dx, OFFSET msg_3com_prefix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 0FFh
@@ -4057,8 +4043,7 @@ PROC Cmd_List NEAR
 @@ModelB:
     mov     dx, OFFSET msg_3c509b
 @@PrintModel:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     cmp     ax, PRODUCT_3C509
@@ -4088,12 +4073,10 @@ PROC Cmd_List NEAR
 @@SuffixTPC:
     mov     dx, OFFSET msg_tpcoax
 @@PrintSuffix:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     dx, OFFSET msg_eth_addr
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     push    si
     add     si, NIC_MAC_ADDR
@@ -4105,19 +4088,15 @@ PROC Cmd_List NEAR
     pop     si
 
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     ; Original generic NIC description line.
     mov     dx, OFFSET msg_indent
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     dx, OFFSET msg_a02c
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     dx, OFFSET msg_asic_prefix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 0FFh
     je      @@AsicUnavailable
@@ -4126,15 +4105,12 @@ PROC Cmd_List NEAR
     jmp     @@AsicDone
 @@AsicUnavailable:
     mov     dx, OFFSET msg_read_error
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@AsicDone:
     mov     dx, OFFSET msg_asic_suffix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     ; Read and print the additional metrics only after enumeration is complete.
     ; This cannot alter the ID port contention or the 16 byte NIC record layout.
@@ -6202,8 +6178,7 @@ PROC Cfg_Txn_Probe_Boot_ROM NEAR
     mov     [cfg_txn_new_word14], ax
     mov     [cfg_bootrom_rejected], 1
     mov     dx, OFFSET msg_cfg_bootrom_not_detected
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Success:
     clc
@@ -6470,13 +6445,11 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@VerboseINT
     mov     dx, OFFSET msg_cfg_deactivate_iobase
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Deactivate
 @@VerboseINT:
     mov     dx, OFFSET msg_cfg_prepare_active
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Deactivate:
     mov     si, [cfg_selected_ptr]
@@ -6519,8 +6492,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@Activate
     mov     dx, OFFSET msg_cfg_reactivate_iobase
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Activate:
     mov     si, [cfg_selected_ptr]
@@ -6660,8 +6632,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word08
     mov     dx, OFFSET msg_cfg_txn_write
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Word08:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
@@ -6676,8 +6647,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@Word08NoIOBaseNote
     mov     dx, OFFSET msg_cfg_iobase_word_written
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Word08NoIOBaseNote:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jnz     @@Word08BootRomNote
@@ -6685,8 +6655,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     jz      @@Word09
 @@Word08BootRomNote:
     mov     dx, OFFSET msg_cfg_bootrom_word_written
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Word09:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD09
@@ -6699,8 +6668,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word0D
     mov     dx, OFFSET msg_cfg_irq_word_written
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Word0D:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
@@ -6733,8 +6701,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 @@Word0DWrittenFD:
     mov     dx, OFFSET msg_cfg_fd_word_written
 @@Word0DPrint:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Word13:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
@@ -6747,8 +6714,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Word14
     mov     dx, OFFSET msg_cfg_pnp_word_written
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Word14:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
@@ -6768,8 +6734,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@PrimaryChecksum
     mov     dx, OFFSET msg_cfg_update_checksum
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@PrimaryChecksum:
     test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
     jz      @@SecondaryChecksum
@@ -6825,8 +6790,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_checksum_updated
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Success:
     pop     si
@@ -6879,8 +6843,7 @@ PROC Cfg_Txn_Write_Live NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Select
     mov     dx, OFFSET msg_cfg_txn_live
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Select:
     mov     dx, [cfg_txn_access_base]
@@ -6985,8 +6948,7 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Reachable
     mov     dx, OFFSET msg_cfg_txn_verify
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Reachable:
     ; Check reachability only for an IOBASE transaction, where the active address
@@ -7004,13 +6966,11 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@IOPersistent
     mov     dx, OFFSET msg_cfg_txn_reachable
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_access_base]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@IOPersistent:
     mov     dx, [cfg_txn_access_base]
@@ -7029,13 +6989,11 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@IOLive
     mov     dx, OFFSET msg_cfg_eeprom_iobase_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@IOLive:
     mov     dx, [cfg_txn_access_base]
@@ -7054,13 +7012,11 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@INTPersistent
     mov     dx, OFFSET msg_cfg_live_iobase_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@INTPersistent:
     test    [cfg_parse_flags], CFG_PARSE_INT
@@ -7090,13 +7046,11 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@INTLive
     mov     dx, OFFSET msg_cfg_eeprom_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     al, bl
     call    Print_DecByte
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@INTLive:
     mov     dx, [cfg_txn_access_base]
@@ -7114,13 +7068,11 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@PNPPersistent
     mov     dx, OFFSET msg_cfg_live_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     al, bl
     call    Print_DecByte
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@PNPPersistent:
     test    [cfg_parse_flags], CFG_PARSE_PNP
@@ -7136,8 +7088,7 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@MODEMPersistent
     mov     dx, OFFSET msg_cfg_pnp_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@MODEMPersistent:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
@@ -7164,8 +7115,7 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@FDPersistent
     mov     dx, OFFSET msg_cfg_modem_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@FDPersistent:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
@@ -7199,8 +7149,7 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@OptimizePersistent
     mov     dx, OFFSET msg_cfg_fd_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@OptimizePersistent:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
@@ -7227,8 +7176,7 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@BootRomPersistent
     mov     dx, OFFSET msg_cfg_optimize_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@BootRomPersistent:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
@@ -7263,11 +7211,9 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@BootRomLive
     mov     dx, OFFSET msg_cfg_baddress_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     dx, OFFSET msg_cfg_bsize_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@BootRomLive:
     ; Final live readback for an accepted Boot ROM request.  Only the Boot ROM
@@ -7298,8 +7244,7 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@TRPersistent
     mov     dx, OFFSET msg_cfg_bootrom_live_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@TRPersistent:
     test    [cfg_parse_flags], CFG_PARSE_TR
@@ -7321,8 +7266,7 @@ PROC Cfg_Txn_Verify NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_tr_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Success:
     pop     si
@@ -7417,13 +7361,11 @@ PROC Cfg_Txn_Finalize_IOBASE NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_final_iobase_activated
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_new_base]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Success:
     pop     si
     pop     dx
@@ -7496,8 +7438,7 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@RestoreSuccess
     mov     dx, OFFSET msg_cfg_fd_live_verified
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@RestoreSuccess
 
 @@UpdateFail:
@@ -7537,117 +7478,95 @@ PROC Cfg_Txn_Report_Current NEAR
     jmp     @@Done
 @@Start:
     mov     dx, OFFSET msg_cfg_txn_current_active_base
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_old_base]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@Live06
     mov     dx, OFFSET msg_cfg_current_iobase
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     al, [cfg_txn_old_io_selector]
     call    Cfg_IOBASE_Selector_To_Base
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     dx, OFFSET msg_cfg_current_word08
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_old_word08]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     dx, OFFSET msg_cfg_current_live_iobase
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     al, [cfg_txn_live_io_selector]
     call    Cfg_IOBASE_Selector_To_Base
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Live06:
     mov     dx, OFFSET msg_cfg_current_live06
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_old_live06]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@Live08
     mov     dx, OFFSET msg_cfg_current_irq
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     al, [cfg_txn_old_irq]
     call    Print_DecByte
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     dx, OFFSET msg_cfg_txn_current_live_irq
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     al, [cfg_txn_live_irq]
     call    Print_DecByte
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     dx, OFFSET msg_cfg_current_word09
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_old_word09]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Live08:
     mov     dx, OFFSET msg_cfg_current_live08
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_old_live08]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jz      @@Optimize
     mov     dx, OFFSET msg_cfg_current_word0d
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_old_word0d]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Optimize:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@Done
     mov     dx, OFFSET msg_cfg_current_word0d
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_old_word0d]
     mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
     shr     ax, cl
     and     al, 03h
     call    Decode_Optimize_Value
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Done:
     pop     dx
     pop     cx
@@ -7665,83 +7584,68 @@ PROC Cfg_Txn_Report_Prospective NEAR
     jmp     @@Done
 @@Start:
     mov     dx, OFFSET msg_cfg_txn_prepare
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     mov     dx, OFFSET msg_cfg_txn_new_base
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_new_base]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@Live06
     mov     dx, OFFSET msg_cfg_new_word08
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_new_word08]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Live06:
     mov     dx, OFFSET msg_cfg_new_live06
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_new_live06]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@Live08
     mov     dx, OFFSET msg_cfg_new_word09
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_new_word09]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Live08:
     mov     dx, OFFSET msg_cfg_new_live08
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_new_live08]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jz      @@Optimize
     mov     dx, OFFSET msg_cfg_new_word0d
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_new_word0d]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Optimize:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@Done
     mov     dx, OFFSET msg_cfg_new_word0d
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_txn_new_word0d]
     mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
     shr     ax, cl
     and     al, 03h
     call    Decode_Optimize_Value
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Done:
     pop     dx
     pop     cx
@@ -7767,8 +7671,7 @@ PROC Cfg_Txn_Report_Implicit_FD_Notice NEAR
     jnz     @@NoNotice
 
     mov     dx, OFFSET msg_cfg_fd_implicit_notice
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@NoNotice:
     pop     dx
@@ -7791,13 +7694,11 @@ PROC Cfg_Txn_Execute NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@CapabilitySnapshot
     mov     dx, OFFSET msg_cfg_adapter_prefix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     al, [cfg_adapter_ordinal]
     call    Print_DecByte
     mov     dx, OFFSET msg_cfg_adapter_suffix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 ; ----------------------------------------------------------------------------
 ; Capability gate phase.  All hardware/product capability checks for gated
@@ -8000,31 +7901,26 @@ PROC Cfg_Txn_Execute NEAR
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@RequestedINT
     mov     dx, OFFSET msg_cfg_iobase_ok
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@RequestedINT:
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@RequestedPNP
     mov     dx, OFFSET msg_cfg_int_ok
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     al, [cfg_int_value]
     call    Print_DecByte
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@RequestedPNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@RequestedMODEM
     mov     dx, OFFSET msg_cfg_pnp_ok
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     cmp     [cfg_pnp_value], 0
     je      @@PnpDisabled
     mov     dx, OFFSET msg_enabled
@@ -8032,18 +7928,15 @@ PROC Cfg_Txn_Execute NEAR
 @@PnpDisabled:
     mov     dx, OFFSET msg_disabled
 @@PnpPrint:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@RequestedMODEM:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jz      @@RequestedFULLDUPLEX
     mov     dx, OFFSET msg_cfg_modem_ok
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     ax, [cfg_modem_value]
     call    Decode_Modem_Baud_Alias
     jnc     @@PrintModem
@@ -8055,20 +7948,17 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@AfterRequestedModem
 @@PrintModemNone:
     mov     dx, OFFSET msg_none
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@AfterRequestedModem
 @@AfterRequestedModem:
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@RequestedFULLDUPLEX:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@RequestedBAddress
     mov     dx, OFFSET msg_cfg_fullduplex_ok
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     cmp     [cfg_fullduplex_value], 0
     je      @@FDDisabled
     mov     dx, OFFSET msg_enabled
@@ -8076,18 +7966,15 @@ PROC Cfg_Txn_Execute NEAR
 @@FDDisabled:
     mov     dx, OFFSET msg_disabled
 @@FDPrint:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@RequestedBAddress:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@RequestedBSize
     mov     dx, OFFSET msg_cfg_baddress_ok
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     xor     ax, ax
     mov     al, [cfg_baddress_value]
     mov     cx, 2000h
@@ -8095,18 +7982,15 @@ PROC Cfg_Txn_Execute NEAR
     add     dx, 000Ch
     call    Print_HexAddress20
     mov     dx, OFFSET msg_hex_suffix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@RequestedBSize:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jz      @@RequestedTR
     mov     dx, OFFSET msg_cfg_bsize_ok
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     cmp     [cfg_bsize_disabled], 1
     je      @@PrintBSizeDisabled
     mov     al, [cfg_bsize_value]
@@ -8125,24 +8009,20 @@ PROC Cfg_Txn_Execute NEAR
 @@PrintBSizeValue:
     call    Print_DecWord
     mov     dx, OFFSET msg_kilobytes_suffix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@AfterBSizeValue
 @@PrintBSizeDisabled:
     mov     dx, OFFSET msg_disabled
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@AfterBSizeValue:
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@RequestedTR:
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@Read
     mov     dx, OFFSET msg_cfg_tr_ok
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     cmp     [cfg_tr_value], 0FFh
     jne     @@TRNotAuto
     mov     dx, OFFSET msg_tr_auto
@@ -8160,18 +8040,15 @@ PROC Cfg_Txn_Execute NEAR
 @@TRIsCoax:
     mov     dx, OFFSET msg_tr_coax
 @@PrintTR:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     dx, OFFSET msg_crlf
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Read:
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@ReadNow
     mov     dx, OFFSET msg_cfg_txn_read
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@ReadNow:
     call    Cfg_Txn_Read_Current
     jc      @@Done
@@ -8245,48 +8122,42 @@ PROC Cfg_Txn_Execute NEAR
     test    [cfg_txn_change_flags], CFG_TXN_IOBASE_CHANGED
     jnz     @@CheckINTUnchanged
     mov     dx, OFFSET msg_cfg_iobase_unchanged
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@CheckINTUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@CheckPNPUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_INT_CHANGED
     jnz     @@CheckPNPUnchanged
     mov     dx, OFFSET msg_cfg_irq_unchanged
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@CheckPNPUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@CheckMODEMUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
     jnz     @@CheckMODEMUnchanged
     mov     dx, OFFSET msg_cfg_pnp_unchanged
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@CheckMODEMUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jz      @@CheckOPTIMIZEUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jnz     @@CheckOPTIMIZEUnchanged
     mov     dx, OFFSET msg_cfg_modem_unchanged
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@CheckOPTIMIZEUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@CheckFDUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jnz     @@CheckFDUnchanged
     mov     dx, OFFSET msg_cfg_optimize_unchanged
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@CheckFDUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@CheckBAddressUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jnz     @@CheckBAddressUnchanged
     mov     dx, OFFSET msg_cfg_fd_unchanged
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@CheckBAddressUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
@@ -8296,8 +8167,7 @@ PROC Cfg_Txn_Execute NEAR
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jnz     @@CheckBSizeUnchanged
     mov     dx, OFFSET msg_cfg_baddress_unchanged
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@CheckBSizeUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
@@ -8307,8 +8177,7 @@ PROC Cfg_Txn_Execute NEAR
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jnz     @@CheckTRUnchanged
     mov     dx, OFFSET msg_cfg_bsize_unchanged
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@CheckTRUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_TR
@@ -8316,8 +8185,7 @@ PROC Cfg_Txn_Execute NEAR
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jnz     @@CheckAnyChange
     mov     dx, OFFSET msg_cfg_tr_unchanged
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@CheckAnyChange:
     ; No requested hardware change.  An unchanged INT request retains the
@@ -8331,8 +8199,7 @@ PROC Cfg_Txn_Execute NEAR
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_txn_no_changes
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Success
 @@SyncUnchangedFD:
     call    Cfg_Txn_Sync_Live_FullDuplex
@@ -8413,8 +8280,7 @@ PROC Cfg_Txn_Execute NEAR
 @@PrintSuccess:
     push    dx
     mov     dx, OFFSET msg_cfg_txn_completed
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     pop     dx
     mov     [cfg_last_error], CFG_ERR_NONE
     call    Cfg_Txn_Report_Implicit_FD_Notice
@@ -8959,8 +8825,7 @@ PROC Print_Transceiver_Value NEAR
 @@Unavailable:
     mov     dx, OFFSET msg_read_error
 @@Print:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     pop     dx
     pop     cx
     pop     ax
@@ -8997,8 +8862,7 @@ PROC Print_Pnp_Capability_Value NEAR
 @@Unavailable:
     mov     dx, OFFSET msg_read_error
 @@Print:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     pop     dx
     pop     ax
     ret
@@ -9032,8 +8896,7 @@ PROC Print_Pnp_State_Value NEAR
 @@Unavailable:
     mov     dx, OFFSET msg_read_error
 @@Print:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     pop     dx
     pop     ax
     ret
@@ -9150,8 +9013,7 @@ PROC Decode_Optimize_Value NEAR
 @@Server:
     mov     dx, OFFSET msg_optimize_server
 @@Print:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     pop     dx
     pop     ax
     ret
@@ -9171,8 +9033,7 @@ PROC Print_Optimize_Value NEAR
     jmp     @@Done
 @@Unavailable:
     mov     dx, OFFSET msg_read_error
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Done:
     pop     cx
     pop     ax
@@ -9343,8 +9204,7 @@ PROC Print_Full_Duplex_Value NEAR
 @@Unavailable:
     mov     dx, OFFSET msg_read_error
 @@Print:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     pop     dx
     pop     ax
     ret
@@ -9439,14 +9299,12 @@ PROC Print_Boot_Rom_Value NEAR
     mov     ax, di
     call    Print_DecByte
     mov     dx, OFFSET msg_at
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     pop     ax
     pop     dx
     call    Print_HexAddress20
     mov     dx, OFFSET msg_hex_suffix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Done
 
 @@Disabled:
@@ -9461,8 +9319,7 @@ PROC Print_Boot_Rom_Value NEAR
 @@Unavailable:
     mov     dx, OFFSET msg_read_error
 @@PrintString:
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 @@Done:
     pop     di
     pop     dx
