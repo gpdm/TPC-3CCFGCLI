@@ -283,35 +283,35 @@ It:
 
 * selects Window 0
 * intentionally does not restore the previous window
-* uses the shared CONFIGURE timeout latch
-* exposes the latched timeout result through CF
-* records timeout state through `cfg_last_error`
+* uses the shared CONFIGURE busy latch
+* exposes the latched busy result through CF
+* records busy state through `cfg_last_error`
 
 It must not be replaced mechanically with `Nic_EEPROM_Read` merely because both routines read EEPROM words.
 
 Their architectural roles are different.
 
-## 10. CONFIGURE Timeout Latch
+## 10. CONFIGURE EEPROM Busy Latch
 
 CONFIGURE maintains:
 
 ```text
-cfg_timeout_latched
+cfg_eeprom_busy_latched
 ```
 
 for its original compatible EEPROM transaction behavior.
 
 The latch is cleared when a new configuration transaction begins.
 
-If `Cfg_Eeprom_Wait_Ready` times out, it:
+If `Cfg_Eeprom_Wait_Ready` observes EEPROM Busy beyond the polling limit, it:
 
 ```text
-sets cfg_timeout_latched
-sets cfg_last_error to CFG_ERR_EEPROM_TIMEOUT
+sets cfg_eeprom_busy_latched
+sets cfg_last_error to CFG_ERR_EEPROM_BUSY
 returns with CF set
 ```
 
-Once the timeout has been latched, subsequent CONFIGURE EEPROM operations in that transaction must preserve the failure state.
+Once the EEPROM Busy failure has been latched, subsequent CONFIGURE EEPROM operations in that transaction must preserve the failure state.
 
 `Cfg_Eeprom_Read` checks the latch before beginning a new read.
 
@@ -338,11 +338,11 @@ program selected word
 wait
 ```
 
-The routine deliberately continues through the command sequence after a timeout because that behavior is part of the retained original compatibility path.
+The routine deliberately continues through the command sequence after a Busy failure because that behavior is part of the retained original compatibility path.
 
 It does not report intermediate calls as independent transaction successes.
 
-At completion, the shared timeout latch determines the returned CF state.
+At completion, the shared EEPROM Busy latch determines the returned CF state.
 
 Therefore callers must test the final CF result from `Cfg_Eeprom_Write`.
 
@@ -399,21 +399,17 @@ This allows low level procedures to remain compact while preserving a meaningful
 
 Higher layers must not overwrite a more specific error already established by a lower layer.
 
-The main example is EEPROM timeout handling.
+The main example is EEPROM busy handling.
 
 When a lower level access has already set:
 
 ```text
-CFG_ERR_EEPROM_TIMEOUT
+CFG_ERR_EEPROM_BUSY
 ```
 
 transaction stages check for that error before translating the failure into a property specific error such as:
 
 ```text
-CFG_ERR_IOBASE_EEPROM_READ
-CFG_ERR_PNP_EEPROM_READ
-CFG_ERR_MODEM_EEPROM_READ
-CFG_ERR_OPTIMIZE_EEPROM_READ
 CFG_ERR_BADDRESS_EEPROM_WRITE
 CFG_ERR_VERIFY
 ```
@@ -928,7 +924,7 @@ The following rules are mandatory for future changes.
 
 8. Application level `FFFFh` unavailable sentinels must not replace hardware access status.
 
-9. The CONFIGURE timeout latch must preserve an EEPROM timeout across the complete compatible EEPROM operation.
+9. The CONFIGURE EEPROM Busy latch must preserve a Busy failure across the complete compatible EEPROM operation.
 
 10. A more specific lower level error must not be overwritten by a less specific higher level error.
 
@@ -999,4 +995,3 @@ REALHW and MOCKHW must expose the same external contracts
 ```
 
 These rules prevent hardware errors, valid data, CPU state, and temporary implementation details from becoming accidentally interchangeable.
-

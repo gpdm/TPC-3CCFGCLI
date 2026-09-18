@@ -8,6 +8,8 @@ Changelog 0.7.9
     values remain legal and slot 23 is preserved as a retired error entry.
   - Retired nine unreachable CONFIGURE error messages while preserving their
     stable numeric slots in the error table.
+  - Cleanup: failed CONFIGURE EEPROM reads now report the shared EEPROM Busy
+    condition, with property-specific read error fallbacks retired.
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete
