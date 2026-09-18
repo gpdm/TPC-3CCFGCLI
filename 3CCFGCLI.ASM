@@ -694,6 +694,29 @@ cfg_property_ids DB CFG_OPT_INT
                  DB CFG_OPT_PNP
                  DB CFG_OPT_FULLDUPLEX
 
+; Property identifiers requiring strict single occurrence tracking, paired
+; with their CFG_SEEN_xxx bit.  Each entry is ID (byte), seen bit (word).
+; Consolidates the per-property duplicate checks in Cfg_Parse_Options.
+cfg_seen_table   DB CFG_OPT_INT
+                 DW CFG_SEEN_INT
+                 DB CFG_OPT_IOBASE
+                 DW CFG_SEEN_IOBASE
+                 DB CFG_OPT_BADDRESS
+                 DW CFG_SEEN_BADDRESS
+                 DB CFG_OPT_BSIZE
+                 DW CFG_SEEN_BSIZE
+                 DB CFG_OPT_PNP
+                 DW CFG_SEEN_PNP
+                 DB CFG_OPT_MODEM
+                 DW CFG_SEEN_MODEM
+                 DB CFG_OPT_FULLDUPLEX
+                 DW CFG_SEEN_FULLDUPLEX
+                 DB CFG_OPT_OPTIMIZE
+                 DW CFG_SEEN_OPTIMIZE
+                 DB CFG_OPT_TR
+                 DW CFG_SEEN_TR
+cfg_seen_table_count EQU 9
+
 SAVE_MAX_BATCH_LINE EQU 128
 SAVE_BUFFER_SIZE EQU SAVE_MAX_BATCH_LINE + 2 ; generated command text + CR + LF
 SAVE_EXECFILE_RUNTIME_RESERVE EQU 64
@@ -2663,66 +2686,7 @@ PROC Cfg_Parse_Options NEAR
     mov     [cfg_queue_property_id], al
 
     ; Strict duplicate tracking applies to supported hardware properties.
-    cmp     al, CFG_OPT_INT
-    jne     @@CheckSeenIOBase
-    mov     ax, CFG_SEEN_INT
-    call    Cfg_Mark_Seen
-    jc      @@DuplicateProperty
-    jmp     @@CountProperty
-@@CheckSeenIOBase:
-    cmp     al, CFG_OPT_IOBASE
-    jne     @@CheckSeenBAddress
-    mov     ax, CFG_SEEN_IOBASE
-    call    Cfg_Mark_Seen
-    jc      @@DuplicateProperty
-    jmp     @@CountProperty
-@@CheckSeenBAddress:
-    cmp     al, CFG_OPT_BADDRESS
-    jne     @@CheckSeenBSize
-    mov     ax, CFG_SEEN_BADDRESS
-    call    Cfg_Mark_Seen
-    jc      @@DuplicateProperty
-    jmp     @@CountProperty
-@@CheckSeenBSize:
-    cmp     al, CFG_OPT_BSIZE
-    jne     @@CheckSeenPNP
-    mov     ax, CFG_SEEN_BSIZE
-    call    Cfg_Mark_Seen
-    jc      @@DuplicateProperty
-    jmp     @@CountProperty
-@@CheckSeenPNP:
-    cmp     al, CFG_OPT_PNP
-    jne     @@CheckSeenModem
-    mov     ax, CFG_SEEN_PNP
-    call    Cfg_Mark_Seen
-    jc      @@DuplicateProperty
-    jmp     @@CountProperty
-@@CheckSeenModem:
-    cmp     al, CFG_OPT_MODEM
-    jne     @@CheckSeenFullDuplex
-    mov     ax, CFG_SEEN_MODEM
-    call    Cfg_Mark_Seen
-    jc      @@DuplicateProperty
-    jmp     @@CountProperty
-@@CheckSeenFullDuplex:
-    cmp     al, CFG_OPT_FULLDUPLEX
-    jne     @@CheckSeenOptimize
-    mov     ax, CFG_SEEN_FULLDUPLEX
-    call    Cfg_Mark_Seen
-    jc      @@DuplicateProperty
-    jmp     @@CountProperty
-@@CheckSeenOptimize:
-    cmp     al, CFG_OPT_OPTIMIZE
-    jne     @@CheckSeenTR
-    mov     ax, CFG_SEEN_OPTIMIZE
-    call    Cfg_Mark_Seen
-    jc      @@DuplicateProperty
-    jmp     @@CountProperty
-@@CheckSeenTR:
-    cmp     al, CFG_OPT_TR
-    jne     @@CountProperty
-    mov     ax, CFG_SEEN_TR
-    call    Cfg_Mark_Seen
+    call    Cfg_Check_Property_Seen
     jc      @@DuplicateProperty
 @@CountProperty:
     xor     bx, bx
@@ -2784,6 +2748,44 @@ PROC Cfg_Parse_Options NEAR
     clc
     ret
 ENDP Cfg_Parse_Options
+
+; Look up a matched property identifier in cfg_seen_table and, if that
+; property requires strict single occurrence tracking, mark it seen.
+; Input AL = matched CFG_OPT_xxx identifier.  Carry set means the property
+; was already seen.  A property absent from the table is not tracked here
+; and always returns with carry clear.  Consolidates the identical
+; find-then-mark-then-report logic previously repeated per property in
+; Cfg_Parse_Options.
+PROC Cfg_Check_Property_Seen NEAR
+    push    bx
+    push    cx
+    push    dx
+
+    mov     ah, al                 ; AH = property id to find.
+    mov     bx, OFFSET cfg_seen_table
+    mov     cx, cfg_seen_table_count
+
+@@Scan:
+    mov     dl, [bx]
+    cmp     dl, ah
+    je      @@Found
+    add     bx, 3
+    loop    @@Scan
+
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+
+@@Found:
+    mov     ax, [bx+1]
+    call    Cfg_Mark_Seen
+    pop     dx
+    pop     cx
+    pop     bx
+    ret
+ENDP Cfg_Check_Property_Seen
 
 ; Mark one supported CONFIGURE verb as seen during the first parse pass.
 ; Input AX = one CFG_SEEN bit.  Carry set means that verb was already seen.

@@ -25,6 +25,9 @@ Changelog 0.7.9
   - Cleanup: removed unconditional jumps whose target was the immediately
     following instruction, and removed local fallthrough labels left with
     no remaining incoming reference.
+  - Cleanup: consolidated the repeated per-property duplicate detection in
+    Cfg_Parse_Options into a shared table-driven helper, preserving all
+    existing duplicate option semantics.
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete
