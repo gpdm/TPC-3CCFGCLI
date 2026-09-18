@@ -54,6 +54,8 @@ the model.
         |                 |
         v                 v
    3CHWIF.ASM        3CMOCKIF.ASM
+          \          /
+           3CSHIF.ASM
         |                 |
         |                 |
    ISA port I/O       modeled adapter state
@@ -77,8 +79,8 @@ Its job is to create deterministic `3C509B.MCK` state that
 
 The backend is not a separately linked library.
 
-`3CCFGCLI.ASM` includes the selected backend source directly into its own
-assembly unit.
+`3CCFGCLI.ASM` includes the selected backend source and then
+`3CSHIF.ASM` directly into its own assembly unit.
 
 The current selection logic is:
 
@@ -86,6 +88,7 @@ The current selection logic is:
 REALHW defined        -> include 3CHWIF.ASM
 MOCKHW defined        -> include 3CMOCKIF.ASM
 neither defined       -> default to REALHW and include 3CHWIF.ASM
+after backend selection -> include 3CSHIF.ASM
 ```
 
 The normal build therefore defaults to real hardware.
@@ -257,8 +260,8 @@ as follows.
 The higher-level EEPROM word transfer itself is not duplicated in the
 backends.
 
-`Nic_IdPort_Read_Word` lives in `3CCFGCLI.ASM` and assembles the 16 serialized
-bits using `Nic_IdPort_Read_Bit`.
+`Nic_IdPort_Read_Word` lives in `3CSHIF.ASM` and assembles the 16
+serialized bits using `Nic_IdPort_Read_Bit`.
 
 This is a useful example of the intended split:
 
@@ -402,7 +405,7 @@ register primitives.
 | Procedure                   | Purpose                                                                                                  |
 | --------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `Nic_Check_3Com_Signature`  | Validate an active adapter and recover its product ID and ASIC revision.                                 |
-| `Nic_Activate_Tagged_Cards` | Perform the backend-specific activation step for records discovered and tagged through the ID-port flow. |
+| `Nic_Activate_Tagged_Cards` | Perform the common activation algorithm for records discovered and tagged through the ID-port flow. |
 
 These procedures are part of the backend seam because their implementation is
 closely tied to active hardware state.
@@ -465,9 +468,9 @@ Keep the interpretation and validation algorithm common.
 The `Nic_*` prefix predates parts of the backend split and does not by itself
 prove that a routine lives inside `3CHWIF.ASM` or `3CMOCKIF.ASM`.
 
-Current examples of common `Nic_*` routines in `3CCFGCLI.ASM` include:
+Current examples of common `Nic_*` routines outside the backend files include:
 
-* `Nic_IdPort_Read_Word`
+* `Nic_IdPort_Read_Word` in `3CSHIF.ASM`
 * `Nic_Read_Capabilities`
 
 Before moving, replacing, or duplicating a `Nic_*` routine, check where it
@@ -674,4 +677,3 @@ project:
 
 The shorter project-wide list of non-negotiable architectural rules is
 maintained in [`INVARIANTS.md`](INVARIANTS.md).
-

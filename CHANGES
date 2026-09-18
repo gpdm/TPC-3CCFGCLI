@@ -1,3 +1,40 @@
+Changelog 0.7.9
+  - CONFIGURE now uses one general success message for every successful
+    transaction instead of property-specific completion messages.
+  - Removed the redundant CONFIGURE success-reporting wrapper and print the
+    general completion message directly from the transaction success path.
+  - Removed obsolete reference to cfg_target_result
+  - Retired the obsolete IOBASE conflict error path; duplicate final IOBASE
+    values remain legal and slot 23 is preserved as a retired error entry.
+  - Retired nine unreachable CONFIGURE error messages while preserving their
+    stable numeric slots in the error table.
+  - Cleanup: failed CONFIGURE EEPROM reads now report the shared EEPROM Busy
+    condition, with property-specific read error fallbacks retired.
+  - Retired unreachable property-specific EEPROM write errors; failed writes
+    now consistently propagate the shared EEPROM Busy condition.
+  - CONFIGURE unchanged-property messages now describe only the unchanged
+    property. The global "No hardware changes required." message is emitted
+    once only when the complete CONFIGURE transaction requires no hardware or
+    EEPROM changes.
+  - Cleanup: replaced remaining semantically equivalent raw hardware and
+    EEPROM constants in 3CCFGCLI with existing symbolic definitions.
+  - Cleanup: replaced direct DOS string output calls with the shared
+    Print_String routine where register semantics are equivalent.
+  - Cleanup: consolidated property-specific inactive CONFIGURE diagnostics
+    into one shared message while preserving the existing error-code slots.
+  - Cleanup: removed unconditional jumps whose target was the immediately
+    following instruction, and removed local fallthrough labels left with
+    no remaining incoming reference.
+  - Cleanup: consolidated the repeated per-property duplicate detection in
+    Cfg_Parse_Options into a shared table-driven helper, preserving all
+    existing duplicate option semantics.
+  - Cleanup: consolidated the duplicated ENABLED/DISABLED value parsing in
+    Cfg_Handle_PNP and Cfg_Handle_FULLDUPLEX into a shared
+    Cfg_Parse_EnableDisable helper, reusing the existing save_enabled and
+    save_disabled strings and the Cfg_Match_Name_Prefix comparison routine.
+  - Cleanup: moved backend-independent NIC access and discovery routines into
+    the shared 3CSHIF.ASM implementation.
+
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete
     16-port ISA range with the original repeated-read pattern and validates

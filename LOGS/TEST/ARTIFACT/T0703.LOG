@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.8
+3Com EtherLink III CLI Configuration Program v0.7.9
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -26,4 +26,4 @@ Verifying requested configuration...
 EEPROM full duplex mode verified.
 Live Network Diagnostic full duplex mode verified.
 
-Full duplex configuration completed successfully.
+Configuration completed successfully.

@@ -203,7 +203,7 @@ cfg_parse_flags
 cfg_seen_flags
 cfg_property_count
 cfg_last_error
-cfg_timeout_latched
+cfg_eeprom_busy_latched
 cfg_selected_ptr
 ```
 
@@ -1677,8 +1677,8 @@ cfg_last_error
 `Cmd_Configure` ultimately reports `cfg_last_error` through the common error
 reporting path.
 
-EEPROM timeouts use the shared timeout latch so a timeout is not silently
-converted into another property-specific read or write error.
+EEPROM Busy uses the shared latch so a failed read is not silently converted
+into another property-specific read or write error.
 
 Detailed FLAGS and error conventions belong in
 [`LOW_LEVEL_CONVENTIONS.md`](LOW_LEVEL_CONVENTIONS.md).
@@ -1904,4 +1904,3 @@ And do as much checking as possible before touching the hardware.
 
 The persistent EEPROM layout and checksum domains used by this transaction are
 documented in [`EEPROM.md`](EEPROM.md).
-

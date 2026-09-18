@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.8
+3Com EtherLink III CLI Configuration Program v0.7.9
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -25,8 +25,8 @@ EEPROM checksum updated.
 Verifying requested configuration...
 EEPROM Plug and Play mode verified.
 
-Plug and Play configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.7.8
+Configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.7.9
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -46,10 +46,9 @@ New live Resource Configuration: A000
 
 Plug and Play mode is already configured to the requested value.
 No hardware changes required.
-No hardware changes required.
 
-Plug and Play configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.7.8
+Configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.7.9
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
