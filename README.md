@@ -331,6 +331,7 @@ mock state file format is v4.
 | [3CCFGCLI.ASM](3CCFGCLI.ASM) | Reduced scope CLI reimplementation.                                                           |
 | [3CHWIF.ASM](3CHWIF.ASM)     | Real hardware interface.                                                                      |
 | [3CMOCKIF.ASM](3CMOCKIF.ASM) | Persistent mock backend for development and tests.                                            |
+| [3CSHIF.ASM](3CSHIF.ASM)       | Backend-independent NIC algorithms.                                                       |
 | [3CSEED.ASM](3CSEED.ASM)     | Mock state seeder used to create deterministic test fixtures.                                 |
 | [TEST.MK](TEST.MK)           | Smoke test suite orchestration.                                                               |
 | [TESTHWL.MK](TESTHWL.MK)     | Test run on an emulated IBM PC compatible constrained system with 64, 128, and 256 KB of RAM. |

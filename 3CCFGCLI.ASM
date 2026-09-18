@@ -949,31 +949,7 @@ IFNDEF MOCKHW
 ENDIF
 ENDIF
 
-; Hardware-independent ID-port EEPROM transfer.  The backend only supplies
-; one contention bit for each input cycle; assembly remains identical on a
-; physical adapter and the device model.
-PROC Nic_IdPort_Read_Word NEAR
-    push    cx
-    push    si
-
-    and     al, 3Fh
-    or      al, 80h
-    call    Nic_IdPort_Write_Command
-    call    Nic_IdPort_Eeprom_Delay
-    xor     si, si
-    mov     cx, 16
-@@BitLoop:
-    shl     si, 1
-    call    Nic_IdPort_Read_Bit
-    xor     ah, ah
-    or      si, ax
-    loop    @@BitLoop
-    mov     ax, si
-
-    pop     si
-    pop     cx
-    ret
-ENDP Nic_IdPort_Read_Word
+include '3CSHIF.ASM'
 
 ; Probe the secondary 8259 interrupt mask register at I/O port A1h.
 ; The original mask is restored before the saved interrupt state is restored.

@@ -32,6 +32,8 @@ Changelog 0.7.9
     Cfg_Handle_PNP and Cfg_Handle_FULLDUPLEX into a shared
     Cfg_Parse_EnableDisable helper, reusing the existing save_enabled and
     save_disabled strings and the Cfg_Match_Name_Prefix comparison routine.
+  - Cleanup: moved backend-independent NIC access and discovery routines into
+    the shared 3CSHIF.ASM implementation.
 
 Changelog 0.7.8
   - CONFIGURE temporary working-base acquisition now probes the complete
