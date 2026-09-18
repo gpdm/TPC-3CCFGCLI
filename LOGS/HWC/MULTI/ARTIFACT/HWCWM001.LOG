@@ -3,13 +3,19 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-Selected adapter no longer matches the discovered NIC.
+IOBASE parameter accepted. Requested IOBASE: 0300
+INT parameter accepted. Requested IRQ: 5
+
+IOBASE and IRQ configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-Selected adapter no longer matches the discovered NIC.
+IOBASE parameter accepted. Requested IOBASE: 0280
+INT parameter accepted. Requested IRQ: 3
+
+IOBASE and IRQ configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.7.8
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
@@ -18,29 +24,29 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 NIC                            NIC
 Number                       Description
 --------------------------------------------------------------------------
-  1    3Com 3C509-TP: Ethernet Address = 0020AFBD8850
-       EtherLink III 16-bit ISA NIC (ASIC Revision read error (possible I/O conflict))
-       Connectors = read error (possible I/O conflict)
-       Full Duplex Capability = read error (possible I/O conflict)
-       Plug and Play Capability = read error (possible I/O conflict)
+  1    3Com 3C509B-TP: Ethernet Address = 0020AFBD8850
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
+       Connectors = TP, AUI
+       Full Duplex Capability = yes
+       Plug and Play Capability = yes
               ---
        IOBASE = 0300, IRQ = 5
        Transceiver = external (AUX/DIX)
-       Plug and Play = read error (possible I/O conflict)
+       Plug and Play = disabled
        Boot ROM = disabled
        Optimization = Server
        MODEM Interrupt Disable Time = 1300 us (1200 bd)
-       Full Duplex = read error (possible I/O conflict)
+       Full Duplex = disabled
   2    3Com 3C509-TP: Ethernet Address = 00608CE90C9B
-       EtherLink III 16-bit ISA NIC (ASIC Revision read error (possible I/O conflict))
-       Connectors = read error (possible I/O conflict)
-       Full Duplex Capability = read error (possible I/O conflict)
-       Plug and Play Capability = read error (possible I/O conflict)
+       EtherLink III 16-bit ISA NIC (ASIC Revision 1)
+       Connectors = TP, AUI
+       Full Duplex Capability = not supported
+       Plug and Play Capability = not supported
               ---
-       IOBASE = 0300, IRQ = 3
+       IOBASE = 0280, IRQ = 3
        Transceiver = external (AUX/DIX)
-       Plug and Play = read error (possible I/O conflict)
+       Plug and Play = not supported
        Boot ROM = disabled
        Optimization = Server
        MODEM Interrupt Disable Time = 1300 us (1200 bd)
-       Full Duplex = read error (possible I/O conflict)
+       Full Duplex = not supported

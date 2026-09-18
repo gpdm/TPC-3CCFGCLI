@@ -1,4 +1,7 @@
 Changelog 0.7.8
+  - CONFIGURE temporary working-base acquisition now probes the complete
+    16-port ISA range with the original repeated-read pattern and validates
+    the selected tagged adapter after temporary activation before accepting it.
   - Physical adapter identity is now derived from ID-port record/tag
     identity rather than IOBASE; IOBASE is treated purely as a runtime
     resource that may legitimately be shared before it is repaired.
@@ -10,10 +13,9 @@ Changelog 0.7.8
     each physical contender owns the ID port. LIST and SAVECONFIG consume
     this snapshot for persistent, per-adapter data without relocating a
     duplicate-IOBASE adapter merely to read it. CONFIGURE consults the same
-    snapshot for pre-transaction persistent state, and still retains targeted
-    temporary access (via the ID tag) so a selected physical adapter sharing
-    an IOBASE with another can be isolated for modification and
-    verification.
+    snapshot for pre-transaction persistent state, while CONFIGURE uses its
+    common temporary working access (via the ID tag) to isolate a selected
+    physical adapter for modification and verification.
   - SAVECONFIG keeps the detected ASIC revision separate from snapshot-backed
     PNP and Full Duplex export validity, so unknown-revision adapters do not
     enable unrelated 3C509B-only restore options (Boot ROM, /TR:AUTO).
@@ -26,6 +28,21 @@ Changelog 0.7.8
   - LIST now uses a neutral "3C509/3C509B" model prefix when the ASIC
     revision cannot be determined, instead of incorrectly assuming the
     original 3C509 generation.
+  - Mock ID-port short-sequence handling now follows the modeled byte/state
+    transition path instead of forcing command-ready state.
+  - CONFIGURE now retains one uniquely validated working IOBASE throughout
+    the transaction, while a requested final IOBASE may intentionally
+    duplicate another adapter's value, matching the original utility.
+  - CONFIGURE now uses one unified temporary working-base access model for all
+    adapter selection paths. The obsolete direct/targeted access split was
+    removed so the selected adapter always reaches a validated working I/O base
+    before transaction state is read or committed, while logical NIC_IO_BASE and
+    prospective final IOBASE remain distinct transaction concepts.
+  - HWMOCK now performs tagged adapter activation through the same ID-port
+    re-entry, tag selection, and explicit working-base activation transitions
+    used by hardware, rather than directly changing mock active-base state.
+    HWMOCK also rejects activation without an ID-port command-state target and
+    preserves persistent IOBASE configuration during temporary activation.
 
 Changelog 0.7.7
   - Switching the transceiver away from TP while Full Duplex is enabled now

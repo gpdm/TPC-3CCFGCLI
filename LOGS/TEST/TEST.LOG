@@ -232,7 +232,7 @@ Seed file created (INIT).
 [t1502] PASSED
 [t1503] multi-NIC adapter selection changes only the targeted NIC
 [t1503] PASSED
-[t1504] multi-NIC /IOBASE conflict detection blocks duplicate base
+[t1504] multi-NIC duplicate final /IOBASE is accepted
 [t1504] PASSED
 [t1505] duplicate IOBASE selected migration succeeds
 [t1505] PASSED
@@ -248,6 +248,16 @@ Seed file created (INIT).
 [t1511] PASSED
 [t1512] three duplicate IOBASE adapters remain independent
 [t1512] PASSED
+[t1513] duplicate current to occupied final IOBASE
+[t1513] PASSED
+[t1514] multi-NIC sequential selected access remains isolated
+[t1514] PASSED
+[t1515] invalid ID tag does not activate another adapter
+[t1515] PASSED
+[t1516] activation without tag selection has no target
+[t1516] PASSED
+[t1517] temporary activation preserves persistent IOBASE
+[t1517] PASSED
 [t16xx] SAVECONFIG_TEST: Verify save configuration behaviour
 [t1602] SAVECONFIG rejects an empty /OUTPUTFILE value
 [t1602] PASSED
@@ -371,8 +381,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 162
-    Executed Tests           : 162
+    Defined Tests            : 167
+    Executed Tests           : 167
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS

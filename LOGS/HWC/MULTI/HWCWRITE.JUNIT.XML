@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites name="3CCFGCLI Test Results" tests="6" failures="0" errors="0" skipped="0" time="0.0">
+	<testsuite name="HWCW_MULTI: Multi NIC Hardware Compliance Write checks" tests="6" errors="0" failures="0" skipped="0" time="0">
+		<properties>
+			<property name="header_id" value="HWCWM00xx"/>
+			<property name="description" value="Multi NIC Hardware Compliance Write checks"/>
+		</properties>
+		<testcase name="hwcwm001: LIST with two adapters set at distinct IOBASE values" classname="HWCW_MULTI">
+			<properties>
+				<property name="description" value="LIST with two adapters set at distinct IOBASE values"/>
+				<property name="artifact" value="ARTIFACT/HWCWM001.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcwm002: SAVECONFIG with two adapters set at distinct IOBASE values" classname="HWCW_MULTI">
+			<properties>
+				<property name="description" value="SAVECONFIG with two adapters set at distinct IOBASE values"/>
+				<property name="artifact" value="ARTIFACT/HWCWM002.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcwm003: LIST with two adapters sharing one IOBASE" classname="HWCW_MULTI">
+			<properties>
+				<property name="description" value="LIST with two adapters sharing one IOBASE"/>
+				<property name="artifact" value="ARTIFACT/HWCWM003.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcwm004: SAVECONFIG with two adapters sharing one IOBASE" classname="HWCW_MULTI">
+			<properties>
+				<property name="description" value="SAVECONFIG with two adapters sharing one IOBASE"/>
+				<property name="artifact" value="ARTIFACT/HWCWM004.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcwm005: selected adapter migrates out of a duplicate IOBASE state" classname="HWCW_MULTI">
+			<properties>
+				<property name="description" value="selected adapter migrates out of a duplicate IOBASE state"/>
+				<property name="artifact" value="ARTIFACT/HWCWM005.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcs001: Verifying specific Multi-NIC properties" classname="HWCW_MULTI">
+			<properties>
+				<property name="description" value="Verifying specific Multi-NIC properties"/>
+			</properties>
+		</testcase>
+	</testsuite>
+</testsuites>

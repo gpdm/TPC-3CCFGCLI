@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites name="3CCFGCLI Test Results" tests="5" failures="0" errors="0" skipped="0" time="0.0">
+	<testsuite name="HWCR_MULTI: Multi NIC Hardware Compliance Read checks" tests="5" errors="0" failures="0" skipped="0" time="0">
+		<properties>
+			<property name="header_id" value="HWCRM00xx"/>
+			<property name="description" value="Multi NIC Hardware Compliance Read checks"/>
+		</properties>
+		<testcase name="hwcrm001: LIST with two adapters set at distinct IOBASE values" classname="HWCR_MULTI">
+			<properties>
+				<property name="description" value="LIST with two adapters set at distinct IOBASE values"/>
+				<property name="artifact" value="ARTIFACT/HWCRM001.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcrm002: SAVECONFIG with two adapters set at distinct IOBASE values" classname="HWCR_MULTI">
+			<properties>
+				<property name="description" value="SAVECONFIG with two adapters set at distinct IOBASE values"/>
+				<property name="artifact" value="ARTIFACT/HWCRM002.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcrm003: LIST with two adapters sharing one IOBASE" classname="HWCR_MULTI">
+			<properties>
+				<property name="description" value="LIST with two adapters sharing one IOBASE"/>
+				<property name="artifact" value="ARTIFACT/HWCRM003.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcrm004: SAVECONFIG with two adapters sharing one IOBASE" classname="HWCR_MULTI">
+			<properties>
+				<property name="description" value="SAVECONFIG with two adapters sharing one IOBASE"/>
+				<property name="artifact" value="ARTIFACT/HWCRM004.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="hwcs001: Verifying specific Multi-NIC properties" classname="HWCR_MULTI">
+			<properties>
+				<property name="description" value="Verifying specific Multi-NIC properties"/>
+			</properties>
+		</testcase>
+	</testsuite>
+</testsuites>

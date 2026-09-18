@@ -266,7 +266,7 @@ hwcw: clean prep HWCW00xx save-config set-default-$(CARDTYPE) hwcw001-$(CARDTYPE
 
 # Two-card, model-independent physical write check. It stays separate from hwcw
 # so the normal compliance run remains valid with only one installed adapter.
-HWCW_MULTI: HWCWM00xx hwcwm001 hwcwm002 hwcwm003 hwcwm004 hwcwm005
+HWCW_MULTI: HWCWM00xx hwcwm001 hwcwm002 hwcwm003 hwcwm004 hwcwm005 hwcs001
 hwcwm: clean prep HWCWM00xx save-config hwcwm001 hwcwm002 hwcwm003 hwcwm004 hwcwm005 complete
 
 
@@ -807,7 +807,7 @@ hwcwm005:
 	$(READERAPP) LIST > $(ARTIFACTS)\HWCWM005.PRE
 	FIND "IOBASE = $(MULTI_SHARED_IOBASE)" $(ARTIFACTS)\HWCWM005.PRE > NUL
 	$(WRITERAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_CARD2_IOBASE) /INT:$(MULTI_CARD2_IRQ) > $(ARTIFACTS)\HWCWM005.LOG
-	FIND "Configuration completed successfully." $(ARTIFACTS)\HWCWM005.LOG > NUL
+	FIND "IOBASE and IRQ configuration completed successfully." $(ARTIFACTS)\HWCWM005.LOG > NUL
 	$(READERAPP) LIST > $(ARTIFACTS)\HWCWM005.LOG
 	FIND "IOBASE = $(MULTI_SHARED_IOBASE), IRQ = $(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCWM005.LOG > NUL
 	FIND "IOBASE = $(MULTI_CARD2_IOBASE), IRQ = $(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCWM005.LOG > NUL

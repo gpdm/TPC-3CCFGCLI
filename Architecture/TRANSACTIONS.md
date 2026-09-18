@@ -17,7 +17,7 @@ parse requested properties
 discover and select adapter
         |
         v
-revalidate selected adapter
+acquire working transaction access and validate adapter identity
         |
         v
 parse and stage property values
@@ -288,7 +288,7 @@ handler later accepts its value.
 duplicate tracking, so they cannot both be specified as if they were different
 properties.
 
-# Discovery, selection and revalidation
+# Discovery and selection
 
 After the first parse pass succeeds, `Cmd_Configure` performs the same complete
 adapter discovery used by `LIST`:
@@ -324,35 +324,35 @@ The resulting record pointer is stored in:
 cfg_selected_ptr
 ```
 
-## Revalidation
+## Working access and identity validation
 
-Before property values are dispatched, the selected record is revalidated by:
+Before property values are dispatched, the selected adapter is moved to a
+unique transaction working I/O base that is used only for the active
+CONFIGURE transaction:
 
 ```text id="wfj716"
-Cfg_Revalidate_Selected
+Cfg_Txn_Begin_Access
+    -> Cfg_Find_Temporary_Base
+    -> Cfg_Validate_Temporary_Base
 ```
 
-An active record is checked through:
+The selected adapter is then checked through the normal hardware identity
+path at that working base:
 
-* active 3Com signature
+* 3Com signature
 * product ID
 * ASIC revision where known
 * OEM node address read from EEPROM
 
-An inactive ID-port record can instead be revalidated read-only through its
-existing ID tag and ID-port identity.
+This protects CONFIGURE from trusting a logical record alone when the
+adapter's configured base may be shared or temporarily inactive.
 
-This protects CONFIGURE from blindly trusting a record created during an
-earlier discovery step.
-
-Revalidation is not itself permission to configure an inactive adapter.
-
-The later current-state read phase still rejects hardware-changing
-transactions when the selected record is not active.
+The working access is transaction transport, not a replacement for the
+logical/configured IOBASE state that remains tracked separately.
 
 # Second parse stage: property handlers
 
-Once the adapter has been selected and revalidated,
+Once the adapter has been selected and validated at its working access base,
 `Cfg_Dispatch_Parsed_Properties` dispatches the queued property requests in
 their original command-line order.
 
@@ -631,7 +631,7 @@ hardware-changing property.
 If the selected record is not marked active, a property-specific inactive
 error is returned.
 
-This is separate from revalidation.
+This is separate from the transaction working-base identity check.
 
 An inactive ID-port record may be proven to still represent the same card, but
 the current CONFIGURE implementation still requires normal active hardware
@@ -1456,7 +1456,7 @@ The final reachability test compares:
 It deliberately does **not** repeat the ASIC revision comparison at this final
 stage.
 
-ASIC revision was already checked during selected-adapter revalidation and,
+ASIC revision was already checked during working-base validation and,
 when activation occurred, during activation verification.
 
 ASIC revision is not itself a configured property.

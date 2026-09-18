@@ -9,6 +9,7 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
+IOBASE parameter accepted. Requested IOBASE: 0300
 MODEM parameter accepted. Requested setting: 9600
 FULLDUPLEX parameter accepted. Requested mode: enabled
 

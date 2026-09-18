@@ -260,7 +260,7 @@ hwcr: clean prep HWCR00xx save-config set-default-$(CARDTYPE) hwcr001-$(CARDTYPE
 # Two-card, model-independent hardware checks. These are deliberately separate
 # from hwcr because the normal compliance run must continue to work with one
 # installed adapter.
-HWCR_MULTI: HWCRM00xx hwcrm001 hwcrm002 hwcrm003 hwcrm004
+HWCR_MULTI: HWCRM00xx hwcrm001 hwcrm002 hwcrm003 hwcrm004 hwcs001
 hwcrm: clean prep HWCRM00xx save-config hwcrm001 hwcrm002 hwcrm003 hwcrm004 complete
 
 save-config:

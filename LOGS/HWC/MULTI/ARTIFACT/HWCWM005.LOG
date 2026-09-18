@@ -32,32 +32,3 @@ Number                       Description
        Optimization = Server
        MODEM Interrupt Disable Time = 1300 us (1200 bd)
        Full Duplex = not supported
-Running test target hwcwm for detected NIC: MULTI 
-invoke: MAKE -fHWCWRITE.MK -DCARD_MULTI  hwcwm 
-Cleaning logs and test artifacts 
-Running 3CCFGCLI Hardware Compliance Write checks 
-[HWCWM00xx] Multi NIC Hardware Compliance Write checks 
-Saving original adapter configuration to HWCWREST.BAT 
-3Com EtherLink III CLI Configuration Program v0.7.8
-by The Phintage Collector (Gianpaolo Del Matto)
-https://github.com/gpdm/TPC-3CCFGCLI
-reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
-
-Configuration restore batch file created: MULTI\ARTIFACT\HWCWREST.BAT
-[hwcwm001] LIST with two adapters set at distinct IOBASE values 
-[hwcwm001] PASSED 
-[hwcwm002] SAVECONFIG with two adapters set at distinct IOBASE values 
-[hwcwm002] PASSED 
-[hwcwm003] LIST with two adapters sharing one IOBASE 
-[hwcwm003] PASSED 
-[hwcwm004] SAVECONFIG with two adapters sharing one IOBASE 
-[hwcwm004] PASSED 
-[hwcwm005] selected adapter migrates out of a duplicate IOBASE state 
-[hwcwm005] PASSED 
-Hardware Compliance Write checks completed. 
-Taking post-configuration dump using 3C5X9CFG 
-Hardware Compliance Test PASSED. 
-HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
-[hwcs001].[multi] Verifying specific Multi-NIC properties
-[hwcs001].[multi] PASSED
-HWC SET verification: run completed

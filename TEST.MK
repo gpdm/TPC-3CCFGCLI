@@ -78,7 +78,7 @@ CLI_PARSER: t13xx t1301 t1302 t1303 t1304 t1305 t1306 t1307 t1308 t1309 t1310 t1
 COMBINED_TRANSACTIONS: t14xx t1401 t1402 t1403 t1405 t1406 t1407
 
 # Base: 1500
-MULTI_NIC: t15xx t1500 t1502 t1503 t1504 t1505 t1506 t1507 t1508 t1509 t1511 t1512
+MULTI_NIC: t15xx t1500 t1502 t1503 t1504 t1505 t1506 t1507 t1508 t1509 t1511 t1512 t1513 t1514 t1515 t1516 t1517
 
 # Base: 1600
 SAVECONFIG_TEST: t16xx t1602 t1603 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622 t1623 t1624 t1625 t1626 t1627
@@ -96,7 +96,6 @@ PIC_GATE: t19xx t1901 t1902
 
 # Imported hardware compliance SET verification.
 # NOTE: This group is deliberately not included in smoke-core.
-#       HWC_SET_FILE, HWC_CARD and HWC_SET_LOG are supplied by hwctest.sh.
 #       The HWCSET names intentionally do not use the tNNNN namespace, because
 #       these checks are not part of the normal test.sh regression count.
 #HWC_SET_VERIFY: hwcs001
@@ -1221,15 +1220,15 @@ t1503:
    @echo [t1503] PASSED  >> $(TESTLOG)
 
 t1504:
-   @echo [t1504] multi-NIC /IOBASE conflict detection blocks duplicate base >> $(TESTLOG)
+   @echo [t1504] multi-NIC duplicate final /IOBASE is accepted >> $(TESTLOG)
    ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1504.LOG
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1504.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 /INT:5 >> $(ARTIFACTS)\T1504.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:0300 >> $(ARTIFACTS)\T1504.LOG
-   FIND "Requested IOBASE is already used by another discovered adapter." $(ARTIFACTS)\T1504.LOG > NUL
+   FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T1504.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1504.LOG
    FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1504.LOG > NUL
-   FIND "IOBASE = 0310, IRQ = 5" $(ARTIFACTS)\T1504.LOG > NUL
+   FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1504.LOG > NUL
    @echo [t1504] PASSED  >> $(TESTLOG)
 
 # This deliberately creates an ambiguous hardware state with two ID-discovered
@@ -1273,8 +1272,8 @@ t1507:
    @echo [t1507] duplicate IOBASE persistent and FD transaction >> $(TESTLOG)
    ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1507.LOG
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 /ROM16K >> $(ARTIFACTS)\T1507.LOG
-   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1507.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:2 /MODEM:9600 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T1507.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 /INT:5 >> $(ARTIFACTS)\T1507.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:0300 /MODEM:9600 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T1507.LOG
    FIND "Configuration completed successfully." $(ARTIFACTS)\T1507.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1507.LOG
    FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1507.LOG > NUL
@@ -1331,7 +1330,7 @@ t1509:
    @echo [t1509] PASSED  >> $(TESTLOG)
 
 # Most prior duplicate-IOBASE coverage selects adapter 2. Select adapter 1
-# instead to prove the targeted access mechanism is not silently biased
+# instead to prove the unified working-base access model is not silently biased
 # toward the second table entry.
 t1511:
    @echo [t1511] duplicate IOBASE CONFIGURE targets adapter 1 >> $(TESTLOG)
@@ -1374,6 +1373,73 @@ t1512:
    FIND "IOBASE = 0300, IRQ = 7" $(ARTIFACTS)\T1512.LOG > NUL
    FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1512.LOG > NUL
    @echo [t1512] PASSED  >> $(TESTLOG)
+
+t1513:
+   @echo [t1513] duplicate current to occupied final IOBASE >> $(TESTLOG)
+   @rem Three-card contention orders COAX as adapter 2 and COMBO as adapter 3.
+   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1513.LOG
+   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1513.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 >> $(ARTIFACTS)\T1513.LOG
+   ${SEEDAPP} ADD 3C509B-COAX /IOBASE:0310 /INT:3 >> $(ARTIFACTS)\T1513.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:3 /IOBASE:0310 >> $(ARTIFACTS)\T1513.LOG
+   FIND "IOBASE configuration completed successfully." $(ARTIFACTS)\T1513.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1513.LOG
+   FIND "Ethernet Address = 02608C654301" $(ARTIFACTS)\T1513.LOG > NUL
+   FIND "Ethernet Address = 02608C654302" $(ARTIFACTS)\T1513.LOG > NUL
+   FIND "Ethernet Address = 02608C654303" $(ARTIFACTS)\T1513.LOG > NUL
+   FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1513.LOG > NUL
+   FIND "IOBASE = 0310, IRQ = 5" $(ARTIFACTS)\T1513.LOG > NUL
+   FIND "IOBASE = 0310, IRQ = 3" $(ARTIFACTS)\T1513.LOG > NUL
+   $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1513.BAT >> $(ARTIFACTS)\T1513.LOG
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1513.BAT "ADAPTERNUM:1" "INT:10"
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1513.BAT "ADAPTERNUM:1" "IOBASE:0300"
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1513.BAT "ADAPTERNUM:2" "INT:3"
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1513.BAT "ADAPTERNUM:2" "IOBASE:0310"
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1513.BAT "ADAPTERNUM:3" "INT:5"
+   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1513.BAT "ADAPTERNUM:3" "IOBASE:0310"
+   @echo [t1513] PASSED  >> $(TESTLOG)
+
+# CONFIGURE must repeatedly isolate the selected tag at a temporary working
+# base: configuring adapter 2 must not leave adapter 1 unable to be selected
+# and configured through the same common access model.
+t1514:
+   @echo [t1514] multi-NIC sequential selected access remains isolated >> $(TESTLOG)
+   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1514.LOG
+   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1514.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 /INT:5 >> $(ARTIFACTS)\T1514.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:2 /INT:7 >> $(ARTIFACTS)\T1514.LOG
+   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1514.LOG > NUL
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 >> $(ARTIFACTS)\T1514.LOG
+   FIND "IRQ configuration completed successfully." $(ARTIFACTS)\T1514.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1514.LOG
+   FIND "IOBASE = 0300, IRQ = 9" $(ARTIFACTS)\T1514.LOG > NUL
+   FIND "IOBASE = 0310, IRQ = 7" $(ARTIFACTS)\T1514.LOG > NUL
+   @echo [t1514] PASSED  >> $(TESTLOG)
+
+t1515:
+   @echo [t1515] invalid ID tag does not activate another adapter >> $(TESTLOG)
+   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1515.LOG
+   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 >> $(ARTIFACTS)\T1515.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 >> $(ARTIFACTS)\T1515.LOG
+   $(BINAPP) MOCKTEST INVALIDTAG >> $(ARTIFACTS)\T1515.LOG
+   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1515.LOG > NUL
+   @echo [t1515] PASSED  >> $(TESTLOG)
+
+t1516:
+   @echo [t1516] activation without tag selection has no target >> $(TESTLOG)
+   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1516.LOG
+   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 >> $(ARTIFACTS)\T1516.LOG
+   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 >> $(ARTIFACTS)\T1516.LOG
+   $(BINAPP) MOCKTEST NOSELECT >> $(ARTIFACTS)\T1516.LOG
+   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1516.LOG > NUL
+   @echo [t1516] PASSED  >> $(TESTLOG)
+
+t1517:
+   @echo [t1517] temporary activation preserves persistent IOBASE >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1517.LOG
+   $(BINAPP) MOCKTEST TEMPBASE >> $(ARTIFACTS)\T1517.LOG
+   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1517.LOG > NUL
+   @echo [t1517] PASSED  >> $(TESTLOG)
 
 t16xx:
    @echo [t16xx] SAVECONFIG_TEST: Verify save configuration behaviour  >> $(TESTLOG)
@@ -1923,8 +1989,9 @@ t1902:
 # Link Beat is deliberately not asserted because neither HWCREAD.MK nor
 # HWCWRITE.MK configures it.
 #
-# HWC_SET_FILE is the DOS path of HWCR.SET or HWCW.SET.
-# HWC_CARD is one of BTP, BCOAX, BCOMBO, BTPO, BTPC or TP.
+# HWC_SET_FILE_1 is the DOS path of HWCR.SET or HWCW.SET (single-file check for specific card)
+# HWC_SET_FILE_2 is the DOS path of HWCR.SET or HWCW.SET (only valid for multi-nic configurations)
+# HWC_CARD is one of (B)TP, (B)COAX, (B)COMBO, (B)TPO, (B)TPC or MULTI.
 # HWC_SET_LOG is a dedicated result log supplied by hwctest.sh.
 
 hwcs0xx:
@@ -1932,47 +1999,75 @@ hwcs0xx:
 
 hwcs001-common:
    @echo [hwcs001].[common] Verify 3C5X9CFG post HWC configuration dump >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@I/O base address:" "280H" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Interrupt request level:" " 3" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Boot PROM size:" "disabled" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Network driver optimization:" "server" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Maximum interrupt disable time:" "1300 microseconds" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@I/O base address:" "280H" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Interrupt request level:" " 3" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Boot PROM size:" "disabled" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Network driver optimization:" "server" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Maximum interrupt disable time:" "1300 microseconds" > NUL
 
 hwcs001-BTP: hwcs001-common
    @echo [hwcs001].[btp] Verifying specific 3C509B-TP properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "external" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Plug and Play Capability:" "disabled" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "external" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Plug and Play Capability:" "disabled" > NUL
    @echo [hwcs001].[btp] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-BCOAX: hwcs001-common
    @echo [hwcs001].[bcoax] Verifying specific 3C509B-COAX properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "on-board coax" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Plug and Play Capability:" "disabled" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Plug and Play Capability:" "disabled" > NUL
    @echo [hwcs001].[bcoax] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-BCOMBO: hwcs001-common
    @echo [hwcs001].[bcombo] Verifying specific 3C509B-Combo properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "on-board coax" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Plug and Play Capability:" "disabled" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Plug and Play Capability:" "disabled" > NUL
    @echo [hwcs001].[bcombo] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-BTPO: hwcs001-common
    @echo [hwcs001].[btpo] Verifying specific 3C509B-TPo properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "on-board TP" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Plug and Play Capability:" "disabled" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Full Duplex:" "enabled" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board TP" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Plug and Play Capability:" "disabled" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Full Duplex:" "enabled" > NUL
    @echo [hwcs001].[btpo] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-BTPC: hwcs001-common
    @echo [hwcs001].[btpc] Verifying specific 3C509B-TPCoax properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "on-board coax" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Plug and Play Capability:" "disabled" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Plug and Play Capability:" "disabled" > NUL
    @echo [hwcs001].[btpc] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-TP: hwcs001-common
    @echo [hwcs001].[tp] Verifying specific 3C509-TP properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE) "@Transceiver type:" "external" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "external" > NUL
    @echo [hwcs001].[tp] PASSED >> $(HWC_LOGFILE)
+
+hwcs001-COAX: hwcs001-common
+   @echo [hwcs001].[bcoax] Verifying specific 3C509B-COAX properties >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @echo [hwcs001].[bcoax] PASSED >> $(HWC_LOGFILE)
+
+hwcs001-COMBO: hwcs001-common
+   @echo [hwcs001].[bcombo] Verifying specific 3C509B-Combo properties >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @echo [hwcs001].[bcombo] PASSED >> $(HWC_LOGFILE)
+
+hwcs001-TPO: hwcs001-common
+   @echo [hwcs001].[btpo] Verifying specific 3C509B-TPo properties >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board TP" > NUL
+   @echo [hwcs001].[btpo] PASSED >> $(HWC_LOGFILE)
+
+hwcs001-TPC: hwcs001-common
+   @echo [hwcs001].[btpc] Verifying specific 3C509B-TPCoax properties >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @echo [hwcs001].[btpc] PASSED >> $(HWC_LOGFILE)
+
+hwcs001-MULTI:
+   @echo [hwcs001].[multi] Verifying specific Multi-NIC properties >> $(HWC_LOGFILE)
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "base address:" "300" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "Interrupt request" "5" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_2) "base address:" "300" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_2) "Interrupt request" "3" > NUL
+   @echo [hwcs001].[multi] PASSED >> $(HWC_LOGFILE)
 
 hwcs-complete:
    @echo HWC SET verification: run completed >> $(HWC_LOGFILE)

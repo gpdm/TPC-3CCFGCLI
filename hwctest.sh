@@ -8,25 +8,22 @@
 #   ./LOGS/HWC/<CARD>/ARTIFACT/
 #
 
-set -euo pipefail
+set -eo pipefail
 
 LOG_ROOT="./LOGS"
 HWC_ROOT="${LOG_ROOT}/HWC"
 
-HWCREAD_MK="./HWCREAD.MK"
-HWCWRITE_MK="./HWCWRITE.MK"
-TEST_MK="./TEST.MK"
-TESTREPORT="./testreport.py"
-AUTOEXEC_TEST="./autoexec-test"
+HWCREAD_MK="HWCREAD.MK"
+HWCWRITE_MK="HWCWRITE.MK"
+TEST_MK="TEST.MK"
+TESTREPORT="testreport.py"
+AUTOEXEC_TEST="autoexec-test"
 DOSBOX_BIN=${DOSBOX_BIN:-/Applications/DOSBox-X.app/Contents/MacOS/dosbox-x}
 
 CARD_TYPES=(BTP BCOAX BCOMBO BTPO BTPC TP COAX COMBO TPO TPC MULTI)
-LOCAL_HWC_DIRS=()
-LOCAL_HWC_DIR_COUNT=0
 MEDIA_CARDS=()
-MEDIA_CARD_COUNT=0
 FLOPPY_CANDIDATES=()
-FLOPPY_CANDIDATE_COUNT=0
+MEDIA_LISTING=""
 SELECTED_DEVICE=""
 IO_DEVICE=""
 
@@ -58,25 +55,6 @@ confirm()
 
     case "$answer" in
         y|Y|yes|YES|Yes)
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-}
-
-
-upper()
-{
-    printf '%s' "$1" | tr '[:lower:]' '[:upper:]'
-}
-
-
-is_card_type()
-{
-    case "$1" in
-        BTP|BCOAX|BCOMBO|BTPO|BTPC|TP|COAX|COMBO|TPO|TPC|MULTI)
             return 0
             ;;
         *)
@@ -139,44 +117,9 @@ mcopy_media()
     local dev="$1"
     shift
 
-    sudo mcopy -i "$dev" "$@"
+    sudo mcopy -v -i "$dev" "$@"
 }
 
-
-probe_media()
-{
-    local dev="$1"
-
-    sudo dd if="$dev" of=/dev/null bs=512 count=1 >/dev/null 2>&1
-}
-
-
-add_floppy_candidate()
-{
-    local dev="$1"
-    local existing
-    local index=0
-
-    while [[ "$index" -lt "$FLOPPY_CANDIDATE_COUNT" ]]
-    do
-        existing="${FLOPPY_CANDIDATES[$index]}"
-
-        if [[ "$existing" == "$dev" ]]
-        then
-            return 0
-        fi
-
-        index=$((index + 1))
-    done
-
-    FLOPPY_CANDIDATES[$FLOPPY_CANDIDATE_COUNT]="$dev"
-    FLOPPY_CANDIDATE_COUNT=$((FLOPPY_CANDIDATE_COUNT + 1))
-}
-
-
-###############################################################################
-# Require macOS
-###############################################################################
 
 require_macos()
 {
@@ -192,8 +135,31 @@ require_macos()
             ;;
     esac
 
-    command -v diskutil >/dev/null 2>&1 ||
-        die "diskutil is not available."
+}
+
+
+check_prereqs()
+{
+    local tool
+
+    for tool in diskutil mcopy mdir uv
+    do
+        command -v "$tool" >/dev/null 2>&1 ||
+            die "Required tool not found: $tool"
+    done
+
+    [[ -x "$DOSBOX_BIN" ]] ||
+        die "Required tool not found: $DOSBOX_BIN"
+
+    for file in \
+        "$HWCREAD_MK" \
+        "$HWCWRITE_MK" \
+        "$TEST_MK" \
+        "$TESTREPORT" \
+        "$AUTOEXEC_TEST"
+    do
+        [[ -f "$file" ]] || die "Required file not found: $file"
+    done
 }
 
 
@@ -201,93 +167,27 @@ require_macos()
 # 1. Check locally available HWC test data
 ###############################################################################
 
-scan_local_hwc_data()
+warn_if_no_local_hwc_data()
 {
     local dir
-    local base
-    local card
-    local has_log
 
-    LOCAL_HWC_DIRS=()
-    LOCAL_HWC_DIR_COUNT=0
-
-    [[ -d "$HWC_ROOT" ]] || return 0
-
-    for dir in "$HWC_ROOT"/*
-    do
-        [[ -d "$dir" ]] || continue
-
-        base="$(basename "$dir")"
-        card="$(upper "$base")"
-        has_log=0
-
-        if [[ -f "$dir/HWCREAD.LOG" || -f "$dir/HWCWRITE.LOG" ]]
-        then
-            has_log=1
-        fi
-
-        [[ "$has_log" -eq 1 ]] || continue
-
-        if is_card_type "$card"
-        then
-            LOCAL_HWC_DIRS[$LOCAL_HWC_DIR_COUNT]="$dir"
-            LOCAL_HWC_DIR_COUNT=$((LOCAL_HWC_DIR_COUNT + 1))
-        else
-            warn "Ignoring unrecognized HWC directory containing test logs: $dir"
-        fi
-    done
-}
-
-
-show_local_hwc_status()
-{
-    local dir
-    local found_logs=0
-
-    scan_local_hwc_data
-
-    if [[ "$LOCAL_HWC_DIR_COUNT" -eq 0 ]]
+    if [[ -d "$HWC_ROOT" ]]
     then
-        echo
-        echo "No HWC test data found below ${HWC_ROOT}."
-        echo "The HWC tests must be executed on a system with real hardware."
-        echo "Use ./build_hwc_disk.sh image to create the required HWC test floppy images."
-        return 0
+        for dir in "$HWC_ROOT"/*
+        do
+            # Intentionally return from the function as soon as any HWC subdirectory exists.
+            [[ -d "$dir" ]] && return 0
+        done
     fi
 
     echo
-    echo "Local HWC test data found:"
-
-    local index=0
-    while [[ "$index" -lt "$LOCAL_HWC_DIR_COUNT" ]]
-    do
-        dir="${LOCAL_HWC_DIRS[$index]}"
-        index=$((index + 1))
-        printf '  %s' "$dir"
-
-        if [[ -f "$dir/HWCREAD.LOG" ]]
-        then
-            printf '  HWCREAD.LOG'
-            found_logs=$((found_logs + 1))
-        fi
-
-        if [[ -f "$dir/HWCWRITE.LOG" ]]
-        then
-            printf '  HWCWRITE.LOG'
-            found_logs=$((found_logs + 1))
-        fi
-
-        if [[ -d "$dir/ARTIFACT" ]]
-        then
-            printf '  ARTIFACT'
-        else
-            printf '  ARTIFACT missing'
-        fi
-
-        printf '\n'
-    done
-
-    echo "Found ${found_logs} HWC log file(s)."
+    echo "No HWC test data found below ${HWC_ROOT}."
+    echo "The HWC tests must be executed on a system with real hardware."
+    echo
+    echo "Use ./build_hwc_disk.sh image to create the required HWC test floppy images"
+    echo "and run the HWC tests there."
+    echo
+    echo "Then import the HWC results using this script (hwctest.sh)."
 }
 
 
@@ -295,29 +195,11 @@ show_local_hwc_status()
 # 2. Floppy import
 ###############################################################################
 
-mtools_available()
-{
-    local tool
-
-    for tool in mdir mcopy
-    do
-        if ! command -v "$tool" >/dev/null 2>&1
-        then
-            return 1
-        fi
-    done
-
-    return 0
-}
-
-
 detect_macos_floppies()
 {
     local dev
     local info
     local size
-
-    command -v diskutil >/dev/null 2>&1 || return 0
 
     while IFS= read -r dev
     do
@@ -328,7 +210,7 @@ detect_macos_floppies()
 
         if printf '%s\n' "$info" | grep -qi 'floppy'
         then
-            add_floppy_candidate "$dev"
+            FLOPPY_CANDIDATES+=("$dev")
             continue
         fi
 
@@ -347,21 +229,12 @@ detect_macos_floppies()
 
         if [[ -n "$size" ]] && is_standard_floppy_size "$size"
         then
-            add_floppy_candidate "$dev"
+            FLOPPY_CANDIDATES+=("$dev")
         fi
     done < <(
         diskutil list 2>/dev/null |
         sed -n 's|^\(/dev/disk[0-9][0-9]*\).*|\1|p'
     )
-}
-
-
-detect_floppy_candidates()
-{
-    FLOPPY_CANDIDATES=()
-    FLOPPY_CANDIDATE_COUNT=0
-
-    detect_macos_floppies
 }
 
 
@@ -373,8 +246,9 @@ choose_floppy_device()
     local index
 
     SELECTED_DEVICE=""
-    detect_floppy_candidates
-    count=$FLOPPY_CANDIDATE_COUNT
+    FLOPPY_CANDIDATES=()
+    detect_macos_floppies
+    count=${#FLOPPY_CANDIDATES[@]}
 
     if [[ "$count" -eq 1 ]]
     then
@@ -388,7 +262,7 @@ choose_floppy_device()
             return 0
         fi
 
-        printf 'Enter the correct device path, or press Enter to skip import: '
+        printf 'Enter the correct device path: '
         IFS= read -r dev || true
         [[ -n "$dev" ]] || return 1
         SELECTED_DEVICE="$dev"
@@ -400,15 +274,13 @@ choose_floppy_device()
         echo
         echo "Multiple possible floppy drives were detected:"
 
-        index=0
-        while [[ "$index" -lt "$FLOPPY_CANDIDATE_COUNT" ]]
+        for index in "${!FLOPPY_CANDIDATES[@]}"
         do
             dev="${FLOPPY_CANDIDATES[$index]}"
             echo "  $((index + 1))) $dev"
-            index=$((index + 1))
         done
 
-        printf 'Select a drive number, enter a device path, or press Enter to skip: '
+        printf 'Select a drive number or enter a device path: '
         IFS= read -r answer || true
         [[ -n "$answer" ]] || return 1
 
@@ -437,13 +309,7 @@ choose_floppy_device()
         return 0
     fi
 
-    echo
-    echo "No floppy drive was detected automatically."
-    printf 'Enter a floppy device path manually, or press Enter to skip import: '
-    IFS= read -r dev || true
-    [[ -n "$dev" ]] || return 1
-    SELECTED_DEVICE="$dev"
-    return 0
+    die "No floppy drive was detected. Aborting."
 }
 
 
@@ -522,19 +388,12 @@ validate_floppy_for_import()
         return 1
     fi
 
-    echo "Checking for inserted media..."
-
-    if ! probe_media "$IO_DEVICE"
-    then
-        warn "Cannot read floppy disk. No disk may be inserted."
-        return 1
-    fi
-
     echo "Checking DOS filesystem..."
 
-    if ! mdir_media "$IO_DEVICE" :: >/dev/null 2>&1
+    MEDIA_LISTING=""
+    if ! MEDIA_LISTING="$(mdir_media "$IO_DEVICE" -/ -b :: 2>/dev/null)"
     then
-        warn "Disk is present, but no readable DOS FAT filesystem was found."
+        warn "No readable DOS FAT filesystem was found on $IO_DEVICE."
         return 1
     fi
 
@@ -545,42 +404,19 @@ validate_floppy_for_import()
 
 scan_floppy_hwc_data()
 {
-    local dev="$1"
     local card
-    local has_read
-    local has_write
-    local has_artifact
 
     MEDIA_CARDS=()
-    MEDIA_CARD_COUNT=0
 
     for card in "${CARD_TYPES[@]}"
     do
-        has_read=0
-        has_write=0
-        has_artifact=0
-
-        if mdir_media "$dev" "::/$card/HWCREAD.LOG" >/dev/null 2>&1
+        if grep -Fqx \
+            -e "::/$card/HWCREAD.LOG" \
+            -e "::/$card/HWCWRITE.LOG" <<< "$MEDIA_LISTING"
         then
-            has_read=1
-        fi
-
-        if mdir_media "$dev" "::/$card/HWCWRITE.LOG" >/dev/null 2>&1
-        then
-            has_write=1
-        fi
-
-        if mdir_media "$dev" "::/$card/ARTIFACT" >/dev/null 2>&1
-        then
-            has_artifact=1
-        fi
-
-        if [[ "$has_read" -eq 1 || "$has_write" -eq 1 ]]
-        then
-            if [[ "$has_artifact" -eq 1 ]]
+            if grep -Fqx "::/$card/ARTIFACT/" <<< "$MEDIA_LISTING"
             then
-                MEDIA_CARDS[$MEDIA_CARD_COUNT]="$card"
-                MEDIA_CARD_COUNT=$((MEDIA_CARD_COUNT + 1))
+                MEDIA_CARDS+=("$card")
             else
                 warn "Ignoring incomplete HWC data on floppy for $card: ARTIFACT directory is missing."
             fi
@@ -608,43 +444,25 @@ import_floppy_hwc_data()
     local card
     local dest
 
-    scan_floppy_hwc_data "$dev"
+    scan_floppy_hwc_data
 
-    if [[ "$MEDIA_CARD_COUNT" -eq 0 ]]
+    if [[ "${#MEDIA_CARDS[@]}" -eq 0 ]]
     then
-        echo "No card specific HWC test data was found on the floppy disk."
-        return 0
+        die "No card specific HWC test data was found on the floppy disk."
     fi
 
     echo
-    printf 'HWC test data found on floppy:'
-    local index=0
-    while [[ "$index" -lt "$MEDIA_CARD_COUNT" ]]
-    do
-        printf ' %s' "${MEDIA_CARDS[$index]}"
-        index=$((index + 1))
-    done
-    printf '\n'
+    printf 'HWC test data found on floppy: %s\n' "${MEDIA_CARDS[*]}"
 
     mkdir -p "$HWC_ROOT"
 
-    index=0
-    while [[ "$index" -lt "$MEDIA_CARD_COUNT" ]]
+    for card in "${MEDIA_CARDS[@]}"
     do
-        card="${MEDIA_CARDS[$index]}"
-        index=$((index + 1))
         dest="$HWC_ROOT/$card"
 
-        if [[ -e "$dest" ]]
-        then
-            if ! confirm "Destination $dest already exists. Overwrite it?"
-            then
-                echo "Skipping $card."
-                continue
-            fi
-
-            sudo rm -rf -- "$dest"
-        fi
+        # Fresh imports must replace any local card data because post processing
+        # adds derived files to these directories.
+        [[ -e "$dest" ]] && rm -rf -- "$dest"
 
         echo "Importing $card from $dev ..."
         mcopy_media "$dev" -s "::/$card" "$HWC_ROOT/"
@@ -655,35 +473,16 @@ import_floppy_hwc_data()
 }
 
 
-run_import_option()
+run_import()
 {
     echo
-    echo "If a floppy disk containing HWC test data is inserted, it can be imported now."
+    echo "Importing HWC test data from floppy disk."
 
-    if [[ ! -t 0 ]]
-    then
-        echo "No interactive input is available. Floppy import is skipped."
-        return 0
-    fi
+    [[ -t 0 ]] || die "Interactive input is required for floppy import."
 
-    if ! mtools_available
-    then
-        echo "MTOOLS are not installed. Floppy import is unavailable."
-        echo "Required commands: mdir, mcopy"
-        return 0
-    fi
-
-    if ! choose_floppy_device
-    then
-        echo "Floppy import skipped."
-        return 0
-    fi
-
-    if ! validate_floppy_for_import "$SELECTED_DEVICE"
-    then
-        echo "Floppy import skipped."
-        return 0
-    fi
+    choose_floppy_device || die "No floppy drive selected."
+    validate_floppy_for_import "$SELECTED_DEVICE" ||
+        die "Floppy validation failed."
 
     import_floppy_hwc_data "$IO_DEVICE"
 }
@@ -700,130 +499,95 @@ dos_path()
 }
 
 
-run_hwc_set_check()
+run_hwc_set_checks()
 {
-    local card="$1"
-    local setfile="$2"
-    local hwc_log="$3"
-    local basename
+    local card
+    local dir
+    local logfile
+    local setfile_1
+    local setfile_2
     local verify_log
-    local dos_setfile
+    local dos_setfile_1
+    local dos_setfile_2
     local dos_hwc_log
     local dos_verify_log
     local conf
+    local line
+    local base
 
-    basename="$(basename "$setfile" .SET)"
-    verify_log="$(dirname "$setfile")/${basename}VFY.LOG"
-    dos_setfile="$(dos_path "$setfile")"
-    dos_verify_log="$(dos_path "$verify_log")"
-    dos_hwc_log="$(dos_path "$hwc_log")"
-    conf="$(mktemp "/tmp/autoexec-hwcset.XXXXXX")"
-
-    rm -f "$verify_log"
-
-    while IFS= read -r line || [[ -n "$line" ]]
-    do
-        case "$line" in
-            *"CALL TEST"*)
-                printf 'SET HWC_SET_FILE=%s\n' "$dos_setfile"
-                printf 'SET HWC_CARD=%s\n' "$card"
-                printf 'SET HWC_LOGFILE=%s\n' "$dos_hwc_log"
-                printf 'SET HWC_VERIFY_LOGFILE=%s\n' "$dos_verify_log"
-                printf 'CALL TEST hwc_set_verify\n'
-                ;;
-            *)
-                printf '%s\n' "$line"
-                ;;
-        esac
-    done < "$AUTOEXEC_TEST" > "$conf"
-
-    echo "Verifying $setfile through TEST.MK ..."
-    "$DOSBOX_BIN" -conf "$conf" > /dev/null 2>&1 || true
-    rm -f "$conf"
-}
-
-
-post_import_test_check()
-{
-    local dir
-    local card
-    local setfile
-    local logfile
-    local check_count=0
-    local failure_count=0
-    local index=0
-
-    scan_local_hwc_data
-
-    if [[ "$LOCAL_HWC_DIR_COUNT" -eq 0 ]]
-    then
-        echo
-        echo "No local HWC data is available for SET verification."
-        return 0
-    fi
-
-    [[ -x "$DOSBOX_BIN" ]] ||
-        die "DOSBox-X executable not found: $DOSBOX_BIN"
-
-    [[ -f "$AUTOEXEC_TEST" ]] ||
-        die "DOSBox-X test configuration not found: $AUTOEXEC_TEST"
-
-    [[ -f "$TEST_MK" ]] ||
-        die "TEST.MK not found: $TEST_MK"
-
-    echo
     echo "Verifying imported 3C5X9CFG SET dumps..."
 
-    while [[ "$index" -lt "$LOCAL_HWC_DIR_COUNT" ]]
+    for card in "${MEDIA_CARDS[@]}"
     do
-        dir="${LOCAL_HWC_DIRS[$index]}"
-        index=$((index + 1))
-        card="$(upper "$(basename "$dir")")"
+        dir="$HWC_ROOT/$card"
 
         for logfile in "$dir/HWCREAD.LOG" "$dir/HWCWRITE.LOG"
         do
+            # A missing READ or WRITE log is valid, just skip it.
             [[ -f "$logfile" ]] || continue
 
-            case "$(basename "$logfile")" in
-                HWCREAD.LOG)
-                    setfile="$dir/ARTIFACT/HWCR.SET"
-                    ;;
-                HWCWRITE.LOG)
-                    setfile="$dir/ARTIFACT/HWCW.SET"
-                    ;;
-            esac
+            base="$(basename "$logfile" .LOG)"
 
-            check_count=$((check_count + 1))
-
-            if [[ ! -f "$setfile" ]]
+            if [[ "$card" == "MULTI" ]]
             then
-                warn "$(basename "$setfile") is missing for imported $(basename "$logfile") data: $dir"
-                failure_count=$((failure_count + 1))
-                continue
+                base="$(printf '%s' "$base" | sed 's/READ$/RM/; s/WRITE$/WM/')"
+
+                setfile_1="$dir/ARTIFACT/${base}_1.SET"
+                setfile_2="$dir/ARTIFACT/${base}_2.SET"
+
+                dos_setfile_1="$(dos_path "$setfile_1")"
+                dos_setfile_2="$(dos_path "$setfile_2")"
+            else
+                base="$(printf '%s' "$base" | sed 's/READ$/R/; s/WRITE$/W/')"
+
+                setfile_1="$dir/ARTIFACT/${base}.SET"
+                dos_setfile_1="$(dos_path "$setfile_1")"
+
+                setfile_2=""
+                dos_setfile_2=""
             fi
 
-            if ! run_hwc_set_check "$card" "$setfile" "$logfile"
+            verify_log="${setfile_1%.SET}VFY.LOG"
+
+            dos_hwc_log="$(dos_path "$logfile")"
+            dos_verify_log="$(dos_path "$verify_log")"
+
+            conf="$(mktemp "/tmp/autoexec-hwcset.XXXXXX")"
+
+            rm -f "$verify_log"
+
+            while IFS= read -r line || [[ -n "$line" ]]
+            do
+                case "$line" in
+                    *"CALL TEST"*)
+                        printf 'SET HWC_SET_FILE_1=%s\n' "$dos_setfile_1"
+                        printf 'SET HWC_SET_FILE_2=%s\n' "$dos_setfile_2"
+                        printf 'SET HWC_CARD=%s\n' "$card"
+                        printf 'SET HWC_LOGFILE=%s\n' "$dos_hwc_log"
+                        printf 'SET HWC_VERIFY_LOGFILE=%s\n' "$dos_verify_log"
+                        printf 'CALL TEST hwc_set_verify\n'
+                        ;;
+                    *)
+                        printf '%s\n' "$line"
+                        ;;
+                esac
+            done < "$AUTOEXEC_TEST" > "$conf"
+
+            if [[ "$card" == "MULTI" ]]
             then
-                failure_count=$((failure_count + 1))
+                echo "Verifying $setfile_1 and $setfile_2 through TEST.MK ..."
+            else
+                echo "Verifying $setfile_1 through TEST.MK ..."
             fi
+
+            if ! "$DOSBOX_BIN" -conf "$conf" > /dev/null 2>&1
+            then
+                warn "SET verification failed for $logfile"
+            fi
+
+            rm -f "$conf"
         done
     done
-
-    if [[ "$check_count" -eq 0 ]]
-    then
-        echo "No HWC read or write logs were found for SET verification."
-        return 0
-    fi
-
-    echo "SET dumps verified: $((check_count - failure_count)) of $check_count"
-
-    if [[ "$failure_count" -ne 0 ]]
-    then
-        warn "$failure_count SET verification check(s) failed."
-        return 1
-    fi
-
-    return 0
 }
 
 
@@ -833,94 +597,35 @@ post_import_test_check()
 
 update_junit_reports()
 {
+    local card
     local dir
     local logfile
-    local report_failures=0
-    local report_count=0
+    local makefile
 
-    scan_local_hwc_data
-
-    if [[ "$LOCAL_HWC_DIR_COUNT" -eq 0 ]]
-    then
-        echo
-        echo "No local HWC logs are available for JUnit report generation."
-        return 0
-    fi
-
-    command -v uv >/dev/null 2>&1 ||
-        die "uv is not installed or not available in PATH."
-
-    [[ -f "$TESTREPORT" ]] ||
-        die "JUnit report generator not found: $TESTREPORT"
-
-    echo
     echo "Updating HWC JUnit reports..."
 
-    local index=0
-    while [[ "$index" -lt "$LOCAL_HWC_DIR_COUNT" ]]
+    for card in "${MEDIA_CARDS[@]}"
     do
-        dir="${LOCAL_HWC_DIRS[$index]}"
-        index=$((index + 1))
-        if [[ ! -d "$dir/ARTIFACT" ]]
-        then
-            warn "Skipping $dir because ARTIFACT is missing."
-            report_failures=$((report_failures + 1))
-            continue
-        fi
+        dir="$HWC_ROOT/$card"
 
-        logfile="$dir/HWCREAD.LOG"
-        if [[ -f "$logfile" ]]
-        then
-            if [[ ! -f "$HWCREAD_MK" ]]
-            then
-                warn "Skipping $logfile because $HWCREAD_MK is missing."
-                report_failures=$((report_failures + 1))
-            else
-                echo "Generating report for $logfile"
-                if uv run "$TESTREPORT" \
-                    -f "$logfile" \
-                    -m "$HWCREAD_MK" \
-                    -verbose
-                then
-                    report_count=$((report_count + 1))
-                else
-                    warn "JUnit report generation failed for $logfile"
-                    report_failures=$((report_failures + 1))
-                fi
-            fi
-        fi
+        for logfile in "$dir/HWCREAD.LOG" "$dir/HWCWRITE.LOG"
+        do
+            # skip if logfile does not exist (which may be fine, btw)
+            [[ -f "$logfile" ]] || continue
 
-        logfile="$dir/HWCWRITE.LOG"
-        if [[ -f "$logfile" ]]
-        then
-            if [[ ! -f "$HWCWRITE_MK" ]]
+            # derive MK file from log, because it always maps 1:1
+            makefile="$(basename "$logfile" .LOG).MK"
+
+            echo "Generating report for $logfile"
+            if ! uv run "$TESTREPORT" \
+                -f "$logfile" \
+                -m "$makefile" \
+                -verbose
             then
-                warn "Skipping $logfile because $HWCWRITE_MK is missing."
-                report_failures=$((report_failures + 1))
-            else
-                echo "Generating report for $logfile"
-                if uv run "$TESTREPORT" \
-                    -f "$logfile" \
-                    -m "$HWCWRITE_MK" \
-                    -verbose
-                then
-                    report_count=$((report_count + 1))
-                else
-                    warn "JUnit report generation failed for $logfile"
-                    report_failures=$((report_failures + 1))
-                fi
+                warn "JUnit report generation failed for $logfile"
             fi
-        fi
+        done
     done
-
-    echo
-    echo "JUnit reports updated: $report_count"
-
-    if [[ "$report_failures" -ne 0 ]]
-    then
-        warn "$report_failures HWC report operation(s) failed or were skipped."
-        return 1
-    fi
 
     return 0
 }
@@ -931,7 +636,8 @@ update_junit_reports()
 ###############################################################################
 
 require_macos
-show_local_hwc_status
-run_import_option
-post_import_test_check
+check_prereqs
+warn_if_no_local_hwc_data
+run_import
+run_hwc_set_checks
 update_junit_reports
