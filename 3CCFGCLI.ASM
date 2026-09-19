@@ -5318,7 +5318,7 @@ ENDP Cfg_Checksum_17_Low
 ; The critical original ordering is intentionally retained: a tagged ISA card
 ; is deactivated and reactivated at the requested base before sub_342 performs
 ; the persistent EEPROM writes.  The record I O base is therefore changed only
-; immediately before Cfg_Id_Activate_Selected emits the E0h activation command.
+; immediately before Cfg_Id_Activate_At_Base emits the E0h activation command.
 ; No rollback sequence is invented after that point.
 ;
 ; ============================================================================
@@ -5640,8 +5640,9 @@ PROC Cfg_Txn_Read_Current NEAR
     call    Nic_Reg_Read_Word
     mov     [cfg_txn_old_live08], ax
 
-    cmp     [cfg_txn_working_access], 0
-    je      @@Live06Logical
+    ; Window 0 above was read through the mandatory temporary working base,
+    ; so cfg_txn_old_live06 always needs normalizing to the adapter's logical
+    ; IOBASE selector here.
     mov     si, [cfg_selected_ptr]
     mov     ax, [WORD si + NIC_IO_BASE]
     call    Nic_IOBASE_Base_To_Selector
@@ -5650,7 +5651,6 @@ PROC Cfg_Txn_Read_Current NEAR
     and     ax, 0FFE0h
     or      al, bl
     mov     [cfg_txn_old_live06], ax
-@@Live06Logical:
 
     mov     ax, [cfg_txn_old_word08]
     and     al, W0_ADDRESS_CFG_IOBASE_MASK
@@ -6258,7 +6258,8 @@ ENDP Cfg_Txn_Preflight
 
 ; Central owner of the old base to new base transition and original ISA
 ; deactivate/reactivate preparation.  The selected record changes base exactly
-; once, immediately before Cfg_Id_Activate_Selected consumes it.
+; once, immediately before Cfg_Id_Activate_At_Base consumes it at the
+; mandatory temporary working base.
 PROC Cfg_Txn_Activate_If_Needed NEAR
     push    ax
     push    bx
@@ -6287,16 +6288,11 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     call    Cfg_Id_Deactivate_Selected
 
     ; The working-base transaction path retains the read-only old-base absence
-    ; check when a true IOBASE migration is required.
+    ; check when a true IOBASE migration is required.  CONFIGURE always
+    ; operates through its mandatory temporary working base at this phase.
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@Retag
-    cmp     [cfg_txn_working_access], 0
-    je      @@CheckOldLogicalBase
     mov     dx, [cfg_txn_access_base]
-    jmp     @@CheckDeactivatedBase
-@@CheckOldLogicalBase:
-    mov     dx, [cfg_txn_old_base]
-@@CheckDeactivatedBase:
     mov     bx, dx
     call    Nic_Read_Status
     cmp     ax, 0FFFFh
@@ -6327,16 +6323,13 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
 
 @@Activate:
     mov     si, [cfg_selected_ptr]
-    cmp     [cfg_txn_working_access], 0
-    je      @@ActivateLogical
+    ; CONFIGURE is guaranteed to still be using its mandatory temporary
+    ; working base at this phase, so activation always targets it.
     pushf
     cli
     mov     ax, [cfg_txn_access_base]
     call    Cfg_Id_Activate_At_Base
     popf
-    jmp     @@RestoreLive
-@@ActivateLogical:
-    call    Cfg_Id_Activate_Selected
 
 @@RestoreLive:
     ; Original sub_334 restores both live window 0 words before sub_342 commits

@@ -1,4 +1,9 @@
 Changelog 0.8.0
+  - Cleanup: removed the retired direct-versus-temporary-access branches in
+    Cfg_Txn_Read_Current and Cfg_Txn_Activate_If_Needed, which had become
+    unreachable once CONFIGURE was unified around a mandatory temporary
+    working base; cfg_txn_working_access and its remaining meaningful
+    checks are unchanged.
   - Cleanup: consolidated ISA IOBASE and Address Configuration selector
     conversion in the shared backend-independent layer while preserving the
     special unassigned/EISA selector 1Fh behavior.

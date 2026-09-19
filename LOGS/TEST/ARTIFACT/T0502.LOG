@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.9
+3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -26,7 +26,7 @@ Verifying requested configuration...
 EEPROM Plug and Play mode verified.
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.7.9
+3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -48,7 +48,7 @@ Plug and Play mode is already configured to the requested value.
 No hardware changes required.
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.7.9
+3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
