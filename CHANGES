@@ -2,6 +2,9 @@ Changelog 0.8.0
   - Cleanup: consolidated ISA IOBASE and Address Configuration selector
     conversion in the shared backend-independent layer while preserving the
     special unassigned/EISA selector 1Fh behavior.
+  - Cleanup: consolidated byte decimal output through the shared
+    Print_DecWord conversion routine while preserving Print_DecByte's
+    register contract.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful

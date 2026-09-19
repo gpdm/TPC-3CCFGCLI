@@ -9428,51 +9428,8 @@ ENDP Print_HexWord
 
 PROC Print_DecByte NEAR
     push    ax
-    push    bx
-    push    cx
-    push    dx
-
     xor     ah, ah
-    mov     bx, 100
-    xor     dx, dx
-    div     bx
-    mov     ch, al
-    mov     ax, dx
-
-    mov     bx, 10
-    xor     dx, dx
-    div     bx
-    mov     cl, al
-    mov     bl, dl
-
-    cmp     ch, 0
-    je      @@NoHundreds
-    mov     dl, ch
-    add     dl, '0'
-    mov     ah, 02h
-    int     21h
-    mov     dl, cl
-    add     dl, '0'
-    int     21h
-    jmp     @@Ones
-
-@@NoHundreds:
-    cmp     cl, 0
-    je      @@Ones
-    mov     dl, cl
-    add     dl, '0'
-    mov     ah, 02h
-    int     21h
-
-@@Ones:
-    mov     dl, bl
-    add     dl, '0'
-    mov     ah, 02h
-    int     21h
-
-    pop     dx
-    pop     cx
-    pop     bx
+    call    Print_DecWord
     pop     ax
     ret
 ENDP Print_DecByte
