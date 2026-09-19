@@ -13,7 +13,7 @@ A 3C509/3C509B may:
 * be inactive and only discoverable through the proprietary 3Com ID port
 * already be active at its configured ISA I/O base
 * become active only after ID-port discovery and activation
-* be encountered more than once during the complete discovery process
+* share its configured I/O base with another discovered adapter
 * expose a configured I/O selector that this ISA-only utility deliberately
   does not support
 
@@ -54,13 +54,9 @@ The complete discovery flow is coordinated by `Scan_All_3Com_Cards`.
                                 v
                     Scan_Active_Base_Ports
                                 |
-              +-----------------+-----------------+
-              |                                   |
-       refresh records                     find adapters that
-       already known                       were already active
-       from ID discovery                   at an ISA base
-              |                                   |
-              +-----------------+-----------------+
+                                v
+                  refresh or verify existing
+                   ID-discovered records
                                 |
                                 v
                             nic_table
@@ -74,8 +70,8 @@ I/O address.
 Tagged activation then attempts to make those adapters accessible at their
 configured bases.
 
-The final active-base scan verifies the resulting live adapters and also finds
-cards that were already active before the ID-port sequence began.
+The final active-base scan verifies the resulting live adapters without
+creating additional records.
 
 ## The NIC record
 
@@ -91,7 +87,7 @@ The current layout is:
 | `5`    | `NIC_MAC_ADDR`   | Six-byte MAC address                                 |
 | `11`   | `NIC_IRQ_VAL`    | Normalized IRQ                                       |
 | `12`   | `NIC_PORT_TYPE`  | Transceiver selection from Address Configuration     |
-| `13`   | `NIC_TAG`        | ISA ID tag, zero when not known through ID discovery |
+| `13`   | `NIC_TAG`        | ISA ID tag assigned during ID-port discovery         |
 | `14`   | `NIC_ID_MODE`    | ID sequence mode used for later tag re-entry         |
 | `15`   | `NIC_FLAGS`      | Record state flags                                   |
 
@@ -103,10 +99,8 @@ The current flags are:
 | `NIC_FLAG_FROM_ID` | The record originated from 3Com ID-port discovery                                  |
 | `NIC_FLAG_OEM_MAC` | `NIC_MAC_ADDR` contains the OEM node address from EEPROM words `0Ah` through `0Ch` |
 
-These flags are deliberately independent.
-
-For example, a record may have `NIC_FLAG_FROM_ID` set without
-`NIC_FLAG_ACTIVE`.
+The flags describe distinct record properties. A record may have
+`NIC_FLAG_FROM_ID` set without `NIC_FLAG_ACTIVE`.
 
 That means the adapter was identified through the ID port, but is not
 currently known to be accessible at its configured base.
@@ -488,13 +482,9 @@ scan of valid active ISA bases.
 
 This is not redundant.
 
-The final scan serves two purposes:
-
-1. verify and refresh adapters that are now active
-2. detect adapters that were already active before ID-port discovery
-
-This means the discovery system can recover useful records through either
-mechanism without maintaining two separate final adapter lists.
+The final scan verifies and refreshes ID-discovered adapters that are now
+active. It never creates a record for a responding base that has no matching
+ID-discovered record.
 
 ## Valid base addresses
 
@@ -545,10 +535,7 @@ Find_Record_By_Base
 
 This comparison is based on `NIC_IO_BASE`.
 
-If a record already exists for that base, the scanner does not create another
-one.
-
-Instead it refreshes:
+If exactly one record exists for that base, the scanner refreshes that record.
 
 * `NIC_PRODUCT_ID`
 * `NIC_ASIC_REV`
@@ -562,59 +549,9 @@ NIC_FLAG_ACTIVE
 This is the normal path for an adapter that was discovered through the ID port
 and then successfully activated.
 
-## Creating an active-only record
-
-If no existing record uses the responding I/O base, the scanner creates a new
-record with:
-
-```text
-Build_Record_From_Active
-```
-
-This handles an adapter that is already active even though it did not become a
-normal record through the preceding ID-port discovery phase.
-
-The record begins with:
-
-* known active I/O base
-* product ID from the live signature probe
-* ASIC revision from the live signature probe
-* tag `0`
-* ID mode `0`
-* `NIC_FLAG_ACTIVE`
-
-It then reads the persistent values required to complete the record:
-
-* Address Configuration word `08h`
-* Resource Configuration word `09h`
-* OEM node address words `0Ah` through `0Ch`
-
-From those values it derives:
-
-* normalized IRQ
-* transceiver selection
-* OEM MAC address
-
-## Mandatory EEPROM read failures
-
-Record construction from an active adapter requires the configuration and OEM
-EEPROM reads above to succeed.
-
-If one of those reads fails, `Build_Record_From_Active` returns failure.
-
-The incomplete record is not counted.
-
-This is intentional.
-
-A hardware read error must not be converted into apparently valid
-configuration data by substituting a value such as `FFFFh`.
-
-`FFFFh` is also a valid EEPROM data word and cannot be used as an error
-sentinel.
-
-The EEPROM error contract is documented further in
-[`BACKEND.md`](BACKEND.md) and
-[`LOW_LEVEL_CONVENTIONS.md`](LOW_LEVEL_CONVENTIONS.md).
+If no record uses the responding I/O base, the scanner ignores that response.
+If more than one record uses the base, the scanner likewise does not attribute
+the response to an arbitrary record.
 
 # How records converge
 
@@ -648,29 +585,6 @@ The most common ID-discovered case looks like this:
                           refresh live identity
 ```
 
-An adapter found only through the final active scan looks different:
-
-```text
-                 active-base scan
-                        |
-                 signature valid
-                        |
-              no record at this base
-                        |
-                        v
-                +------------------+
-                | active-only      |
-                | ACTIVE           |
-                | FROM_ID clear    |
-                | tag = 0          |
-                +------------------+
-```
-
-Both are valid `nic_table` entries.
-
-They simply tell the rest of the application different things about how much
-is known about the adapter.
-
 # Identity, configuration and activity are different things
 
 Discovery deliberately keeps several concepts separate.
@@ -686,8 +600,7 @@ This is represented by `NIC_FLAG_FROM_ID` and the stored ID tag.
 
 ## Configured I/O base
 
-`NIC_IO_BASE` describes the ISA base derived from the adapter's configuration
-or the base at which the active adapter was found.
+`NIC_IO_BASE` describes the ISA base derived from the adapter's configuration.
 
 A nonzero value does not by itself prove that the adapter is currently
 responding there.
@@ -762,8 +675,8 @@ The following rules should remain true when modifying adapter discovery:
 * Discovery begins from a cleared `nic_table` and reset discovery state.
 * ID-port discovery happens before tagged-card activation.
 * Tagged-card activation happens before the final active-base scan.
-* ID-port discovery and active-base scanning are complementary, not competing
-  discovery implementations.
+* ID-port discovery is the only source of supported `nic_table` records.
+* The active-base scan only verifies or refreshes existing records.
 * Only the supported `9050h` 3C509 product family becomes a normal supported
   record.
 * EEPROM manufacturer identification uses documented `6D50h`.
@@ -779,15 +692,10 @@ The following rules should remain true when modifying adapter discovery:
 * ID-port duplicate suppression uses OEM node identity.
 * active-base duplicate suppression uses I/O base.
 * ID-discovered records retain their tag and ID sequence mode.
-* active-only records use tag zero unless later architecture deliberately
-  establishes an ID-port identity for them.
 * ASIC revision remains `FFh` in a provisional ID record until active hardware
   has provided a real value.
 * successful active-base signature results should be reused rather than
   immediately reprobed without need.
-* mandatory EEPROM read failure must abort active record construction.
-* EEPROM data values, including `FFFFh`, must not be confused with read
-  failure.
 * property handlers must not create their own independent adapter scanners.
 * discovery policy remains common code unless there is a real hardware reason
   for a backend-specific operation.
@@ -813,4 +721,3 @@ And has the adapter actually been verified as active there?
 
 Those distinctions are deliberate and form the basis for the later
 configuration and verification architecture.
-

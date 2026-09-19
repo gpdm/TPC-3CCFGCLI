@@ -14,6 +14,10 @@ Changelog 0.8.0
     also retiring nine affected error slots without changing stable error numbering.
   - Cleanup: consolidated the duplicated Full/Short ID port sequence loop in each of
     3CHWIF.ASM and 3CMOCKIF.ASM into one internal shared sequence core per backend.
+  - Cleanup: removed legacy active-only NIC record creation. ID-port discovery
+    is now the sole source of supported records; the final active-base sweep
+    only refreshes uniquely matched ID-derived records and ignores unmatched
+    or duplicate IOBASE responses.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful

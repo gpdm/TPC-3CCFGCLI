@@ -41,7 +41,7 @@ NIC_ASIC_REV            EQU 4       ; DB, FFh means not readable
 NIC_MAC_ADDR            EQU 5       ; 6 bytes
 NIC_IRQ_VAL             EQU 11      ; DB
 NIC_PORT_TYPE           EQU 12      ; DB, Address Configuration bits 15 to 14
-NIC_TAG                 EQU 13      ; DB, ISA ID tag 1 through 7, 0 if unknown
+NIC_TAG                 EQU 13      ; DB, ISA ID tag assigned during discovery
 NIC_ID_MODE             EQU 14      ; DB, 1 short sequence, 0 full sequence
 NIC_FLAGS               EQU 15      ; DB
 NIC_RECORD_SIZE         EQU 16
@@ -4079,8 +4079,7 @@ PROC Scan_All_3Com_Cards NEAR
     ; The original program tags the contenders first and activates them later.
     call    Nic_Activate_Tagged_Cards
 
-    ; Finally examine all valid active I O bases.  This also catches a board
-    ; that was already active before the proprietary ID sequence was entered.
+    ; Finally examine all valid active I O bases and refresh discovered records.
     call    Scan_Active_Base_Ports
 
     pop     di
@@ -4789,94 +4788,6 @@ PROC Cfg_Read_Capabilities NEAR
     ret
 ENDP Cfg_Read_Capabilities
 
-; Build a record from an adapter that is already active at DX.
-; Input DX = base, DI = destination record, AX = product ID, BL = ASIC rev.
-PROC Build_Record_From_Active NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    dx
-    push    si
-    push    di
-
-    mov     [WORD di + NIC_IO_BASE], dx
-    mov     [WORD di + NIC_PRODUCT_ID], ax
-    mov     [BYTE di + NIC_ASIC_REV], bl
-    mov     [BYTE di + NIC_TAG], 0
-    mov     [BYTE di + NIC_ID_MODE], 0
-    mov     [BYTE di + NIC_FLAGS], NIC_FLAG_ACTIVE
-
-    mov     si, dx
-
-    mov     al, EEPROM_ADDR_CFG
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    mov     [id_addr_cfg], ax
-
-    mov     dx, si
-    mov     al, EEPROM_RESOURCE_CFG
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    mov     [id_resource_cfg], ax
-
-    mov     dx, si
-    mov     al, EEPROM_OEM_NODE_0
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    mov     [id_oem0], ax
-    mov     dx, si
-    mov     al, EEPROM_OEM_NODE_1
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    mov     [id_oem1], ax
-    mov     dx, si
-    mov     al, EEPROM_OEM_NODE_2
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    mov     [id_oem2], ax
-
-    mov     ax, [id_resource_cfg]
-    mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
-    shr     ax, cl
-    call    Normalize_IRQ
-    mov     [BYTE di + NIC_IRQ_VAL], al
-
-    mov     ax, [id_addr_cfg]
-    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
-    shr     ax, cl
-    and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
-    cmp     al, 2
-    jne     @@MediaGood
-    mov     al, 1
-@@MediaGood:
-    mov     [BYTE di + NIC_PORT_TYPE], al
-
-    ; Mirror the original record layout by displaying the OEM node address.
-    or      [BYTE di + NIC_FLAGS], NIC_FLAG_OEM_MAC
-    add     di, NIC_MAC_ADDR
-    mov     ax, [id_oem0]
-    call    Store_Mac_Word
-    mov     ax, [id_oem1]
-    call    Store_Mac_Word
-    mov     ax, [id_oem2]
-    call    Store_Mac_Word
-
-    clc
-    jmp     @@Done
-
-@@Fail:
-    stc
-
-@@Done:
-    pop     di
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    pop     ax
-    ret
-ENDP Build_Record_From_Active
-
 ; Find an existing record for active base DX without collapsing duplicate
 ; ID-discovered identities.  Output DI = 0 when no record has this base,
 ; DI = record pointer when exactly one record has it, and DI = FFFFh when
@@ -4935,36 +4846,10 @@ PROC Scan_Active_Base_Ports NEAR
 
     call    Find_Record_By_Base
     cmp     di, 0
-    je      @@NewRecord
+    je      @@PortLoop
     cmp     di, 0FFFFh
     je      @@PortLoop
-    jmp     @@UpdateExisting
 
-@@NewRecord:
-
-    mov     cx, [card_count]
-    cmp     cx, MAX_CARDS
-    jae     @@Done
-
-    ; The record offset computation clobbers AX, BX and DX, so keep the
-    ; signature results from the probe above.
-    push    ax
-    push    bx
-    mov     ax, cx
-    mov     bx, NIC_RECORD_SIZE
-    mul     bx
-    mov     di, OFFSET nic_table
-    add     di, ax
-    pop     bx
-    pop     ax
-
-    mov     dx, [si-2]
-    call    Build_Record_From_Active
-    jc      @@PortLoop
-    inc     [card_count]
-    jmp     @@PortLoop
-
-@@UpdateExisting:
     ; Find_Record_By_Base returned the sole matching record pointer.  Refresh
     ; it only when the active response has an unambiguous owner.
     mov     dx, [si-2]
