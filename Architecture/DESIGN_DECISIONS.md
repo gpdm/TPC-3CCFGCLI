@@ -143,6 +143,23 @@ It is not a serialization defect.
 `SAVECONFIG` is expected to generate valid supported CLI configuration, not a bit exact representation of every technically possible EEPROM state.
 
 
+## PIC Enforcement Mode
+
+### Decision
+
+`3CCFGCLI` currently does not enforce the presence of a secondary PIC when configuring an IRQ that requires it.
+
+The existing `pic_gate_enforce` mechanism and `CFG_ERR_INT_REQUIRES_SLAVE_PIC` error path are intentionally retained for possible future use. `pic_gate_enforce` currently remains disabled.
+
+### Rationale
+
+The current behavior reports the PIC condition without rejecting the requested configuration.
+
+The stricter enforcement path is deliberately kept in the code so that this policy can later be changed without reintroducing the complete validation and error handling mechanism.
+
+The currently unreachable enforcement path is therefore intentional reserved functionality and must not be treated as dead code or removed during cleanup.
+
+
 ## No CLI Exit Code Support
 
 ### Decision

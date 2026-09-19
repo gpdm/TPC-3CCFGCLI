@@ -542,6 +542,8 @@ id_eeprom_contender DB ID_EEPROM_SNAPSHOT_SIZE DUP(0)
 
 ; Host PIC topology state used only by the /INT configuration gate.
 ; pic_gate_enforce = 0 warns and continues, nonzero rejects the selection.
+; This disabled strict path is intentional reserved functionality for a future
+; PIC policy change; do not remove it as dead code during cleanup.
 pic_slave_present DB 0
 pic_gate_enforce   DB 0
 
