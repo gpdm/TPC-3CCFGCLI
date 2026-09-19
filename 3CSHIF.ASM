@@ -3,6 +3,40 @@
 ; Backend-independent NIC algorithms for 3CCFGCLI.
 ; ---------------------------------------------------------------------------
 
+; Convert a five bit Address Configuration selector to its ISA I/O base.
+; Input AL = selector.  Output AX = base, zero for unassigned/EISA selector 1Fh.
+PROC Nic_IOBASE_Selector_To_Base NEAR
+    push    cx
+    xor     ah, ah
+    and     ax, W0_ADDRESS_CFG_IOBASE_MASK
+    cmp     ax, W0_ADDRESS_CFG_IOBASE_MASK
+    je      @@Unassigned
+    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
+    shl     ax, cl
+    add     ax, VALID_IOBASE_MIN
+    pop     cx
+    ret
+@@Unassigned:
+    ; Selector 1Fh denotes EISA slot specific addressing, not ISA IOBASE 03F0h.
+    ; This ISA only implementation does not model a slot derived address, so
+    ; returning zero intentionally means that no normal ISA IOBASE is available.
+    xor     ax, ax
+    pop     cx
+    ret
+ENDP Nic_IOBASE_Selector_To_Base
+
+; Convert a valid ISA I/O base to its five bit Address Configuration selector.
+; Input AX = base.  Output AL = selector.
+PROC Nic_IOBASE_Base_To_Selector NEAR
+    push    cx
+    sub     ax, VALID_IOBASE_MIN
+    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
+    shr     ax, cl
+    and     al, W0_ADDRESS_CFG_IOBASE_MASK
+    pop     cx
+    ret
+ENDP Nic_IOBASE_Base_To_Selector
+
 PROC Nic_Read_Status NEAR
     push    dx
     add     dx, EL3_STATUS
@@ -160,12 +194,7 @@ PROC Nic_Activate_Tagged_Cards NEAR
     call    Nic_IdPort_Write_Command
 
     mov     ax, [WORD si + NIC_IO_BASE]
-    sub     ax, 0200h
-    shr     ax, 1
-    shr     ax, 1
-    shr     ax, 1
-    shr     ax, 1
-    and     al, 1Fh
+    call    Nic_IOBASE_Base_To_Selector
     or      al, ID_CMD_ACTIVATE
     call    Nic_IdPort_Write_Command
     popf

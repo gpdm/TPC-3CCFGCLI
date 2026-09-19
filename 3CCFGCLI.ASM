@@ -2187,10 +2187,7 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     jc      @@Fail
     mov     ax, [save_word08]
-    and     ax, W0_ADDRESS_CFG_IOBASE_MASK
-    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
-    shl     ax, cl
-    add     ax, VALID_IOBASE_MIN
+    call    Nic_IOBASE_Selector_To_Base
     call    Save_Append_Hex_Word
     jc      @@Fail
 
@@ -4272,10 +4269,7 @@ PROC Build_Record_From_Id NEAR
     ; Discover_Id_Port_Cards before normal ISA record construction, so the
     ; selector decoded here is always in the range 00h through 1Eh.
     mov     ax, [id_addr_cfg]
-    and     ax, W0_ADDRESS_CFG_IOBASE_MASK
-    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
-    shl     ax, cl
-    add     ax, VALID_IOBASE_MIN
+    call    Nic_IOBASE_Selector_To_Base
     mov     [WORD di + NIC_IO_BASE], ax
 
     ; Resource Configuration bits 15 to 12 contain the actual IRQ number.
@@ -5329,24 +5323,6 @@ ENDP Cfg_Checksum_17_Low
 ; immediately before Cfg_Id_Activate_Selected emits the E0h activation command.
 ; No rollback sequence is invented after that point.
 ;
-; Pure selector decoder.  Input AL = selector.  Output AX = base, zero for 1Fh.
-PROC Cfg_IOBASE_Selector_To_Base NEAR
-    push    cx
-    xor     ah, ah
-    and     ax, W0_ADDRESS_CFG_IOBASE_MASK
-    cmp     ax, 001Fh
-    je      @@Unassigned
-    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
-    shl     ax, cl
-    add     ax, VALID_IOBASE_MIN
-    pop     cx
-    ret
-@@Unassigned:
-    xor     ax, ax
-    pop     cx
-    ret
-ENDP Cfg_IOBASE_Selector_To_Base
-
 ; ============================================================================
 ; Central staged CONFIGURE transaction facility
 ; ============================================================================
@@ -5422,18 +5398,6 @@ PROC Cfg_Txn_Retag_Selected NEAR
     ret
 ENDP Cfg_Txn_Retag_Selected
 
-; Convert a valid configured I/O base to its low five bit Address Configuration
-; selector.  Input AX = base.  Output AL = selector.
-PROC Cfg_IOBASE_Base_To_Selector NEAR
-    push    cx
-    sub     ax, VALID_IOBASE_MIN
-    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
-    shr     ax, cl
-    and     al, W0_ADDRESS_CFG_IOBASE_MASK
-    pop     cx
-    ret
-ENDP Cfg_IOBASE_Base_To_Selector
-
 ; Build the live Address Configuration value needed at the current physical
 ; transaction base without changing the stored logical prospective image.
 ; Input AX = logical live06.  Output AX = physical live06.
@@ -5443,7 +5407,7 @@ PROC Cfg_Txn_Make_Physical_Live06 NEAR
     and     ax, NOT W0_ADDRESS_CFG_IOBASE_MASK
     mov     bx, ax
     mov     ax, [cfg_txn_access_base]
-    call    Cfg_IOBASE_Base_To_Selector
+    call    Nic_IOBASE_Base_To_Selector
     or      al, bl
     mov     ah, bh
 
@@ -5730,7 +5694,7 @@ PROC Cfg_Txn_Read_Current NEAR
     je      @@Live06Logical
     mov     si, [cfg_selected_ptr]
     mov     ax, [WORD si + NIC_IO_BASE]
-    call    Cfg_IOBASE_Base_To_Selector
+    call    Nic_IOBASE_Base_To_Selector
     mov     bl, al
     mov     ax, [cfg_txn_old_live06]
     and     ax, 0FFE0h
@@ -5815,10 +5779,7 @@ PROC Cfg_Prepare_IOBASE NEAR
 
     mov     ax, [cfg_iobase_value]
     mov     [cfg_txn_new_base], ax
-    sub     ax, VALID_IOBASE_MIN
-    mov     cl, W0_ADDRESS_CFG_IOBASE_SHIFT
-    shr     ax, cl
-    and     al, W0_ADDRESS_CFG_IOBASE_MASK
+    call    Nic_IOBASE_Base_To_Selector
     mov     [cfg_txn_io_selector], al
 
     mov     ax, [cfg_txn_new_word08]
@@ -6466,7 +6427,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     and     al, W0_ADDRESS_CFG_IOBASE_MASK
     mov     bl, al
     mov     ax, [cfg_txn_access_base]
-    call    Cfg_IOBASE_Base_To_Selector
+    call    Nic_IOBASE_Base_To_Selector
     cmp     bl, al
     jne     @@ActivationLiveFail
 
@@ -6781,7 +6742,7 @@ PROC Cfg_Txn_Write_Live NEAR
     and     al, W0_ADDRESS_CFG_IOBASE_MASK
     mov     bl, al
     mov     ax, [cfg_txn_access_base]
-    call    Cfg_IOBASE_Base_To_Selector
+    call    Nic_IOBASE_Base_To_Selector
     cmp     bl, al
     jne     @@IOFail
     jmp     @@INT
@@ -6925,7 +6886,7 @@ PROC Cfg_Txn_Verify NEAR
     mov     bx, ax
     and     bx, W0_ADDRESS_CFG_IOBASE_MASK
     mov     ax, [cfg_txn_access_base]
-    call    Cfg_IOBASE_Base_To_Selector
+    call    Nic_IOBASE_Base_To_Selector
     cmp     bl, al
     jne     @@IOVerifyFail
 
@@ -7409,7 +7370,7 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     dx, OFFSET msg_cfg_current_iobase
     call    Print_String
     mov     al, [cfg_txn_old_io_selector]
-    call    Cfg_IOBASE_Selector_To_Base
+    call    Nic_IOBASE_Selector_To_Base
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
     call    Print_String
@@ -7424,7 +7385,7 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     dx, OFFSET msg_cfg_current_live_iobase
     call    Print_String
     mov     al, [cfg_txn_live_io_selector]
-    call    Cfg_IOBASE_Selector_To_Base
+    call    Nic_IOBASE_Selector_To_Base
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
     call    Print_String
@@ -8436,10 +8397,7 @@ PROC Cfg_Id_Activate_At_Base NEAR
     call    Nic_IdPort_Write_Command
 
     mov     ax, bx
-    sub     ax, VALID_IOBASE_MIN
-    mov     bx, VALID_IOBASE_STEP
-    xor     dx, dx
-    div     bx
+    call    Nic_IOBASE_Base_To_Selector
     or      al, ID_CMD_ACTIVATE
     mov     dx, ID_PORT
     call    Nic_IdPort_Write_Command

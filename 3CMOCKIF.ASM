@@ -1747,26 +1747,28 @@ PROC Mock_Id_Activate_Eligible NEAR
     or      dl, dl
     jz      @@Explicit
     mov     ax, [WORD di + MCK3R_W0_ADDRESS_CFG]
-    and     ax, 001Fh
+    and     ax, W0_ADDRESS_CFG_IOBASE_MASK
     jmp     @@MakeBase
 @@Explicit:
     xor     ax, ax
     mov     al, dh
-    and     ax, 001Fh
+    and     ax, W0_ADDRESS_CFG_IOBASE_MASK
 @@MakeBase:
     ; Explicit activation changes only the live selector; EEPROM word 08h
     ; remains the persistent configured base.
     mov     cx, [WORD di + MCK3R_W0_ADDRESS_CFG]
-    and     cx, NOT 001Fh
+    and     cx, NOT W0_ADDRESS_CFG_IOBASE_MASK
     or      cx, ax
     mov     [WORD di + MCK3R_W0_ADDRESS_CFG], cx
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    add     ax, 0200h
+    call    Nic_IOBASE_Selector_To_Base
     mov     [WORD di + MCK3R_ACTIVE_BASE], ax
+    or      ax, ax
+    jz      @@Inactive
     or      [BYTE di + MCK3R_FLAGS], MCKRF_ACTIVE
+    jmp     @@ActivationDone
+@@Inactive:
+    and     [BYTE di + MCK3R_FLAGS], NOT MCKRF_ACTIVE
+@@ActivationDone:
     mov     [BYTE di + MCK3R_ID_STATE], MCK_ID_WAIT
 @@Next:
     inc     bh
