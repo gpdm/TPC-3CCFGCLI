@@ -5,6 +5,8 @@ Changelog 0.8.0
   - Cleanup: consolidated byte decimal output through the shared
     Print_DecWord conversion routine while preserving Print_DecByte's
     register contract.
+  - Cleanup: removed the unreachable CONFIGURE inactive-adapter error dispatch,
+    also retiring nine affected error slots without changing stable error numbering.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful

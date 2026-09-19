@@ -186,9 +186,9 @@ CFG_ERR_EEPROM_WRITE        EQU 16      ; retired; slot retained for compatibili
 CFG_ERR_CHECKSUM_UPDATE     EQU 17
 CFG_ERR_LIVE_UPDATE         EQU 18
 CFG_ERR_VERIFY              EQU 19
-CFG_ERR_INT_INACTIVE        EQU 20
+CFG_ERR_INT_INACTIVE        EQU 20      ; retired; slot retained for compatibility
 CFG_ERR_BAD_IOBASE          EQU 21
-CFG_ERR_IOBASE_INACTIVE     EQU 22
+CFG_ERR_IOBASE_INACTIVE     EQU 22      ; retired; slot retained for compatibility
 CFG_ERR_IOBASE_CONFLICT     EQU 23      ; retired; slot retained for compatibility
 CFG_ERR_IOBASE_DEACTIVATE   EQU 24
 CFG_ERR_IOBASE_REACTIVATE   EQU 25
@@ -198,42 +198,42 @@ CFG_ERR_IOBASE_LIVE         EQU 28
 CFG_ERR_IOBASE_VERIFY       EQU 29
 CFG_ERR_IOBASE_ACTIVATE     EQU 30
 CFG_ERR_BAD_PNP             EQU 31
-CFG_ERR_PNP_INACTIVE        EQU 32
+CFG_ERR_PNP_INACTIVE        EQU 32      ; retired; slot retained for compatibility
 CFG_ERR_PNP_EEPROM_READ     EQU 33      ; retired; slot retained for compatibility
 CFG_ERR_PNP_EEPROM_WRITE    EQU 34      ; retired; slot retained for compatibility
 CFG_ERR_PNP_VERIFY          EQU 35
 CFG_ERR_BAD_MODEM           EQU 36
-CFG_ERR_MODEM_INACTIVE      EQU 37
+CFG_ERR_MODEM_INACTIVE      EQU 37      ; retired; slot retained for compatibility
 CFG_ERR_MODEM_EEPROM_READ   EQU 38      ; retired; slot retained for compatibility
 CFG_ERR_MODEM_EEPROM_WRITE  EQU 39      ; retired; slot retained for compatibility
 CFG_ERR_MODEM_VERIFY        EQU 40
 CFG_ERR_PNP_NOT_CAPABLE     EQU 41
 CFG_ERR_BAD_FULLDUPLEX      EQU 42
-CFG_ERR_FD_INACTIVE         EQU 43
+CFG_ERR_FD_INACTIVE         EQU 43      ; retired; slot retained for compatibility
 CFG_ERR_FD_EEPROM_READ      EQU 44      ; retired; slot retained for compatibility
 CFG_ERR_FD_EEPROM_WRITE     EQU 45      ; retired; slot retained for compatibility
 CFG_ERR_FD_VERIFY           EQU 46
 CFG_ERR_FD_NOT_CAPABLE      EQU 47
 CFG_ERR_BAD_OPTIMIZE        EQU 48
-CFG_ERR_OPTIMIZE_INACTIVE   EQU 49
+CFG_ERR_OPTIMIZE_INACTIVE   EQU 49      ; retired; slot retained for compatibility
 CFG_ERR_OPTIMIZE_EEPROM_READ EQU 50     ; retired; slot retained for compatibility
 CFG_ERR_OPTIMIZE_EEPROM_WRITE EQU 51    ; retired; slot retained for compatibility
 CFG_ERR_OPTIMIZE_VERIFY     EQU 52
 CFG_ERR_BAD_BADDRESS        EQU 53
-CFG_ERR_BADDRESS_INACTIVE   EQU 54
+CFG_ERR_BADDRESS_INACTIVE   EQU 54      ; retired; slot retained for compatibility
 CFG_ERR_BADDRESS_EEPROM_READ  EQU 55    ; retired; slot retained for compatibility
 CFG_ERR_BADDRESS_EEPROM_WRITE EQU 56    ; retired; slot retained for compatibility
 CFG_ERR_BADDRESS_VERIFY     EQU 57
 CFG_ERR_BADDRESS_NOT_CAPABLE EQU 58
 CFG_ERR_BAD_BSIZE           EQU 59
-CFG_ERR_BSIZE_INACTIVE      EQU 60
+CFG_ERR_BSIZE_INACTIVE      EQU 60      ; retired; slot retained for compatibility
 CFG_ERR_BSIZE_EEPROM_READ   EQU 61      ; retired; slot retained for compatibility
 CFG_ERR_BSIZE_EEPROM_WRITE  EQU 62      ; retired; slot retained for compatibility
 CFG_ERR_BSIZE_VERIFY        EQU 63
 CFG_ERR_BSIZE_NOT_CAPABLE   EQU 64      ; retired; slot retained for compatibility
 CFG_ERR_BOOTROM_INCOMPLETE  EQU 65
 CFG_ERR_BAD_TR              EQU 66
-CFG_ERR_TR_INACTIVE         EQU 67
+CFG_ERR_TR_INACTIVE         EQU 67      ; retired; slot retained for compatibility
 CFG_ERR_TR_EEPROM_READ      EQU 68      ; retired; slot retained for compatibility
 CFG_ERR_TR_EEPROM_WRITE     EQU 69      ; retired; slot retained for compatibility
 CFG_ERR_TR_VERIFY           EQU 70
@@ -347,8 +347,6 @@ msg_cfg_live_verified DB "Live IRQ verified: ", '$'
 msg_cfg_checksum_fail DB "EEPROM checksum update failed.", 0Dh, 0Ah, '$'
 msg_cfg_live_fail DB "Live IRQ configuration update failed.", 0Dh, 0Ah, '$'
 msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_inactive DB "Selected adapter has no active IOBASE for configuration.", 0Dh, 0Ah, '$'
-
 ; /IOBASE diagnostics.
 msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_deactivate_fail DB "Selected adapter deactivation failed before IOBASE migration.", 0Dh, 0Ah, '$'
@@ -864,9 +862,9 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_checksum_fail                 ; 17 CFG_ERR_CHECKSUM_UPDATE
     DW      OFFSET msg_cfg_live_fail                     ; 18 CFG_ERR_LIVE_UPDATE
     DW      OFFSET msg_cfg_verify_fail                   ; 19 CFG_ERR_VERIFY
-    DW      OFFSET msg_cfg_inactive                      ; 20 CFG_ERR_INT_INACTIVE
+    DW      0                                             ; 20 CFG_ERR_INT_INACTIVE, retired
     DW      OFFSET msg_cfg_bad_iobase                    ; 21 CFG_ERR_BAD_IOBASE
-    DW      OFFSET msg_cfg_inactive                      ; 22 CFG_ERR_IOBASE_INACTIVE
+    DW      0                                             ; 22 CFG_ERR_IOBASE_INACTIVE, retired
     DW      0                                             ; 23 CFG_ERR_IOBASE_CONFLICT, retired
     DW      OFFSET msg_cfg_iobase_deactivate_fail        ; 24 CFG_ERR_IOBASE_DEACTIVATE
     DW      OFFSET msg_cfg_iobase_reactivate_fail        ; 25 CFG_ERR_IOBASE_REACTIVATE
@@ -876,42 +874,42 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_iobase_verify_fail            ; 29 CFG_ERR_IOBASE_VERIFY
     DW      OFFSET msg_cfg_iobase_activate_fail          ; 30 CFG_ERR_IOBASE_ACTIVATE
     DW      OFFSET msg_cfg_bad_pnp                       ; 31 CFG_ERR_BAD_PNP
-    DW      OFFSET msg_cfg_inactive                      ; 32 CFG_ERR_PNP_INACTIVE
+    DW      0                                             ; 32 CFG_ERR_PNP_INACTIVE, retired
     DW      0                                             ; 33 CFG_ERR_PNP_EEPROM_READ, retired
     DW      0                                             ; 34 CFG_ERR_PNP_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_pnp_verify_fail               ; 35 CFG_ERR_PNP_VERIFY
     DW      OFFSET msg_cfg_bad_modem                     ; 36 CFG_ERR_BAD_MODEM
-    DW      OFFSET msg_cfg_inactive                      ; 37 CFG_ERR_MODEM_INACTIVE
+    DW      0                                             ; 37 CFG_ERR_MODEM_INACTIVE, retired
     DW      0                                             ; 38 CFG_ERR_MODEM_EEPROM_READ, retired
     DW      0                                             ; 39 CFG_ERR_MODEM_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_modem_verify_fail             ; 40 CFG_ERR_MODEM_VERIFY
     DW      OFFSET msg_cfg_pnp_not_capable               ; 41 CFG_ERR_PNP_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_fullduplex                ; 42 CFG_ERR_BAD_FULLDUPLEX
-    DW      OFFSET msg_cfg_inactive                      ; 43 CFG_ERR_FD_INACTIVE
+    DW      0                                             ; 43 CFG_ERR_FD_INACTIVE, retired
     DW      0                                             ; 44 CFG_ERR_FD_EEPROM_READ, retired
     DW      0                                             ; 45 CFG_ERR_FD_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_fd_verify_fail                ; 46 CFG_ERR_FD_VERIFY
     DW      OFFSET msg_cfg_fd_not_capable                ; 47 CFG_ERR_FD_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_optimize                  ; 48 CFG_ERR_BAD_OPTIMIZE
-    DW      OFFSET msg_cfg_inactive                      ; 49 CFG_ERR_OPTIMIZE_INACTIVE
+    DW      0                                             ; 49 CFG_ERR_OPTIMIZE_INACTIVE, retired
     DW      0                                             ; 50 CFG_ERR_OPTIMIZE_EEPROM_READ, retired
     DW      0                                             ; 51 CFG_ERR_OPTIMIZE_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_optimize_verify_fail          ; 52 CFG_ERR_OPTIMIZE_VERIFY
     DW      OFFSET msg_cfg_bad_baddress                  ; 53 CFG_ERR_BAD_BADDRESS
-    DW      OFFSET msg_cfg_inactive                      ; 54 CFG_ERR_BADDRESS_INACTIVE
+    DW      0                                             ; 54 CFG_ERR_BADDRESS_INACTIVE, retired
     DW      0                                             ; 55 CFG_ERR_BADDRESS_EEPROM_READ, retired
     DW      0                                             ; 56 CFG_ERR_BADDRESS_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_baddress_verify_fail          ; 57 CFG_ERR_BADDRESS_VERIFY
     DW      OFFSET msg_cfg_baddress_not_capable          ; 58 CFG_ERR_BADDRESS_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_bsize                     ; 59 CFG_ERR_BAD_BSIZE
-    DW      OFFSET msg_cfg_inactive                      ; 60 CFG_ERR_BSIZE_INACTIVE
+    DW      0                                             ; 60 CFG_ERR_BSIZE_INACTIVE, retired
     DW      0                                             ; 61 CFG_ERR_BSIZE_EEPROM_READ, retired
     DW      0                                             ; 62 CFG_ERR_BSIZE_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_bsize_verify_fail             ; 63 CFG_ERR_BSIZE_VERIFY
     DW      0                                             ; 64 CFG_ERR_BSIZE_NOT_CAPABLE, retired
     DW      OFFSET msg_cfg_bootrom_incomplete            ; 65 CFG_ERR_BOOTROM_INCOMPLETE
     DW      OFFSET msg_cfg_bad_tr                        ; 66 CFG_ERR_BAD_TR
-    DW      OFFSET msg_cfg_inactive                      ; 67 CFG_ERR_TR_INACTIVE
+    DW      0                                             ; 67 CFG_ERR_TR_INACTIVE, retired
     DW      0                                             ; 68 CFG_ERR_TR_EEPROM_READ, retired
     DW      0                                             ; 69 CFG_ERR_TR_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_tr_verify_fail                ; 70 CFG_ERR_TR_VERIFY
@@ -5505,54 +5503,6 @@ PROC Cfg_Txn_Read_Current NEAR
     push    di
 
     mov     si, [cfg_selected_ptr]
-    test    [BYTE si + NIC_FLAGS], NIC_FLAG_ACTIVE
-    jnz     @@HaveBase
-    cmp     [cfg_txn_working_access], 0
-    jne     @@HaveBase
-    test    [cfg_parse_flags], CFG_PARSE_IOBASE
-    jz      @@InactiveINT
-    mov     [cfg_last_error], CFG_ERR_IOBASE_INACTIVE
-    jmp     @@Fail
-@@InactiveINT:
-    test    [cfg_parse_flags], CFG_PARSE_PNP
-    jz      @@InactiveModem
-    mov     [cfg_last_error], CFG_ERR_PNP_INACTIVE
-    jmp     @@Fail
-@@InactiveModem:
-    test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@InactiveFD
-    mov     [cfg_last_error], CFG_ERR_MODEM_INACTIVE
-    jmp     @@Fail
-@@InactiveFD:
-    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    jz      @@InactiveOptimize
-    mov     [cfg_last_error], CFG_ERR_FD_INACTIVE
-    jmp     @@Fail
-@@InactiveOptimize:
-    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
-    jz      @@InactiveBAddress
-    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_INACTIVE
-    jmp     @@Fail
-@@InactiveBAddress:
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jz      @@InactiveBSize
-    mov     [cfg_last_error], CFG_ERR_BADDRESS_INACTIVE
-    jmp     @@Fail
-@@InactiveBSize:
-    test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jz      @@InactiveTR
-    mov     [cfg_last_error], CFG_ERR_BSIZE_INACTIVE
-    jmp     @@Fail
-@@InactiveTR:
-    test    [cfg_parse_flags], CFG_PARSE_TR
-    jz      @@InactiveIRQ
-    mov     [cfg_last_error], CFG_ERR_TR_INACTIVE
-    jmp     @@Fail
-@@InactiveIRQ:
-    mov     [cfg_last_error], CFG_ERR_INT_INACTIVE
-    jmp     @@Fail
-
-@@HaveBase:
     mov     dx, [WORD si + NIC_IO_BASE]
     mov     [cfg_txn_old_base], dx
     mov     [cfg_txn_new_base], dx
