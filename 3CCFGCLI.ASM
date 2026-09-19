@@ -4079,8 +4079,8 @@ PROC Scan_All_3Com_Cards NEAR
     ; The original program tags the contenders first and activates them later.
     call    Nic_Activate_Tagged_Cards
 
-    ; Finally examine all valid active I O bases and refresh discovered records.
-    call    Scan_Active_Base_Ports
+    ; Finally validate normal I O access for uniquely owned ID-discovered records.
+    call    Validate_Active_Id_Records
 
     pop     di
     pop     cx
@@ -4825,8 +4825,9 @@ PROC Find_Record_By_Base NEAR
     ret
 ENDP Find_Record_By_Base
 
-; Scan every valid base address.  There are exactly 31 selectable bases.
-PROC Scan_Active_Base_Ports NEAR
+; Validate normal I O access for existing ID-discovered records only.
+; Shared or unassigned logical bases cannot establish record ownership.
+PROC Validate_Active_Id_Records NEAR
     push    ax
     push    bx
     push    cx
@@ -4834,29 +4835,30 @@ PROC Scan_Active_Base_Ports NEAR
     push    si
     push    di
 
-    mov     si, OFFSET io_scan_table
-@@PortLoop:
-    lodsw
-    or      ax, ax
+    mov     cx, [card_count]
+    mov     si, OFFSET nic_table
+@@RecordLoop:
+    or      cx, cx
     jz      @@Done
-    mov     dx, ax
-
-    call    Nic_Check_3Com_Signature
-    jc      @@PortLoop
+    mov     dx, [WORD si + NIC_IO_BASE]
+    or      dx, dx
+    jz      @@Next
 
     call    Find_Record_By_Base
-    cmp     di, 0
-    je      @@PortLoop
-    cmp     di, 0FFFFh
-    je      @@PortLoop
+    cmp     di, si
+    jne     @@Next
 
-    ; Find_Record_By_Base returned the sole matching record pointer.  Refresh
-    ; it only when the active response has an unambiguous owner.
-    mov     dx, [si-2]
+    call    Nic_Check_3Com_Signature
+    jc      @@Next
+
+    ; The current record is the sole logical owner of a responding base.
     mov     [WORD di + NIC_PRODUCT_ID], ax
     mov     [BYTE di + NIC_ASIC_REV], bl
     or      [BYTE di + NIC_FLAGS], NIC_FLAG_ACTIVE
-    jmp     @@PortLoop
+@@Next:
+    add     si, NIC_RECORD_SIZE
+    dec     cx
+    jmp     @@RecordLoop
 
 @@Done:
     pop     di
@@ -4866,7 +4868,7 @@ PROC Scan_Active_Base_Ports NEAR
     pop     bx
     pop     ax
     ret
-ENDP Scan_Active_Base_Ports
+ENDP Validate_Active_Id_Records
 
 ; ============================================================================
 ; Common CONFIGURE hardware infrastructure for the supported persistent and

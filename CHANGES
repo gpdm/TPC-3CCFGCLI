@@ -18,6 +18,9 @@ Changelog 0.8.0
     is now the sole source of supported records; the final active-base sweep
     only refreshes uniquely matched ID-derived records and ignores unmatched
     or duplicate IOBASE responses.
+  - Cleanup: replaced the historical 31-address active-base sweep with
+    validation of uniquely owned ID-discovered records only; io_scan_table
+    remains available for CONFIGURE temporary working-base selection.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
