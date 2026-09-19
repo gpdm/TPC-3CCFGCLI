@@ -1957,30 +1957,8 @@ ENDP Nic_IdPort_Write_Command
 PROC Nic_IdPort_Send_Full_Sequence NEAR
     push    ax
     push    cx
-
-    mov     [byte mock_selected_valid], 0
-    mov     [byte mock_selected_tag], 0
-    call    Mock_Id_Reset_Sequence
-    xor     al, al
-    call    Mock_Id_Process_Sequence_Byte
-    call    Mock_Id_Process_Sequence_Byte
-    mov     al, 0FFh
     mov     cx, 255
-@@Loop:
-    call    Mock_Id_Process_Sequence_Byte
-    test    al, 80h
-    jz      @@ShiftOnly
-    shl     al, 1
-    xor     al, 0CFh
-    jmp     @@Next
-@@ShiftOnly:
-    shl     al, 1
-@@Next:
-    loop    @@Loop
-
-    pop     cx
-    pop     ax
-    ret
+    jmp     Mock_Id_Send_Sequence_Core
 ENDP Nic_IdPort_Send_Full_Sequence
 
 PROC Nic_IdPort_Send_Short_Sequence NEAR
@@ -1992,16 +1970,22 @@ PROC Nic_IdPort_Send_Short_Sequence NEAR
     ; than every raw ID-port byte through Nic_IdPort_Write_Command.
     push    ax
     push    cx
+    mov     cx, 8
+    ; Fall through into the shared mock sequence core below.
+ENDP Nic_IdPort_Send_Short_Sequence
 
+; Internal MOCKHW ID port sequence core shared by the Full and Short
+; entry points above. Caller must push ax/cx and load the desired
+; sequence length into cx before entering here.
+PROC Mock_Id_Send_Sequence_Core NEAR
     mov     [byte mock_selected_valid], 0
     mov     [byte mock_selected_tag], 0
     call    Mock_Id_Reset_Sequence
-    mov     [word mock_id_sequence_length], 8
+    mov     [word mock_id_sequence_length], cx
     xor     al, al
     call    Mock_Id_Process_Sequence_Byte
     call    Mock_Id_Process_Sequence_Byte
     mov     al, 0FFh
-    mov     cx, 8
 @@Loop:
     call    Mock_Id_Process_Sequence_Byte
     test    al, 80h
@@ -2017,7 +2001,7 @@ PROC Nic_IdPort_Send_Short_Sequence NEAR
     pop     cx
     pop     ax
     ret
-ENDP Nic_IdPort_Send_Short_Sequence
+ENDP Mock_Id_Send_Sequence_Core
 
 ; MOCKHW-only low-level contract probe invoked by the hidden MOCKTEST verb.
 ; Input AL: 1 invalid tag, 2 activation without selection, 3 temporary base.

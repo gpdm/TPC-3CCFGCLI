@@ -18,40 +18,26 @@ ENDP Nic_IdPort_Write_Command
 PROC Nic_IdPort_Send_Full_Sequence NEAR
     push    ax
     push    cx
-
-    xor     al, al
-    call    Nic_IdPort_Write_Command
-    call    Nic_IdPort_Write_Command
-
-    mov     al, 0FFh
     mov     cx, 255
-@@Loop:
-    call    Nic_IdPort_Write_Command
-    test    al, 80h
-    jz      @@ShiftOnly
-    shl     al, 1
-    xor     al, 0CFh
-    jmp     @@Next
-@@ShiftOnly:
-    shl     al, 1
-@@Next:
-    loop    @@Loop
-
-    pop     cx
-    pop     ax
-    ret
+    jmp     Nic_IdPort_Send_Sequence_Core
 ENDP Nic_IdPort_Send_Full_Sequence
 
 PROC Nic_IdPort_Send_Short_Sequence NEAR
     push    ax
     push    cx
+    mov     cx, 8
+    ; Fall through into the shared REALHW sequence core below.
+ENDP Nic_IdPort_Send_Short_Sequence
 
+; Internal REALHW ID port sequence core shared by the Full and Short
+; entry points above. Caller must push ax/cx and load the desired
+; iteration count into cx before entering here.
+PROC Nic_IdPort_Send_Sequence_Core NEAR
     xor     al, al
     call    Nic_IdPort_Write_Command
     call    Nic_IdPort_Write_Command
 
     mov     al, 0FFh
-    mov     cx, 8
 @@Loop:
     call    Nic_IdPort_Write_Command
     test    al, 80h
@@ -67,7 +53,7 @@ PROC Nic_IdPort_Send_Short_Sequence NEAR
     pop     cx
     pop     ax
     ret
-ENDP Nic_IdPort_Send_Short_Sequence
+ENDP Nic_IdPort_Send_Sequence_Core
 
 PROC Nic_IdPort_Eeprom_Delay NEAR
     push    ax

@@ -12,6 +12,8 @@ Changelog 0.8.0
     register contract.
   - Cleanup: removed the unreachable CONFIGURE inactive-adapter error dispatch,
     also retiring nine affected error slots without changing stable error numbering.
+  - Cleanup: consolidated the duplicated Full/Short ID port sequence loop in each of
+    3CHWIF.ASM and 3CMOCKIF.ASM into one internal shared sequence core per backend.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
