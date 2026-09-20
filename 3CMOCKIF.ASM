@@ -1936,7 +1936,7 @@ PROC Nic_IdPort_Write_Command NEAR
     ; @@ReadContender above) and must not gate this broadcast.  This is
     ; also distinct from Command-Register Global Reset (which resets one
     ; adapter to its complete POR state) and from
-    ; Cfg_Id_Deactivate_Selected's utility-level sequence in 3CCFGCLI.ASM,
+    ; Nic_Id_Deactivate_Tagged's utility-level sequence in 3CCFGCLI.ASM,
     ; which narrows ID_CMD membership down to one adapter via SELECT_TAG
     ; before issuing this command -- that narrowing is what makes today's
     ; single-adapter deactivate/reconfigure flows behave the same as

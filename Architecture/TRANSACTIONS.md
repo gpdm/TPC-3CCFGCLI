@@ -332,8 +332,8 @@ CONFIGURE transaction:
 
 ```text id="wfj716"
 Cfg_Txn_Begin_Access
-    -> Cfg_Find_Temporary_Base
-    -> Cfg_Validate_Temporary_Base
+    -> Nic_Find_Temporary_Base
+    -> Nic_Validate_Temporary_Base
 ```
 
 The selected adapter is then checked through the normal hardware identity
@@ -1248,7 +1248,7 @@ activate selected adapter
 ```
 
 The record must contain the new address before
-`Cfg_Id_Activate_Selected` consumes it.
+`Nic_Id_Activate_At_Base` consumes it.
 
 This is one of the few pieces of application state that necessarily changes
 before the whole transaction has been verified.

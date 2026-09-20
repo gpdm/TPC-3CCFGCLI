@@ -812,7 +812,7 @@ Some record fields have to change as part of successful configuration.
 
 The I/O base is special because activation at the new address requires the
 selected record to contain the new base before
-`Cfg_Id_Activate_Selected` is called.
+`Nic_Id_Activate_At_Base` is called.
 
 The migration code therefore changes `NIC_IO_BASE` at one controlled point in
 the activation sequence.
@@ -946,4 +946,3 @@ But the architecture must never depend on them always being the same.
 
 The transaction machinery that coordinates changes between these states is
 documented in [`TRANSACTIONS.md`](TRANSACTIONS.md).
-

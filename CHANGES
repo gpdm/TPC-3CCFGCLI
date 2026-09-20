@@ -27,6 +27,8 @@ Changelog 0.8.0
     Nic_Read_Capabilities routine, so CONFIGURE and LIST consume the same
     capability semantics while keeping adapter identity and the validated
     physical base explicit at the call site.
+  - Shared temporary adapter access now uses caller-neutral NIC routines,
+    allowing safe ID-tagged scratch IOBASE access to be reused across commands.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful

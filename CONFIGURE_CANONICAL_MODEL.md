@@ -71,7 +71,7 @@ The table below distinguishes semantic fact from access mechanism.
 
 | Fact | Where it originates | Persistent/runtime | Preferred source | Fallback | Failure representation |
 |---|---|---|---|---|---|
-| `NIC_ASIC_REV` | active adapter signature path / temporary base validation | runtime identity | runtime signature (`Nic_Check_3Com_Signature` + `Cfg_Validate_Temporary_Base`) | ID snapshot may carry evidence, but generation is resolved by live validation | `0FFh` means unknown/unreadable |
+| `NIC_ASIC_REV` | active adapter signature path / temporary base validation | runtime identity | runtime signature (`Nic_Check_3Com_Signature` + `Nic_Validate_Temporary_Base`) | ID snapshot may carry evidence, but generation is resolved by live validation | `0FFh` means unknown/unreadable |
 | product ID | ID EEPROM snapshot or live signature | persistent identity | ID snapshot when available | live read at working base | product ID mismatch or missing hardware is treated as not reachable |
 | EEPROM word 08h (Address Configuration) | persistent EEPROM word | persistent | ID snapshot if valid | live `Cfg_Eeprom_Read` at access base | read failure / busy latching / `CFG_ERR_EEPROM_BUSY` |
 | EEPROM word 09h (Resource Configuration) | persistent EEPROM word | persistent | ID snapshot if valid | live `Cfg_Eeprom_Read` | read failure |
@@ -96,7 +96,7 @@ The important distinction is semantic fact vs. access mechanism. A snapshot and 
 - Revision `2+` means 3C509B-class hardware.
 - Revision `FFh` means the ASIC revision was not readable or not yet resolved.
 
-The normal CONFIGURE path resolves unknown ASIC revision during temporary access validation. The key routine is `Cfg_Validate_Temporary_Base` in [3CCFGCLI.ASM](./3CCFGCLI.ASM):
+The normal CONFIGURE path resolves unknown ASIC revision during temporary access validation. The key routine is `Nic_Validate_Temporary_Base` in [3CCFGCLI.ASM](./3CCFGCLI.ASM):
 
 - it probes the selected adapter at the temporary working base,
 - verifies the 3Com signature,
@@ -274,7 +274,7 @@ Important distinction:
 - `1Fh` is a special EISA/unassigned selector that is not considered a normal CONFIGURE IOBASE value;
 - a normal CONFIGURE request must therefore use `0200h`-`03E0h` and never an EISA selector.
 
-Temporary access handling is explicitly part of the CONFIGURE transaction flow: `Cfg_Txn_Begin_Access` and `Cfg_Validate_Temporary_Base` establish a temporary working base, and the code ensures the selected record remains reachable before writing the new IOBASE.
+Temporary access handling is explicitly part of the CONFIGURE transaction flow: `Cfg_Txn_Begin_Access` and `Nic_Validate_Temporary_Base` establish a temporary working base, and the code ensures the selected record remains reachable before writing the new IOBASE.
 
 ## K. Other CONFIGURE Properties
 

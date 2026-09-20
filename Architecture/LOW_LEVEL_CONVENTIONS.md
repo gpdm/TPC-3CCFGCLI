@@ -67,7 +67,7 @@ Nic_Check_3Com_Signature
     CF clear means a supported adapter signature was found
     CF set means the signature check failed
 
-Cfg_Validate_Temporary_Base
+Nic_Validate_Temporary_Base
     CF clear means the selected adapter matches at the working access base
     CF set means identity validation failed or the base could not be restored
 
@@ -429,7 +429,7 @@ only assign a higher level contextual error when no stronger error has already b
 
 For CONFIGURE routines that advertise both a CF result and `cfg_last_error`, failure requires both pieces of state to remain meaningful.
 
-For example, `Cfg_Validate_Temporary_Base` documents:
+For example, `Nic_Validate_Temporary_Base` documents:
 
 ```text
 CF set
@@ -556,7 +556,7 @@ First, a result produced inside a `PUSHF` and `POPF` region is discarded by the 
 
 Second, a procedure that promises a CF result must establish that result after its final `POPF`, or explicitly save and restore the intended result as `Cfg_Probe_Boot_ROM` does.
 
-`Cfg_Validate_Temporary_Base` follows this discipline.
+`Nic_Validate_Temporary_Base` follows this discipline.
 
 Its working-base validation restores the selected window first.
 

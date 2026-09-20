@@ -651,9 +651,9 @@ cfg_bootrom_rejected      DB 0
 
 cfg_wait_start_lo     DW 0
 cfg_wait_start_hi     DW 0
-cfg_target_base       DW 0
-cfg_target_window     DB 0
-cfg_target_asic       DB 0
+nic_temp_base         DW 0
+nic_temp_window       DB 0
+nic_temp_asic         DB 0
 
 ; Original CONFIGURE property order is retained for prefix resolution.
 cfg_name_adapternum DB 'ADAPTERNUM', 0
@@ -5103,7 +5103,7 @@ ENDP Cfg_Checksum_17_Low
 ; The critical original ordering is intentionally retained: a tagged ISA card
 ; is deactivated and reactivated at the requested base before sub_342 performs
 ; the persistent EEPROM writes.  The record I O base is therefore changed only
-; immediately before Cfg_Id_Activate_At_Base emits the E0h activation command.
+; immediately before Nic_Id_Activate_At_Base emits the E0h activation command.
 ; No rollback sequence is invented after that point.
 ;
 ; ============================================================================
@@ -5212,7 +5212,7 @@ PROC Cfg_Txn_Begin_Access NEAR
     call    Cfg_Txn_Has_Valid_Tag
     jc      @@Fail
     mov     si, [cfg_selected_ptr]
-    call    Cfg_Find_Temporary_Base
+    call    Nic_Find_Temporary_Base
     jc      @@Fail
     mov     [cfg_txn_access_base], ax
     mov     [cfg_txn_working_access], 1
@@ -5248,7 +5248,7 @@ PROC Cfg_Txn_End_Access NEAR
     pushf
     cli
     mov     ax, [WORD si + NIC_IO_BASE]
-    call    Cfg_Id_Activate_At_Base
+    call    Nic_Id_Activate_At_Base
     mov     dx, [cfg_txn_access_base]
     call    Nic_Read_Status
     cmp     ax, 0FFFFh
@@ -6043,7 +6043,7 @@ ENDP Cfg_Txn_Preflight
 
 ; Central owner of the old base to new base transition and original ISA
 ; deactivate/reactivate preparation.  The selected record changes base exactly
-; once, immediately before Cfg_Id_Activate_At_Base consumes it at the
+; once, immediately before Nic_Id_Activate_At_Base consumes it at the
 ; mandatory temporary working base.
 PROC Cfg_Txn_Activate_If_Needed NEAR
     push    ax
@@ -6070,7 +6070,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
 
 @@Deactivate:
     mov     si, [cfg_selected_ptr]
-    call    Cfg_Id_Deactivate_Selected
+    call    Nic_Id_Deactivate_Tagged
 
     ; The working-base transaction path retains the read-only old-base absence
     ; check when a true IOBASE migration is required.  CONFIGURE always
@@ -6113,7 +6113,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     pushf
     cli
     mov     ax, [cfg_txn_access_base]
-    call    Cfg_Id_Activate_At_Base
+    call    Nic_Id_Activate_At_Base
     popf
 
 @@RestoreLive:
@@ -6961,7 +6961,7 @@ PROC Cfg_Txn_Finalize_IOBASE NEAR
     pushf
     cli
     mov     ax, [cfg_txn_new_base]
-    call    Cfg_Id_Activate_At_Base
+    call    Nic_Id_Activate_At_Base
     popf
     mov     ax, [cfg_txn_new_base]
     mov     [WORD si + NIC_IO_BASE], ax
@@ -7905,9 +7905,9 @@ PROC Cfg_Txn_Execute NEAR
     ret
 ENDP Cfg_Txn_Execute
 
-; Acquire a validated temporary live IOBASE for the selected record.
-; Input SI = selected NIC record.  Output AX = temporary base, CF on failure.
-PROC Cfg_Find_Temporary_Base NEAR
+; Acquire a validated temporary live IOBASE for a tagged NIC record.
+; Input SI = logical NIC record.  Output AX = temporary base, CF on failure.
+PROC Nic_Find_Temporary_Base NEAR
     push    bx
     push    cx
     push    dx
@@ -7923,7 +7923,7 @@ PROC Cfg_Find_Temporary_Base NEAR
     jz      @@Fail
     cmp     ax, bx
     je      @@Candidate
-    mov     [cfg_target_base], ax
+    mov     [nic_temp_base], ax
 
     mov     di, OFFSET nic_table
     mov     cx, [card_count]
@@ -7941,7 +7941,7 @@ PROC Cfg_Find_Temporary_Base NEAR
     cli
     xor     di, di
 @@Port:
-    mov     dx, [cfg_target_base]
+    mov     dx, [nic_temp_base]
     add     dx, di
     mov     cx, 10h
     ; Intentionally sample each of the 16 ports 16 times as part of the
@@ -7955,23 +7955,24 @@ PROC Cfg_Find_Temporary_Base NEAR
     inc     di
     cmp     di, 10h
     jb      @@Port
-    mov     ax, [cfg_target_base]
-    call    Cfg_Id_Activate_At_Base
+    mov     ax, [nic_temp_base]
+    call    Nic_Id_Activate_At_Base
     popf
-    call    Cfg_Validate_Temporary_Base
+    mov     dx, [nic_temp_base]
+    call    Nic_Validate_Temporary_Base
     jnc     @@Success
 
     pushf
     cli
     mov     ax, bx
-    call    Cfg_Id_Activate_At_Base
+    call    Nic_Id_Activate_At_Base
     popf
     jmp     @@Candidate
 @@ProbeFail:
     popf
     jmp     @@Candidate
 @@Success:
-    mov     ax, [cfg_target_base]
+    mov     ax, [nic_temp_base]
     pop     bp
     pop     di
     pop     dx
@@ -7988,16 +7989,20 @@ PROC Cfg_Find_Temporary_Base NEAR
     pop     bx
     stc
     ret
-ENDP Cfg_Find_Temporary_Base
+ENDP Nic_Find_Temporary_Base
 
-PROC Cfg_Validate_Temporary_Base NEAR
+; Validate the adapter currently visible at DX against the logical record.
+; Input SI = logical NIC record, DX = activated physical base.
+; Output CF clear on identity match; unknown ASIC revision is learned.
+PROC Nic_Validate_Temporary_Base NEAR
+    mov     [nic_temp_base], dx
     push    ax
     push    bx
     push    dx
-    mov     dx, [cfg_target_base]
+    mov     dx, [nic_temp_base]
     call    Nic_Get_Current_Window
-    mov     [cfg_target_window], al
-    mov     dx, [cfg_target_base]
+    mov     [nic_temp_window], al
+    mov     dx, [nic_temp_base]
     call    Nic_Check_3Com_Signature
     jc      @@Fail
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
@@ -8007,8 +8012,8 @@ PROC Cfg_Validate_Temporary_Base NEAR
     cmp     bl, [BYTE si + NIC_ASIC_REV]
     jne     @@Fail
 @@Mac:
-    mov     [cfg_target_asic], bl
-    mov     dx, [cfg_target_base]
+    mov     [nic_temp_asic], bl
+    mov     dx, [nic_temp_base]
     mov     al, EEPROM_OEM_NODE_0
     call    Nic_EEPROM_Read
     jc      @@Fail
@@ -8016,7 +8021,7 @@ PROC Cfg_Validate_Temporary_Base NEAR
     jne     @@Fail
     cmp     al, [BYTE si + NIC_MAC_ADDR + 1]
     jne     @@Fail
-    mov     dx, [cfg_target_base]
+    mov     dx, [nic_temp_base]
     mov     al, EEPROM_OEM_NODE_1
     call    Nic_EEPROM_Read
     jc      @@Fail
@@ -8024,7 +8029,7 @@ PROC Cfg_Validate_Temporary_Base NEAR
     jne     @@Fail
     cmp     al, [BYTE si + NIC_MAC_ADDR + 3]
     jne     @@Fail
-    mov     dx, [cfg_target_base]
+    mov     dx, [nic_temp_base]
     mov     al, EEPROM_OEM_NODE_2
     call    Nic_EEPROM_Read
     jc      @@Fail
@@ -8034,11 +8039,11 @@ PROC Cfg_Validate_Temporary_Base NEAR
     jne     @@Fail
     cmp     [BYTE si + NIC_ASIC_REV], 0FFh
     jne     @@RestoreWindow
-    mov     al, [cfg_target_asic]
+    mov     al, [nic_temp_asic]
     mov     [BYTE si + NIC_ASIC_REV], al
 @@RestoreWindow:
-    mov     dx, [cfg_target_base]
-    mov     al, [cfg_target_window]
+    mov     dx, [nic_temp_base]
+    mov     al, [nic_temp_window]
     call    Nic_Select_Window
     pop     dx
     pop     bx
@@ -8046,20 +8051,20 @@ PROC Cfg_Validate_Temporary_Base NEAR
     clc
     ret
 @@Fail:
-    mov     dx, [cfg_target_base]
-    mov     al, [cfg_target_window]
+    mov     dx, [nic_temp_base]
+    mov     al, [nic_temp_window]
     call    Nic_Select_Window
     pop     dx
     pop     bx
     pop     ax
     stc
     ret
-ENDP Cfg_Validate_Temporary_Base
+ENDP Nic_Validate_Temporary_Base
 
 ; ISA deactivation core recovered from original sub_335.
 ; Input SI = selected ID record.  D8h plus tag selects it, C0h deactivates it.
 ; The transaction calls this only for a selected ID-tagged record.
-PROC Cfg_Id_Deactivate_Selected NEAR
+PROC Nic_Id_Deactivate_Tagged NEAR
     push    ax
     push    dx
 
@@ -8083,31 +8088,11 @@ PROC Cfg_Id_Deactivate_Selected NEAR
     pop     dx
     pop     ax
     ret
-ENDP Cfg_Id_Deactivate_Selected
+ENDP Nic_Id_Deactivate_Tagged
 
-; ISA activation core recovered from original sub_334 and sub_335 reactivation.
-; Input SI = selected record.  Uses its existing tag and active I O base.
-; The transaction calls this only for a selected ID-tagged record.
-PROC Cfg_Id_Activate_Selected NEAR
-    push    ax
-    push    bx
-    push    dx
-
-    pushf
-    cli
-    mov     ax, [WORD si + NIC_IO_BASE]
-    call    Cfg_Id_Activate_At_Base
-    popf
-
-    pop     dx
-    pop     bx
-    pop     ax
-    ret
-ENDP Cfg_Id_Activate_Selected
-
-; Activate the selected ID-tagged record at the explicit live base in AX.
+; Activate a tagged NIC record at the explicit live base in AX.
 ; Caller owns any required outer critical section.
-PROC Cfg_Id_Activate_At_Base NEAR
+PROC Nic_Id_Activate_At_Base NEAR
     push    bx
     push    dx
 
@@ -8132,7 +8117,7 @@ PROC Cfg_Id_Activate_At_Base NEAR
     pop     dx
     pop     bx
     ret
-ENDP Cfg_Id_Activate_At_Base
+ENDP Nic_Id_Activate_At_Base
 
 ; ============================================================================
 ; Extended LIST information
