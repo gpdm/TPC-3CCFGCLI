@@ -23,6 +23,10 @@ Changelog 0.8.0
     remains available for CONFIGURE temporary working-base selection.
   - Reworked HWCREAD and HWCWRITE to use a shared include file, reducing
     redundancies and lowering the space requirement to fix again on the 360K disk image.
+  - Cleanup: centralized NIC capability collection in one shared
+    Nic_Read_Capabilities routine, so CONFIGURE and LIST consume the same
+    capability semantics while keeping adapter identity and the validated
+    physical base explicit at the call site.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
