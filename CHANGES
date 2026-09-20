@@ -29,6 +29,9 @@ Changelog 0.8.0
     physical base explicit at the call site.
   - Shared temporary adapter access now uses caller-neutral NIC routines,
     allowing safe ID-tagged scratch IOBASE access to be reused across commands.
+  - CONFIGURE temporary access acquisition and restore are now delegated to
+    caller-neutral shared NIC routines while preserving the existing
+    transaction bookkeeping and validation semantics.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful

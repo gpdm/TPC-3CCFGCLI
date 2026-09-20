@@ -5198,6 +5198,66 @@ PROC Cfg_Txn_Make_Physical_Live06 NEAR
     ret
 ENDP Cfg_Txn_Make_Physical_Live06
 
+; Establish a unique temporary working IOBASE for a caller-neutral NIC record.
+; The selected ID-tagged adapter is explicitly activated and validated there.
+; Only the selection and activation sequence runs with interrupts disabled.
+PROC Nic_Begin_Temporary_Access NEAR
+    push    si
+
+    test    [BYTE si + NIC_FLAGS], NIC_FLAG_FROM_ID
+    jz      @@Fail
+    mov     al, [BYTE si + NIC_TAG]
+    or      al, al
+    jz      @@Fail
+    cmp     al, 7
+    ja      @@Fail
+
+    call    Nic_Find_Temporary_Base
+    jc      @@Fail
+
+    pop     si
+    clc
+    ret
+@@Fail:
+    pop     si
+    stc
+    ret
+ENDP Nic_Begin_Temporary_Access
+
+; Restore a selected NIC record to its configured logical base after temporary
+; access completes.  The caller keeps transaction bookkeeping; this routine owns
+; the shared hardware restore sequence.
+PROC Nic_End_Temporary_Access NEAR
+    push    ax
+    push    dx
+    push    si
+    pushf
+    cli
+
+    mov     [nic_temp_base], dx
+    mov     ax, [WORD si + NIC_IO_BASE]
+    call    Nic_Id_Activate_At_Base
+    mov     dx, [nic_temp_base]
+    call    Nic_Read_Status
+    cmp     ax, 0FFFFh
+    jne     @@RestoreFail
+    popf
+    call    Nic_Sync_State
+    pop     si
+    pop     dx
+    pop     ax
+    clc
+    ret
+@@RestoreFail:
+    popf
+    call    Nic_Sync_State
+    pop     si
+    pop     dx
+    pop     ax
+    stc
+    ret
+ENDP Nic_End_Temporary_Access
+
 ; Establish a unique temporary working IOBASE for every CONFIGURE transaction.
 ; The selected ID-tagged adapter is explicitly activated and validated there.
 ; Only the selection and activation sequence runs with interrupts disabled.
@@ -5209,10 +5269,8 @@ PROC Cfg_Txn_Begin_Access NEAR
     push    di
 
     mov     [cfg_txn_working_access], 0
-    call    Cfg_Txn_Has_Valid_Tag
-    jc      @@Fail
     mov     si, [cfg_selected_ptr]
-    call    Nic_Find_Temporary_Base
+    call    Nic_Begin_Temporary_Access
     jc      @@Fail
     mov     [cfg_txn_access_base], ax
     mov     [cfg_txn_working_access], 1
@@ -5245,16 +5303,9 @@ PROC Cfg_Txn_End_Access NEAR
     cmp     [cfg_txn_working_access], 0
     je      @@Success
     mov     si, [cfg_selected_ptr]
-    pushf
-    cli
-    mov     ax, [WORD si + NIC_IO_BASE]
-    call    Nic_Id_Activate_At_Base
     mov     dx, [cfg_txn_access_base]
-    call    Nic_Read_Status
-    cmp     ax, 0FFFFh
-    jne     @@RestoreFail
-    popf
-    call    Nic_Sync_State
+    call    Nic_End_Temporary_Access
+    jc      @@RestoreFail
     mov     [cfg_txn_working_access], 0
     mov     ax, [WORD si + NIC_IO_BASE]
     mov     [cfg_txn_access_base], ax
@@ -5265,8 +5316,6 @@ PROC Cfg_Txn_End_Access NEAR
     clc
     ret
 @@RestoreFail:
-    popf
-    call    Nic_Sync_State
     cmp     [cfg_last_error], CFG_ERR_NONE
     jne     @@KeepError
     mov     [cfg_last_error], CFG_ERR_REVALIDATE
