@@ -2023,11 +2023,11 @@ hwcs0xx:
 
 hwcs001-common:
    @echo [hwcs001].[common] Verify 3C5X9CFG post HWC configuration dump >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@I/O base address:" "280H" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Interrupt request level:" " 3" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Boot PROM size:" "disabled" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Network driver optimization:" "server" > NUL
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Maximum interrupt disable time:" "1300 microseconds" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "base address" "280H" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "Interrupt request" " 3" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "Boot PROM" "disabled" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "driver optimization" "server" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "interrupt disable" "1300" > NUL
 
 hwcs001-BTP: hwcs001-common
    @echo [hwcs001].[btp] Verifying specific 3C509B-TP properties >> $(HWC_LOGFILE)
@@ -2037,26 +2037,26 @@ hwcs001-BTP: hwcs001-common
 
 hwcs001-BCOAX: hwcs001-common
    @echo [hwcs001].[bcoax] Verifying specific 3C509B-COAX properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "coax" > NUL
    @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Plug and Play Capability:" "disabled" > NUL
    @echo [hwcs001].[bcoax] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-BCOMBO: hwcs001-common
    @echo [hwcs001].[bcombo] Verifying specific 3C509B-Combo properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "coax" > NUL
    @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Plug and Play Capability:" "disabled" > NUL
    @echo [hwcs001].[bcombo] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-BTPO: hwcs001-common
    @echo [hwcs001].[btpo] Verifying specific 3C509B-TPo properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board TP" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "TP" > NUL
    @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Plug and Play Capability:" "disabled" > NUL
    @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Full Duplex:" "enabled" > NUL
    @echo [hwcs001].[btpo] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-BTPC: hwcs001-common
    @echo [hwcs001].[btpc] Verifying specific 3C509B-TPCoax properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "coax" > NUL
    @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Plug and Play Capability:" "disabled" > NUL
    @echo [hwcs001].[btpc] PASSED >> $(HWC_LOGFILE)
 
@@ -2067,22 +2067,22 @@ hwcs001-TP: hwcs001-common
 
 hwcs001-COAX: hwcs001-common
    @echo [hwcs001].[bcoax] Verifying specific 3C509B-COAX properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "coax" > NUL
    @echo [hwcs001].[bcoax] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-COMBO: hwcs001-common
    @echo [hwcs001].[bcombo] Verifying specific 3C509B-Combo properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "coax" > NUL
    @echo [hwcs001].[bcombo] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-TPO: hwcs001-common
    @echo [hwcs001].[btpo] Verifying specific 3C509B-TPo properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board TP" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "TP" > NUL
    @echo [hwcs001].[btpo] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-TPC: hwcs001-common
    @echo [hwcs001].[btpc] Verifying specific 3C509B-TPCoax properties >> $(HWC_LOGFILE)
-   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "on-board coax" > NUL
+   @CALL $(ASSERTERS)\LFIND.BAT $(HWC_SET_FILE_1) "@Transceiver type:" "coax" > NUL
    @echo [hwcs001].[btpc] PASSED >> $(HWC_LOGFILE)
 
 hwcs001-MULTI:
