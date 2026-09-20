@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.8
+3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -19,13 +19,14 @@ Number                       Description
        Optimization = Server
        MODEM Interrupt Disable Time = 1300 us (1200 bd)
        Full Duplex = not supported
+3Com EtherLink III card detection running ... 
 Running test target hwcr for detected NIC: TP 
 invoke: MAKE -fHWCREAD.MK -DCARD_TP  hwcr 
 Cleaning logs and test artifacts 
 Running 3CCFGCLI Hardware Compliance Read checks 
-[HWCR00xx] Hardware Compliance Read checks for 3C509-TP 
-Saving original adapter configuration to HWCRREST.BAT 
-3Com EtherLink III CLI Configuration Program v0.7.8
+[hwcr00xx] Hardware Compliance Read checks for 3C509-TP 
+Saving original adapter configuration to hwcrREST.BAT 
+3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -34,21 +35,20 @@ Configuration restore batch file created: TP\ARTIFACT\HWCRREST.BAT
 [set-default].[common] Writing 3C509-TP baseline via original utility 
 [set-default].[tp] PASSED 
 [hwcr001].[common] Reading 3C509-TP identity and capabilities 
-[hwcr001].[tp] Reading 3C509-TP identity and capabilities 
 [hwcr001].[tp] PASSED 
-[hwcr002] 9c5x9cfg /INT writer, 3CCFGCLI LIST reader 
+[hwcr002] 3C5X9CFG /INT writer, 3CCFGCLI LIST reader 
 [hwcr002] PASSED 
-[hwcr003] 9c5x9cfg /IOBASE writer, 3CCFGCLI LIST reader 
+[hwcr003] 3C5X9CFG /IOBASE writer, 3CCFGCLI LIST reader 
 [hwcr003] PASSED 
 [hwcr004].[unsupported] PNP support is not supported by 3C509-TP. 
 [hwcr004].[unsupported] NOT SUPPORTED 
-[hwcr005] 9c5x9cfg /MODEM writer, 3CCFGCLI LIST reader 
+[hwcr005] 3C5X9CFG /MODEM writer, 3CCFGCLI LIST reader 
 [hwcr005] PASSED 
 [hwcr006].[unsupported] Full Duplex is not supported by 3C509-TP. 
 [hwcr006].[unsupported] NOT SUPPORTED 
-[hwcr007] 9c5x9cfg /OPTIMIZE writer, 3CCFGCLI LIST reader 
+[hwcr007] 3C5X9CFG /OPTIMIZE writer, 3CCFGCLI LIST reader 
 [hwcr007] PASSED 
-[hwcr008].[tp] 9c5x9cfg /TR:AUI writer, 3CCFGCLI LIST reader 
+[hwcr008].[tp] 3C5X9CFG /TR:AUI writer, 3CCFGCLI LIST reader 
 [hwcr008].[tp] PASSED 
 [hwcr009].[common] Reading combined hardware state through SAVECONFIG 
 [hwcr009].[tp] PASSED 

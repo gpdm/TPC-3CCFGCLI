@@ -2,7 +2,7 @@
 <testsuites name="3CCFGCLI Test Results" tests="5" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="HWCR_MULTI: Multi NIC Hardware Compliance Read checks" tests="5" errors="0" failures="0" skipped="0" time="0">
 		<properties>
-			<property name="header_id" value="HWCRM00xx"/>
+			<property name="header_id" value="hwcrm00xx"/>
 			<property name="description" value="Multi NIC Hardware Compliance Read checks"/>
 		</properties>
 		<testcase name="hwcrm001: LIST with two adapters set at distinct IOBASE values" classname="HWCR_MULTI">

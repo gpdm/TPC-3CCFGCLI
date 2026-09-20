@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.8
+3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -6,8 +6,8 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 IOBASE parameter accepted. Requested IOBASE: 0300
 INT parameter accepted. Requested IRQ: 5
 
-IOBASE and IRQ configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.7.8
+Configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -15,8 +15,8 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 IOBASE parameter accepted. Requested IOBASE: 0300
 INT parameter accepted. Requested IRQ: 3
 
-IOBASE and IRQ configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.7.8
+Configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2

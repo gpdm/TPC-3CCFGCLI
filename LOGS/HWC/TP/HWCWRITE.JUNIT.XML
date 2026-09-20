@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <testsuites name="3CCFGCLI Test Results" tests="12" failures="0" errors="0" skipped="3" time="0.0">
-	<testsuite name="HWCW_WRITE: Hardware Compliance Write checks for $(CARDNAME)" tests="12" errors="0" failures="0" skipped="3" time="0">
+	<testsuite name="HWCW_WRITE: Hardware Compliance Write checks for 3C509-TP" tests="12" errors="0" failures="0" skipped="3" time="0">
 		<properties>
-			<property name="header_id" value="HWCW00xx"/>
-			<property name="description" value="Hardware Compliance Write checks for $(CARDNAME)"/>
+			<property name="header_id" value="hwcw00xx"/>
+			<property name="description" value="Hardware Compliance Write checks for 3C509-TP"/>
 		</properties>
 		<testcase name="hwcw001: Reading 3C509-TP identity and capabilities" classname="HWCW_WRITE">
 			<properties>
@@ -11,15 +11,15 @@
 				<property name="artifact" value="ARTIFACT/HWCW001.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcw002: 3CCFGCLI /INT writer, fresh LIST readback" classname="HWCW_WRITE">
+		<testcase name="hwcw002: 3CCFGCLI /INT writer, 3CCFGCLI LIST reader" classname="HWCW_WRITE">
 			<properties>
-				<property name="description" value="3CCFGCLI /INT writer, fresh LIST readback"/>
+				<property name="description" value="3CCFGCLI /INT writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCW002.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcw003: 3CCFGCLI /IOBASE writer, fresh LIST readback" classname="HWCW_WRITE">
+		<testcase name="hwcw003: 3CCFGCLI /IOBASE writer, 3CCFGCLI LIST reader" classname="HWCW_WRITE">
 			<properties>
-				<property name="description" value="3CCFGCLI /IOBASE writer, fresh LIST readback"/>
+				<property name="description" value="3CCFGCLI /IOBASE writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCW003.LOG"/>
 			</properties>
 		</testcase>
@@ -29,9 +29,9 @@
 			</properties>
 			<skipped message="NOT SUPPORTED"/>
 		</testcase>
-		<testcase name="hwcw005: 3CCFGCLI /MODEM writer, fresh LIST readback" classname="HWCW_WRITE">
+		<testcase name="hwcw005: 3CCFGCLI /MODEM writer, 3CCFGCLI LIST reader" classname="HWCW_WRITE">
 			<properties>
-				<property name="description" value="3CCFGCLI /MODEM writer, fresh LIST readback"/>
+				<property name="description" value="3CCFGCLI /MODEM writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCW005.LOG"/>
 			</properties>
 		</testcase>
@@ -41,15 +41,15 @@
 			</properties>
 			<skipped message="NOT SUPPORTED"/>
 		</testcase>
-		<testcase name="hwcw007: 3CCFGCLI /OPTIMIZE writer, fresh LIST readback" classname="HWCW_WRITE">
+		<testcase name="hwcw007: 3CCFGCLI /OPTIMIZE writer, 3CCFGCLI LIST reader" classname="HWCW_WRITE">
 			<properties>
-				<property name="description" value="3CCFGCLI /OPTIMIZE writer, fresh LIST readback"/>
+				<property name="description" value="3CCFGCLI /OPTIMIZE writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCW007.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="hwcw008: 3CCFGCLI /TR:AUI writer, fresh LIST readback" classname="HWCW_WRITE">
+		<testcase name="hwcw008: 3CCFGCLI /TR:AUI writer, 3CCFGCLI LIST reader" classname="HWCW_WRITE">
 			<properties>
-				<property name="description" value="3CCFGCLI /TR:AUI writer, fresh LIST readback"/>
+				<property name="description" value="3CCFGCLI /TR:AUI writer, 3CCFGCLI LIST reader"/>
 				<property name="artifact" value="ARTIFACT/HWCW008.LOG"/>
 			</properties>
 		</testcase>

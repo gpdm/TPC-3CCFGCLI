@@ -1,4 +1,4 @@
-3Com EtherLink III CLI Configuration Program v0.7.8
+3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -19,13 +19,14 @@ Number                       Description
        Optimization = Server
        MODEM Interrupt Disable Time = 1300 us (1200 bd)
        Full Duplex = not supported
+3Com EtherLink III card detection running ... 
 Running test target hwcw for detected NIC: TP 
 invoke: MAKE -fHWCWRITE.MK -DCARD_TP  hwcw 
 Cleaning logs and test artifacts 
 Running 3CCFGCLI Hardware Compliance Write checks 
-[HWCW00xx] Hardware Compliance Write checks for 3C509-TP 
-Saving original adapter configuration to HWCWREST.BAT 
-3Com EtherLink III CLI Configuration Program v0.7.8
+[hwcw00xx] Hardware Compliance Write checks for 3C509-TP 
+Saving original adapter configuration to hwcwREST.BAT 
+3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -35,19 +36,19 @@ Configuration restore batch file created: TP\ARTIFACT\HWCWREST.BAT
 [set-default].[tp] PASSED 
 [hwcw001].[common] Reading 3C509-TP identity and capabilities 
 [hwcw001].[tp] PASSED 
-[hwcw002] 3CCFGCLI /INT writer, fresh LIST readback 
+[hwcw002] 3CCFGCLI /INT writer, 3CCFGCLI LIST reader 
 [hwcw002] PASSED 
-[hwcw003] 3CCFGCLI /IOBASE writer, fresh LIST readback 
+[hwcw003] 3CCFGCLI /IOBASE writer, 3CCFGCLI LIST reader 
 [hwcw003] PASSED 
 [hwcw004].[unsupported] PNP support is not supported by 3C509-TP. 
 [hwcw004].[unsupported] NOT SUPPORTED 
-[hwcw005] 3CCFGCLI /MODEM writer, fresh LIST readback 
+[hwcw005] 3CCFGCLI /MODEM writer, 3CCFGCLI LIST reader 
 [hwcw005] PASSED 
 [hwcw006].[unsupported] Full Duplex is not supported by 3C509-TP. 
 [hwcw006].[unsupported] NOT SUPPORTED 
-[hwcw007] 3CCFGCLI /OPTIMIZE writer, fresh LIST readback 
+[hwcw007] 3CCFGCLI /OPTIMIZE writer, 3CCFGCLI LIST reader 
 [hwcw007] PASSED 
-[hwcw008].[tp] 3CCFGCLI /TR:AUI writer, fresh LIST readback 
+[hwcw008].[tp] 3CCFGCLI /TR:AUI writer, 3CCFGCLI LIST reader 
 [hwcw008].[tp] PASSED 
 [hwcw009].[common] Reading combined hardware state through SAVECONFIG 
 [hwcw009].[tp] PASSED 
