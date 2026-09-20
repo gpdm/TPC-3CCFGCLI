@@ -47,6 +47,23 @@ TARGET_RE = re.compile(
     r"^([A-Za-z0-9_.%/+@\x2D]+)\s*:(?!=)\s*(.*)$"
 )
 
+MAKE_INCLUDE_RE = re.compile(
+    r'^\s*!include\s+(?:"([^"]+)"|([^\s#]+))\s*$',
+    re.IGNORECASE,
+)
+
+HWC_TAG_ECHO_RE = re.compile(
+    r"^\s*@?echo\s+\[\$\(HWC_TAG\)([0-9]{2,4}|[0-9]{2}xx)\]"
+    r"(?:\.\[([A-Za-z0-9_.%/+@\x2D]+)\])?\s*:?\s*"
+    r"(.+?)(?=\s*>>|\s*$)(?:\s*>>.*)?\s*$",
+    re.IGNORECASE,
+)
+
+TARGET_ID_RE = re.compile(
+    r"^([A-Za-z]{1,5})([0-9]{2,4}|[0-9]{1,2}xx)$",
+    re.IGNORECASE,
+)
+
 TEST_HEADER_RE = re.compile(
     r"^[A-Za-z]{1,5}[0-9]{1,2}xx$",
     re.IGNORECASE,
@@ -197,12 +214,70 @@ def validate_paths(logfile, makefile):
 #      @echo [HWL64] 8086/8088 with 64 KB memory limit
 #
 #
-def load_makefile(makefile):
-    targets = {}
+def load_makefile_lines(makefile, seen=None):
+    if seen is None:
+        seen = set()
+
+    makefile = makefile.resolve()
+
+    if makefile in seen:
+        return []
+
+    seen.add(makefile)
+
     lines = makefile.read_text(
         encoding="utf-8",
         errors="replace",
     ).splitlines()
+
+    expanded = []
+
+    for line in lines:
+        include_match = MAKE_INCLUDE_RE.match(line)
+
+        if not include_match:
+            expanded.append(line)
+            continue
+
+        include_name = include_match.group(1) or include_match.group(2)
+        include_file = makefile.parent / include_name
+
+        if not include_file.is_file():
+            raise FileNotFoundError(
+                f"Included Makefile does not exist: {include_file}"
+            )
+
+        expanded.extend(load_makefile_lines(include_file, seen))
+
+    return expanded
+
+
+def target_echo_matches(current_target, numeric_id, subtest):
+    match = re.match(
+        r"^[A-Za-z]{1,5}([0-9]{2,4}|[0-9]{1,2}xx)"
+        r"(?:-([A-Za-z0-9_.%/+@\x2D]+))?$",
+        current_target,
+        re.IGNORECASE,
+    )
+
+    if not match:
+        return False
+
+    target_numeric = match.group(1).lower()
+    target_subtest = match.group(2)
+
+    if target_numeric != numeric_id.lower():
+        return False
+
+    if subtest is None:
+        return target_subtest is None
+
+    return (target_subtest or "").lower() == subtest.lower()
+
+
+def load_makefile(makefile):
+    targets = {}
+    lines = load_makefile_lines(makefile)
 
     for line in lines:
         match = TARGET_RE.match(line)
@@ -223,8 +298,6 @@ def load_makefile(makefile):
 
     for line in lines:
         target_match = TARGET_RE.match(line)
-
-
 
         if target_match:
             current_target = target_match.group(1)
@@ -251,6 +324,24 @@ def load_makefile(makefile):
                 and targets[current_target]["description"] is None
             ):
                 targets[current_target]["description"] = message
+
+            continue
+
+        hwc_echo_match = HWC_TAG_ECHO_RE.search(line)
+
+        if not hwc_echo_match:
+            continue
+
+        numeric_id = hwc_echo_match.group(1)
+        subtest = hwc_echo_match.group(2)
+        message = hwc_echo_match.group(3).strip()
+
+        if (
+            target_echo_matches(current_target, numeric_id, subtest)
+            and message.upper() != "PASSED"
+            and targets[current_target]["description"] is None
+        ):
+            targets[current_target]["description"] = message
 
     return targets
 
@@ -282,7 +373,9 @@ def build_test_groups(targets):
         groups.append({
             "name": label,
             "header": header,
+            "header_target": header,
             "tests": tests,
+            "test_targets": {test_id.lower(): test_id for test_id in tests},
         })
 
     return groups
@@ -293,7 +386,7 @@ def parse_logfile(logfile):
     started = {}
     passed = set()
     nonfails = {}
-    headers = set()
+    headers = {}
 
     with logfile.open(
         "r",
@@ -306,7 +399,8 @@ def parse_logfile(logfile):
             header_match = LOG_HEADER_RE.match(line)
 
             if header_match:
-                headers.add(header_match.group(1).lower())
+                header_id = header_match.group(1).lower()
+                headers[header_id] = header_match.group(2).strip()
                 continue
 
             pass_match = LOG_PASS_RE.match(line)
@@ -340,14 +434,59 @@ def parse_logfile(logfile):
     return started, passed, nonfails, headers
 
 
+def split_target_id(value):
+    match = TARGET_ID_RE.match(value)
+
+    if not match:
+        return None
+
+    return match.group(1).lower(), match.group(2).lower()
+
+
+def resolve_group_ids(group, external_tag, header_description=None):
+    header_parts = split_target_id(group["header_target"])
+
+    if header_parts is None:
+        return group
+
+    internal_prefix, header_suffix = header_parts
+    resolved = dict(group)
+    resolved["header"] = f"{external_tag}{header_suffix}"
+
+    if header_description:
+        resolved["description"] = header_description
+
+    resolved_tests = []
+    test_targets = {}
+
+    for target_name in group["tests"]:
+        test_parts = split_target_id(target_name)
+        report_id = target_name.lower()
+
+        if test_parts is not None:
+            test_prefix, test_suffix = test_parts
+
+            if test_prefix == internal_prefix:
+                report_id = f"{external_tag}{test_suffix}"
+
+        resolved_tests.append(report_id)
+        test_targets[report_id] = target_name
+
+    resolved["tests"] = resolved_tests
+    resolved["test_targets"] = test_targets
+
+    return resolved
+
+
 def select_active_groups(groups, headers):
     # Most makefiles describe one complete test plan and all parsed groups
     # belong to that run. TEST.MK is one example, some tests are emitted by
     # test.sh itself and therefore do not necessarily emit their group header.
     #
-    # The HWC makefiles are different. They contain an explicit *_MULTI
-    # alternative beside the normal single NIC group. In that case the group
-    # header written to the log tells us which alternative was actually run.
+    # The HWC makefiles define neutral shared target names in HWCLIB.MK.
+    # Their externally visible IDs are emitted through HWC_TAG and therefore
+    # differ from the internal target names. The group name and log header
+    # identify which external HWC namespace was active.
     multi_groups = [
         group
         for group in groups
@@ -366,12 +505,30 @@ def select_active_groups(groups, headers):
             for group in groups
             if group["name"].upper().startswith(f"{family_prefix}_")
         ]
+        active_family = []
 
-        active_family = [
-            group
-            for group in family
-            if group["header"].lower() in headers
-        ]
+        for group in family:
+            header_parts = split_target_id(group["header_target"])
+
+            if header_parts is None:
+                continue
+
+            _, header_suffix = header_parts
+            external_tag = family_prefix.lower()
+
+            if group["name"].upper().endswith("_MULTI"):
+                external_tag += "m"
+
+            expected_header = f"{external_tag}{header_suffix}"
+
+            if expected_header in headers:
+                active_family.append(
+                    resolve_group_ids(
+                        group,
+                        external_tag,
+                        headers.get(expected_header),
+                    )
+                )
 
         if not active_family:
             raise ReportError(
@@ -384,11 +541,13 @@ def select_active_groups(groups, headers):
                 + ", ".join(group["header"] for group in active_family)
             )
 
+        active_group = active_family[0]
         selected = [
             group
             for group in selected
-            if group not in family or group in active_family
+            if group not in family
         ]
+        selected.append(active_group)
 
     return selected
 
@@ -557,12 +716,16 @@ def build_junit_report(
     for group in groups:
         group_name = group["name"]
         header_id = group["header"]
-        header_target = targets.get(header_id, {})
+        header_target_name = group.get("header_target", header_id)
+        header_target = targets.get(header_target_name, {})
 
-        group_description = clean_group_description(
-            group_name,
-            header_target.get("description"),
-        )
+        group_description = group.get("description")
+
+        if not group_description:
+            group_description = clean_group_description(
+                group_name,
+                header_target.get("description"),
+            )
 
         suite_name = group_name
 
@@ -580,14 +743,18 @@ def build_junit_report(
 
         for raw_test_id in group["tests"]:
             test_id = raw_test_id.lower()
-            target = targets.get(raw_test_id)
+            target_name = group.get("test_targets", {}).get(
+                test_id,
+                raw_test_id,
+            )
+            target = targets.get(target_name)
 
             if target is None:
-                target = targets.get(test_id)
+                target = targets.get(target_name.lower())
 
             if target is None:
                 raise ReportError(
-                    f"Test target is missing from Makefile: {raw_test_id}"
+                    f"Test target is missing from Makefile: {target_name}"
                 )
 
 
@@ -696,13 +863,17 @@ def print_makefile_debug(targets, groups, title):
 
     for group in groups:
         header = group["header"]
+        header_target_name = group.get("header_target", header)
         group_target = targets.get(group["name"], {})
-        header_target = targets.get(header, {})
+        header_target = targets.get(header_target_name, {})
 
-        description = clean_group_description(
-            group["name"],
-            header_target.get("description"),
-        )
+        description = group.get("description")
+
+        if not description:
+            description = clean_group_description(
+                group["name"],
+                header_target.get("description"),
+            )
 
         print(f"{group['name']}:")
         print(f"  target      : {group['name']}")
@@ -711,6 +882,10 @@ def print_makefile_debug(targets, groups, title):
             f"{' '.join(group_target.get('prerequisites', []))}"
         )
         print(f"  header      : {header}")
+
+        if header_target_name.lower() != header.lower():
+            print(f"  header target: {header_target_name}")
+
         print(f"  description : {description}")
         print(f"  tests       : {' '.join(group['tests'])}")
         print()
@@ -747,11 +922,15 @@ def print_result_debug(groups, targets, started, results):
 
         for test_id in group["tests"]:
             normalized_id = test_id.lower()
+            target_name = group.get("test_targets", {}).get(
+                normalized_id,
+                test_id,
+            )
 
             if normalized_id in started:
                 description = started[normalized_id]["description"]
             else:
-                description = targets[test_id].get("description") or ""
+                description = targets[target_name].get("description") or ""
 
             print(
                 f"  {test_id}: {results[normalized_id]}: "
