@@ -525,6 +525,8 @@ nic_table       DB  (MAX_CARDS * NIC_RECORD_SIZE) DUP(0)
 ; One 37-byte record per nic_table entry: availability byte plus the 18-word
 ; union of EEPROM reads used by the original ISA record-building paths.
 id_eeprom_cache DB  (MAX_CARDS * ID_EEPROM_SNAPSHOT_SIZE) DUP(0)
+nic_capabilities       DW  MAX_CARDS DUP(0)
+nic_capability_valid   DW  MAX_CARDS DUP(0)
 
 ; Discovery state.
 id_short_mode   DB  1
@@ -4070,6 +4072,20 @@ PROC Scan_All_3Com_Cards NEAR
     mov     [di], al
     inc     di
     loop    @@ClearIdEepromCache
+
+    mov     di, OFFSET nic_capabilities
+    mov     cx, MAX_CARDS
+@@ClearCapabilities:
+    mov     [di], ax
+    add     di, 2
+    loop    @@ClearCapabilities
+
+    mov     di, OFFSET nic_capability_valid
+    mov     cx, MAX_CARDS
+@@ClearCapabilityValid:
+    mov     [di], ax
+    add     di, 2
+    loop    @@ClearCapabilityValid
 
     ; First perform the proprietary 3Com ISA ID port discovery.
     call    Discover_Id_Port_Cards

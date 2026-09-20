@@ -32,6 +32,8 @@ Changelog 0.8.0
   - CONFIGURE temporary access acquisition and restore are now delegated to
     caller-neutral shared NIC routines while preserving the existing
     transaction bookkeeping and validation semantics.
+  - Added zero-initialized per-adapter capability and validity storage for
+    future canonical discovery enrichment.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
