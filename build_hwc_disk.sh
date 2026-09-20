@@ -151,6 +151,7 @@ copy_payload()
         "HWCREAD.MK" \
         "HWCTEST.BAT" \
         "HWCWRITE.MK" \
+        "HWCLIB.MK" \
         ::
 }
 

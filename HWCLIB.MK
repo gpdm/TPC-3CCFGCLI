@@ -513,8 +513,6 @@ hwc009-tpc: hwc009-common
 	@echo [$(HWC_TAG)009].[tpc] PASSED >> $(LOGFILE)
 	@echo [$(HWC_TAG)009].[tpc] PASSED
 
-
-
 hwc010:
 	@echo [$(HWC_TAG)010] 3CCFGCLI multi-property CONFIGURE transaction >> $(LOGFILE)
 	@echo [$(HWC_TAG)010] 3CCFGCLI multi-property CONFIGURE transaction
@@ -538,15 +536,6 @@ hwc010:
 # and IRQ. A fresh 3CCFGCLI LIST reads that baseline, then 3CCFGCLI moves
 # adapter 2 to a distinct IOBASE and IRQ. A second fresh LIST verifies that the
 # selected adapter moved while its peer remained at the shared starting state.
-
-
-# #################################
-# Multi NIC hardware read checks.
-# #################################
-#
-# These tests require exactly two installed adapters. The original 3Com
-# utility establishes each physical state. 3CCFGCLI is read-only here and must
-# report both adapters correctly. No model-specific capability is assumed.
 
 hwcm001:
 	@echo [$(HWC_TAG)001] LIST with two adapters set at distinct IOBASE values >> $(LOGFILE)

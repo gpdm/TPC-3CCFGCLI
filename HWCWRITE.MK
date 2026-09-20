@@ -24,7 +24,7 @@
 #   HWCTEST.BAT READMULTI
 #
 # If a run aborts after writes have started:
-#   MAKE -fHWCREAD.MK -DCARDTYPE=CARD_<type> restore-config
+#   MAKE -fHWCWRITE.MK -DCARDTYPE=CARD_<type> restore-config
 #
 
 # Utility definitions
