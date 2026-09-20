@@ -4096,6 +4096,9 @@ PROC Scan_All_3Com_Cards NEAR
     ; Finally validate normal I O access for uniquely owned ID-discovered records.
     call    Validate_Active_Id_Records
 
+    ; Collect canonical capability facts through isolated ID-tagged access.
+    call    Enrich_All_3Com_Cards
+
     pop     di
     pop     cx
     pop     ax
@@ -4783,6 +4786,91 @@ PROC Validate_Active_Id_Records NEAR
     pop     ax
     ret
 ENDP Validate_Active_Id_Records
+
+; Populate the per-record capability caches through isolated temporary access.
+; A failed acquire or restore leaves that record's already-cleared cache empty.
+PROC Enrich_All_3Com_Cards NEAR
+    cmp     [card_count], 0
+    je      @@Empty
+
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+    push    bp
+
+    mov     cx, [card_count]
+    xor     bp, bp                  ; adapter ordinal
+@@RecordLoop:
+    push    cx
+    push    bp
+
+    mov     ax, bp
+    mov     cl, 4
+    shl     ax, cl
+    add     ax, OFFSET nic_table
+    mov     si, ax
+
+    xor     ax, ax
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    push    ax
+    call    Nic_Begin_Temporary_Access
+    jc      @@AcquireFailed
+
+    mov     dx, ax
+    push    dx                      ; preserve the exact temporary base
+    call    Nic_Read_Capabilities
+    push    ax
+    push    bx
+    pop     bx
+    pop     ax
+    pop     dx
+    push    ax
+    push    bx
+    call    Nic_End_Temporary_Access
+    jc      @@RestoreFailed
+
+    pop     bx                      ; validity from Nic_Read_Capabilities
+    pop     ax                      ; capabilities from Nic_Read_Capabilities
+    pop     dx                      ; original logical-record ASIC revision
+    ; Transitional Phase IIb compatibility: temporary validation may learn an
+    ; ASIC revision, but legacy consumers keep the original value until they
+    ; migrate to the global discovery result.
+    mov     [BYTE si + NIC_ASIC_REV], dl
+    pop     bp
+
+    mov     di, bp
+    shl     di, 1
+    mov     [WORD di + nic_capabilities], ax
+    mov     [WORD di + nic_capability_valid], bx
+    jmp     @@Next
+
+@@RestoreFailed:
+    pop     bx                      ; discard unpublished validity
+    pop     ax                      ; discard unpublished capabilities
+@@AcquireFailed:
+    pop     dx                      ; original logical-record ASIC revision
+    mov     [BYTE si + NIC_ASIC_REV], dl
+    pop     bp
+
+@@Next:
+    pop     cx
+    inc     bp
+    dec     cx
+    jnz     @@RecordLoop
+
+    pop     bp
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+@@Empty:
+    ret
+ENDP Enrich_All_3Com_Cards
 
 ; ============================================================================
 ; Common CONFIGURE hardware infrastructure for the supported persistent and

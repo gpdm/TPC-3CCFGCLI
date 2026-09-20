@@ -34,6 +34,8 @@ Changelog 0.8.0
     transaction bookkeeping and validation semantics.
   - Added zero-initialized per-adapter capability and validity storage for
     future canonical discovery enrichment.
+  - Discovery now enriches each ID-tagged adapter's canonical capability cache
+    through isolated temporary access and publishes it only after restoration.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
