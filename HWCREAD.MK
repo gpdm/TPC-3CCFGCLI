@@ -23,11 +23,9 @@
 
 # Utility definitions
 RESTOREBAT = $(HWC_TAG)REST.BAT
-HWC_TAG = hwcr
-HWC_MULTI_TAG = hwcrm
 HWC_MODE = Read
 
-!include HWCCOMMON.MK
+!include HWCLIB.MK
 
 WRITERAPP = $(3C5X9CFG)
 READERAPP = $(3CCFGCLI)

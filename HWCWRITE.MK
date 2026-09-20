@@ -29,11 +29,9 @@
 
 # Utility definitions
 RESTOREBAT = $(HWC_TAG)REST.BAT
-HWC_TAG = hwcw
-HWC_MULTI_TAG = hwcwm
 HWC_MODE = Write
 
-!include HWCCOMMON.MK
+!include HWCLIB.MK
 
 REFERENCEAPP = $(3C5X9CFG)
 WRITERAPP = $(3CCFGCLI)
@@ -207,47 +205,3 @@ hwcw: clean prep hwc00xx save-config set-default-$(CARDTYPE) hwc001-$(CARDTYPE) 
 
 HWCW_MULTI: hwcm00xx hwcm001 hwcm002 hwcm003 hwcm004 hwcm005 hwcs001
 hwcwm: clean prep hwcm00xx save-config hwcm001 hwcm002 hwcm003 hwcm004 hwcm005 complete
-
-hwc010:
-	@echo [$(HWC_TAG)010] 3CCFGCLI multi-property CONFIGURE transaction >> $(LOGFILE)
-	@echo [$(HWC_TAG)010] 3CCFGCLI multi-property CONFIGURE transaction
-	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(DEFAULT_IRQ) /IOBASE:$(DEFAULT_IOBASE) /MODEM:$(DEFAULT_MODEM) /OPTIMIZE:$(DEFAULT_OPTIMIZE) > $(ARTIFACTS)\$(HWC_TAG)010.LOG
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(TEST_IRQ) /IOBASE:$(TEST_IOBASE) /MODEM:$(TEST_MODEM) /OPTIMIZE:$(TEST_OPTIMIZE) >> $(ARTIFACTS)\$(HWC_TAG)010.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\$(HWC_TAG)010.LOG
-	FIND "IOBASE = $(TEST_IOBASE), IRQ = $(TEST_IRQ)" $(ARTIFACTS)\$(HWC_TAG)010.LOG > NUL
-	FIND "MODEM Interrupt Disable Time = 1300 us (1200 bd)" $(ARTIFACTS)\$(HWC_TAG)010.LOG > NUL
-	FIND "Optimization = Server" $(ARTIFACTS)\$(HWC_TAG)010.LOG > NUL
-	@echo [$(HWC_TAG)010] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)010] PASSED
-
-
-
-# #################################
-# Multi NIC physical write check.
-# #################################
-#
-# Exactly two adapters are required. The original utility establishes a
-# deliberately ambiguous baseline in which both adapters use the same IOBASE
-# and IRQ. A fresh 3CCFGCLI LIST reads that baseline, then 3CCFGCLI moves
-# adapter 2 to a distinct IOBASE and IRQ. A second fresh LIST verifies that the
-# selected adapter moved while its peer remained at the shared starting state.
-
-hwcm005:
-	@echo [$(HWC_MULTI_TAG)005] selected adapter migrates out of a duplicate IOBASE state >> $(LOGFILE)
-	@echo [$(HWC_MULTI_TAG)005] selected adapter migrates out of a duplicate IOBASE state
-	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_CARD1_IRQ) > $(ARTIFACTS)\$(HWC_MULTI_TAG)005.LOG
-	$(REFERENCEAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_CARD2_IRQ) >> $(ARTIFACTS)\$(HWC_MULTI_TAG)005.LOG
-	$(READERAPP) LIST > $(ARTIFACTS)\$(HWC_MULTI_TAG)005.PRE
-	FIND "IOBASE = $(MULTI_SHARED_IOBASE)" $(ARTIFACTS)\$(HWC_MULTI_TAG)005.PRE > NUL
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_CARD2_IOBASE) /INT:$(MULTI_CARD2_IRQ) > $(ARTIFACTS)\$(HWC_MULTI_TAG)005.LOG
-	FIND "Configuration completed" $(ARTIFACTS)\$(HWC_MULTI_TAG)005.LOG > NUL
-	$(READERAPP) LIST > $(ARTIFACTS)\$(HWC_MULTI_TAG)005.LOG
-	FIND "IOBASE = $(MULTI_SHARED_IOBASE), IRQ = $(MULTI_CARD1_IRQ)" $(ARTIFACTS)\$(HWC_MULTI_TAG)005.LOG > NUL
-	FIND "IOBASE = $(MULTI_CARD2_IOBASE), IRQ = $(MULTI_CARD2_IRQ)" $(ARTIFACTS)\$(HWC_MULTI_TAG)005.LOG > NUL
-	@echo [$(HWC_MULTI_TAG)005] PASSED >> $(LOGFILE)
-	@echo [$(HWC_MULTI_TAG)005] PASSED
-
-
-# #################################
-# Optional physical Boot ROM test.
-# #################################
