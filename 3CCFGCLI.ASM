@@ -752,6 +752,8 @@ cli_kw_mocktest DB 'MOCKTEST', 0
 cli_kw_mock_invalid_tag DB 'INVALIDTAG', 0
 cli_kw_mock_no_select DB 'NOSELECT', 0
 cli_kw_mock_temporary_base DB 'TEMPBASE', 0
+cli_kw_mock_capcache1 DB 'CAPCACHE1', 0
+cli_kw_mock_capcache2 DB 'CAPCACHE2', 0
 msg_mocktest_pass DB 'HWMOCK contract test passed.', 0Dh, 0Ah, '$'
 msg_mocktest_fail DB 'HWMOCK contract test failed.', 0Dh, 0Ah, '$'
 ENDIF
@@ -1122,7 +1124,16 @@ IFDEF MOCKHW
     jnc     @@MockNoSelect
     mov     bx, OFFSET cli_kw_mock_temporary_base
     call    Cli_Match_Token
+    jnc     @@MockTemporaryBase
+    mov     bx, OFFSET cli_kw_mock_capcache1
+    call    Cli_Match_Token
+    jnc     @@MockCapCache1
+    mov     bx, OFFSET cli_kw_mock_capcache2
+    call    Cli_Match_Token
     jc      @@Help
+    mov     al, 5
+    jmp     @@RunMockTest
+@@MockTemporaryBase:
     mov     al, 3
     jmp     @@RunMockTest
 @@MockInvalidTag:
@@ -1130,6 +1141,9 @@ IFDEF MOCKHW
     jmp     @@RunMockTest
 @@MockNoSelect:
     mov     al, 2
+    jmp     @@RunMockTest
+@@MockCapCache1:
+    mov     al, 4
 @@RunMockTest:
     call    Mock_Run_Contract_Test
     jc      @@MockFail

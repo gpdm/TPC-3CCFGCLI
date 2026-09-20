@@ -2004,7 +2004,8 @@ PROC Mock_Id_Send_Sequence_Core NEAR
 ENDP Mock_Id_Send_Sequence_Core
 
 ; MOCKHW-only low-level contract probe invoked by the hidden MOCKTEST verb.
-; Input AL: 1 invalid tag, 2 activation without selection, 3 temporary base.
+; Input AL: 1 invalid tag, 2 activation without selection, 3 temporary base,
+;           4 distinct-IOBASE capability cache, 5 duplicate-IOBASE cache.
 ; Output CF clear when the requested observable contract holds.
 PROC Mock_Run_Contract_Test NEAR
     push    ax
@@ -2019,6 +2020,10 @@ PROC Mock_Run_Contract_Test NEAR
     je      @@InvalidTag
     cmp     bl, 2
     je      @@NoSelect
+    cmp     bl, 4
+    je      @@CapabilityCache
+    cmp     bl, 5
+    je      @@CapabilityCache
 
     ; Tag 1 is explicitly moved to 0280h. Normal I/O must work at the
     ; temporary base, while its persistent EEPROM selector remains 0300h.
@@ -2036,6 +2041,35 @@ PROC Mock_Run_Contract_Test NEAR
     and     al, 1Fh
     cmp     al, 10h
     jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@CapabilityCache:
+    cmp     [card_count], 2
+    jne     @@Fail
+    cmp     [WORD nic_table + NIC_IO_BASE], 0300h
+    jne     @@Fail
+    cmp     bl, 4
+    jne     @@DuplicateBase
+    cmp     [WORD nic_table + NIC_RECORD_SIZE + NIC_IO_BASE], 0310h
+    jne     @@Fail
+    jmp     @@CheckCapabilities
+@@DuplicateBase:
+    cmp     [WORD nic_table + NIC_RECORD_SIZE + NIC_IO_BASE], 0300h
+    jne     @@Fail
+@@CheckCapabilities:
+    mov     ax, [nic_capabilities]
+    and     ax, NIC_CAP_TP OR NIC_CAP_AUI OR NIC_CAP_BNC
+    cmp     ax, NIC_CAP_TP OR NIC_CAP_AUI
+    jne     @@Fail
+    mov     ax, [nic_capabilities + 2]
+    and     ax, NIC_CAP_TP OR NIC_CAP_AUI OR NIC_CAP_BNC
+    cmp     ax, NIC_CAP_TP OR NIC_CAP_AUI OR NIC_CAP_BNC
+    jne     @@Fail
+    test    [nic_capability_valid], NIC_CAP_VALID_CONNECTORS
+    jz      @@Fail
+    test    [nic_capability_valid + 2], NIC_CAP_VALID_CONNECTORS
+    jz      @@Fail
     clc
     jmp     @@Done
 

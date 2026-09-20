@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results" tests="171" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results" tests="173" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -702,7 +702,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="MULTI_NIC: Verify multi-NIC behaviour" tests="16" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="MULTI_NIC: Verify multi-NIC behaviour" tests="18" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t15xx"/>
 			<property name="description" value="Verify multi-NIC behaviour"/>
@@ -801,6 +801,18 @@
 			<properties>
 				<property name="description" value="temporary activation preserves persistent IOBASE"/>
 				<property name="artifact" value="ARTIFACT/T1517.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1518: canonical enrichment stores per-adapter capabilities" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="canonical enrichment stores per-adapter capabilities"/>
+				<property name="artifact" value="ARTIFACT/T1518.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1519: canonical enrichment isolates duplicate IOBASE adapters" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="canonical enrichment isolates duplicate IOBASE adapters"/>
+				<property name="artifact" value="ARTIFACT/T1519.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>

@@ -258,6 +258,10 @@ Seed file created (INIT).
 [t1516] PASSED
 [t1517] temporary activation preserves persistent IOBASE
 [t1517] PASSED
+[t1518] canonical enrichment stores per-adapter capabilities
+[t1518] PASSED
+[t1519] canonical enrichment isolates duplicate IOBASE adapters
+[t1519] PASSED
 [t16xx] SAVECONFIG_TEST: Verify save configuration behaviour
 [t1602] SAVECONFIG rejects an empty /OUTPUTFILE value
 [t1602] PASSED
@@ -381,8 +385,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 167
-    Executed Tests           : 167
+    Defined Tests            : 169
+    Executed Tests           : 169
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS
