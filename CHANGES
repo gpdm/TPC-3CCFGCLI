@@ -21,6 +21,8 @@ Changelog 0.8.0
   - Cleanup: replaced the historical 31-address active-base sweep with
     validation of uniquely owned ID-discovered records only; io_scan_table
     remains available for CONFIGURE temporary working-base selection.
+  - Reworked HWCREAD and HWCWRITE to use a shared include file, reducing
+    redundancies and lowering the space requirement to fix again on the 360K disk image.
 
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
