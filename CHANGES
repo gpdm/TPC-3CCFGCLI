@@ -23,17 +23,19 @@ Changelog 0.8.0
     remains available for CONFIGURE temporary working-base selection.
   - Reworked HWCREAD and HWCWRITE to use a shared include file, reducing
     redundancies and lowering the space requirement to fix again on the 360K disk image.
-  - Cleanup: centralized NIC capability collection in one shared
-    Nic_Read_Capabilities routine, so CONFIGURE and LIST consume the same
-    capability semantics while keeping adapter identity and the validated
-    physical base explicit at the call site.
+  - NIC capability collection is centralized in the shared
+    Nic_Read_Capabilities routine and global per-adapter discovery cache.
+    LIST consumes the cached connector, Plug and Play, and Full Duplex facts
+    by logical adapter identity, including for duplicate configured IOBASE
+    records, while unrelated extended information retains its existing access
+    paths.
   - Shared temporary adapter access now uses caller-neutral NIC routines,
     allowing safe ID-tagged scratch IOBASE access to be reused across commands.
   - CONFIGURE temporary access acquisition and restore are now delegated to
     caller-neutral shared NIC routines while preserving the existing
     transaction bookkeeping and validation semantics.
   - Added zero-initialized per-adapter capability and validity storage for
-    future canonical discovery enrichment.
+    canonical discovery enrichment.
   - Discovery now enriches each ID-tagged adapter's canonical capability cache
     through isolated temporary access and publishes it only after restoration.
   - Added direct regression coverage for per-adapter capability enrichment

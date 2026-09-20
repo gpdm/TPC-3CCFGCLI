@@ -236,7 +236,7 @@ Seed file created (INIT).
 [t1504] PASSED
 [t1505] duplicate IOBASE selected migration succeeds
 [t1505] PASSED
-[t1506] duplicate IOBASE LIST persistent fields only
+[t1506] duplicate IOBASE LIST uses cached capabilities
 [t1506] PASSED
 [t1507] duplicate IOBASE persistent and FD transaction
 [t1507] PASSED

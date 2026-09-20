@@ -8379,10 +8379,6 @@ PROC Read_Extended_Nic_Info_At_Base NEAR
     call    Nic_Get_Current_Window
     mov     di, ax
 
-    call    Nic_Read_Capabilities
-    mov     [ext_nic_capabilities], ax
-    mov     [ext_nic_capability_valid], bx
-
     test    [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG
     jnz     @@SkipAddrCfg
     mov     al, EEPROM_ADDR_CFG
@@ -8496,6 +8492,19 @@ PROC Read_Extended_Nic_Info NEAR
 
     call    List_Load_Id_Eeprom_Snapshot
 
+    ; Canonical capabilities are published by global discovery in arrays
+    ; parallel to nic_table. Select by this record's ordinal, never IOBASE.
+    mov     ax, si
+    sub     ax, OFFSET nic_table
+    mov     cl, 4
+    shr     ax, cl
+    mov     di, ax
+    shl     di, 1
+    mov     ax, [WORD di + nic_capabilities]
+    mov     [ext_nic_capabilities], ax
+    mov     ax, [WORD di + nic_capability_valid]
+    mov     [ext_nic_capability_valid], ax
+
     mov     dx, [WORD si + NIC_IO_BASE]
     or      dx, dx
     jz      @@Done
@@ -8592,17 +8601,16 @@ PROC Print_Pnp_Capability_Value NEAR
     push    ax
     push    dx
 
-    ; Plug and Play is a 3C509B feature; an unknown revision is not assumed
-    ; to be a 3C509B.
+    ; A valid canonical PNP result identifies the supported capability even
+    ; when the transitional record ASIC revision is unavailable.
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 0FFh
-    je      @@Unavailable
+    je      @@ReadCached
     cmp     al, 2
     jb      @@NotSupported
 
+@@ReadCached:
     mov     ax, [ext_nic_capabilities]
-    cmp     ax, 0FFFFh
-    je      @@Unavailable
     test    [ext_nic_capability_valid], NIC_CAP_VALID_PNP
     jz      @@Unavailable
     test    ax, NIC_CAP_PNP
@@ -8628,13 +8636,19 @@ PROC Print_Pnp_State_Value NEAR
     push    ax
     push    dx
 
-    ; The 3C509 has no Plug and Play state to decode.
+    ; Unknown ASIC revisions may still use canonical PNP validity with the
+    ; existing EEPROM-backed PNP state.
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 0FFh
-    je      @@Unavailable
+    je      @@CheckCanonical
     cmp     al, 2
     jb      @@NotSupported
 
+    jmp     @@ReadState
+@@CheckCanonical:
+    test    [ext_nic_capability_valid], NIC_CAP_VALID_PNP
+    jz      @@Unavailable
+@@ReadState:
     test    [ext_eeprom_valid], LIST_EEPROM_VALID_CONFIG_CONTROL
     jz      @@Unavailable
     mov     ax, [ext_config_ctrl]
@@ -8711,14 +8725,15 @@ PROC Print_Full_Duplex_Capability NEAR
     push    ax
     push    dx
 
-    ; Full Duplex is a 3C509B feature; an unknown revision is not assumed
-    ; to be a 3C509B.
+    ; A valid canonical Full Duplex result identifies the supported
+    ; capability even when the transitional record ASIC revision is unknown.
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 0FFh
-    je      @@Unavailable
+    je      @@ReadCached
     cmp     al, 2
     jb      @@NotSupported
 
+@@ReadCached:
     test    [ext_nic_capability_valid], NIC_CAP_VALID_FULLDUPLEX
     jz      @@Unavailable
     mov     ax, [ext_nic_capabilities]
@@ -8931,12 +8946,15 @@ PROC Print_Full_Duplex_Value NEAR
     push    dx
 
     ; The persistent Full Duplex policy bit only exists on the 3C509B.
+    ; A valid canonical capability result is authoritative when the
+    ; transitional record ASIC revision is unavailable.
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 0FFh
-    je      @@Unavailable
+    je      @@ReadCached
     cmp     al, 2
     jb      @@NotSupported
 
+@@ReadCached:
     test    [ext_nic_capability_valid], NIC_CAP_VALID_FULLDUPLEX
     je      @@Unavailable
     mov     ax, [ext_nic_capabilities]

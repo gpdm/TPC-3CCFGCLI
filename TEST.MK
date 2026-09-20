@@ -1251,7 +1251,7 @@ t1505:
    @echo [t1505] PASSED  >> $(TESTLOG)
 
 t1506:
-   @echo [t1506] duplicate IOBASE LIST persistent fields only >> $(TESTLOG)
+   @echo [t1506] duplicate IOBASE LIST uses cached capabilities >> $(TESTLOG)
    ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1506.LOG
    ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1506.LOG
    ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 /MODEMPRESERVE >> $(ARTIFACTS)\T1506.LOG
@@ -1262,8 +1262,10 @@ t1506:
    FIND "3Com 3C509/3C509B-Combo" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "IOBASE = 0300, IRQ = 10" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1506.LOG > NUL
-   FIND "Connectors = read error (possible I/O conflict)" $(ARTIFACTS)\T1506.LOG > NUL
-   FIND "Full Duplex Capability = read error (possible I/O conflict)" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "Connectors = TP, AUI, COAX" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "Full Duplex Capability = yes" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T1506.LOG > NUL
+   FIND "Plug and Play = enabled" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "Optimization = DOS" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "Optimization = Server" $(ARTIFACTS)\T1506.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 1300 us (1200 bd)" $(ARTIFACTS)\T1506.LOG > NUL
@@ -1283,8 +1285,9 @@ t1507:
    FIND "IOBASE = 0300, IRQ = 5" $(ARTIFACTS)\T1507.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 25 us" $(ARTIFACTS)\T1507.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1507.LOG > NUL
-   FIND "Full Duplex Capability = read error (possible I/O conflict)" $(ARTIFACTS)\T1507.LOG > NUL
-   FIND "Full Duplex = read error (possible I/O conflict)" $(ARTIFACTS)\T1507.LOG > NUL
+   FIND "Full Duplex Capability = yes" $(ARTIFACTS)\T1507.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T1507.LOG > NUL
+   FIND "Full Duplex = enabled" $(ARTIFACTS)\T1507.LOG > NUL
    $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1507.BAT >> $(ARTIFACTS)\T1507.LOG
    CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507.BAT "ADAPTERNUM:1" "INT:10" > NUL
    CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1507.BAT "ADAPTERNUM:1" "IOBASE:0300" > NUL

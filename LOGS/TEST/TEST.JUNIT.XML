@@ -737,9 +737,9 @@
 				<property name="artifact" value="ARTIFACT/T1505.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1506: duplicate IOBASE LIST persistent fields only" classname="MULTI_NIC">
+		<testcase name="t1506: duplicate IOBASE LIST uses cached capabilities" classname="MULTI_NIC">
 			<properties>
-				<property name="description" value="duplicate IOBASE LIST persistent fields only"/>
+				<property name="description" value="duplicate IOBASE LIST uses cached capabilities"/>
 				<property name="artifact" value="ARTIFACT/T1506.LOG"/>
 			</properties>
 		</testcase>
