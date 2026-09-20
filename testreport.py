@@ -10,6 +10,7 @@
 import argparse
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -711,7 +712,8 @@ def build_junit_report(
             "Install it with: python3 -m pip install junitparser"
         ) from error
 
-    xml = JUnitXml("3CCFGCLI Test Results")
+    report_timestamp = datetime.now().astimezone().isoformat(timespec="microseconds")
+    xml = JUnitXml(f"3CCFGCLI Test Results {report_timestamp}")
 
     for group in groups:
         group_name = group["name"]
