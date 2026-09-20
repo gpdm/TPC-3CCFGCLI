@@ -21,57 +21,18 @@
 #   MAKE -fHWCREAD.MK -DCARDTYPE=CARD_<type> restore-config
 #
 
-# Utility definitions 
-3C5X9CFG = 3C5X9CFG.EXE
-3CCFGCLI = 3CCFGCLI.EXE
-RESTOREBAT = HWCRREST.BAT
-WRITERAPP = $(3C5X9CFG)
-READERAPP = $(3CCFGCLI)
+# Utility definitions
+RESTOREBAT = $(HWC_TAG)REST.BAT
 HWC_TAG = hwcr
 HWC_MULTI_TAG = hwcrm
-HWC_HEADER_TAG = HWCR
-HWC_MULTI_HEADER_TAG = HWCRM
 HWC_MODE = Read
+
+!include HWCCOMMON.MK
+
+WRITERAPP = $(3C5X9CFG)
+READERAPP = $(3CCFGCLI)
 WRITERNAME = 3C5X9CFG
 READERNAME = 3CCFGCLI
-
-# Output directories and log files are defined further below
-# as they are defined based on the selected card type.
-# Consequentally, the definition can only happend after
-# processing the card type selection.
-#
-# ## OUTDIR = $(CARDTYPE)
-# ## ARTIFACTS = $(OUTDIR)\ARTIFACT
-# ## LOGFILE = $(OUTDIR)\HWCREAD.LOG
-
-# Preset Defaults
-DEFAULT_IRQ = 10
-DEFAULT_IOBASE = 0300
-DEFAULT_MODEM = NONE
-DEFAULT_OPTIMIZE = DOS
-DEFAULT_TRANSCEIVER = TP
-DEFAULT_FULLDUPLEX = DISABLED
-DEFAULT_PNP = ENABLED
-
-# Test Defaults
-TEST_IRQ = 3
-TEST_IOBASE = 0280
-TEST_PNP = DISABLED
-TEST_MODEM = 1200
-TEST_OPTIMIZE = SERVER
-TEST_BADDRESS = C8000
-TEST_BSIZE = 16
-TEST_FULLDUPLEX = ENABLED
-
-# Multi NIC defaults. These checks intentionally use only IOBASE and IRQ so
-# they are valid for every supported 3C509 / 3C509B model. Exactly two cards
-# are required.
-MULTI_CARD1_IOBASE = 0300
-MULTI_CARD1_IRQ = 5
-MULTI_CARD2_IOBASE = 0280
-MULTI_CARD2_IRQ = 3
-MULTI_SHARED_IOBASE = 0300
-
 
 # CARDTYPE is supplied by HWCTEST.BAT, for example:
 #   MAKE -fHWCREAD.MK CARD_BTP=1 hwcr
@@ -89,14 +50,14 @@ CARDNAME = two EtherLink III adapters
 
 CARDTYPE = btp
 CARDNAME = 3C509B-TP
-HWCR004_TARGET = hwcr004
-HWCR006_TARGET = hwcr006
-HWCR008_TARGET = hwcr008-btp
+HWC004_TARGET = hwc004
+HWC006_TARGET = hwc006
+HWC008_TARGET = hwc008-btp
 
 !if $d(ROM_TEST)
-HWCR051_TARGET = hwcr-rom-not-implemented
+HWC051_TARGET = hwc-rom-not-implemented
 !else
-HWCR051_TARGET = hwcr-rom-disabled
+HWC051_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_BCOAX)
@@ -104,66 +65,66 @@ HWCR051_TARGET = hwcr-rom-disabled
 CARDTYPE = bcoax
 CARDNAME = 3C509B-COAX
 DEFAULT_TRANSCEIVER = AUI
-HWCR004_TARGET = hwcr004
-HWCR006_TARGET = hwcr006-unsupported
-HWCR008_TARGET = hwcr008-bcoax
+HWC004_TARGET = hwc004
+HWC006_TARGET = hwc006-unsupported
+HWC008_TARGET = hwc008-bcoax
 !if $d(ROM_TEST)
-HWCR051_TARGET = hwcr-rom-not-implemented
+HWC051_TARGET = hwc-rom-not-implemented
 !else
-HWCR051_TARGET = hwcr-rom-disabled
+HWC051_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_BCOMBO)
 
 CARDTYPE = bcombo
 CARDNAME = 3C509B-Combo
-HWCR004_TARGET = hwcr004
-HWCR006_TARGET = hwcr006
-HWCR008_TARGET = hwcr008-bcombo
+HWC004_TARGET = hwc004
+HWC006_TARGET = hwc006
+HWC008_TARGET = hwc008-bcombo
 !if $d(ROM_TEST)
-HWCR051_TARGET = hwcr-rom-not-implemented
+HWC051_TARGET = hwc-rom-not-implemented
 !else
-HWCR051_TARGET = hwcr-rom-disabled
+HWC051_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_BTPO)
 
 CARDTYPE = btpo
 CARDNAME = 3C509B-TPO
-HWCR004_TARGET = hwcr004
-HWCR006_TARGET = hwcr006
-HWCR008_TARGET = hwcr008-btpo
+HWC004_TARGET = hwc004
+HWC006_TARGET = hwc006
+HWC008_TARGET = hwc008-btpo
 !if $d(ROM_TEST)
 # Boot ROM is anyway unsupported for 3C509B-TPO model.
-HWCR051_TARGET = hwcr-rom-unsupported
+HWC051_TARGET = hwc-rom-unsupported
 !else
-HWCR051_TARGET = hwcr-rom-disabled
+HWC051_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_BTPC)
 
 CARDTYPE = btpc
 CARDNAME = 3C509B-TPCoax
-HWCR004_TARGET = hwcr004
-HWCR006_TARGET = hwcr006
-HWCR008_TARGET = hwcr008-btpc
+HWC004_TARGET = hwc004
+HWC006_TARGET = hwc006
+HWC008_TARGET = hwc008-btpc
 !if $d(ROM_TEST)
-HWCR051_TARGET = hwcr-rom-not-implemented
+HWC051_TARGET = hwc-rom-not-implemented
 !else
-HWCR051_TARGET = hwcr-rom-disabled
+HWC051_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_TP)
 
 CARDTYPE = tp
 CARDNAME = 3C509-TP
-HWCR004_TARGET = hwcr004-unsupported
-HWCR006_TARGET = hwcr006-unsupported
-HWCR008_TARGET = hwcr008-tp
+HWC004_TARGET = hwc004-unsupported
+HWC006_TARGET = hwc006-unsupported
+HWC008_TARGET = hwc008-tp
 !if $d(ROM_TEST)
-HWCR051_TARGET = hwcr-rom-not-implemented
+HWC051_TARGET = hwc-rom-not-implemented
 !else
-HWCR051_TARGET = hwcr-rom-disabled
+HWC051_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_COAX)
@@ -171,53 +132,53 @@ HWCR051_TARGET = hwcr-rom-disabled
 CARDTYPE = coax
 CARDNAME = 3C509-COAX
 DEFAULT_TRANSCEIVER = AUI
-HWCR004_TARGET = hwcr004-unsupported
-HWCR006_TARGET = hwcr006-unsupported
-HWCR008_TARGET = hwcr008-coax
+HWC004_TARGET = hwc004-unsupported
+HWC006_TARGET = hwc006-unsupported
+HWC008_TARGET = hwc008-coax
 !if $d(ROM_TEST)
-HWCR051_TARGET = hwcr-rom-not-implemented
+HWC051_TARGET = hwc-rom-not-implemented
 !else
-HWCR051_TARGET = hwcr-rom-disabled
+HWC051_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_COMBO)
 
 CARDTYPE = combo
 CARDNAME = 3C509-Combo
-HWCR004_TARGET = hwcr004-unsupported
-HWCR006_TARGET = hwcr006-unsupported
-HWCR008_TARGET = hwcr008-combo
+HWC004_TARGET = hwc004-unsupported
+HWC006_TARGET = hwc006-unsupported
+HWC008_TARGET = hwc008-combo
 !if $d(ROM_TEST)
-HWCR051_TARGET = hwcr-rom-not-implemented
+HWC051_TARGET = hwc-rom-not-implemented
 !else
-HWCR051_TARGET = hwcr-rom-disabled
+HWC051_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_TPO)
 
 CARDTYPE = tpo
 CARDNAME = 3C509-TPO
-HWCR004_TARGET = hwcr004-unsupported
-HWCR006_TARGET = hwcr006-unsupported
-HWCR008_TARGET = hwcr008-tpo
+HWC004_TARGET = hwc004-unsupported
+HWC006_TARGET = hwc006-unsupported
+HWC008_TARGET = hwc008-tpo
 !if $d(ROM_TEST)
 # Boot ROM is anyway unsupported for 3C509-TPO model.
-HWCR051_TARGET = hwcr-rom-unsupported
+HWC051_TARGET = hwc-rom-unsupported
 !else
-HWCR051_TARGET = hwcr-rom-disabled
+HWC051_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_TPC)
 
 CARDTYPE = tpc
 CARDNAME = 3C509-TPCoax
-HWCR004_TARGET = hwcr004-unsupported
-HWCR006_TARGET = hwcr006-unsupported
-HWCR008_TARGET = hwcr008-tpc
+HWC004_TARGET = hwc004-unsupported
+HWC006_TARGET = hwc006-unsupported
+HWC008_TARGET = hwc008-tpc
 !if $d(ROM_TEST)
-HWCR051_TARGET = hwcr-rom-not-implemented
+HWC051_TARGET = hwc-rom-not-implemented
 !else
-HWCR051_TARGET = hwcr-rom-disabled
+HWC051_TARGET = hwc-rom-disabled
 !endif
 
 !else
@@ -231,599 +192,11 @@ HWCR051_TARGET = hwcr-rom-disabled
 #
 OUTDIR = $(CARDTYPE)
 ARTIFACTS = $(OUTDIR)\ARTIFACT
-LOGFILE = $(OUTDIR)\HWCREAD.LOG
+LOGFILE = $(OUTDIR)\$(HWC_TAG).LOG
 
+# Suite composition remains local because READ and WRITE coverage differs.
+HWCR_READ: hwc00xx hwc001 hwc002 hwc003 hwc004 hwc005 hwc006 hwc007 hwc008 hwc009 hwc051 hwcs001
+hwcr: clean prep hwc00xx save-config set-default-$(CARDTYPE) hwc001-$(CARDTYPE) hwc002 hwc003 $(HWC004_TARGET) hwc005 $(HWC006_TARGET) hwc007 $(HWC008_TARGET) hwc009-$(CARDTYPE) $(HWC051_TARGET) complete
 
-all:
-	@echo Start the normal hardware compliance checks with HWCTEST.BAT.
-
-prep:
-	@if not exist $(OUTDIR)\NUL mkdir $(OUTDIR)
-	@if not exist $(ARTIFACTS)\NUL mkdir $(ARTIFACTS)
-	@echo Running 3CCFGCLI Hardware Compliance $(HWC_MODE) checks >> $(LOGFILE)
-	@echo Running 3CCFGCLI Hardware Compliance $(HWC_MODE) checks
-
-HWCR00xx:
-	@echo [$(HWC_HEADER_TAG)00xx] Hardware Compliance $(HWC_MODE) checks for $(CARDNAME) >> $(LOGFILE)
-	@echo [$(HWC_HEADER_TAG)00xx] Hardware Compliance $(HWC_MODE) checks for $(CARDNAME)
-
-HWCRM00xx:
-	@echo [$(HWC_MULTI_HEADER_TAG)00xx] Multi NIC Hardware Compliance $(HWC_MODE) checks >> $(LOGFILE)
-	@echo [$(HWC_MULTI_HEADER_TAG)00xx] Multi NIC Hardware Compliance $(HWC_MODE) checks
-
-complete:
-	@echo Hardware Compliance $(HWC_MODE) checks completed. >> $(LOGFILE)
-	@echo Hardware Compliance $(HWC_MODE) checks completed.
-
-clean:
-	@echo Cleaning logs and test artifacts >> $(LOGFILE)
-	@echo Cleaning logs and test artifacts
-	@del $(ARTIFACTS)\HWCR*.*
-
-# Full hardware compliance read run.
-# Optional tests expand to an empty macro on
-# models which do not support the corresponding capability.
-HWCR_READ: HWCR00xx hwcr001 hwcr002 hwcr003 hwcr004 hwcr005 hwcr006 hwcr007 hwcr008 hwcr009 hwcr051 hwcs001
-hwcr: clean prep HWCR00xx save-config set-default-$(CARDTYPE) hwcr001-$(CARDTYPE) hwcr002 hwcr003 $(HWCR004_TARGET) hwcr005 $(HWCR006_TARGET) hwcr007 $(HWCR008_TARGET) hwcr009-$(CARDTYPE) $(HWCR051_TARGET) complete
-
-# Two-card, model-independent hardware checks. These are deliberately separate
-# from hwcr because the normal compliance run must continue to work with one
-# installed adapter.
-HWCR_MULTI: HWCRM00xx hwcrm001 hwcrm002 hwcrm003 hwcrm004 hwcs001
-hwcrm: clean prep HWCRM00xx save-config hwcrm001 hwcrm002 hwcrm003 hwcrm004 complete
-
-save-config:
-	@echo Saving original adapter configuration to $(RESTOREBAT) >> $(LOGFILE)
-	@echo Saving original adapter configuration to $(RESTOREBAT)
-	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\$(RESTOREBAT) /EXECFILE:$(WRITERAPP) >> $(LOGFILE)
-	FIND "Configuration restore batch file created:" $(LOGFILE) > NUL
-
-restore-config:
-	@echo Config restore via MAKE is broken on some earlier DOS versions. >> $(LOGFILE)
-	@echo MAKE does not currently invoke the restore command itself for that reason. >> $(LOGFILE)
-	@echo Please run the following command manually once to restore the original configuration. >> $(LOGFILE)
-	@echo Config restore via MAKE is broken on some earlier DOS versions.
-	@echo MAKE does not currently invoke the restore command itself for that reason.
-	@echo Please run the following command manually once to restore the original configuration.
-	@echo $(ARTIFACTS)\$(RESTOREBAT) $(WRITERAPP) >> $(LOGFILE)
-	@echo $(ARTIFACTS)\$(RESTOREBAT) $(WRITERAPP)
-
-restore: restore-config
-
-# #################################
-# Set default baselines for different adapter types.
-# #################################
-
-set-default-common:
-	@echo [set-default].[common] Writing $(CARDNAME) baseline via original utility >> $(LOGFILE)
-	@echo [set-default].[common] Writing $(CARDNAME) baseline via original utility
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /TR:$(DEFAULT_TRANSCEIVER) > $(ARTIFACTS)\HWCRSET.LOG
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /INT:$(DEFAULT_IRQ) /IOBASE:$(DEFAULT_IOBASE) >> $(ARTIFACTS)\HWCRSET.LOG
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /MODEM:$(DEFAULT_MODEM) /OPTIMIZE:$(DEFAULT_OPTIMIZE) >> $(ARTIFACTS)\HWCRSET.LOG
-
-set-default-btp: set-default-common
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /PNP:$(DEFAULT_PNP) >> $(ARTIFACTS)\HWCRSET.LOG
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:$(DEFAULT_FULLDUPLEX) >> $(ARTIFACTS)\HWCRSET.LOG
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
-	@echo [set-default].[btp] PASSED >> $(LOGFILE)
-	@echo [set-default].[btp] PASSED
-
-# NOTE: does NOT include /FULLDUPLEX verb because 3C509B-COAX does not support it
-set-default-bcoax: set-default-common
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /PNP:$(DEFAULT_PNP) >> $(ARTIFACTS)\HWCRSET.LOG
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
-	@echo [set-default].[bcoax] PASSED >> $(LOGFILE)
-	@echo [set-default].[bcoax] PASSED
-
-set-default-bcombo: set-default-common
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /PNP:$(DEFAULT_PNP) >> $(ARTIFACTS)\HWCRSET.LOG
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:$(DEFAULT_FULLDUPLEX) >> $(ARTIFACTS)\HWCRSET.LOG
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
-	@echo [set-default].[bcombo] PASSED >> $(LOGFILE)
-	@echo [set-default].[bcombo] PASSED
-
-# NOTE: does NOT inlcude /BSIZE:DISABLED verb because 3C509B-TPO does not support ROM
-set-default-btpo: set-default-common
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /PNP:$(DEFAULT_PNP) >> $(ARTIFACTS)\HWCRSET.LOG
-	@echo [set-default].[btpo] PASSED >> $(LOGFILE)
-	@echo [set-default].[btpo] PASSED
-
-set-default-btpc: set-default-common
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /PNP:$(DEFAULT_PNP) >> $(ARTIFACTS)\HWCRSET.LOG
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:$(DEFAULT_FULLDUPLEX) >> $(ARTIFACTS)\HWCRSET.LOG
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
-	@echo [set-default].[btpc] PASSED >> $(LOGFILE)
-	@echo [set-default].[btpc] PASSED
-
-# NOTE: does NOT include /FULLDUPLEX and /PNP verbs because 3C509-TP does not support it
-set-default-tp: set-default-common
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
-	@echo [set-default].[tp] PASSED >> $(LOGFILE)
-	@echo [set-default].[tp] PASSED
-
-# NOTE: does NOT include /FULLDUPLEX and /PNP verbs because 3C509-COAX does not support them
-set-default-coax: set-default-common
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
-	@echo [set-default].[coax] PASSED >> $(LOGFILE)
-	@echo [set-default].[coax] PASSED
-
-# NOTE: does NOT include /FULLDUPLEX and /PNP verbs because 3C509-Combo does not support them
-set-default-combo: set-default-common
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
-	@echo [set-default].[combo] PASSED >> $(LOGFILE)
-	@echo [set-default].[combo] PASSED
-
-# NOTE: does NOT include /FULLDUPLEX, /PNP, or /BSIZE:DISABLED because 3C509-TPO does not support them
-set-default-tpo: set-default-common
-	@echo [set-default].[tpo] PASSED >> $(LOGFILE)
-	@echo [set-default].[tpo] PASSED
-
-# NOTE: does NOT include /FULLDUPLEX and /PNP verbs because 3C509-TPCoax does not support them
-set-default-tpc: set-default-common
-	$(3C5X9CFG) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED >> $(ARTIFACTS)\HWCRSET.LOG
-	@echo [set-default].[tpc] PASSED >> $(LOGFILE)
-	@echo [set-default].[tpc] PASSED
-
-
-# #################################
-# Identity / capability checks.
-# #################################
-
-# Canonical testcase stub for testreport.py.
-#
-# the hwcr001 target is never actually called, it's only here for structure.
-# Runtime output is emitted by the card-specific targets further below.
-hwcr001:
-	@echo [$(HWC_TAG)001] Reading $(CARDNAME) identity and capabilities > NUL
-
-hwcr001-common:
-	@echo [$(HWC_TAG)001].[common] Reading $(CARDNAME) identity and capabilities >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[common] Reading $(CARDNAME) identity and capabilities
-	$(READERAPP) LIST > $(ARTIFACTS)\HWCR001.LOG
-
-hwcr001-btp: hwcr001-common
-	FIND "3Com 3C509B-TP:" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "(ASIC Revision 2)" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Connectors = TP, AUI" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Full Duplex Capability = yes" $(ARTIFACTS)\HWCR001.LOG > NUL
-	@echo [$(HWC_TAG)001].[btp] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[btp] PASSED
-
-hwcr001-bcoax: hwcr001-common
-	FIND "3Com 3C509B:" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "(ASIC Revision 2)" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Connectors = AUI, COAX" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Full Duplex Capability = no" $(ARTIFACTS)\HWCR001.LOG > NUL
-	@echo [$(HWC_TAG)001].[bcoax] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[bcoax] PASSED
-
-hwcr001-bcombo: hwcr001-common
-	FIND "3Com 3C509B-Combo:" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "(ASIC Revision 2)" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Connectors = TP, AUI, COAX" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Full Duplex Capability = yes" $(ARTIFACTS)\HWCR001.LOG > NUL
-	@echo [$(HWC_TAG)001].[bcombo] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[bcombo] PASSED
-
-hwcr001-btpo: hwcr001-common
-	FIND "3Com 3C509B-TPO:" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "(ASIC Revision 2)" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Connectors = TP" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Full Duplex Capability = yes" $(ARTIFACTS)\HWCR001.LOG > NUL
-	@echo [$(HWC_TAG)001].[btpo] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[btpo] PASSED
-
-hwcr001-btpc: hwcr001-common
-	FIND "3Com 3C509B-TPCoax:" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "(ASIC Revision 2)" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Connectors = TP, COAX" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Plug and Play Capability = yes" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Full Duplex Capability = yes" $(ARTIFACTS)\HWCR001.LOG > NUL
-	@echo [$(HWC_TAG)001].[btpc] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[btpc] PASSED
-
-hwcr001-tp: hwcr001-common
-	FIND "3Com 3C509-TP:" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "(ASIC Revision 1)" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Connectors = TP, AUI" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
-	@echo [$(HWC_TAG)001].[tp] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[tp] PASSED
-
-hwcr001-coax: hwcr001-common
-	FIND "3Com 3C509:" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "(ASIC Revision 1)" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Connectors = AUI, COAX" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
-	@echo [$(HWC_TAG)001].[coax] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[coax] PASSED
-
-hwcr001-combo: hwcr001-common
-	FIND "3Com 3C509-Combo:" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "(ASIC Revision 1)" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Connectors = TP, AUI, COAX" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
-	@echo [$(HWC_TAG)001].[combo] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[combo] PASSED
-
-hwcr001-tpo: hwcr001-common
-	FIND "3Com 3C509-TPO:" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "(ASIC Revision 1)" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Connectors = TP" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
-	@echo [$(HWC_TAG)001].[tpo] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[tpo] PASSED
-
-hwcr001-tpc: hwcr001-common
-	FIND "3Com 3C509-TPCoax:" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "(ASIC Revision 1)" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Connectors = TP, COAX" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Plug and Play Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
-	FIND "Full Duplex Capability = not supported" $(ARTIFACTS)\HWCR001.LOG > NUL
-	@echo [$(HWC_TAG)001].[tpc] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)001].[tpc] PASSED
-
-
-# #################################
-# Common property readback tests.
-# #################################
-
-hwcr002:
-	@echo [$(HWC_TAG)002] $(WRITERNAME) /INT writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)002] $(WRITERNAME) /INT writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /INT:$(TEST_IRQ) > $(ARTIFACTS)\HWCR002.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR002.LOG
-	FIND "IRQ = $(TEST_IRQ)" $(ARTIFACTS)\HWCR002.LOG > NUL
-	@echo [$(HWC_TAG)002] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)002] PASSED
-
-hwcr003:
-	@echo [$(HWC_TAG)003] $(WRITERNAME) /IOBASE writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)003] $(WRITERNAME) /IOBASE writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(TEST_IOBASE) > $(ARTIFACTS)\HWCR003.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR003.LOG
-	FIND "IOBASE = $(TEST_IOBASE)" $(ARTIFACTS)\HWCR003.LOG > NUL
-	@echo [$(HWC_TAG)003] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)003] PASSED
-
-hwcr004:
-	@echo [$(HWC_TAG)004] $(WRITERNAME) /PNP writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)004] $(WRITERNAME) /PNP writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /PNP:$(TEST_PNP) > $(ARTIFACTS)\HWCR004.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR004.LOG
-	FIND "Plug and Play = disabled" $(ARTIFACTS)\HWCR004.LOG > NUL
-	@echo [$(HWC_TAG)004] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)004] PASSED
-
-hwcr004-unsupported:
-	@echo [$(HWC_TAG)004].[unsupported] PNP support is not supported by $(CARDNAME). >> $(LOGFILE)
-	@echo [$(HWC_TAG)004].[unsupported] PNP support is not supported by $(CARDNAME).
-	@echo [$(HWC_TAG)004].[unsupported] NOT SUPPORTED >> $(LOGFILE)
-	@echo [$(HWC_TAG)004].[unsupported] NOT SUPPORTED
-
-hwcr005:
-	@echo [$(HWC_TAG)005] $(WRITERNAME) /MODEM writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)005] $(WRITERNAME) /MODEM writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:$(TEST_MODEM) > $(ARTIFACTS)\HWCR005.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR005.LOG
-	FIND "MODEM Interrupt Disable Time = 1300 us (1200 bd)" $(ARTIFACTS)\HWCR005.LOG > NUL
-	@echo [$(HWC_TAG)005] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)005] PASSED
-
-hwcr006:
-	@echo [$(HWC_TAG)006] $(WRITERNAME) /FULLDUPLEX writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)006] $(WRITERNAME) /FULLDUPLEX writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:$(TEST_FULLDUPLEX) > $(ARTIFACTS)\HWCR006.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR006.LOG
-	FIND "Full Duplex = enabled" $(ARTIFACTS)\HWCR006.LOG > NUL
-	@echo [$(HWC_TAG)006] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)006] PASSED
-
-hwcr006-unsupported:
-	@echo [$(HWC_TAG)006].[unsupported] Full Duplex is not supported by $(CARDNAME). >> $(LOGFILE)
-	@echo [$(HWC_TAG)006].[unsupported] Full Duplex is not supported by $(CARDNAME).
-	@echo [$(HWC_TAG)006].[unsupported] NOT SUPPORTED >> $(LOGFILE)
-	@echo [$(HWC_TAG)006].[unsupported] NOT SUPPORTED
-
-hwcr007:
-	@echo [$(HWC_TAG)007] $(WRITERNAME) /OPTIMIZE writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)007] $(WRITERNAME) /OPTIMIZE writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:$(TEST_OPTIMIZE) > $(ARTIFACTS)\HWCR007.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR007.LOG
-	FIND "Optimization = Server" $(ARTIFACTS)\HWCR007.LOG > NUL
-	@echo [$(HWC_TAG)007] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)007] PASSED
-
-
-# #################################
-# Card-specific transceiver tests.
-# #################################
-
-# Canonical testcase stub for testreport.py.
-#
-# the hwcr008 target is never actually called, it's only here for structure.
-# Runtime output is emitted by the card-specific further below.
-hwcr008:
-	@echo [$(HWC_TAG)008] card specific transceiver tests > NUL
-
-hwcr008-btp:
-	@echo [$(HWC_TAG)008].[btp] $(WRITERNAME) /TR:AUI writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[btp] $(WRITERNAME) /TR:AUI writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI > $(ARTIFACTS)\HWCR008.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
-	FIND "Transceiver = external" $(ARTIFACTS)\HWCR008.LOG > NUL
-	FIND "Full Duplex = disabled" $(ARTIFACTS)\HWCR008.LOG > NUL
-	@echo [$(HWC_TAG)008].[btp] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[btp] PASSED
-
-hwcr008-bcoax:
-	@echo [$(HWC_TAG)008].[bcoax] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[bcoax] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
-	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
-	@echo [$(HWC_TAG)008].[bcoax] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[bcoax] PASSED
-
-hwcr008-bcombo:
-	@echo [$(HWC_TAG)008].[bcombo] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[bcombo] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
-	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
-	FIND "Full Duplex = disabled" $(ARTIFACTS)\HWCR008.LOG > NUL
-	@echo [$(HWC_TAG)008].[bcombo] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[bcombo] PASSED
-
-hwcr008-btpc:
-	@echo [$(HWC_TAG)008].[btpc] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[btpc] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
-	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
-	FIND "Full Duplex = disabled" $(ARTIFACTS)\HWCR008.LOG > NUL
-	@echo [$(HWC_TAG)008].[btpc] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[btpc] PASSED
-
-hwcr008-btpo:
-	@echo [$(HWC_TAG)008].[btpo] /TR change is not supported by $(CARDNAME). >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[btpo] /TR change is not supported by $(CARDNAME).
-	@echo [$(HWC_TAG)008].[btpo] NOT SUPPORTED >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[btpo] NOT SUPPORTED
-
-hwcr008-tp:
-	@echo [$(HWC_TAG)008].[tp] $(WRITERNAME) /TR:AUI writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[tp] $(WRITERNAME) /TR:AUI writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI > $(ARTIFACTS)\HWCR008.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
-	FIND "Transceiver = external" $(ARTIFACTS)\HWCR008.LOG > NUL
-	@echo [$(HWC_TAG)008].[tp] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[tp] PASSED
-
-hwcr008-tpo:
-	@echo [$(HWC_TAG)008].[tpo] /TR change is not supported by $(CARDNAME). >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[tpo] /TR change is not supported by $(CARDNAME).
-	@echo [$(HWC_TAG)008].[tpo] NOT SUPPORTED >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[tpo] NOT SUPPORTED
-
-hwcr008-coax:
-	@echo [$(HWC_TAG)008].[coax] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[coax] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
-	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
-	@echo [$(HWC_TAG)008].[coax] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[coax] PASSED
-
-hwcr008-combo:
-	@echo [$(HWC_TAG)008].[combo] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[combo] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
-	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
-	@echo [$(HWC_TAG)008].[combo] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[combo] PASSED
-
-hwcr008-tpc:
-	@echo [$(HWC_TAG)008].[tpc] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[tpc] $(WRITERNAME) /TR:COAX writer, $(READERNAME) LIST reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX > $(ARTIFACTS)\HWCR008.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR008.LOG
-	FIND "Transceiver = on-board coax" $(ARTIFACTS)\HWCR008.LOG > NUL
-	@echo [$(HWC_TAG)008].[tpc] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)008].[tpc] PASSED
-
-
-
-# #################################
-# SAVECONFIG readback.
-# #################################
-
-# Canonical testcase stub for testreport.py.
-#
-# the hwcr009 target is never actually called, it's only here for structure.
-# Runtime output is emitted by the card-specific further below.
-hwcr009:
-	@echo [$(HWC_TAG)009] SAVECONFIG readback > NUL
-
-hwcr009-common:
-	@echo [$(HWC_TAG)009].[common] Reading combined hardware state through SAVECONFIG >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[common] Reading combined hardware state through SAVECONFIG
-	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\HWCR009.BAT > $(ARTIFACTS)\HWCR009.LOG
-	FIND "Configuration restore batch file created:" $(ARTIFACTS)\HWCR009.LOG > NUL
-	FIND "INT:$(TEST_IRQ)" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "IOBASE:$(TEST_IOBASE)" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "MODEM:$(TEST_MODEM)" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "OPTIMIZE:$(TEST_OPTIMIZE)" $(ARTIFACTS)\HWCR009.BAT > NUL
-
-hwcr009-btp: hwcr009-common
-	FIND "PNP:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "FULLDUPLEX:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "BSIZE:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "TR:AUI" $(ARTIFACTS)\HWCR009.BAT > NUL
-	@echo [$(HWC_TAG)009].[btp] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[btp] PASSED
-
-hwcr009-bcoax: hwcr009-common
-	FIND "PNP:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "BSIZE:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "TR:COAX" $(ARTIFACTS)\HWCR009.BAT > NUL
-	@echo [$(HWC_TAG)009].[bcoax] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[bcoax] PASSED
-
-hwcr009-bcombo: hwcr009-common
-	FIND "PNP:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "FULLDUPLEX:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "BSIZE:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "TR:COAX" $(ARTIFACTS)\HWCR009.BAT > NUL
-	@echo [$(HWC_TAG)009].[bcombo] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[bcombo] PASSED
-
-hwcr009-btpo: hwcr009-common
-	FIND "PNP:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "FULLDUPLEX:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "TR:TP" $(ARTIFACTS)\HWCR009.BAT > NUL
-	@echo [$(HWC_TAG)009].[btpo] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[btpo] PASSED
-
-hwcr009-btpc: hwcr009-common
-	FIND "PNP:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "FULLDUPLEX:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "BSIZE:DISABLED" $(ARTIFACTS)\HWCR009.BAT > NUL
-	FIND "TR:COAX" $(ARTIFACTS)\HWCR009.BAT > NUL
-	@echo [$(HWC_TAG)009].[btpc] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[btpc] PASSED
-
-hwcr009-tp: hwcr009-common
-	FIND "TR:AUI" $(ARTIFACTS)\HWCR009.BAT > NUL
-	@echo [$(HWC_TAG)009].[tp] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[tp] PASSED
-
-hwcr009-coax: hwcr009-common
-	FIND "TR:COAX" $(ARTIFACTS)\HWCR009.BAT > NUL
-	@echo [$(HWC_TAG)009].[coax] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[coax] PASSED
-
-hwcr009-combo: hwcr009-common
-	FIND "TR:COAX" $(ARTIFACTS)\HWCR009.BAT > NUL
-	@echo [$(HWC_TAG)009].[combo] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[combo] PASSED
-
-hwcr009-tpo: hwcr009-common
-	FIND "TR:TP" $(ARTIFACTS)\HWCR009.BAT > NUL
-	@echo [$(HWC_TAG)009].[tpo] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[tpo] PASSED
-
-hwcr009-tpc: hwcr009-common
-	FIND "TR:COAX" $(ARTIFACTS)\HWCR009.BAT > NUL
-	@echo [$(HWC_TAG)009].[tpc] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)009].[tpc] PASSED
-
-
-
-# #################################
-# Multi NIC hardware read checks.
-# #################################
-#
-# These tests require exactly two installed adapters. The original 3Com
-# utility establishes each physical state. 3CCFGCLI is read-only here and must
-# report both adapters correctly. No model-specific capability is assumed.
-
-hwcrm001:
-	@echo [$(HWC_MULTI_TAG)001] LIST with two adapters set at distinct IOBASE values >> $(LOGFILE)
-	@echo [$(HWC_MULTI_TAG)001] LIST with two adapters set at distinct IOBASE values
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(MULTI_CARD1_IOBASE) /INT:$(MULTI_CARD1_IRQ) > $(ARTIFACTS)\HWCRM001.LOG
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_CARD2_IOBASE) /INT:$(MULTI_CARD2_IRQ) >> $(ARTIFACTS)\HWCRM001.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCRM001.LOG
-	FIND "IOBASE = $(MULTI_CARD1_IOBASE), IRQ = $(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCRM001.LOG > NUL
-	FIND "IOBASE = $(MULTI_CARD2_IOBASE), IRQ = $(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCRM001.LOG > NUL
-	@echo [$(HWC_MULTI_TAG)001] PASSED >> $(LOGFILE)
-	@echo [$(HWC_MULTI_TAG)001] PASSED
-
-hwcrm002:
-	@echo [$(HWC_MULTI_TAG)002] SAVECONFIG with two adapters set at distinct IOBASE values >> $(LOGFILE)
-	@echo [$(HWC_MULTI_TAG)002] SAVECONFIG with two adapters set at distinct IOBASE values
-	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\HWCRM002.BAT > $(ARTIFACTS)\HWCRM002.LOG
-	FIND "IOBASE:$(MULTI_CARD1_IOBASE)" $(ARTIFACTS)\HWCRM002.BAT > NUL
-	FIND "INT:$(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCRM002.BAT > NUL
-	FIND "IOBASE:$(MULTI_CARD2_IOBASE)" $(ARTIFACTS)\HWCRM002.BAT > NUL
-	FIND "INT:$(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCRM002.BAT > NUL
-	@echo [$(HWC_MULTI_TAG)002] PASSED >> $(LOGFILE)
-	@echo [$(HWC_MULTI_TAG)002] PASSED
-
-hwcrm003:
-	@echo [$(HWC_MULTI_TAG)003] LIST with two adapters sharing one IOBASE >> $(LOGFILE)
-	@echo [$(HWC_MULTI_TAG)003] LIST with two adapters sharing one IOBASE
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_CARD1_IRQ) > $(ARTIFACTS)\HWCRM003.LOG
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:2 /IOBASE:$(MULTI_SHARED_IOBASE) /INT:$(MULTI_CARD2_IRQ) >> $(ARTIFACTS)\HWCRM003.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCRM003.LOG
-	FIND "IOBASE = $(MULTI_SHARED_IOBASE), IRQ = $(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCRM003.LOG > NUL
-	FIND "IOBASE = $(MULTI_SHARED_IOBASE), IRQ = $(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCRM003.LOG > NUL
-	@echo [$(HWC_MULTI_TAG)003] PASSED >> $(LOGFILE)
-	@echo [$(HWC_MULTI_TAG)003] PASSED
-
-hwcrm004:
-	@echo [$(HWC_MULTI_TAG)004] SAVECONFIG with two adapters sharing one IOBASE >> $(LOGFILE)
-	@echo [$(HWC_MULTI_TAG)004] SAVECONFIG with two adapters sharing one IOBASE
-	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\HWCRM004.BAT > $(ARTIFACTS)\HWCRM004.LOG
-	FIND "IOBASE:$(MULTI_SHARED_IOBASE)" $(ARTIFACTS)\HWCRM004.BAT > NUL
-	FIND "INT:$(MULTI_CARD1_IRQ)" $(ARTIFACTS)\HWCRM004.BAT > NUL
-	FIND "INT:$(MULTI_CARD2_IRQ)" $(ARTIFACTS)\HWCRM004.BAT > NUL
-	@echo [$(HWC_MULTI_TAG)004] PASSED >> $(LOGFILE)
-	@echo [$(HWC_MULTI_TAG)004] PASSED
-
-
-# #################################
-# Optional physical Boot ROM test.
-# #################################
-
-hwcr-rom-unsupported:
-	@echo [$(HWC_TAG)051] Boot ROM is not supported by $(CARDNAME). >> $(LOGFILE)
-	@echo [$(HWC_TAG)051] Boot ROM is not supported by $(CARDNAME).
-	@echo [$(HWC_TAG)051] NOT SUPPORTED >> $(LOGFILE)
-	@echo [$(HWC_TAG)051] NOT SUPPORTED
-
-hwcr-rom-not-implemented:
-	@echo [$(HWC_TAG)051] Boot ROM testing is currently not implemented for $(CARDNAME). >> $(LOGFILE)
-	@echo [$(HWC_TAG)051] Boot ROM testing is currently not implemented for $(CARDNAME).
-	@echo [$(HWC_TAG)051] NOT IMPLEMENTED >> $(LOGFILE)
-	@echo [$(HWC_TAG)051] NOT IMPLEMENTED
-
-hwcr-rom-disabled:
-	@echo [$(HWC_TAG)051] Boot ROM testing is currently disabled for $(CARDNAME). >> $(LOGFILE)
-	@echo [$(HWC_TAG)051] Boot ROM testing is currently disabled for $(CARDNAME).
-	@echo [$(HWC_TAG)051] DISABLED >> $(LOGFILE)
-	@echo [$(HWC_TAG)051] DISABLED
-
-hwcr051:
-	@echo [$(HWC_TAG)051] $(WRITERNAME) Boot ROM writer, $(READERNAME) LIST/SAVECONFIG reader >> $(LOGFILE)
-	@echo [$(HWC_TAG)051] $(WRITERNAME) Boot ROM writer, $(READERNAME) LIST/SAVECONFIG reader
-	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:$(TEST_BADDRESS) /BSIZE:$(TEST_BSIZE) > $(ARTIFACTS)\HWCR051.LOG
-	$(READERAPP) LIST >> $(ARTIFACTS)\HWCR051.LOG
-	FIND "Boot ROM = $(TEST_BSIZE)K at $(TEST_BADDRESS)H" $(ARTIFACTS)\HWCR051.LOG > NUL
-	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\HWCR051.BAT >> $(ARTIFACTS)\HWCR051.LOG
-	FIND "BADDRESS:$(TEST_BADDRESS)" $(ARTIFACTS)\HWCR051.BAT > NUL
-	FIND "BSIZE:$(TEST_BSIZE)" $(ARTIFACTS)\HWCR051.BAT > NUL
-	@echo [$(HWC_TAG)051] PASSED >> $(LOGFILE)
-	@echo [$(HWC_TAG)051] PASSED
-
-
-# dummy target forHardware compliance SET verification.
-#
-# this exists only to sastisty restreport.py dependencies.
-# The actual post-dependency checks are post-processed via
-# TEST.MK on the development system.
-#
-hwcs0xx:
-   @echo HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
-
-hwcs001:
-   @echo [hwcs001] HWC SET verification: Verify 3C5X9CFG post HWC configuration dump
+HWCR_MULTI: hwcm00xx hwcm001 hwcm002 hwcm003 hwcm004 hwcs001
+hwcrm: clean prep hwcm00xx save-config hwcm001 hwcm002 hwcm003 hwcm004 complete
