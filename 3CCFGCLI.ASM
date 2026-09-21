@@ -783,6 +783,8 @@ save_word08     DW  0
 save_word09     DW  0
 save_word0d     DW  0
 save_word13     DW  0
+; Cached canonical transceiver mode of the adapter currently being exported.
+save_port_type  DB  0
 ; Cached ASIC revision of the adapter currently being exported, copied from
 ; the NIC record because Save_Build_Command reuses SI for output strings.
 save_asic_rev   DB  0FFh
@@ -2202,6 +2204,8 @@ PROC Save_Build_Command NEAR
     push    dx
     push    si
     push    di
+    mov     al, [BYTE si + NIC_PORT_TYPE]
+    mov     [save_port_type], al
     call    Save_Begin_Command
     jc      @@Fail
 
@@ -2480,29 +2484,15 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     jc      @@Fail
 @@Tr:
-    ; AUTO is the 3C509B meaning of Address Configuration bit 7.  Original
-    ; 3C509 and unknown-generation adapters cannot restore /TR:AUTO, so they
-    ; ignore bit 7 and export the explicit media selection from bits 15:14.
-    ; The value string and its option length are decoded exactly once here
-    ; so length accounting and emission cannot diverge.
-    mov     ax, [save_word08]
-    test    ax, W0_ADDRESS_CFG_AUTO_SELECT
-    jz      @@TrExplicit
-    mov     bl, [save_asic_rev]
-    cmp     bl, 0FFh
-    je      @@TrExplicit
-    cmp     bl, 2
-    jb      @@TrExplicit
-    mov     si, OFFSET save_auto
-    mov     cx, SAVE_LEN_TR + SAVE_LEN_AUTO
-    jmp     @@TrEmit
-@@TrExplicit:
-    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
-    shr     ax, cl
-    cmp     al, 1
+    ; The logical NIC record already contains the normalized persistent mode.
+    ; An unexpected value keeps the existing conservative TP export fallback.
+    mov     al, [save_port_type]
+    cmp     al, NIC_PORT_AUI
     je      @@TrAui
-    cmp     al, 3
+    cmp     al, NIC_PORT_COAX
     je      @@TrCoax
+    cmp     al, NIC_PORT_AUTO
+    je      @@TrAuto
     mov     si, OFFSET save_tp
     mov     cx, SAVE_LEN_TR + SAVE_LEN_TP
     jmp     @@TrEmit
@@ -2513,6 +2503,10 @@ PROC Save_Build_Command NEAR
 @@TrCoax:
     mov     si, OFFSET save_coax
     mov     cx, SAVE_LEN_TR + SAVE_LEN_COAX
+    jmp     @@TrEmit
+@@TrAuto:
+    mov     si, OFFSET save_auto
+    mov     cx, SAVE_LEN_TR + SAVE_LEN_AUTO
 @@TrEmit:
     call    Save_Ensure_Option_Length
     jc      @@Fail

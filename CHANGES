@@ -1,9 +1,10 @@
 Changelog 0.8.0
   - Discovered NIC records retain reliably identified ASIC revision and the
     complete configured transceiver mode, including 3C509B Auto Select. LIST
-    consumes the normalized transceiver value directly from each logical
-    adapter record instead of reinterpreting EEPROM Address Configuration bits,
-    including duplicate IOBASE records with distinct port modes.
+    and SAVECONFIG consume the normalized per-adapter transceiver value directly
+    from each logical NIC record instead of independently interpreting EEPROM
+    Address Configuration bits, including duplicate IOBASE records with distinct
+    port modes.
   - Cleanup: removed the retired direct-versus-temporary-access branches in
     Cfg_Txn_Read_Current and Cfg_Txn_Activate_If_Needed, which had become
     unreachable once CONFIGURE was unified around a mandatory temporary
