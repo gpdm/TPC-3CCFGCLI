@@ -67,6 +67,11 @@ Changelog 0.8.0
     `Nic_Decode_Explicit_Xcvr` selector decoder
   - `Nic_Normalize_Xcvr_Type` and `Build_Record_From_Id` now decode explicit
      raw selectors through `Nic_Decode_Explicit_Xcvr`.
+  - `Cfg_Handle_TR` and the CONFIGURE `/TR` capability gating and reporting
+    paths now compare and assign `cfg_tr_value` using the canonical
+    `NIC_XCVR_TP`, `NIC_XCVR_AUI`, and `NIC_XCVR_COAX` symbols instead of
+    their equivalent raw numeric literals; the `0FFh` AUTO sentinel is
+    unchanged.
     
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful

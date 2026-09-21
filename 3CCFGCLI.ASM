@@ -585,7 +585,8 @@ cfg_optimize_value    DB 0
 cfg_baddress_value    DB 0
 cfg_bsize_value       DB 0
 cfg_bsize_disabled    DB 0
-; cfg_tr_value: 0=TP, 1=AUI, 3=COAX, 0FFh=AUTO sentinel.
+; cfg_tr_value: explicit selections use canonical NIC_XCVR_TP, NIC_XCVR_AUI,
+; NIC_XCVR_COAX; AUTO still temporarily uses the 0FFh sentinel.
 cfg_tr_value          DB 0
 ; Resolved capability snapshot shared by the PNP/FULLDUPLEX/TR gates.
 cfg_txn_capabilities      DW 0
@@ -3525,7 +3526,7 @@ PROC Cfg_Handle_TR NEAR
     jne     @@NotTP
     cmp     [BYTE si+1], 'P'
     jne     @@NotTP
-    mov     [cfg_tr_value], 0       ; TP  -> bits 15:14 = 00
+    mov     [cfg_tr_value], NIC_XCVR_TP ; TP  -> bits 15:14 = 00
     jmp     @@Accept
 @@NotTP:
     cmp     cx, 3
@@ -3536,7 +3537,7 @@ PROC Cfg_Handle_TR NEAR
     jne     @@NotAUI
     cmp     [BYTE si+2], 'I'
     jne     @@NotAUI
-    mov     [cfg_tr_value], 1       ; AUI -> bits 15:14 = 01
+    mov     [cfg_tr_value], NIC_XCVR_AUI ; AUI -> bits 15:14 = 01
     jmp     @@Accept
 @@NotAUI:
     cmp     cx, 4
@@ -3549,7 +3550,7 @@ PROC Cfg_Handle_TR NEAR
     jne     @@NotCOAX
     cmp     [BYTE si+3], 'X'
     jne     @@NotCOAX
-    mov     [cfg_tr_value], 3       ; COAX -> bits 15:14 = 11
+    mov     [cfg_tr_value], NIC_XCVR_COAX ; COAX -> bits 15:14 = 11
     jmp     @@Accept
 @@NotCOAX:
     cmp     [BYTE si], 'A'
@@ -7626,19 +7627,19 @@ PROC Cfg_Txn_Execute NEAR
     mov     bx, [cfg_txn_capability_valid]
     test    bx, NIC_CAP_VALID_CONNECTORS
     jz      @@TRCapabilityReadFail
-    cmp     [cfg_tr_value], 0
+    cmp     [cfg_tr_value], NIC_XCVR_TP
     jne     @@GateTR_Aui
     test    ax, NIC_CAP_TP
     jnz     @@GateTR_Pass
     jmp     @@TRNotCapable
 @@GateTR_Aui:
-    cmp     [cfg_tr_value], 1
+    cmp     [cfg_tr_value], NIC_XCVR_AUI
     jne     @@GateTR_Coax
     test    ax, NIC_CAP_AUI
     jnz     @@GateTR_Pass
     jmp     @@TRNotCapable
 @@GateTR_Coax:
-    cmp     [cfg_tr_value], 3
+    cmp     [cfg_tr_value], NIC_XCVR_COAX
     jne     @@GateTR_Auto
     test    ax, NIC_CAP_BNC
     jnz     @@GateTR_Pass
@@ -7790,12 +7791,12 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_tr_auto
     jmp     @@PrintTR
 @@TRNotAuto:
-    cmp     [cfg_tr_value], 0
+    cmp     [cfg_tr_value], NIC_XCVR_TP
     jne     @@TRNotTP
     mov     dx, OFFSET msg_tr_tp
     jmp     @@PrintTR
 @@TRNotTP:
-    cmp     [cfg_tr_value], 1
+    cmp     [cfg_tr_value], NIC_XCVR_AUI
     jne     @@TRIsCoax
     mov     dx, OFFSET msg_tr_aui
     jmp     @@PrintTR
