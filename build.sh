@@ -73,6 +73,10 @@ Errors                    : ${ERRORS}
 
 Overall result            : $( (( BUILD_FAIL + BUILDS_FAILED + WARNINGS + ERRORS > 0 )) && echo FAIL || echo PASS )
 
+File Sizes
+==========
+$(ls -l BIN/3CCFGCLI.EXE BIN/3CHWMOCK.EXE BIN/3CSEED.EXE BIN/PKLITE/3CCFGCLI.EXE | awk '{ printf "%-30s %10s Bytes\n", $9, $5 }')
+
 EOF
 
 exit $(( BUILD_FAIL + BUILDS_FAILED + WARNINGS + ERRORS > 0 ))
