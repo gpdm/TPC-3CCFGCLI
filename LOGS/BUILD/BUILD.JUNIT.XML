@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<<<<<<< HEAD
 <testsuites name="3CCFGCLI Test Results 2026-09-21T22:44:44.191919+02:00" tests="7" failures="0" errors="0" skipped="0" time="0.0">
+=======
+<testsuites name="3CCFGCLI Test Results 2026-09-21T21:24:01.951095+02:00" tests="7" failures="0" errors="0" skipped="0" time="0.0">
+>>>>>>> 4a1e17e89a275aab25c5ea5fd17d640205561e0f
 	<testsuite name="BUILD" tests="7" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="BLD0xx"/>

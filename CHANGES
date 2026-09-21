@@ -65,6 +65,7 @@ Changelog 0.8.0
     transceiver values and fields from `NIC_PORT_*` to `NIC_XCVR_*`.
   - Added the canonical `NIC_XCVR_UNDEFINED` constant and the new
     `Nic_Decode_Explicit_Xcvr` selector decoder
+<<<<<<< HEAD
   - `Nic_Normalize_Xcvr_Type` now decodes explicit raw selectors
      through `Nic_Decode_Explicit_Xcvr`.
   - Cleanup: split the monolithic Cfg_Txn_Verify into per-property NEAR
@@ -76,6 +77,16 @@ Changelog 0.8.0
   - `Cfg_Prepare_TR` now explicitly maps canonical `NIC_XCVR_TP`/`AUI`/`COAX`
     to their raw `W0_ADDRESS_CFG_XCVR_*` selectors instead of relying on
     their numeric values being accidentally identical.
+=======
+  - `Nic_Normalize_Xcvr_Type` and `Build_Record_From_Id` now decode explicit
+     raw selectors through `Nic_Decode_Explicit_Xcvr`.
+  - `Cfg_Handle_TR` and the CONFIGURE `/TR` capability gating and reporting
+    paths now compare and assign `cfg_tr_value` using the canonical
+    `NIC_XCVR_TP`, `NIC_XCVR_AUI`, and `NIC_XCVR_COAX` symbols instead of
+    their equivalent raw numeric literals; the `0FFh` AUTO sentinel is
+    unchanged.
+  - `cfg_tr_value` AUTO now uses `NIC_XCVR_AUTO` instead of the `0FFh` sentinel.
+>>>>>>> 4a1e17e89a275aab25c5ea5fd17d640205561e0f
     
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful

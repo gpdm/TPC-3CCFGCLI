@@ -585,8 +585,9 @@ cfg_optimize_value    DB 0
 cfg_baddress_value    DB 0
 cfg_bsize_value       DB 0
 cfg_bsize_disabled    DB 0
-; cfg_tr_value: 0=TP, 1=AUI, 3=COAX, 0FFh=AUTO sentinel.
-cfg_tr_value          DB 0
+; cfg_tr_value: uses the canonical NIC_XCVR_* domain for TP, AUI, COAX and
+; AUTO.
+cfg_tr_value          DB NIC_XCVR_TP
 ; Resolved capability snapshot shared by the PNP/FULLDUPLEX/TR gates.
 cfg_txn_capabilities      DW 0
 cfg_txn_capability_valid  DW 0
@@ -3525,7 +3526,7 @@ PROC Cfg_Handle_TR NEAR
     jne     @@NotTP
     cmp     [BYTE si+1], 'P'
     jne     @@NotTP
-    mov     [cfg_tr_value], 0       ; TP  -> bits 15:14 = 00
+    mov     [cfg_tr_value], NIC_XCVR_TP ; TP  -> bits 15:14 = 00
     jmp     @@Accept
 @@NotTP:
     cmp     cx, 3
@@ -3536,7 +3537,7 @@ PROC Cfg_Handle_TR NEAR
     jne     @@NotAUI
     cmp     [BYTE si+2], 'I'
     jne     @@NotAUI
-    mov     [cfg_tr_value], 1       ; AUI -> bits 15:14 = 01
+    mov     [cfg_tr_value], NIC_XCVR_AUI ; AUI -> bits 15:14 = 01
     jmp     @@Accept
 @@NotAUI:
     cmp     cx, 4
@@ -3549,7 +3550,7 @@ PROC Cfg_Handle_TR NEAR
     jne     @@NotCOAX
     cmp     [BYTE si+3], 'X'
     jne     @@NotCOAX
-    mov     [cfg_tr_value], 3       ; COAX -> bits 15:14 = 11
+    mov     [cfg_tr_value], NIC_XCVR_COAX ; COAX -> bits 15:14 = 11
     jmp     @@Accept
 @@NotCOAX:
     cmp     [BYTE si], 'A'
@@ -3560,7 +3561,7 @@ PROC Cfg_Handle_TR NEAR
     jne     @@Invalid
     cmp     [BYTE si+3], 'O'
     jne     @@Invalid
-    mov     [cfg_tr_value], 0FFh    ; AUTO sentinel -> bit 7 of word 08h
+    mov     [cfg_tr_value], NIC_XCVR_AUTO ; AUTO sentinel -> bit 7 of word 08h
     jmp     @@Accept
 @@Invalid:
     mov     [cfg_last_error], CFG_ERR_BAD_TR
@@ -4267,15 +4268,12 @@ PROC Build_Record_From_Id NEAR
     call    Normalize_IRQ
     mov     [BYTE di + NIC_IRQ_VAL], al
 
-    ; Address Configuration bits 15 to 14 contain the media selection.
+    ; Address Configuration bits 15 to 14 contain the raw XCVR selector.
     mov     ax, [id_addr_cfg]
     mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shr     ax, cl
     and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
-    cmp     al, W0_ADDRESS_CFG_XCVR_UNDEFINED
-    jne     @@MediaGood
-    mov     al, NIC_XCVR_AUI
-@@MediaGood:
+    call    Nic_Decode_Explicit_Xcvr
     mov     [BYTE di + NIC_XCVR_TYPE], al
 
     ; Original sub_339 stores EEPROM words 0Ah through 0Ch in the record.
@@ -5892,7 +5890,7 @@ PROC Cfg_Prepare_TR NEAR
     and     ax, NOT W0_ADDRESS_CFG_XCVR_MASK
     and     ax, NOT W0_ADDRESS_CFG_AUTO_SELECT
     mov     bl, [cfg_tr_value]
-    cmp     bl, 0FFh
+    cmp     bl, NIC_XCVR_AUTO
     jne     @@NotAuto
     or      ax, W0_ADDRESS_CFG_AUTO_SELECT
     jmp     @@Done
@@ -7544,7 +7542,7 @@ PROC Cfg_Txn_Resolve_Capabilities NEAR
 @@RequireConnectors:
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@CheckValidity
-    cmp     [cfg_tr_value], 0FFh
+    cmp     [cfg_tr_value], NIC_XCVR_AUTO
     jne     @@NeedConnectors
     cmp     al, 0FFh
     je      @@CheckValidity
@@ -7763,7 +7761,7 @@ PROC Cfg_Txn_Execute NEAR
     ; Auto Select is the 3C509B meaning of Address Configuration bit 7, so
     ; AUTO requires a known revision 2 or later before any capability data is
     ; consulted.  Explicit TP/AUI/COAX stay generation independent.
-    cmp     [cfg_tr_value], 0FFh
+    cmp     [cfg_tr_value], NIC_XCVR_AUTO
     jne     @@GateTR_Capabilities
     mov     si, [cfg_selected_ptr]
     cmp     [BYTE si + NIC_ASIC_REV], 0FFh
@@ -7775,19 +7773,19 @@ PROC Cfg_Txn_Execute NEAR
     mov     bx, [cfg_txn_capability_valid]
     test    bx, NIC_CAP_VALID_CONNECTORS
     jz      @@TRCapabilityReadFail
-    cmp     [cfg_tr_value], 0
+    cmp     [cfg_tr_value], NIC_XCVR_TP
     jne     @@GateTR_Aui
     test    ax, NIC_CAP_TP
     jnz     @@GateTR_Pass
     jmp     @@TRNotCapable
 @@GateTR_Aui:
-    cmp     [cfg_tr_value], 1
+    cmp     [cfg_tr_value], NIC_XCVR_AUI
     jne     @@GateTR_Coax
     test    ax, NIC_CAP_AUI
     jnz     @@GateTR_Pass
     jmp     @@TRNotCapable
 @@GateTR_Coax:
-    cmp     [cfg_tr_value], 3
+    cmp     [cfg_tr_value], NIC_XCVR_COAX
     jne     @@GateTR_Auto
     test    ax, NIC_CAP_BNC
     jnz     @@GateTR_Pass
@@ -7934,17 +7932,17 @@ PROC Cfg_Txn_Execute NEAR
     jz      @@Read
     mov     dx, OFFSET msg_cfg_tr_ok
     call    Print_String
-    cmp     [cfg_tr_value], 0FFh
+    cmp     [cfg_tr_value], NIC_XCVR_AUTO
     jne     @@TRNotAuto
     mov     dx, OFFSET msg_tr_auto
     jmp     @@PrintTR
 @@TRNotAuto:
-    cmp     [cfg_tr_value], 0
+    cmp     [cfg_tr_value], NIC_XCVR_TP
     jne     @@TRNotTP
     mov     dx, OFFSET msg_tr_tp
     jmp     @@PrintTR
 @@TRNotTP:
-    cmp     [cfg_tr_value], 1
+    cmp     [cfg_tr_value], NIC_XCVR_AUI
     jne     @@TRIsCoax
     mov     dx, OFFSET msg_tr_aui
     jmp     @@PrintTR
