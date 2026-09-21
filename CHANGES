@@ -73,6 +73,9 @@ Changelog 0.8.0
     contract, shortening branch distances and localizing each property's
     failure attribution while preserving all verification order, EEPROM
     read/cache reuse, and message behavior.
+  - `Cfg_Prepare_TR` now explicitly maps canonical `NIC_XCVR_TP`/`AUI`/`COAX`
+    to their raw `W0_ADDRESS_CFG_XCVR_*` selectors instead of relying on
+    their numeric values being accidentally identical.
     
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful

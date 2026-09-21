@@ -5897,6 +5897,23 @@ PROC Cfg_Prepare_TR NEAR
     or      ax, W0_ADDRESS_CFG_AUTO_SELECT
     jmp     @@Done
 @@NotAuto:
+    cmp     bl, NIC_XCVR_TP
+    jne     @@CheckAui
+    mov     bl, W0_ADDRESS_CFG_XCVR_TP
+    jmp     @@Encode
+
+@@CheckAui:
+    cmp     bl, NIC_XCVR_AUI
+    jne     @@CheckCoax
+    mov     bl, W0_ADDRESS_CFG_XCVR_AUI
+    jmp     @@Encode
+
+@@CheckCoax:
+    cmp     bl, NIC_XCVR_COAX
+    jne     @@Done
+    mov     bl, W0_ADDRESS_CFG_XCVR_COAX
+
+@@Encode:
     xor     bh, bh
     mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shl     bx, cl                  ; shift raw value into bits 15:14
