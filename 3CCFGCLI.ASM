@@ -4267,15 +4267,12 @@ PROC Build_Record_From_Id NEAR
     call    Normalize_IRQ
     mov     [BYTE di + NIC_IRQ_VAL], al
 
-    ; Address Configuration bits 15 to 14 contain the media selection.
+    ; Address Configuration bits 15 to 14 contain the raw XCVR selector.
     mov     ax, [id_addr_cfg]
     mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shr     ax, cl
     and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
-    cmp     al, W0_ADDRESS_CFG_XCVR_UNDEFINED
-    jne     @@MediaGood
-    mov     al, NIC_XCVR_AUI
-@@MediaGood:
+    call    Nic_Decode_Explicit_Xcvr
     mov     [BYTE di + NIC_XCVR_TYPE], al
 
     ; Original sub_339 stores EEPROM words 0Ah through 0Ch in the record.
