@@ -289,7 +289,6 @@ msg_save_bad_execfile DB "Invalid SAVECONFIG /EXECFILE value.", 0Dh, 0Ah, '$'
 msg_save_execfile_not_found DB "SAVECONFIG /EXECFILE file not found.", 0Dh, 0Ah, '$'
 msg_save_line_too_long DB "SAVECONFIG restore command line would exceed DOS batch line limit.", 0Dh, 0Ah, '$'
 msg_save_no_active DB "SAVECONFIG found no adapters with an active IOBASE.", 0Dh, 0Ah, '$'
-msg_save_read_fail DB "Unable to read adapter EEPROM for SAVECONFIG.", 0Dh, 0Ah, '$'
 msg_save_write_fail DB "Unable to write SAVECONFIG output file.", 0Dh, 0Ah, '$'
 msg_save_ok DB "Configuration restore batch file created: ", '$'
 
@@ -710,7 +709,7 @@ SAVE_ERR_NONE EQU 0
 SAVE_ERR_WRITE EQU 1
 SAVE_ERR_LINE_TOO_LONG EQU 2
 SAVE_ERR_BAD_EXECFILE EQU 3
-SAVE_ERR_READ EQU 4
+SAVE_ERR_READ EQU 4       ; retired; slot retained for compatibility
 SAVE_ERR_AMBIGUOUS EQU 5
 
 ; All 31 valid selectable 3C509 ISA I O bases.
@@ -1495,7 +1494,6 @@ PROC Cmd_SaveConfig NEAR
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     mov     [save_product_id], ax
     call    Save_Read_Adapter
-    jc      @@ReadFail
 
     mov     ax, [current_card]
     inc     ax
@@ -1537,10 +1535,6 @@ PROC Cmd_SaveConfig NEAR
 @@WriteFail:
     call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_write_fail
-    jmp     @@Print
-@@ReadFail:
-    call    Save_Cleanup_Partial_File
-    mov     dx, OFFSET msg_save_read_fail
     jmp     @@Print
 @@NoActive:
     mov     dx, OFFSET msg_save_no_active
@@ -2077,13 +2071,13 @@ PROC Save_Cleanup_Partial_File NEAR
 ENDP Save_Cleanup_Partial_File
 
 ; Fill the SAVECONFIG persistent state directly from SI's ordinal-matched
-; ID-port EEPROM snapshot.  CF is clear only when a complete snapshot exists.
+; ID-port EEPROM snapshot.  Discovery guarantees that every exported logical
+; record owns a complete snapshot.
 PROC Save_Read_Id_Eeprom_Snapshot NEAR
     push    ax
     push    di
 
     call    Get_Id_Eeprom_Snapshot
-    jc      @@Unavailable
     mov     ax, [WORD di + ID_EEPROM_ADDR_CFG]
     mov     [save_word08], ax
     mov     ax, [WORD di + ID_EEPROM_RESOURCE_CFG]
@@ -2099,27 +2093,14 @@ PROC Save_Read_Id_Eeprom_Snapshot NEAR
 @@Success:
     pop     di
     pop     ax
-    clc
-    ret
-@@Unavailable:
-    pop     di
-    pop     ax
-    stc
     ret
 ENDP Save_Read_Id_Eeprom_Snapshot
 
 ; Read one logical NIC record's persistent configuration for SAVECONFIG from
-; its ordinal-matched ID-port EEPROM snapshot.
-; Output: CF clear and save_* snapshot filled on success.  CF set and
-; AL = SAVE_ERR_READ if the snapshot invariant is unexpectedly violated.
+; its ordinal-matched ID-port EEPROM snapshot.  Every record produced by the
+; discovery scan owns this snapshot.
 PROC Save_Read_Adapter NEAR
     call    Save_Read_Id_Eeprom_Snapshot
-    jnc     @@Done
-    mov     al, SAVE_ERR_READ
-    stc
-    ret
-@@Done:
-    clc
     ret
 ENDP Save_Read_Adapter
 
@@ -5399,7 +5380,6 @@ PROC Cfg_Txn_Read_Current NEAR
 
     ; Every production logical record owns an ordinal ID-port EEPROM snapshot.
     call    Get_Id_Eeprom_Snapshot
-    jc      @@Fail
 
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jnz     @@ReadWord08
@@ -5524,14 +5504,6 @@ PROC Cfg_Txn_Read_Current NEAR
     clc
     ret
 
-@@Fail:
-    pop     di
-    pop     si
-    pop     dx
-    pop     bx
-    pop     ax
-    stc
-    ret
 ENDP Cfg_Txn_Read_Current
 
 ; Prospective state always begins as an exact copy of the snapshot.
@@ -7930,7 +7902,6 @@ PROC Cfg_Txn_Execute NEAR
     call    Print_String
 @@ReadNow:
     call    Cfg_Txn_Read_Current
-    jc      @@Done
     call    Cfg_Txn_Report_Current
 
     call    Cfg_Txn_Init_Prospective
