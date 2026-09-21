@@ -8598,51 +8598,21 @@ ENDP Read_Extended_Nic_Info
 
 PROC Print_Transceiver_Value NEAR
     push    ax
-    push    cx
     push    dx
 
-    mov     ax, [ext_addr_cfg]
-    test    [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG
-    jz      @@Unavailable
-
-    ; Address Configuration bit 7 means Auto Select only on the 3C509B; on the
-    ; 3C509 and on an unknown revision decode the configured media.
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
-    je      @@ConfiguredMedia
-    cmp     al, 2
-    jb      @@ConfiguredMedia
-
-    mov     ax, [ext_addr_cfg]
-    test    ax, W0_ADDRESS_CFG_AUTO_SELECT
-    jz      @@ConfiguredMedia
-    test    [ext_nic_capability_valid], NIC_CAP_VALID_CONNECTORS
-    jz      @@Unavailable
-    mov     ax, [ext_nic_capabilities]
-    and     ax, NIC_CAP_TP + NIC_CAP_AUI + NIC_CAP_BNC
-    mov     cx, ax
-    dec     ax
-    and     ax, cx
-    jz      @@ConfiguredMedia
-    mov     dx, OFFSET msg_auto_select
-    jmp     @@Print
-
-@@ConfiguredMedia:
-    mov     ax, [ext_addr_cfg]
-    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
-    shr     ax, cl
-    and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
-    cmp     al, 2
-    jne     @@MediaNormalized
-    mov     al, 1
-@@MediaNormalized:
-    cmp     al, 0
+    mov     al, [BYTE si + NIC_PORT_TYPE]
+    cmp     al, NIC_PORT_TP
     je      @@Tp
-    cmp     al, 1
+    cmp     al, NIC_PORT_AUI
     je      @@External
-    cmp     al, 3
+    cmp     al, NIC_PORT_COAX
     je      @@Coax
+    cmp     al, NIC_PORT_AUTO
+    je      @@Auto
     mov     dx, OFFSET msg_unknown_value
+    jmp     @@Print
+@@Auto:
+    mov     dx, OFFSET msg_auto_select
     jmp     @@Print
 @@Tp:
     mov     dx, OFFSET msg_onboard_tp
@@ -8652,13 +8622,9 @@ PROC Print_Transceiver_Value NEAR
     jmp     @@Print
 @@Coax:
     mov     dx, OFFSET msg_onboard_coax
-    jmp     @@Print
-@@Unavailable:
-    mov     dx, OFFSET msg_read_error
 @@Print:
     call    Print_String
     pop     dx
-    pop     cx
     pop     ax
     ret
 ENDP Print_Transceiver_Value
