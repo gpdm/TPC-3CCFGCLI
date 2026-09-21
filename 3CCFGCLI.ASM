@@ -585,9 +585,9 @@ cfg_optimize_value    DB 0
 cfg_baddress_value    DB 0
 cfg_bsize_value       DB 0
 cfg_bsize_disabled    DB 0
-; cfg_tr_value: explicit selections use canonical NIC_XCVR_TP, NIC_XCVR_AUI,
-; NIC_XCVR_COAX; AUTO still temporarily uses the 0FFh sentinel.
-cfg_tr_value          DB 0
+; cfg_tr_value: uses the canonical NIC_XCVR_* domain for TP, AUI, COAX and
+; AUTO.
+cfg_tr_value          DB NIC_XCVR_TP
 ; Resolved capability snapshot shared by the PNP/FULLDUPLEX/TR gates.
 cfg_txn_capabilities      DW 0
 cfg_txn_capability_valid  DW 0
@@ -3561,7 +3561,7 @@ PROC Cfg_Handle_TR NEAR
     jne     @@Invalid
     cmp     [BYTE si+3], 'O'
     jne     @@Invalid
-    mov     [cfg_tr_value], 0FFh    ; AUTO sentinel -> bit 7 of word 08h
+    mov     [cfg_tr_value], NIC_XCVR_AUTO ; AUTO sentinel -> bit 7 of word 08h
     jmp     @@Accept
 @@Invalid:
     mov     [cfg_last_error], CFG_ERR_BAD_TR
@@ -5890,7 +5890,7 @@ PROC Cfg_Prepare_TR NEAR
     and     ax, NOT W0_ADDRESS_CFG_XCVR_MASK
     and     ax, NOT W0_ADDRESS_CFG_AUTO_SELECT
     mov     bl, [cfg_tr_value]
-    cmp     bl, 0FFh
+    cmp     bl, NIC_XCVR_AUTO
     jne     @@NotAuto
     or      ax, W0_ADDRESS_CFG_AUTO_SELECT
     jmp     @@Done
@@ -7396,7 +7396,7 @@ PROC Cfg_Txn_Resolve_Capabilities NEAR
 @@RequireConnectors:
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@CheckValidity
-    cmp     [cfg_tr_value], 0FFh
+    cmp     [cfg_tr_value], NIC_XCVR_AUTO
     jne     @@NeedConnectors
     cmp     al, 0FFh
     je      @@CheckValidity
@@ -7615,7 +7615,7 @@ PROC Cfg_Txn_Execute NEAR
     ; Auto Select is the 3C509B meaning of Address Configuration bit 7, so
     ; AUTO requires a known revision 2 or later before any capability data is
     ; consulted.  Explicit TP/AUI/COAX stay generation independent.
-    cmp     [cfg_tr_value], 0FFh
+    cmp     [cfg_tr_value], NIC_XCVR_AUTO
     jne     @@GateTR_Capabilities
     mov     si, [cfg_selected_ptr]
     cmp     [BYTE si + NIC_ASIC_REV], 0FFh
@@ -7786,7 +7786,7 @@ PROC Cfg_Txn_Execute NEAR
     jz      @@Read
     mov     dx, OFFSET msg_cfg_tr_ok
     call    Print_String
-    cmp     [cfg_tr_value], 0FFh
+    cmp     [cfg_tr_value], NIC_XCVR_AUTO
     jne     @@TRNotAuto
     mov     dx, OFFSET msg_tr_auto
     jmp     @@PrintTR

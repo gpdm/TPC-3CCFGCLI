@@ -72,6 +72,7 @@ Changelog 0.8.0
     `NIC_XCVR_TP`, `NIC_XCVR_AUI`, and `NIC_XCVR_COAX` symbols instead of
     their equivalent raw numeric literals; the `0FFh` AUTO sentinel is
     unchanged.
+  - `cfg_tr_value` AUTO now uses `NIC_XCVR_AUTO` instead of the `0FFh` sentinel.
     
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
