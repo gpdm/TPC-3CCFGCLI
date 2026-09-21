@@ -295,7 +295,6 @@ msg_save_execfile_not_found DB "SAVECONFIG /EXECFILE file not found.", 0Dh, 0Ah,
 msg_save_line_too_long DB "SAVECONFIG restore command line would exceed DOS batch line limit.", 0Dh, 0Ah, '$'
 msg_save_no_active DB "SAVECONFIG found no adapters with an active IOBASE.", 0Dh, 0Ah, '$'
 msg_save_read_fail DB "Unable to read adapter EEPROM for SAVECONFIG.", 0Dh, 0Ah, '$'
-msg_save_ambiguous DB "SAVECONFIG cannot isolate an adapter sharing an IOBASE without a valid ID tag.", 0Dh, 0Ah, '$'
 msg_save_write_fail DB "Unable to write SAVECONFIG output file.", 0Dh, 0Ah, '$'
 msg_save_ok DB "Configuration restore batch file created: ", '$'
 
@@ -1497,7 +1496,7 @@ PROC Cmd_SaveConfig NEAR
     mov     [save_fd_valid], 0
 @@FdDone:
     call    Save_Read_Adapter
-    jc      @@ReadOrAmbiguous
+    jc      @@ReadFail
 
     mov     ax, [current_card]
     inc     ax
@@ -1543,14 +1542,6 @@ PROC Cmd_SaveConfig NEAR
 @@ReadFail:
     call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_read_fail
-    jmp     @@Print
-@@ReadOrAmbiguous:
-    cmp     al, SAVE_ERR_AMBIGUOUS
-    je      @@Ambiguous
-    jmp     @@ReadFail
-@@Ambiguous:
-    call    Save_Cleanup_Partial_File
-    mov     dx, OFFSET msg_save_ambiguous
     jmp     @@Print
 @@NoActive:
     mov     dx, OFFSET msg_save_no_active
@@ -2086,56 +2077,6 @@ PROC Save_Cleanup_Partial_File NEAR
     ret
 ENDP Save_Cleanup_Partial_File
 
-; Fill the save_* EEPROM snapshot for one logical NIC record from an explicit
-; physical access base in DX.  Input SI = logical NIC record, DX = physical
-; access base.  Reads the same words SAVECONFIG has always read: EEPROM word
-; 08h, 09h, 0Dh and, for a known revision 2 or later, 13h.  Does not change
-; SAVECONFIG semantics; only where the bytes are read from.
-PROC Save_Read_At_Base NEAR
-    push    ax
-    push    dx
-
-    mov     al, EEPROM_ADDR_CFG
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    mov     [save_word08], ax
-    mov     al, EEPROM_RESOURCE_CFG
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    mov     [save_word09], ax
-    mov     al, EEPROM_SOFTWARE_INFO
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    mov     [save_word0d], ax
-
-    ; Cache the record's generation and product identity for the export.
-    ; Word 13h carries 3C509B Internal Configuration semantics and is read
-    ; only for a known revision 2 or later.  Other generations neither read
-    ; nor interpret it; a harmless placeholder keeps stale data from a
-    ; previously exported adapter out of the export.
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    mov     [save_asic_rev], al
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    mov     [save_product_id], ax
-    mov     [save_word13], 0
-    cmp     [save_pnp_valid], 0
-    je      @@Done
-    mov     al, EEPROM_CONFIG_CONTROL
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    mov     [save_word13], ax
-@@Done:
-    pop     dx
-    pop     ax
-    clc
-    ret
-@@Fail:
-    pop     dx
-    pop     ax
-    stc
-    ret
-ENDP Save_Read_At_Base
-
 ; Fill the SAVECONFIG persistent state directly from SI's ordinal-matched
 ; ID-port EEPROM snapshot.  CF is clear only when a complete snapshot exists.
 PROC Save_Read_Id_Eeprom_Snapshot NEAR
@@ -2172,57 +2113,17 @@ PROC Save_Read_Id_Eeprom_Snapshot NEAR
     ret
 ENDP Save_Read_Id_Eeprom_Snapshot
 
-; Read one logical NIC record's persistent configuration for SAVECONFIG,
-; preferring its ordinal-matched ID-port EEPROM snapshot.  Input SI = logical
-; NIC record with a nonzero NIC_IO_BASE.
+; Read one logical NIC record's persistent configuration for SAVECONFIG from
+; its ordinal-matched ID-port EEPROM snapshot.
 ; Output: CF clear and save_* snapshot filled on success.  CF set and
-; AL = SAVE_ERR_READ or SAVE_ERR_AMBIGUOUS on failure.
+; AL = SAVE_ERR_READ if the snapshot invariant is unexpectedly violated.
 PROC Save_Read_Adapter NEAR
-    push    bx
-    push    dx
-
-    ; A valid physical ID-port snapshot is sufficient for persistent export;
-    ; it neither requires nor implies proven normal runtime access.
     call    Save_Read_Id_Eeprom_Snapshot
-    jnc     @@Success
-
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Find_Record_By_Base
-    cmp     di, 0FFFFh
-    je      @@Ambiguous
-    or      di, di
-    jz      @@Inconsistent
-
-    ; Exactly one logical owner: read normally at the logical base.
-    mov     dx, [WORD si + NIC_IO_BASE]
-    call    Save_Read_At_Base
-    jc      @@ReadFail
-    jmp     @@Success
-
-@@Inconsistent:
-    ; A record with a nonzero IOBASE must find itself in nic_table; a
-    ; no-owner result here means the table state is internally
-    ; inconsistent. Fail conservatively rather than assume unique access.
+    jnc     @@Done
     mov     al, SAVE_ERR_READ
-    jmp     @@Fail
-
-@@Ambiguous:
-    ; Multiple records share this logical IOBASE. Without a valid ID EEPROM
-    ; snapshot, persistent export is ambiguous and SAVECONFIG must not
-    ; temporarily relocate an adapter merely to read EEPROM state.
-    mov     al, SAVE_ERR_AMBIGUOUS
-    jmp     @@Fail
-
-@@ReadFail:
-    mov     al, SAVE_ERR_READ
-@@Fail:
-    pop     dx
-    pop     bx
     stc
     ret
-@@Success:
-    pop     dx
-    pop     bx
+@@Done:
     clc
     ret
 ENDP Save_Read_Adapter
@@ -5502,11 +5403,9 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_base], dx
     mov     [cfg_txn_new_base], dx
 
-    ; Check for a valid ID-port EEPROM snapshot
+    ; Every production logical record owns an ordinal ID-port EEPROM snapshot.
     call    Get_Id_Eeprom_Snapshot
-    jnc     @@SnapshotReady
-    xor     di, di
-@@SnapshotReady:
+    jc      @@Fail
 
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jnz     @@ReadWord08
@@ -5521,16 +5420,7 @@ PROC Cfg_Txn_Read_Current NEAR
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@NoWord08
 @@ReadWord08:
-    or      di, di
-    jz      @@ReadWord08Hw
     mov     ax, [WORD di + ID_EEPROM_ADDR_CFG]
-    mov     [cfg_txn_old_word08], ax
-    jmp     @@Word08Done
-@@ReadWord08Hw:
-    mov     dx, [cfg_txn_access_base]
-    mov     al, EEPROM_ADDR_CFG
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
     mov     [cfg_txn_old_word08], ax
     jmp     @@Word08Done
 @@NoWord08:
@@ -5539,16 +5429,7 @@ PROC Cfg_Txn_Read_Current NEAR
 
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@NoWord09
-    or      di, di
-    jz      @@ReadWord09Hw
     mov     ax, [WORD di + ID_EEPROM_RESOURCE_CFG]
-    mov     [cfg_txn_old_word09], ax
-    jmp     @@Word09Done
-@@ReadWord09Hw:
-    mov     dx, [cfg_txn_access_base]
-    mov     al, EEPROM_RESOURCE_CFG
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
     mov     [cfg_txn_old_word09], ax
     jmp     @@Word09Done
 @@NoWord09:
@@ -5557,16 +5438,7 @@ PROC Cfg_Txn_Read_Current NEAR
 
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@NoWord13
-    or      di, di
-    jz      @@ReadWord13Hw
     mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
-    mov     [cfg_txn_old_word13], ax
-    jmp     @@Word13Done
-@@ReadWord13Hw:
-    mov     dx, [cfg_txn_access_base]
-    mov     al, EEPROM_CONFIG_CONTROL
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
     mov     [cfg_txn_old_word13], ax
     jmp     @@Word13Done
 @@NoWord13:
@@ -5587,16 +5459,7 @@ PROC Cfg_Txn_Read_Current NEAR
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@NoWord0D
 @@ReadWord0D:
-    or      di, di
-    jz      @@ReadWord0DHw
     mov     ax, [WORD di + ID_EEPROM_SOFTWARE_INFO]
-    mov     [cfg_txn_old_word0d], ax
-    jmp     @@Word0DDone
-@@ReadWord0DHw:
-    mov     dx, [cfg_txn_access_base]
-    mov     al, EEPROM_SOFTWARE_INFO
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
     mov     [cfg_txn_old_word0d], ax
     jmp     @@Word0DDone
 @@NoWord0D:
@@ -5607,16 +5470,7 @@ PROC Cfg_Txn_Read_Current NEAR
     ; EEPROM word 0Fh being readable.
     test    [cfg_parse_flags], CFG_PARSE_INT + CFG_PARSE_IOBASE + CFG_PARSE_MODEM + CFG_PARSE_FULLDUPLEX + CFG_PARSE_OPTIMIZE + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_TR
     jz      @@NoWord0F
-    or      di, di
-    jz      @@ReadWord0FHw
     mov     ax, [WORD di + ID_EEPROM_CHECKSUM]
-    mov     [cfg_txn_old_word0f], ax
-    jmp     @@Word0FDone
-@@ReadWord0FHw:
-    mov     dx, [cfg_txn_access_base]
-    mov     al, EEPROM_CHECKSUM
-    call    Cfg_Eeprom_Read
-    jc      @@Fail
     mov     [cfg_txn_old_word0f], ax
     jmp     @@Word0FDone
 @@NoWord0F:
@@ -7743,14 +7597,7 @@ PROC Cfg_Txn_Execute NEAR
     ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration.
     ; Word 14h is snapshotted here as Boot ROM transaction state.
     call    Get_Id_Eeprom_Snapshot
-    jnc     @@BootRomWord14FromSnapshot
-    mov     dx, [cfg_txn_access_base]
-    mov     al, EEPROM_REVISION_INFO
-    call    Cfg_Eeprom_Read
     jc      @@BootRomCapReadFail
-    mov     [cfg_txn_old_word14], ax
-    jmp     @@BootRomCheckTPO
-@@BootRomWord14FromSnapshot:
     mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
     mov     [cfg_txn_old_word14], ax
 @@BootRomCheckTPO:
@@ -8521,57 +8368,16 @@ PROC Read_Extended_Nic_Info_At_Base NEAR
     call    Nic_Get_Current_Window
     mov     di, ax
 
-    test    [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG
-    jnz     @@SkipAddrCfg
-    mov     al, EEPROM_ADDR_CFG
-    call    Nic_EEPROM_Read
-    jc      @@SkipAddrCfg
-    mov     [ext_addr_cfg], ax
-    or      [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG
-@@SkipAddrCfg:
-
-    test    [ext_eeprom_valid], LIST_EEPROM_VALID_SOFTWARE_INFO
-    jnz     @@SkipSoftwareInfo
-    mov     al, EEPROM_SOFTWARE_INFO
-    call    Nic_EEPROM_Read
-    jc      @@SkipSoftwareInfo
-    mov     [ext_software_info], ax
-    or      [ext_eeprom_valid], LIST_EEPROM_VALID_SOFTWARE_INFO
-@@SkipSoftwareInfo:
-
-    ; EEPROM word 13h only carries Plug and Play state on the 3C509B.
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
-    je      @@CheckVerbose
-    cmp     al, 2
-    jb      @@CheckVerbose
-    test    [ext_eeprom_valid], LIST_EEPROM_VALID_CONFIG_CONTROL
-    jnz     @@CheckVerbose
-    mov     al, EEPROM_CONFIG_CONTROL
-    call    Nic_EEPROM_Read
-    jc      @@SkipConfigCtrl
-    mov     [ext_config_ctrl], ax
-    or      [ext_eeprom_valid], LIST_EEPROM_VALID_CONFIG_CONTROL
-@@SkipConfigCtrl:
-
-@@CheckVerbose:
-    ; The additional EEPROM reads are verbose-only so normal LIST retains its
-    ; existing read behavior.  Word 14h bit 4 and the secondary checksum are
-    ; defined here only for the 3C509B generation.  The checksum is validated
-    ; from EEPROM data, rather than from any mock-only state.
+    ; This routine is called only for verbose LIST. Word 14h bit 4 and the
+    ; secondary checksum are defined here only for the 3C509B generation.
+    ; The checksum is validated from EEPROM data, rather than mock-only state.
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@RestoreWindow
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 2
     jb      @@RestoreWindow
     test    [ext_eeprom_valid], LIST_EEPROM_VALID_REVISION_INFO
-    jnz     @@HaveRevisionInfo
-    mov     al, EEPROM_REVISION_INFO
-    call    Nic_EEPROM_Read
-    jc      @@SkipBootRomSizeValid
-    mov     [ext_revision_info], ax
-    or      [ext_eeprom_valid], LIST_EEPROM_VALID_REVISION_INFO
-@@HaveRevisionInfo:
+    jz      @@RestoreWindow
     mov     ax, [ext_revision_info]
     test    ax, EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
     jz      @@BootRomSizeInvalid
@@ -8596,7 +8402,6 @@ PROC Read_Extended_Nic_Info_At_Base NEAR
     jmp     @@RestoreWindow
 @@SecondaryChecksumInvalid:
     mov     [ext_secondary_checksum_valid], 0
-@@SkipBootRomSizeValid:
 
 @@RestoreWindow:
     mov     ax, di
@@ -8647,6 +8452,8 @@ PROC Read_Extended_Nic_Info NEAR
     mov     ax, [WORD di + nic_capability_valid]
     mov     [ext_nic_capability_valid], ax
 
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@Done
     mov     dx, [WORD si + NIC_IO_BASE]
     or      dx, dx
     jz      @@Done
