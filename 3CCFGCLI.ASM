@@ -4187,8 +4187,9 @@ ENDP Nic_Decode_Explicit_Xcvr
 
 ; Normalize the persistent transceiver selector from the ordinal-matched
 ; discovery snapshot.  The AUTO bit is meaningful only after a reliable ASIC
-; revision has been learned; explicit selector value 2 is the legacy alias
-; for AUI and is retained as canonical value 1.
+; revision has been learned; otherwise the explicit raw XCVR selector is
+; converted to the canonical NIC_XCVR_* domain through
+; Nic_Decode_Explicit_Xcvr.
 ; Input SI = logical NIC record.
 PROC Nic_Normalize_Xcvr_Type NEAR
     push    ax
@@ -4213,10 +4214,7 @@ PROC Nic_Normalize_Xcvr_Type NEAR
     mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shr     ax, cl
     and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
-    cmp     al, W0_ADDRESS_CFG_XCVR_UNDEFINED
-    jne     @@Store
-    mov     al, NIC_XCVR_AUI
-@@Store:
+    call    Nic_Decode_Explicit_Xcvr
     mov     [BYTE si + NIC_XCVR_TYPE], al
 @@Done:
     pop     di

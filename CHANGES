@@ -65,6 +65,8 @@ Changelog 0.8.0
     transceiver values and fields from `NIC_PORT_*` to `NIC_XCVR_*`.
   - Added the canonical `NIC_XCVR_UNDEFINED` constant and the new
     `Nic_Decode_Explicit_Xcvr` selector decoder
+  - `Nic_Normalize_Xcvr_Type` now decodes explicit raw selectors
+     through `Nic_Decode_Explicit_Xcvr`.
     
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
