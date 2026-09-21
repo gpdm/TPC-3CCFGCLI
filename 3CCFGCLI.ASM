@@ -40,7 +40,11 @@ NIC_PRODUCT_ID          EQU 2       ; DW
 NIC_ASIC_REV            EQU 4       ; DB, FFh means not readable
 NIC_MAC_ADDR            EQU 5       ; 6 bytes
 NIC_IRQ_VAL             EQU 11      ; DB
-NIC_PORT_TYPE           EQU 12      ; DB, Address Configuration bits 15 to 14
+NIC_PORT_TYPE           EQU 12      ; DB, canonical persistent transceiver mode
+NIC_PORT_TP             EQU 0       ; DB, on-board TP
+NIC_PORT_AUI            EQU 1       ; DB, AUI
+NIC_PORT_COAX           EQU 3       ; DB, COAX
+NIC_PORT_AUTO           EQU 4       ; DB, canonical 3C509B Auto Select value
 NIC_TAG                 EQU 13      ; DB, ISA ID tag assigned during discovery
 NIC_ID_MODE             EQU 14      ; DB, 1 short sequence, 0 full sequence
 NIC_FLAGS               EQU 15      ; DB
@@ -754,6 +758,11 @@ cli_kw_mock_no_select DB 'NOSELECT', 0
 cli_kw_mock_temporary_base DB 'TEMPBASE', 0
 cli_kw_mock_capcache1 DB 'CAPCACHE1', 0
 cli_kw_mock_capcache2 DB 'CAPCACHE2', 0
+cli_kw_mock_porttype DB 'PORTTYPE', 0
+cli_kw_mock_explicit DB 'EXPLICIT', 0
+cli_kw_mock_duprev DB 'DUPREV', 0
+cli_kw_mock_dupmode DB 'DUPMODE', 0
+cli_kw_mock_restorefail DB 'RESTOREFAIL', 0
 msg_mocktest_pass DB 'HWMOCK contract test passed.', 0Dh, 0Ah, '$'
 msg_mocktest_fail DB 'HWMOCK contract test failed.', 0Dh, 0Ah, '$'
 ENDIF
@@ -1130,8 +1139,23 @@ IFDEF MOCKHW
     jnc     @@MockCapCache1
     mov     bx, OFFSET cli_kw_mock_capcache2
     call    Cli_Match_Token
+    jnc     @@MockCapCache2
+    mov     bx, OFFSET cli_kw_mock_porttype
+    call    Cli_Match_Token
+    jnc     @@MockPortType
+    mov     bx, OFFSET cli_kw_mock_explicit
+    call    Cli_Match_Token
+    jnc     @@MockExplicit
+    mov     bx, OFFSET cli_kw_mock_duprev
+    call    Cli_Match_Token
+    jnc     @@MockDupRev
+    mov     bx, OFFSET cli_kw_mock_dupmode
+    call    Cli_Match_Token
+    jnc     @@MockDupMode
+    mov     bx, OFFSET cli_kw_mock_restorefail
+    call    Cli_Match_Token
     jc      @@Help
-    mov     al, 5
+    mov     al, 10
     jmp     @@RunMockTest
 @@MockTemporaryBase:
     mov     al, 3
@@ -1144,6 +1168,21 @@ IFDEF MOCKHW
     jmp     @@RunMockTest
 @@MockCapCache1:
     mov     al, 4
+    jmp     @@RunMockTest
+@@MockCapCache2:
+    mov     al, 5
+    jmp     @@RunMockTest
+@@MockPortType:
+    mov     al, 6
+    jmp     @@RunMockTest
+@@MockExplicit:
+    mov     al, 7
+    jmp     @@RunMockTest
+@@MockDupRev:
+    mov     al, 8
+    jmp     @@RunMockTest
+@@MockDupMode:
+    mov     al, 9
 @@RunMockTest:
     call    Mock_Run_Contract_Test
     jc      @@MockFail
@@ -4256,6 +4295,47 @@ PROC Normalize_IRQ NEAR
     ret
 ENDP Normalize_IRQ
 
+; Normalize the persistent transceiver selector from the ordinal-matched
+; discovery snapshot.  The AUTO bit is meaningful only after a reliable ASIC
+; revision has been learned; explicit selector value 2 is the legacy alias
+; for AUI and is retained as canonical value 1.
+; Input SI = logical NIC record.
+PROC Nic_Normalize_Port_Type NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    di
+
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@Done
+    call    Get_Id_Eeprom_Snapshot
+    jc      @@Done
+    mov     bx, [WORD di + ID_EEPROM_ADDR_CFG]
+    test    bx, W0_ADDRESS_CFG_AUTO_SELECT
+    jz      @@Explicit
+    cmp     al, 2
+    jb      @@Explicit
+    mov     [BYTE si + NIC_PORT_TYPE], NIC_PORT_AUTO
+    jmp     @@Done
+@@Explicit:
+    mov     ax, bx
+    mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
+    shr     ax, cl
+    and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
+    cmp     al, 2
+    jne     @@Store
+    mov     al, NIC_PORT_AUI
+@@Store:
+    mov     [BYTE si + NIC_PORT_TYPE], al
+@@Done:
+    pop     di
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Nic_Normalize_Port_Type
+
 ; Store one word as two network order MAC bytes at DS:DI.
 ; Input AX = EEPROM word, DI = byte destination.
 PROC Store_Mac_Word NEAR
@@ -4819,9 +4899,6 @@ PROC Enrich_All_3Com_Cards NEAR
     add     ax, OFFSET nic_table
     mov     si, ax
 
-    xor     ax, ax
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    push    ax
     call    Nic_Begin_Temporary_Access
     jc      @@AcquireFailed
 
@@ -4832,7 +4909,11 @@ PROC Enrich_All_3Com_Cards NEAR
     push    bx
     pop     bx
     pop     ax
-    pop     dx
+    pop     dx                      ; temporary base, restored for Nic_End_Temporary_Access
+    ; Temporary validation has now established a reliable ASIC revision.
+    ; Normalize the persistent port type from this record's ID snapshot
+    ; before the temporary access window is restored.
+    call    Nic_Normalize_Port_Type
     push    ax
     push    bx
     call    Nic_End_Temporary_Access
@@ -4840,11 +4921,6 @@ PROC Enrich_All_3Com_Cards NEAR
 
     pop     bx                      ; validity from Nic_Read_Capabilities
     pop     ax                      ; capabilities from Nic_Read_Capabilities
-    pop     dx                      ; original logical-record ASIC revision
-    ; Transitional Phase IIb compatibility: temporary validation may learn an
-    ; ASIC revision, but legacy consumers keep the original value until they
-    ; migrate to the global discovery result.
-    mov     [BYTE si + NIC_ASIC_REV], dl
     pop     bp
 
     mov     di, bp
@@ -4857,8 +4933,6 @@ PROC Enrich_All_3Com_Cards NEAR
     pop     bx                      ; discard unpublished validity
     pop     ax                      ; discard unpublished capabilities
 @@AcquireFailed:
-    pop     dx                      ; original logical-record ASIC revision
-    mov     [BYTE si + NIC_ASIC_REV], dl
     pop     bp
 
 @@Next:

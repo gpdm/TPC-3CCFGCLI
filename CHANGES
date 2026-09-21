@@ -1,4 +1,14 @@
 Changelog 0.8.0
+  - Normalized canonical NIC port types from ordinal ID EEPROM snapshots
+    after reliable ASIC revision discovery, including 3C509B Auto Select.
+    Nic_Normalize_Port_Type now runs immediately after successful temporary
+    validation and before the temporary access window is restored, so the
+    canonical port type persists even when the subsequent restore fails.
+    Removed only the transitional ASIC revision restore stack traffic in
+    discovery enrichment (Nic_Normalize_Port_Type now preserves CX), and
+    added focused MOCKHW coverage for AUTO, explicit, duplicate-revision,
+    duplicate-media (AUTO vs COAX), and restore-failure canonical record
+    facts.
   - Cleanup: removed the retired direct-versus-temporary-access branches in
     Cfg_Txn_Read_Current and Cfg_Txn_Activate_If_Needed, which had become
     unreachable once CONFIGURE was unified around a mandatory temporary

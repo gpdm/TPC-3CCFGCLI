@@ -116,6 +116,13 @@ mock_record_count DB 0
 mock_loaded_index DB 0FFh
 mock_contender_index DB 0FFh
 
+; MOCKTEST-only fault injection: when armed, the next Nic_IO_Read_Word call
+; that would otherwise observe a genuinely absent decoder instead reports a
+; bogus present reading, then disarms itself. Used to prove the Enrich_All_
+; 3Com_Cards restore-failure branch without disturbing any ordinary present-
+; device read observed earlier in the same discovery pass.
+mock_force_restore_fail DB 0
+
 CODESEG
 
 PROC Mock_Clear_Scratch NEAR
@@ -1005,6 +1012,12 @@ PROC Nic_IO_Read_Word NEAR
     call    Mock_Resolve_And_Read_Word
     jmp     @@Done
 @@Absent:
+    cmp     [byte mock_force_restore_fail], 0
+    je      @@TrulyAbsent
+    mov     [byte mock_force_restore_fail], 0
+    xor     ax, ax
+    jmp     @@Done
+@@TrulyAbsent:
     mov     ax, 0FFFFh
 @@Done:
     pop     dx
@@ -2005,7 +2018,10 @@ ENDP Mock_Id_Send_Sequence_Core
 
 ; MOCKHW-only low-level contract probe invoked by the hidden MOCKTEST verb.
 ; Input AL: 1 invalid tag, 2 activation without selection, 3 temporary base,
-;           4 distinct-IOBASE capability cache, 5 duplicate-IOBASE cache.
+;           4 distinct-IOBASE capability cache, 5 duplicate-IOBASE cache,
+;           6 canonical port type normalization.
+;           7 explicit port type, 8 duplicate revisions, 9 duplicate modes,
+;           10 restore failure keeps normalized state, unpublished caches.
 ; Output CF clear when the requested observable contract holds.
 PROC Mock_Run_Contract_Test NEAR
     push    ax
@@ -2013,6 +2029,10 @@ PROC Mock_Run_Contract_Test NEAR
     push    dx
 
     mov     bl, al
+    cmp     bl, 10
+    jne     @@NoArmRestoreFail
+    mov     [byte mock_force_restore_fail], 1
+@@NoArmRestoreFail:
     call    Scan_All_3Com_Cards
     cmp     [card_count], 0
     je      @@Fail
@@ -2024,6 +2044,16 @@ PROC Mock_Run_Contract_Test NEAR
     je      @@CapabilityCache
     cmp     bl, 5
     je      @@CapabilityCache
+    cmp     bl, 6
+    je      @@PortType
+    cmp     bl, 7
+    je      @@ExplicitPort
+    cmp     bl, 8
+    je      @@DuplicateRevisions
+    cmp     bl, 9
+    je      @@DuplicateModes
+    cmp     bl, 10
+    je      @@RestoreFail
 
     ; Tag 1 is explicitly moved to 0280h. Normal I/O must work at the
     ; temporary base, while its persistent EEPROM selector remains 0300h.
@@ -2070,6 +2100,97 @@ PROC Mock_Run_Contract_Test NEAR
     jz      @@Fail
     test    [nic_capability_valid + 2], NIC_CAP_VALID_CONNECTORS
     jz      @@Fail
+    clc
+    jmp     @@Done
+
+@@PortType:
+    ; MOCKTEST PORTTYPE is run after CONFIGURE /TR:AUTO.  The revision learned
+    ; during temporary validation must publish the canonical AUTO value from
+    ; the ordinal ID EEPROM snapshot.
+    cmp     [card_count], 1
+    jne     @@Fail
+    cmp     [BYTE nic_table + NIC_ASIC_REV], 2
+    jne     @@Fail
+    cmp     [BYTE nic_table + NIC_PORT_TYPE], NIC_PORT_AUTO
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@ExplicitPort:
+    cmp     [card_count], 1
+    jne     @@Fail
+    cmp     [BYTE nic_table + NIC_ASIC_REV], 2
+    jne     @@Fail
+    cmp     [BYTE nic_table + NIC_PORT_TYPE], 0
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@DuplicateRevisions:
+    cmp     [card_count], 2
+    jne     @@Fail
+    ; Duplicate IOBASE records must retain their physical revision facts.
+    mov     al, [BYTE nic_table + NIC_ASIC_REV]
+    mov     ah, [BYTE nic_table + NIC_RECORD_SIZE + NIC_ASIC_REV]
+    cmp     al, 1
+    je      @@DupRevFirst509
+    cmp     al, 2
+    jne     @@Fail
+    cmp     ah, 1
+    jne     @@Fail
+    jmp     @@DupRevPortChecks
+@@DupRevFirst509:
+    cmp     ah, 2
+    jne     @@Fail
+@@DupRevPortChecks:
+    cmp     [BYTE nic_table + NIC_PORT_TYPE], 0
+    jne     @@Fail
+    cmp     [BYTE nic_table + NIC_RECORD_SIZE + NIC_PORT_TYPE], 0
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@DuplicateModes:
+    cmp     [card_count], 2
+    jne     @@Fail
+    ; One duplicate-base record was moved to Auto Select while its peer
+    ; retains its explicit COAX transceiver selector, so both distinct
+    ; canonical modes remain ordinally isolated.
+    mov     al, [BYTE nic_table + NIC_PORT_TYPE]
+    mov     ah, [BYTE nic_table + NIC_RECORD_SIZE + NIC_PORT_TYPE]
+    cmp     al, NIC_PORT_AUTO
+    je      @@DupModeFirstAuto
+    cmp     al, NIC_PORT_COAX
+    jne     @@Fail
+    cmp     ah, NIC_PORT_AUTO
+    jne     @@Fail
+    jmp     @@DupModeRevisions
+@@DupModeFirstAuto:
+    cmp     ah, NIC_PORT_COAX
+    jne     @@Fail
+@@DupModeRevisions:
+    cmp     [BYTE nic_table + NIC_ASIC_REV], 2
+    jne     @@Fail
+    cmp     [BYTE nic_table + NIC_RECORD_SIZE + NIC_ASIC_REV], 2
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@RestoreFail:
+    ; The restore-verification step failed, so the capability cache for
+    ; this adapter must remain unpublished. The ASIC revision established
+    ; earlier and the port type normalized before the restore attempt must
+    ; still persist, proving Nic_Normalize_Port_Type's new call position.
+    cmp     [card_count], 1
+    jne     @@Fail
+    cmp     [BYTE nic_table + NIC_ASIC_REV], 2
+    jne     @@Fail
+    cmp     [BYTE nic_table + NIC_PORT_TYPE], NIC_PORT_AUTO
+    jne     @@Fail
+    cmp     [WORD nic_capabilities], 0
+    jne     @@Fail
+    cmp     [WORD nic_capability_valid], 0
+    jne     @@Fail
     clc
     jmp     @@Done
 
