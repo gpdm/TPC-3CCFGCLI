@@ -4899,10 +4899,6 @@ PROC Enrich_All_3Com_Cards NEAR
     mov     dx, ax
     push    dx                      ; preserve the exact temporary base
     call    Nic_Read_Capabilities
-    push    ax
-    push    bx
-    pop     bx
-    pop     ax
     pop     dx                      ; temporary base, restored for Nic_End_Temporary_Access
     ; Temporary validation has now established a reliable ASIC revision.
     ; Normalize the persistent port type from this record's ID snapshot
