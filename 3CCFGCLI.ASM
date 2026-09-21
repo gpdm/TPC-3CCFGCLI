@@ -6601,31 +6601,22 @@ ENDP Cfg_Txn_Write_Live
 ; verifies the live Window 0 Address Configuration Boot ROM bits 13:8 against
 ; the staged image at the final active I/O base; a request rejected by the
 ; pre-commit probe is skipped.  ROM contents are never re-probed here.
-PROC Cfg_Txn_Verify NEAR
-    push    ax
-    push    bx
-    push    cx
-    push    dx
-    push    si
+;
+; Each property is verified by its own Cfg_Txn_Verify_xxx NEAR helper below.
+; Helper contract: CF clear means the section succeeded or did not apply to
+; this transaction; CF set means verification failed and cfg_last_error has
+; already been assigned the appropriate error, preserving CFG_ERR_EEPROM_BUSY
+; when Cfg_Eeprom_Read already reported it instead of overwriting it with the
+; section's own verification error.
 
-    mov     [cfg_txn_verify_word08_valid], 0
-    mov     [cfg_txn_verify_word0d_valid], 0
-
-    test    [cfg_txn_change_flags], CFG_TXN_COMMIT_MASK
-    jnz     @@Start
-    jmp     @@Success
-
-@@Start:
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Reachable
-    mov     dx, OFFSET msg_cfg_txn_verify
-    call    Print_String
-
-@@Reachable:
+; Verifies IOBASE: final adapter reachability (only when the working I/O base
+; itself changed), the persistent EEPROM Window 0 Address Configuration I/O
+; selector field, and the live register readback of the same selector.
+PROC Cfg_Txn_Verify_IOBASE NEAR
     ; Check reachability only for an IOBASE transaction, where the active address
     ; itself may have changed; INT verification uses its persistent/live checks.
     test    [cfg_txn_change_flags], CFG_TXN_IOBASE_CHANGED
-    jz      @@INTPersistent
+    jz      @@Success
 
     mov     si, [cfg_selected_ptr]
     mov     dx, [cfg_txn_access_base]
@@ -6681,7 +6672,7 @@ PROC Cfg_Txn_Verify NEAR
     jne     @@IOVerifyFail
 
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@INTPersistent
+    jz      @@Success
     mov     dx, OFFSET msg_cfg_live_iobase_verified
     call    Print_String
     mov     ax, [cfg_iobase_value]
@@ -6689,33 +6680,59 @@ PROC Cfg_Txn_Verify NEAR
     mov     dx, OFFSET msg_crlf
     call    Print_String
 
-@@INTPersistent:
+@@Success:
+    clc
+    ret
+
+@@ReachFail:
+    test    [cfg_parse_flags], CFG_PARSE_IOBASE
+    jz      @@ReachFailShared
+    mov     [cfg_last_error], CFG_ERR_IOBASE_VERIFY
+    jmp     @@FailReturn
+@@ReachFailShared:
+    ; An IOBASE change reachability failure without an explicit /IOBASE
+    ; request (e.g. one implied by a TR transceiver migration) is attributed
+    ; the same generic verify error the INT section would report.
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
+    je      @@FailReturn
+    mov     [cfg_last_error], CFG_ERR_VERIFY
+    jmp     @@FailReturn
+@@IOVerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
+    je      @@FailReturn
+    mov     [cfg_last_error], CFG_ERR_IOBASE_VERIFY
+@@FailReturn:
+    stc
+    ret
+ENDP Cfg_Txn_Verify_IOBASE
+
+; Verifies INT only when its persistent field changed, or when an IO
+; migration forced live restoration.  An unchanged INT skips its own
+; readback only; later requested properties are still verified.
+PROC Cfg_Txn_Verify_INT NEAR
     test    [cfg_parse_flags], CFG_PARSE_INT
-    jz      @@PNPPersistent
-    ; Verify INT only when its persistent field changed, or when an IO migration
-    ; forced live restoration.  An unchanged INT skips its own readback only;
-    ; later requested properties are still verified.
+    jz      @@Success
     test    [cfg_txn_change_flags], CFG_TXN_INT_MIGRATE_MASK
-    jz      @@PNPPersistent
+    jz      @@Success
 
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_RESOURCE_CFG
     call    Cfg_Eeprom_Read
-    jc      @@INTVerifyFail
+    jc      @@VerifyFail
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD09
-    jz      @@INTField
+    jz      @@Field
     cmp     ax, [cfg_txn_new_word09]
-    jne     @@INTVerifyFail
-@@INTField:
+    jne     @@VerifyFail
+@@Field:
     mov     bx, ax
     mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
     shr     bx, cl
     and     bl, 0Fh
     cmp     bl, [cfg_int_value]
-    jne     @@INTVerifyFail
+    jne     @@VerifyFail
 
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@INTLive
+    jz      @@Live
     mov     dx, OFFSET msg_cfg_eeprom_verified
     call    Print_String
     mov     al, bl
@@ -6723,7 +6740,7 @@ PROC Cfg_Txn_Verify NEAR
     mov     dx, OFFSET msg_crlf
     call    Print_String
 
-@@INTLive:
+@@Live:
     mov     dx, [cfg_txn_access_base]
     xor     al, al
     call    Nic_Select_Window
@@ -6734,10 +6751,10 @@ PROC Cfg_Txn_Verify NEAR
     shr     bx, cl
     and     bl, 0Fh
     cmp     bl, [cfg_int_value]
-    jne     @@INTVerifyFail
+    jne     @@VerifyFail
 
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@PNPPersistent
+    jz      @@Success
     mov     dx, OFFSET msg_cfg_live_verified
     call    Print_String
     mov     al, bl
@@ -6745,36 +6762,67 @@ PROC Cfg_Txn_Verify NEAR
     mov     dx, OFFSET msg_crlf
     call    Print_String
 
-@@PNPPersistent:
+@@Success:
+    clc
+    ret
+
+@@VerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
+    je      @@FailReturn
+    mov     [cfg_last_error], CFG_ERR_VERIFY
+@@FailReturn:
+    stc
+    ret
+ENDP Cfg_Txn_Verify_INT
+
+; Verifies the persistent PNP Configuration Control word.
+PROC Cfg_Txn_Verify_PNP NEAR
     test    [cfg_parse_flags], CFG_PARSE_PNP
-    jz      @@MODEMPersistent
+    jz      @@Success
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
-    jz      @@MODEMPersistent
+    jz      @@Success
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_CONFIG_CONTROL
     call    Cfg_Eeprom_Read
-    jc      @@PNPVerifyFail
+    jc      @@VerifyFail
     cmp     ax, [cfg_txn_new_word13]
-    jne     @@PNPVerifyFail
+    jne     @@VerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@MODEMPersistent
+    jz      @@Success
     mov     dx, OFFSET msg_cfg_pnp_verified
     call    Print_String
 
-@@MODEMPersistent:
+@@Success:
+    clc
+    ret
+
+@@VerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
+    je      @@FailReturn
+    mov     [cfg_last_error], CFG_ERR_PNP_VERIFY
+@@FailReturn:
+    stc
+    ret
+ENDP Cfg_Txn_Verify_PNP
+
+; Verifies the persistent MODEM (interrupt-disable) field of word 0Dh, using
+; the shared cfg_txn_verify_word0d readback cache also consulted by
+; FULLDUPLEX and OPTIMIZE so a combined transaction reads EEPROM_SOFTWARE_INFO
+; only once.
+PROC Cfg_Txn_Verify_MODEM NEAR
     test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@FDPersistent
+    jz      @@Success
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-    jz      @@FDPersistent
+    jz      @@Success
     cmp     [cfg_txn_verify_word0d_valid], 1
-    je      @@MODEMHaveWord0D
+    je      @@HaveWord0D
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
-    jc      @@MODEMVerifyFail
+    jc      @@VerifyFail
     mov     [cfg_txn_verify_word0d], ax
     mov     [cfg_txn_verify_word0d_valid], 1
-@@MODEMHaveWord0D:
+@@HaveWord0D:
     mov     ax, [cfg_txn_verify_word0d]
     ; Verify the MODEM interrupt-disable field only; FULLDUPLEX and OPTIMIZE
     ; bits sharing word 0Dh must not affect MODEM verification attribution.
@@ -6782,60 +6830,92 @@ PROC Cfg_Txn_Verify NEAR
     mov     bx, [cfg_txn_new_word0d]
     and     bx, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
     cmp     ax, bx
-    jne     @@MODEMVerifyFail
+    jne     @@VerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@FDPersistent
+    jz      @@Success
     mov     dx, OFFSET msg_cfg_modem_verified
     call    Print_String
 
-@@FDPersistent:
+@@Success:
+    clc
+    ret
+
+@@VerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
+    je      @@FailReturn
+    mov     [cfg_last_error], CFG_ERR_MODEM_VERIFY
+@@FailReturn:
+    stc
+    ret
+ENDP Cfg_Txn_Verify_MODEM
+
+; Verifies the undocumented persistent Full Duplex policy bit of word 0Dh,
+; reusing the shared cfg_txn_verify_word0d readback cache when already
+; populated by MODEM or OPTIMIZE.
+PROC Cfg_Txn_Verify_FULLDUPLEX NEAR
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-    jz      @@OptimizePersistent
+    jz      @@Success
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    jnz     @@FDNeedVerify
+    jnz     @@NeedVerify
     ; No explicit /FULLDUPLEX was requested. Verify only if the persistent
     ; FULLDUPLEX bit itself actually transitioned (e.g. the implicit disable
     ; derived by Cfg_Prepare_TR for a genuine TP to non-TP /TR transition).
     mov     ax, [cfg_txn_old_word0d]
     xor     ax, [cfg_txn_new_word0d]
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
-    jz      @@OptimizePersistent
-@@FDNeedVerify:
+    jz      @@Success
+@@NeedVerify:
     cmp     [cfg_txn_verify_word0d_valid], 1
-    je      @@FDHaveWord0D
+    je      @@HaveWord0D
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
-    jc      @@FDVerifyFail
+    jc      @@VerifyFail
     mov     [cfg_txn_verify_word0d], ax
     mov     [cfg_txn_verify_word0d_valid], 1
-@@FDHaveWord0D:
+@@HaveWord0D:
     mov     ax, [cfg_txn_verify_word0d]
     ; Verify the undocumented persistent Full Duplex policy bit only.
     and     ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     mov     bx, [cfg_txn_new_word0d]
     and     bx, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     cmp     ax, bx
-    jne     @@FDVerifyFail
+    jne     @@VerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@OptimizePersistent
+    jz      @@Success
     mov     dx, OFFSET msg_cfg_fd_verified
     call    Print_String
 
-@@OptimizePersistent:
+@@Success:
+    clc
+    ret
+
+@@VerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
+    je      @@FailReturn
+    mov     [cfg_last_error], CFG_ERR_FD_VERIFY
+@@FailReturn:
+    stc
+    ret
+ENDP Cfg_Txn_Verify_FULLDUPLEX
+
+; Verifies the persistent OPTIMIZE field of word 0Dh, reusing the shared
+; cfg_txn_verify_word0d readback cache when already populated by MODEM or
+; FULLDUPLEX.
+PROC Cfg_Txn_Verify_OPTIMIZE NEAR
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
-    jz      @@BootRomPersistent
+    jz      @@Success
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-    jz      @@BootRomPersistent
+    jz      @@Success
     cmp     [cfg_txn_verify_word0d_valid], 1
-    je      @@OptimizeHaveWord0D
+    je      @@HaveWord0D
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_SOFTWARE_INFO
     call    Cfg_Eeprom_Read
-    jc      @@OptimizeVerifyFail
+    jc      @@VerifyFail
     mov     [cfg_txn_verify_word0d], ax
     mov     [cfg_txn_verify_word0d_valid], 1
-@@OptimizeHaveWord0D:
+@@HaveWord0D:
     mov     ax, [cfg_txn_verify_word0d]
     ; Verify the OPTIMIZE field only; MODEM and FULLDUPLEX bits sharing word
     ; 0Dh must not affect OPTIMIZE verification attribution.
@@ -6843,50 +6923,68 @@ PROC Cfg_Txn_Verify NEAR
     mov     bx, [cfg_txn_new_word0d]
     and     bx, EEPROM_SOFTWARE_INFO_OPTIMIZE_MASK
     cmp     ax, bx
-    jne     @@OptimizeVerifyFail
+    jne     @@VerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@BootRomPersistent
+    jz      @@Success
     mov     dx, OFFSET msg_cfg_optimize_verified
     call    Print_String
 
-@@BootRomPersistent:
+@@Success:
+    clc
+    ret
+
+@@VerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
+    je      @@FailReturn
+    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_VERIFY
+@@FailReturn:
+    stc
+    ret
+ENDP Cfg_Txn_Verify_OPTIMIZE
+
+; Verifies the persistent Boot ROM base/size fields (word 08h bits 13:8, and
+; word 14h when the ASIC revision affects Boot ROM size decoding), plus the
+; final live readback of the same Window 0 Address Configuration bits for an
+; accepted Boot ROM request.  Populates the shared cfg_txn_verify_word08
+; readback cache reused by the TR check below.
+PROC Cfg_Txn_Verify_BootRom NEAR
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jnz     @@BootRomNeedsRead
+    jnz     @@NeedsRead
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jz      @@TRPersistent
-@@BootRomNeedsRead:
+    jz      @@Success
+@@NeedsRead:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08 + CFG_TXN_CHG_WORD14
-    jz      @@BootRomLive
+    jz      @@Live
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
-    jz      @@BootRomWord08
+    jz      @@Word08
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Read
-    jc      @@BootRomVerifyFail
+    jc      @@VerifyFail
     cmp     ax, [cfg_txn_new_word14]
-    jne     @@BootRomVerifyFail
-@@BootRomWord08:
+    jne     @@VerifyFail
+@@Word08:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
-    jz      @@BootRomLive
+    jz      @@Live
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Read
-    jc      @@BootRomVerifyFail
+    jc      @@VerifyFail
     mov     [cfg_txn_verify_word08], ax
     mov     [cfg_txn_verify_word08_valid], 1
     and     ax, 3F00h
     mov     bx, [cfg_txn_new_word08]
     and     bx, 3F00h
     cmp     ax, bx
-    jne     @@BootRomVerifyFail
+    jne     @@VerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@BootRomLive
+    jz      @@Live
     mov     dx, OFFSET msg_cfg_baddress_verified
     call    Print_String
     mov     dx, OFFSET msg_cfg_bsize_verified
     call    Print_String
 
-@@BootRomLive:
+@@Live:
     ; Final live readback for an accepted Boot ROM request.  Only the Boot ROM
     ; owned bits 13:8 of the live Window 0 Address Configuration are compared
     ; against the staged prospective image; I/O base, transceiver, and other
@@ -6894,7 +6992,7 @@ PROC Cfg_Txn_Verify NEAR
     ; rejected by the pre-commit probe kept its previous live mapping and is
     ; not verified again here.  The caller's register window is restored.
     cmp     [cfg_bootrom_rejected], 1
-    je      @@TRPersistent
+    je      @@Success
     push    di
     mov     dx, [cfg_txn_access_base]
     call    Nic_Get_Current_Window
@@ -6911,33 +7009,115 @@ PROC Cfg_Txn_Verify NEAR
     mov     ax, [cfg_txn_new_live06]
     and     ax, 3F00h
     cmp     bx, ax
-    jne     @@BootRomVerifyFail
+    jne     @@VerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@TRPersistent
+    jz      @@Success
     mov     dx, OFFSET msg_cfg_bootrom_live_verified
     call    Print_String
 
-@@TRPersistent:
+@@Success:
+    clc
+    ret
+
+@@VerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
+    je      @@FailReturn
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
+    jz      @@VerifyFailBSize
+    cmp     [cfg_bsize_disabled], 1
+    je      @@VerifyFailBSize
+    mov     [cfg_last_error], CFG_ERR_BADDRESS_VERIFY
+    jmp     @@FailReturn
+@@VerifyFailBSize:
+    mov     [cfg_last_error], CFG_ERR_BSIZE_VERIFY
+@@FailReturn:
+    stc
+    ret
+ENDP Cfg_Txn_Verify_BootRom
+
+; Verifies TR by re-checking the persistent XCVR/AUTO_SELECT bits of word 08h
+; against the staged image, reusing the shared cfg_txn_verify_word08 readback
+; cache when already populated by the Boot ROM check above so a combined
+; Boot ROM + TR transaction reads EEPROM_ADDR_CFG only once.
+PROC Cfg_Txn_Verify_TR NEAR
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@Success
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jz      @@Success
     cmp     [cfg_txn_verify_word08_valid], 1
-    je      @@TRHaveWord08
+    je      @@HaveWord08
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_ADDR_CFG
     call    Cfg_Eeprom_Read
-    jc      @@TRVerifyFail
+    jc      @@VerifyFail
     mov     [cfg_txn_verify_word08], ax
-@@TRHaveWord08:
+@@HaveWord08:
     mov     ax, [cfg_txn_verify_word08]
     xor     ax, [cfg_txn_new_word08]
     test    ax, W0_ADDRESS_CFG_XCVR_MASK OR W0_ADDRESS_CFG_AUTO_SELECT
-    jnz     @@TRVerifyFail
+    jnz     @@VerifyFail
     test    [cli_flags], CLI_FLAG_VERBOSE
     jz      @@Success
     mov     dx, OFFSET msg_cfg_tr_verified
     call    Print_String
+
+@@Success:
+    clc
+    ret
+
+@@VerifyFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
+    je      @@FailReturn
+    mov     [cfg_last_error], CFG_ERR_TR_VERIFY
+@@FailReturn:
+    stc
+    ret
+ENDP Cfg_Txn_Verify_TR
+
+; Orchestrates the overall verification sequence for a committed CONFIGURE
+; transaction.  Performs the shared setup (resetting the word08/word0Dh
+; verify readback caches and printing the verbose banner), then calls each
+; property specific helper in the same order previously verified inline.
+; Each helper returns CF clear on success/not-applicable or CF set on
+; failure with cfg_last_error already assigned; the first failing helper
+; aborts the remaining verification for this transaction.
+PROC Cfg_Txn_Verify NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    mov     [cfg_txn_verify_word08_valid], 0
+    mov     [cfg_txn_verify_word0d_valid], 0
+
+    test    [cfg_txn_change_flags], CFG_TXN_COMMIT_MASK
+    jnz     @@Start
+    jmp     @@Success
+
+@@Start:
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@Verify
+    mov     dx, OFFSET msg_cfg_txn_verify
+    call    Print_String
+
+@@Verify:
+    call    Cfg_Txn_Verify_IOBASE
+    jc      @@Fail
+    call    Cfg_Txn_Verify_INT
+    jc      @@Fail
+    call    Cfg_Txn_Verify_PNP
+    jc      @@Fail
+    call    Cfg_Txn_Verify_MODEM
+    jc      @@Fail
+    call    Cfg_Txn_Verify_FULLDUPLEX
+    jc      @@Fail
+    call    Cfg_Txn_Verify_OPTIMIZE
+    jc      @@Fail
+    call    Cfg_Txn_Verify_BootRom
+    jc      @@Fail
+    call    Cfg_Txn_Verify_TR
+    jc      @@Fail
 
 @@Success:
     pop     si
@@ -6948,57 +7128,6 @@ PROC Cfg_Txn_Verify NEAR
     clc
     ret
 
-@@BootRomVerifyFail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jz      @@BootRomVerifyFailBSize
-    cmp     [cfg_bsize_disabled], 1
-    je      @@BootRomVerifyFailBSize
-    mov     [cfg_last_error], CFG_ERR_BADDRESS_VERIFY
-    jmp     @@Fail
-@@BootRomVerifyFailBSize:
-    mov     [cfg_last_error], CFG_ERR_BSIZE_VERIFY
-    jmp     @@Fail
-@@ReachFail:
-    test    [cfg_parse_flags], CFG_PARSE_IOBASE
-    jz      @@INTVerifyFail
-    mov     [cfg_last_error], CFG_ERR_IOBASE_VERIFY
-    jmp     @@Fail
-@@IOVerifyFail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    mov     [cfg_last_error], CFG_ERR_IOBASE_VERIFY
-    jmp     @@Fail
-@@INTVerifyFail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    mov     [cfg_last_error], CFG_ERR_VERIFY
-    jmp     @@Fail
-@@PNPVerifyFail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    mov     [cfg_last_error], CFG_ERR_PNP_VERIFY
-    jmp     @@Fail
-@@MODEMVerifyFail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    mov     [cfg_last_error], CFG_ERR_MODEM_VERIFY
-    jmp     @@Fail
-@@FDVerifyFail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    mov     [cfg_last_error], CFG_ERR_FD_VERIFY
-    jmp     @@Fail
-@@OptimizeVerifyFail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    mov     [cfg_last_error], CFG_ERR_OPTIMIZE_VERIFY
-    jmp     @@Fail
-@@TRVerifyFail:
-    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
-    je      @@Fail
-    mov     [cfg_last_error], CFG_ERR_TR_VERIFY
 @@Fail:
     pop     si
     pop     dx
