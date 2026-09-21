@@ -57,25 +57,14 @@ NIC_FLAG_OEM_MAC        EQU 04h
 ; ID-port EEPROM snapshots are parallel to nic_table by record ordinal.
 ; They only exist for records built from an isolated ID-port contender.
 ID_EEPROM_SNAPSHOT_VALID EQU 0
-ID_EEPROM_SNAPSHOT_SIZE  EQU 37
-ID_EEPROM_PRODUCT_ID     EQU 1
-ID_EEPROM_WORD_04        EQU 3
-ID_EEPROM_WORD_05        EQU 5
-ID_EEPROM_WORD_06        EQU 7
-ID_EEPROM_MFG_ID         EQU 9
-ID_EEPROM_ADDR_CFG       EQU 11
-ID_EEPROM_RESOURCE_CFG   EQU 13
-ID_EEPROM_OEM_NODE_0     EQU 15
-ID_EEPROM_OEM_NODE_1     EQU 17
-ID_EEPROM_OEM_NODE_2     EQU 19
-ID_EEPROM_SOFTWARE_INFO  EQU 21
-ID_EEPROM_COMPATIBILITY  EQU 23
-ID_EEPROM_CHECKSUM       EQU 25
-ID_EEPROM_CAPABILITY     EQU 27
-ID_EEPROM_INTERNAL_CONFIG_LO EQU 29
-ID_EEPROM_CONFIG_CONTROL EQU 31
-ID_EEPROM_REVISION_INFO  EQU 33
-ID_EEPROM_WORD_19        EQU 35
+ID_EEPROM_ADDR_CFG       EQU 1
+ID_EEPROM_RESOURCE_CFG   EQU 3
+ID_EEPROM_SOFTWARE_INFO  EQU 5
+ID_EEPROM_CHECKSUM       EQU 7
+ID_EEPROM_CAPABILITY     EQU 9
+ID_EEPROM_CONFIG_CONTROL EQU 11
+ID_EEPROM_REVISION_INFO  EQU 13
+ID_EEPROM_SNAPSHOT_SIZE  EQU 15
 
 ; CONFIGURE property identifiers.  XCVR maps to TR.  /PORT is deliberately absent.
 CFG_OPT_INT             EQU 1
@@ -4219,29 +4208,6 @@ PROC Read_Id_Contender_Data NEAR
     mov     al, EEPROM_NODE_2
     call    Nic_IdPort_Read_Word
 
-    ; Retain the original ISA record-building EEPROM read set while this
-    ; particular contender remains the sole ID-port responder.
-    mov     al, EEPROM_PRODUCT_ID
-    call    Nic_IdPort_Read_Word
-    mov     [id_product], ax
-    mov     [WORD id_eeprom_contender + ID_EEPROM_PRODUCT_ID], ax
-
-    mov     al, EEPROM_WORD_04
-    call    Nic_IdPort_Read_Word
-    mov     [WORD id_eeprom_contender + ID_EEPROM_WORD_04], ax
-
-    mov     al, EEPROM_WORD_05
-    call    Nic_IdPort_Read_Word
-    mov     [WORD id_eeprom_contender + ID_EEPROM_WORD_05], ax
-
-    mov     al, EEPROM_WORD_06
-    call    Nic_IdPort_Read_Word
-    mov     [WORD id_eeprom_contender + ID_EEPROM_WORD_06], ax
-
-    mov     al, EEPROM_MFG_ID
-    call    Nic_IdPort_Read_Word
-    mov     [WORD id_eeprom_contender + ID_EEPROM_MFG_ID], ax
-
     mov     al, EEPROM_ADDR_CFG
     call    Nic_IdPort_Read_Word
     mov     [id_addr_cfg], ax
@@ -4256,25 +4222,18 @@ PROC Read_Id_Contender_Data NEAR
     mov     al, EEPROM_OEM_NODE_0
     call    Nic_IdPort_Read_Word
     mov     [id_oem0], ax
-    mov     [WORD id_eeprom_contender + ID_EEPROM_OEM_NODE_0], ax
 
     mov     al, EEPROM_OEM_NODE_1
     call    Nic_IdPort_Read_Word
     mov     [id_oem1], ax
-    mov     [WORD id_eeprom_contender + ID_EEPROM_OEM_NODE_1], ax
 
     mov     al, EEPROM_OEM_NODE_2
     call    Nic_IdPort_Read_Word
     mov     [id_oem2], ax
-    mov     [WORD id_eeprom_contender + ID_EEPROM_OEM_NODE_2], ax
 
     mov     al, EEPROM_SOFTWARE_INFO
     call    Nic_IdPort_Read_Word
     mov     [WORD id_eeprom_contender + ID_EEPROM_SOFTWARE_INFO], ax
-
-    mov     al, EEPROM_COMPATIBILITY
-    call    Nic_IdPort_Read_Word
-    mov     [WORD id_eeprom_contender + ID_EEPROM_COMPATIBILITY], ax
 
     mov     al, EEPROM_CHECKSUM
     call    Nic_IdPort_Read_Word
@@ -4284,10 +4243,6 @@ PROC Read_Id_Contender_Data NEAR
     call    Nic_IdPort_Read_Word
     mov     [WORD id_eeprom_contender + ID_EEPROM_CAPABILITY], ax
 
-    mov     al, EEPROM_INTERNAL_CONFIG_LO
-    call    Nic_IdPort_Read_Word
-    mov     [WORD id_eeprom_contender + ID_EEPROM_INTERNAL_CONFIG_LO], ax
-
     mov     al, EEPROM_CONFIG_CONTROL
     call    Nic_IdPort_Read_Word
     mov     [WORD id_eeprom_contender + ID_EEPROM_CONFIG_CONTROL], ax
@@ -4296,9 +4251,6 @@ PROC Read_Id_Contender_Data NEAR
     call    Nic_IdPort_Read_Word
     mov     [WORD id_eeprom_contender + ID_EEPROM_REVISION_INFO], ax
 
-    mov     al, EEPROM_WORD_19
-    call    Nic_IdPort_Read_Word
-    mov     [WORD id_eeprom_contender + ID_EEPROM_WORD_19], ax
     mov     [BYTE id_eeprom_contender + ID_EEPROM_SNAPSHOT_VALID], 1
 
     pop     ax
@@ -4445,15 +4397,10 @@ PROC Build_Record_From_Id NEAR
     mov     ax, di
     mov     cl, 4
     shr     ax, cl                  ; nic_table ordinal
-    mov     dx, ax
     mov     di, ax
-    mov     cl, 5
-    shl     di, cl                  ; ordinal * 32
-    mov     bx, ax
-    mov     cl, 2
-    shl     bx, cl                  ; ordinal * 4
-    add     di, bx
-    add     di, dx                  ; ordinal * 37
+    mov     cl, 4
+    shl     di, cl                  ; ordinal * 16
+    sub     di, ax                  ; ordinal * 15
     add     di, OFFSET id_eeprom_cache
     mov     si, OFFSET id_eeprom_contender
     mov     cx, ID_EEPROM_SNAPSHOT_SIZE
@@ -4673,15 +4620,10 @@ PROC Get_Id_Eeprom_Snapshot NEAR
     sub     ax, OFFSET nic_table
     mov     cl, 4
     shr     ax, cl                  ; nic_table ordinal
-    mov     dx, ax
     mov     di, ax
-    mov     cl, 5
-    shl     di, cl                  ; ordinal * 32
-    mov     bx, ax
-    mov     cl, 2
-    shl     bx, cl                  ; ordinal * 4
-    add     di, bx
-    add     di, dx                  ; ordinal * 37
+    mov     cl, 4
+    shl     di, cl                  ; ordinal * 16
+    sub     di, ax                  ; ordinal * 15
     add     di, OFFSET id_eeprom_cache
     cmp     [BYTE di + ID_EEPROM_SNAPSHOT_VALID], 0
     je      @@Unavailable

@@ -1,4 +1,7 @@
 Changelog 0.8.0
+  - The per-adapter ID EEPROM snapshot now retains only persistent and
+    capability words used after discovery, avoiding redundant snapshot state
+    and unnecessary ID-port EEPROM reads.
   - Discovered NIC records retain reliably identified ASIC revision and the
     complete configured transceiver mode, including 3C509B Auto Select. LIST
     and SAVECONFIG consume the normalized per-adapter transceiver value directly
