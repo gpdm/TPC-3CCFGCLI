@@ -1,4 +1,6 @@
 Changelog 0.8.0
+  - Cleanup: removed unreachable post-temporary-access unknown ASIC revision
+    branches from CONFIGURE capability and activation paths.
   - The per-adapter ID EEPROM snapshot now retains only persistent and
     capability words used after discovery, avoiding redundant snapshot state
     and unnecessary ID-port EEPROM reads.

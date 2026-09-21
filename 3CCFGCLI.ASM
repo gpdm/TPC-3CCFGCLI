@@ -4187,10 +4187,8 @@ PROC Nic_Decode_Explicit_Xcvr NEAR
 ENDP Nic_Decode_Explicit_Xcvr
 
 ; Normalize the persistent transceiver selector from the ordinal-matched
-; discovery snapshot.  The AUTO bit is meaningful only after a reliable ASIC
-; revision has been learned; otherwise the explicit raw XCVR selector is
-; converted to the canonical NIC_XCVR_* domain through
-; Nic_Decode_Explicit_Xcvr.
+; discovery snapshot.  Successful temporary access has already established
+; a reliable ASIC revision for this record.
 ; Input SI = logical NIC record.
 PROC Nic_Normalize_Xcvr_Type NEAR
     push    ax
@@ -4199,8 +4197,6 @@ PROC Nic_Normalize_Xcvr_Type NEAR
     push    di
 
     mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
-    je      @@Done
     call    Get_Id_Eeprom_Snapshot
     jc      @@Done
     mov     bx, [WORD di + ID_EEPROM_ADDR_CFG]
@@ -4605,8 +4601,6 @@ ENDIF
 @@ReadPnp:
     mov     si, di
     mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
-    je      @@Restore
     cmp     al, 2
     jb      @@Restore
 
@@ -5274,6 +5268,10 @@ PROC Nic_Begin_Temporary_Access NEAR
     jc      @@Fail
 
     pop     si
+    push    ax
+    mov     al, [nic_temp_asic]
+    mov     [BYTE si + NIC_ASIC_REV], al
+    pop     ax
     clc
     ret
 @@Fail:
@@ -6165,11 +6163,8 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     mov     si, [cfg_selected_ptr]
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@Retag
-    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
-    je      @@DeactivateFail
     cmp     bl, [BYTE si + NIC_ASIC_REV]
     jne     @@Retag
-@@DeactivateFail:
     mov     [cfg_last_error], CFG_ERR_IOBASE_DEACTIVATE
     jmp     @@Fail
 
@@ -6215,11 +6210,8 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     jc      @@ActivationFail
     cmp     ax, [WORD si + NIC_PRODUCT_ID]
     jne     @@ActivationFail
-    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
-    je      @@SignatureGood
     cmp     bl, [BYTE si + NIC_ASIC_REV]
     jne     @@ActivationFail
-@@SignatureGood:
 
     mov     dx, [cfg_txn_access_base]
     xor     al, al
@@ -7522,21 +7514,15 @@ PROC Cfg_Txn_Resolve_Capabilities NEAR
 
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@RequireFD
-    cmp     al, 0FFh
-    je      @@NeedPNP
     cmp     al, 2
     jb      @@RequireFD
-@@NeedPNP:
     or      dx, NIC_CAP_VALID_PNP
 
 @@RequireFD:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@RequireConnectors
-    cmp     al, 0FFh
-    je      @@NeedFD
     cmp     al, 2
     jb      @@RequireConnectors
-@@NeedFD:
     or      dx, NIC_CAP_VALID_FULLDUPLEX
 
 @@RequireConnectors:
@@ -7544,8 +7530,6 @@ PROC Cfg_Txn_Resolve_Capabilities NEAR
     jz      @@CheckValidity
     cmp     [cfg_tr_value], NIC_XCVR_AUTO
     jne     @@NeedConnectors
-    cmp     al, 0FFh
-    je      @@CheckValidity
     cmp     al, 2
     jb      @@CheckValidity
 @@NeedConnectors:
@@ -7642,15 +7626,11 @@ PROC Cfg_Txn_Execute NEAR
 @@GatePNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@GateFULLDUPLEX
-    ; PNP configuration requires the 3C509B generation.  An unknown ASIC
-    ; revision falls through to the capability checks below instead.
+    ; Temporary access has established the generation; PNP requires 3C509B.
     mov     si, [cfg_selected_ptr]
     mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
-    je      @@PNPCheckCapability
     cmp     al, 2
     jb      @@PNPUnsupportedCard
-@@PNPCheckCapability:
     ; EEPROM_CAPABILITY bit 0 is the authoritative PNP capability source.
     mov     ax, [cfg_txn_capabilities]
     mov     bx, [cfg_txn_capability_valid]
@@ -7674,15 +7654,12 @@ PROC Cfg_Txn_Execute NEAR
 @@GateFULLDUPLEX:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@GateBootRom
-    ; Full duplex configuration requires the 3C509B generation.  An unknown
-    ; ASIC revision falls through to the capability checks below instead.
+    ; Temporary access has established the generation; Full Duplex requires
+    ; 3C509B.
     mov     si, [cfg_selected_ptr]
     mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
-    je      @@FDCheckCapability
     cmp     al, 2
     jb      @@FDUnsupportedCard
-@@FDCheckCapability:
     mov     ax, [cfg_txn_capabilities]
     mov     bx, [cfg_txn_capability_valid]
     test    bx, NIC_CAP_VALID_FULLDUPLEX
@@ -7725,15 +7702,11 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@Done
 
 @@BootRomCapabilityGate:
-    ; The Boot ROM write path is intentionally supported only on known
-    ; 3C509B-generation adapters (ASIC revision 2 or later).  An original
-    ; 3C509 (revision 1) or an unknown/unreadable generation (FFh) is
-    ; rejected here, before EEPROM word 14h is read as Boot ROM transaction
-    ; state and before any Boot ROM staging begins.
+    ; The Boot ROM write path is intentionally supported only on
+    ; 3C509B-generation adapters (ASIC revision 2 or later), before EEPROM
+    ; word 14h is read as Boot ROM transaction state and before staging begins.
     mov     si, [cfg_selected_ptr]
     mov     al, [BYTE si + NIC_ASIC_REV]
-    cmp     al, 0FFh
-    je      @@BootRomUnsupportedCard
     cmp     al, 2
     jb      @@BootRomUnsupportedCard
     ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration.
@@ -7742,7 +7715,6 @@ PROC Cfg_Txn_Execute NEAR
     jc      @@BootRomCapReadFail
     mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
     mov     [cfg_txn_old_word14], ax
-@@BootRomCheckTPO:
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     cmp     ax, PRODUCT_3C509_TPO
     jne     @@Requested
@@ -7759,13 +7731,11 @@ PROC Cfg_Txn_Execute NEAR
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@GateTR_Pass
     ; Auto Select is the 3C509B meaning of Address Configuration bit 7, so
-    ; AUTO requires a known revision 2 or later before any capability data is
-    ; consulted.  Explicit TP/AUI/COAX stay generation independent.
+    ; AUTO requires revision 2 or later before capability data is consulted.
+    ; Explicit TP/AUI/COAX stay generation independent.
     cmp     [cfg_tr_value], NIC_XCVR_AUTO
     jne     @@GateTR_Capabilities
     mov     si, [cfg_selected_ptr]
-    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
-    je      @@TRAutoUnsupportedCard
     cmp     [BYTE si + NIC_ASIC_REV], 2
     jb      @@TRAutoUnsupportedCard
 @@GateTR_Capabilities:
