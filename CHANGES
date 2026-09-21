@@ -4,6 +4,9 @@ Changelog 0.8.0
     ordinal ID-port EEPROM snapshot, so the obsolete SAVECONFIG read error
     and CONFIGURE early-failure branch were retired without changing stable
     error numbering.
+  - Retired the obsolete SAVECONFIG ambiguity error. Duplicate IOBASE records
+    retain separate ID tags and ordinal EEPROM snapshots, so SAVECONFIG no
+    longer needs to infer persistent EEPROM ownership from a shared live base.
   - Cleanup: removed unreachable post-temporary-access unknown ASIC revision
     branches from CONFIGURE capability and activation paths.
   - The per-adapter ID EEPROM snapshot now retains only persistent and
