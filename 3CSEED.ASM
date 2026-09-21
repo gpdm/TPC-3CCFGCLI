@@ -91,7 +91,7 @@ state_record_count DB 0
 seed_product DW PRODUCT_3C509_TP
 seed_base    DW 0300h
 seed_irq     DB 10
-seed_media   DB 0
+seed_media   DB W0_ADDRESS_CFG_XCVR_TP
 seed_config_control DW W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
 seed_asic_rev DB 2
 seed_rom_size DB MCK_ROM_NONE
@@ -1155,7 +1155,7 @@ ENDP Seed_Clear
 PROC Set_Model_509B_TP NEAR
     ; 3C509B-TP: product 9050h, TP + AUI connectors.
     mov     [seed_product], PRODUCT_3C509_TP
-    mov     [seed_media], 0
+    mov     [seed_media], W0_ADDRESS_CFG_XCVR_TP
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
     mov     [byte seed_asic_rev], 2
     ret
@@ -1164,7 +1164,7 @@ ENDP Set_Model_509B_TP
 PROC Set_Model_509B_Coax NEAR
     ; 3C509B-COAX: product 9150h, AUI + BNC connectors.
     mov     [seed_product], PRODUCT_3C509
-    mov     [seed_media], 3
+    mov     [seed_media], W0_ADDRESS_CFG_XCVR_COAX
     mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT
     and     ax, NOT W0_CONFIG_CONTROL_TP_PRESENT
     or      ax, W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
@@ -1176,7 +1176,7 @@ ENDP Set_Model_509B_Coax
 PROC Set_Model_509B_Combo NEAR
     ; 3C509B-COMBO: product 9450h, TP + AUI + BNC connectors.
     mov     [seed_product], PRODUCT_3C509_COMBO
-    mov     [seed_media], 0
+    mov     [seed_media], W0_ADDRESS_CFG_XCVR_TP
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
     mov     [byte seed_asic_rev], 2
     ret
@@ -1185,7 +1185,7 @@ ENDP Set_Model_509B_Combo
 PROC Set_Model_509B_TPO NEAR
     ; 3C509B-TPO: product 9550h, twisted-pair (media 0).
     mov     [seed_product], PRODUCT_3C509_TPO
-    mov     [seed_media], 0
+    mov     [seed_media], W0_ADDRESS_CFG_XCVR_TP
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
     mov     [byte seed_asic_rev], 2
     ret
@@ -1194,7 +1194,7 @@ ENDP Set_Model_509B_TPO
 PROC Set_Model_509B_TPC NEAR
     ; 3C509B-TPC: product 9850h, coax/BNC (media 3).
     mov     [seed_product], PRODUCT_3C509_TPC
-    mov     [seed_media], 3
+    mov     [seed_media], W0_ADDRESS_CFG_XCVR_COAX
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_BNC_PRESENT
     mov     [byte seed_asic_rev], 2
     ret
@@ -1209,7 +1209,7 @@ ENDP Set_Model_509B_TPC
 ; Configuration/secondary-checksum content.
 PROC Set_Model_509_TP NEAR
     mov     [seed_product], PRODUCT_3C509_TP
-    mov     [seed_media], 0
+    mov     [seed_media], W0_ADDRESS_CFG_XCVR_TP
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT
     mov     [byte seed_asic_rev], 1
     ret
@@ -1217,7 +1217,7 @@ ENDP Set_Model_509_TP
 
 PROC Set_Model_509_Coax NEAR
     mov     [seed_product], PRODUCT_3C509
-    mov     [seed_media], 3
+    mov     [seed_media], W0_ADDRESS_CFG_XCVR_COAX
     mov     ax, W0_CONFIG_CONTROL_3C509B_DEFAULT
     and     ax, NOT W0_CONFIG_CONTROL_TP_PRESENT
     or      ax, W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
@@ -1228,7 +1228,7 @@ ENDP Set_Model_509_Coax
 
 PROC Set_Model_509_Combo NEAR
     mov     [seed_product], PRODUCT_3C509_COMBO
-    mov     [seed_media], 0
+    mov     [seed_media], W0_ADDRESS_CFG_XCVR_TP
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_AUI_PRESENT OR W0_CONFIG_CONTROL_BNC_PRESENT
     mov     [byte seed_asic_rev], 1
     ret
@@ -1236,7 +1236,7 @@ ENDP Set_Model_509_Combo
 
 PROC Set_Model_509_TPO NEAR
     mov     [seed_product], PRODUCT_3C509_TPO
-    mov     [seed_media], 0
+    mov     [seed_media], W0_ADDRESS_CFG_XCVR_TP
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT
     mov     [byte seed_asic_rev], 1
     ret
@@ -1244,7 +1244,7 @@ ENDP Set_Model_509_TPO
 
 PROC Set_Model_509_TPC NEAR
     mov     [seed_product], PRODUCT_3C509_TPC
-    mov     [seed_media], 3
+    mov     [seed_media], W0_ADDRESS_CFG_XCVR_COAX
     mov     [seed_config_control], W0_CONFIG_CONTROL_3C509B_DEFAULT OR W0_CONFIG_CONTROL_BNC_PRESENT
     mov     [byte seed_asic_rev], 1
     ret

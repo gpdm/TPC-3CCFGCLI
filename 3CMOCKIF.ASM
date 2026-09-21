@@ -2059,8 +2059,8 @@ ENDP Mock_Select_Config_Record
 ; MOCKHW-only low-level contract probe invoked by the hidden MOCKTEST verb.
 ; Input AL: 1 invalid tag, 2 activation without selection, 3 temporary base,
 ;           4 distinct-IOBASE capability cache, 5 duplicate-IOBASE cache,
-;           6 canonical port type normalization.
-;           7 explicit port type, 8 duplicate revisions, 9 duplicate modes,
+;           6 canonical transceiver type normalization.
+;           7 explicit transceiver type, 8 duplicate revisions, 9 duplicate modes,
 ;           10 restore failure keeps normalized state, unpublished caches,
 ;           11 CONFIGURE cache hit, 12 PNP restore-failure recovery,
 ;           13 FD fallback failure, 14 TR fallback failure,
@@ -2098,9 +2098,9 @@ PROC Mock_Run_Contract_Test NEAR
     cmp     bl, 5
     je      @@CapabilityCache
     cmp     bl, 6
-    je      @@PortType
+    je      @@XcvrType
     cmp     bl, 7
-    je      @@ExplicitPort
+    je      @@ExplicitXcvr
     cmp     bl, 8
     je      @@DuplicateRevisions
     cmp     bl, 9
@@ -2168,7 +2168,7 @@ PROC Mock_Run_Contract_Test NEAR
     clc
     jmp     @@Done
 
-@@PortType:
+@@XcvrType:
     ; MOCKTEST PORTTYPE is run after CONFIGURE /TR:AUTO.  The revision learned
     ; during temporary validation must publish the canonical AUTO value from
     ; the ordinal ID EEPROM snapshot.
@@ -2176,17 +2176,17 @@ PROC Mock_Run_Contract_Test NEAR
     jne     @@Fail
     cmp     [BYTE nic_table + NIC_ASIC_REV], 2
     jne     @@Fail
-    cmp     [BYTE nic_table + NIC_PORT_TYPE], NIC_PORT_AUTO
+    cmp     [BYTE nic_table + NIC_XCVR_TYPE], NIC_XCVR_AUTO
     jne     @@Fail
     clc
     jmp     @@Done
 
-@@ExplicitPort:
+@@ExplicitXcvr:
     cmp     [card_count], 1
     jne     @@Fail
     cmp     [BYTE nic_table + NIC_ASIC_REV], 2
     jne     @@Fail
-    cmp     [BYTE nic_table + NIC_PORT_TYPE], 0
+    cmp     [BYTE nic_table + NIC_XCVR_TYPE], NIC_XCVR_TP
     jne     @@Fail
     clc
     jmp     @@Done
@@ -2203,14 +2203,14 @@ PROC Mock_Run_Contract_Test NEAR
     jne     @@Fail
     cmp     ah, 1
     jne     @@Fail
-    jmp     @@DupRevPortChecks
+    jmp     @@DupRevXcvrChecks
 @@DupRevFirst509:
     cmp     ah, 2
     jne     @@Fail
-@@DupRevPortChecks:
-    cmp     [BYTE nic_table + NIC_PORT_TYPE], 0
+@@DupRevXcvrChecks:
+    cmp     [BYTE nic_table + NIC_XCVR_TYPE], NIC_XCVR_TP
     jne     @@Fail
-    cmp     [BYTE nic_table + NIC_RECORD_SIZE + NIC_PORT_TYPE], 0
+    cmp     [BYTE nic_table + NIC_RECORD_SIZE + NIC_XCVR_TYPE], NIC_XCVR_TP
     jne     @@Fail
     clc
     jmp     @@Done
@@ -2221,17 +2221,17 @@ PROC Mock_Run_Contract_Test NEAR
     ; One duplicate-base record was moved to Auto Select while its peer
     ; retains its explicit COAX transceiver selector, so both distinct
     ; canonical modes remain ordinally isolated.
-    mov     al, [BYTE nic_table + NIC_PORT_TYPE]
-    mov     ah, [BYTE nic_table + NIC_RECORD_SIZE + NIC_PORT_TYPE]
-    cmp     al, NIC_PORT_AUTO
+    mov     al, [BYTE nic_table + NIC_XCVR_TYPE]
+    mov     ah, [BYTE nic_table + NIC_RECORD_SIZE + NIC_XCVR_TYPE]
+    cmp     al, NIC_XCVR_AUTO
     je      @@DupModeFirstAuto
-    cmp     al, NIC_PORT_COAX
+    cmp     al, NIC_XCVR_COAX
     jne     @@Fail
-    cmp     ah, NIC_PORT_AUTO
+    cmp     ah, NIC_XCVR_AUTO
     jne     @@Fail
     jmp     @@DupModeRevisions
 @@DupModeFirstAuto:
-    cmp     ah, NIC_PORT_COAX
+    cmp     ah, NIC_XCVR_COAX
     jne     @@Fail
 @@DupModeRevisions:
     cmp     [BYTE nic_table + NIC_ASIC_REV], 2
@@ -2244,13 +2244,13 @@ PROC Mock_Run_Contract_Test NEAR
 @@RestoreFail:
     ; The restore-verification step failed, so the capability cache for
     ; this adapter must remain unpublished. The ASIC revision established
-    ; earlier and the port type normalized before the restore attempt must
-    ; still persist, proving Nic_Normalize_Port_Type's new call position.
+    ; earlier and the transceiver type normalized before the restore attempt must
+    ; still persist, proving Nic_Normalize_Xcvr_Type's new call position.
     cmp     [card_count], 1
     jne     @@Fail
     cmp     [BYTE nic_table + NIC_ASIC_REV], 2
     jne     @@Fail
-    cmp     [BYTE nic_table + NIC_PORT_TYPE], NIC_PORT_AUTO
+    cmp     [BYTE nic_table + NIC_XCVR_TYPE], NIC_XCVR_AUTO
     jne     @@Fail
     cmp     [WORD nic_capabilities], 0
     jne     @@Fail
@@ -2269,7 +2269,7 @@ PROC Mock_Run_Contract_Test NEAR
     mov     [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_FULLDUPLEX + CFG_PARSE_TR
     mov     [cfg_pnp_value], 0
     mov     [cfg_fullduplex_value], 0
-    mov     [cfg_tr_value], NIC_PORT_TP
+    mov     [cfg_tr_value], NIC_XCVR_TP
     call    Cfg_Txn_Execute
     cmp     [cfg_last_error], CFG_ERR_NONE
     jne     @@Fail
@@ -2287,7 +2287,7 @@ PROC Mock_Run_Contract_Test NEAR
     jne     @@Fail
     cmp     [BYTE nic_table + NIC_ASIC_REV], 2
     jne     @@Fail
-    cmp     [BYTE nic_table + NIC_PORT_TYPE], NIC_PORT_AUTO
+    cmp     [BYTE nic_table + NIC_XCVR_TYPE], NIC_XCVR_AUTO
     jne     @@Fail
     cmp     [BYTE id_eeprom_cache + ID_EEPROM_SNAPSHOT_VALID], 0
     je      @@Fail
@@ -2338,7 +2338,7 @@ PROC Mock_Run_Contract_Test NEAR
     xor     al, al
     call    Mock_Select_Config_Record
     mov     [cfg_parse_flags], CFG_PARSE_TR
-    mov     [cfg_tr_value], NIC_PORT_TP
+    mov     [cfg_tr_value], NIC_XCVR_TP
     call    Cfg_Txn_Execute
     cmp     [cfg_last_error], CFG_ERR_TR_CAPABILITY_READ
     jne     @@Fail
@@ -2357,7 +2357,7 @@ PROC Mock_Run_Contract_Test NEAR
     mov     [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_FULLDUPLEX + CFG_PARSE_TR
     mov     [cfg_pnp_value], 0
     mov     [cfg_fullduplex_value], 0
-    mov     [cfg_tr_value], NIC_PORT_TP
+    mov     [cfg_tr_value], NIC_XCVR_TP
     call    Cfg_Txn_Execute
     cmp     [cfg_last_error], CFG_ERR_PNP_NOT_CAPABLE
     jne     @@Fail
@@ -2386,7 +2386,7 @@ PROC Mock_Run_Contract_Test NEAR
     xor     al, al
     call    Mock_Select_Config_Record
     mov     [cfg_parse_flags], CFG_PARSE_TR
-    mov     [cfg_tr_value], NIC_PORT_COAX
+    mov     [cfg_tr_value], NIC_XCVR_COAX
     call    Cfg_Txn_Execute
     cmp     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
     jne     @@Fail
@@ -2395,7 +2395,7 @@ PROC Mock_Run_Contract_Test NEAR
     mov     al, 1
     call    Mock_Select_Config_Record
     mov     [cfg_parse_flags], CFG_PARSE_TR
-    mov     [cfg_tr_value], NIC_PORT_COAX
+    mov     [cfg_tr_value], NIC_XCVR_COAX
     call    Cfg_Txn_Execute
     cmp     [cfg_last_error], CFG_ERR_NONE
     jne     @@Fail

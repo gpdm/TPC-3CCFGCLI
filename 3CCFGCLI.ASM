@@ -40,11 +40,7 @@ NIC_PRODUCT_ID          EQU 2       ; DW
 NIC_ASIC_REV            EQU 4       ; DB, FFh means not readable
 NIC_MAC_ADDR            EQU 5       ; 6 bytes
 NIC_IRQ_VAL             EQU 11      ; DB
-NIC_PORT_TYPE           EQU 12      ; DB, canonical persistent transceiver mode
-NIC_PORT_TP             EQU 0       ; DB, on-board TP
-NIC_PORT_AUI            EQU 1       ; DB, AUI
-NIC_PORT_COAX           EQU 3       ; DB, COAX
-NIC_PORT_AUTO           EQU 4       ; DB, canonical 3C509B Auto Select value
+NIC_XCVR_TYPE           EQU 12      ; DB, canonical persistent transceiver mode
 NIC_TAG                 EQU 13      ; DB, ISA ID tag assigned during discovery
 NIC_ID_MODE             EQU 14      ; DB, 1 short sequence, 0 full sequence
 NIC_FLAGS               EQU 15      ; DB
@@ -743,7 +739,7 @@ cli_kw_mock_no_select DB 'NOSELECT', 0
 cli_kw_mock_temporary_base DB 'TEMPBASE', 0
 cli_kw_mock_capcache1 DB 'CAPCACHE1', 0
 cli_kw_mock_capcache2 DB 'CAPCACHE2', 0
-cli_kw_mock_porttype DB 'PORTTYPE', 0
+cli_kw_mock_xcvrtype DB 'PORTTYPE', 0
 cli_kw_mock_explicit DB 'EXPLICIT', 0
 cli_kw_mock_duprev DB 'DUPREV', 0
 cli_kw_mock_dupmode DB 'DUPMODE', 0
@@ -774,8 +770,8 @@ save_word08     DW  0
 save_word09     DW  0
 save_word0d     DW  0
 save_word13     DW  0
-; Cached canonical transceiver mode of the adapter currently being exported.
-save_port_type  DB  0
+; Cached canonical transceiver type of the adapter currently being exported.
+save_xcvr_type  DB  0
 ; Cached ASIC revision of the adapter currently being exported, copied from
 ; the NIC record because Save_Build_Command reuses SI for output strings.
 save_asic_rev   DB  0FFh
@@ -1133,9 +1129,9 @@ IFDEF MOCKHW
     mov     bx, OFFSET cli_kw_mock_capcache2
     call    Cli_Match_Token
     jnc     @@MockCapCache2
-    mov     bx, OFFSET cli_kw_mock_porttype
+    mov     bx, OFFSET cli_kw_mock_xcvrtype
     call    Cli_Match_Token
-    jnc     @@MockPortType
+    jnc     @@MockXcvrType
     mov     bx, OFFSET cli_kw_mock_explicit
     call    Cli_Match_Token
     jnc     @@MockExplicit
@@ -1201,7 +1197,7 @@ IFDEF MOCKHW
 @@MockCapCache2:
     mov     al, 5
     jmp     @@RunMockTest
-@@MockPortType:
+@@MockXcvrType:
     mov     al, 6
     jmp     @@RunMockTest
 @@MockExplicit:
@@ -2133,8 +2129,8 @@ PROC Save_Build_Command NEAR
     push    dx
     push    si
     push    di
-    mov     al, [BYTE si + NIC_PORT_TYPE]
-    mov     [save_port_type], al
+    mov     al, [BYTE si + NIC_XCVR_TYPE]
+    mov     [save_xcvr_type], al
     call    Save_Begin_Command
     jc      @@Fail
 
@@ -2397,12 +2393,12 @@ PROC Save_Build_Command NEAR
 @@Tr:
     ; The logical NIC record already contains the normalized persistent mode.
     ; An unexpected value keeps the existing conservative TP export fallback.
-    mov     al, [save_port_type]
-    cmp     al, NIC_PORT_AUI
+    mov     al, [save_xcvr_type]
+    cmp     al, NIC_XCVR_AUI
     je      @@TrAui
-    cmp     al, NIC_PORT_COAX
+    cmp     al, NIC_XCVR_COAX
     je      @@TrCoax
-    cmp     al, NIC_PORT_AUTO
+    cmp     al, NIC_XCVR_AUTO
     je      @@TrAuto
     mov     si, OFFSET save_tp
     mov     cx, SAVE_LEN_TR + SAVE_LEN_TP
@@ -4168,7 +4164,7 @@ ENDP Normalize_IRQ
 ; revision has been learned; explicit selector value 2 is the legacy alias
 ; for AUI and is retained as canonical value 1.
 ; Input SI = logical NIC record.
-PROC Nic_Normalize_Port_Type NEAR
+PROC Nic_Normalize_Xcvr_Type NEAR
     push    ax
     push    bx
     push    cx
@@ -4184,25 +4180,25 @@ PROC Nic_Normalize_Port_Type NEAR
     jz      @@Explicit
     cmp     al, 2
     jb      @@Explicit
-    mov     [BYTE si + NIC_PORT_TYPE], NIC_PORT_AUTO
+    mov     [BYTE si + NIC_XCVR_TYPE], NIC_XCVR_AUTO
     jmp     @@Done
 @@Explicit:
     mov     ax, bx
     mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shr     ax, cl
     and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
-    cmp     al, 2
+    cmp     al, W0_ADDRESS_CFG_XCVR_UNDEFINED
     jne     @@Store
-    mov     al, NIC_PORT_AUI
+    mov     al, NIC_XCVR_AUI
 @@Store:
-    mov     [BYTE si + NIC_PORT_TYPE], al
+    mov     [BYTE si + NIC_XCVR_TYPE], al
 @@Done:
     pop     di
     pop     cx
     pop     bx
     pop     ax
     ret
-ENDP Nic_Normalize_Port_Type
+ENDP Nic_Normalize_Xcvr_Type
 
 ; Store one word as two network order MAC bytes at DS:DI.
 ; Input AX = EEPROM word, DI = byte destination.
@@ -4252,11 +4248,11 @@ PROC Build_Record_From_Id NEAR
     mov     cl, W0_ADDRESS_CFG_XCVR_SHIFT
     shr     ax, cl
     and     al, W0_ADDRESS_CFG_XCVR_VALUE_MASK
-    cmp     al, 2
+    cmp     al, W0_ADDRESS_CFG_XCVR_UNDEFINED
     jne     @@MediaGood
-    mov     al, 1
+    mov     al, NIC_XCVR_AUI
 @@MediaGood:
-    mov     [BYTE di + NIC_PORT_TYPE], al
+    mov     [BYTE di + NIC_XCVR_TYPE], al
 
     ; Original sub_339 stores EEPROM words 0Ah through 0Ch in the record.
     ; Words 0 through 2 were still read above because they are the standard
@@ -4767,9 +4763,9 @@ PROC Enrich_All_3Com_Cards NEAR
     call    Nic_Read_Capabilities
     pop     dx                      ; temporary base, restored for Nic_End_Temporary_Access
     ; Temporary validation has now established a reliable ASIC revision.
-    ; Normalize the persistent port type from this record's ID snapshot
+    ; Normalize the persistent transceiver type from this record's ID snapshot
     ; before the temporary access window is restored.
-    call    Nic_Normalize_Port_Type
+    call    Nic_Normalize_Xcvr_Type
     push    ax
     push    bx
     call    Nic_End_Temporary_Access
@@ -5890,7 +5886,7 @@ PROC Cfg_Prepare_TR NEAR
     ; an explicit /FULLDUPLEX option was also supplied on this command line.
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jnz     @@NoImplicitFD
-    cmp     [cfg_tr_value], 0       ; requested TP is never a non-TP target
+    cmp     [cfg_tr_value], NIC_XCVR_TP ; requested TP is never a non-TP target
     je      @@NoImplicitFD
     mov     ax, [cfg_txn_old_word08]
     test    ax, W0_ADDRESS_CFG_AUTO_SELECT
@@ -8467,14 +8463,14 @@ PROC Print_Transceiver_Value NEAR
     push    ax
     push    dx
 
-    mov     al, [BYTE si + NIC_PORT_TYPE]
-    cmp     al, NIC_PORT_TP
+    mov     al, [BYTE si + NIC_XCVR_TYPE]
+    cmp     al, NIC_XCVR_TP
     je      @@Tp
-    cmp     al, NIC_PORT_AUI
+    cmp     al, NIC_XCVR_AUI
     je      @@External
-    cmp     al, NIC_PORT_COAX
+    cmp     al, NIC_XCVR_COAX
     je      @@Coax
-    cmp     al, NIC_PORT_AUTO
+    cmp     al, NIC_XCVR_AUTO
     je      @@Auto
     mov     dx, OFFSET msg_unknown_value
     jmp     @@Print

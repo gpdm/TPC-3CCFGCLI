@@ -61,6 +61,8 @@ Changelog 0.8.0
     state. `Read_Extended_Nic_Info_At_Base` now reads EEPROM word 14h
     directly from the existing per-record ID EEPROM snapshot via
     Get_Id_Eeprom_Snapshot
+  - Added `W0_ADDRESS_CFG_XCVR_*` hardware-selector symbols and renamed
+    transceiver values and fields from `NIC_PORT_*` to `NIC_XCVR_*`.
     
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
