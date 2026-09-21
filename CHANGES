@@ -63,6 +63,8 @@ Changelog 0.8.0
     Get_Id_Eeprom_Snapshot
   - Added `W0_ADDRESS_CFG_XCVR_*` hardware-selector symbols and renamed
     transceiver values and fields from `NIC_PORT_*` to `NIC_XCVR_*`.
+  - Added the canonical `NIC_XCVR_UNDEFINED` constant and the new
+    `Nic_Decode_Explicit_Xcvr` selector decoder
     
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful

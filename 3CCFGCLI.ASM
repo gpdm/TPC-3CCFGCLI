@@ -4159,6 +4159,32 @@ PROC Normalize_IRQ NEAR
     ret
 ENDP Normalize_IRQ
 
+; Decode a raw EEPROM Address Configuration transceiver selector into the
+; canonical NIC_XCVR_* value it represents.  Unlike the legacy normalization
+; below, the undefined selector is decoded as NIC_XCVR_UNDEFINED rather than
+; aliased to AUI.  Not yet called from anywhere.
+; Input AL = W0_ADDRESS_CFG_XCVR_* raw selector.
+; Output AL = corresponding NIC_XCVR_* canonical value.
+PROC Nic_Decode_Explicit_Xcvr NEAR
+    cmp     al, W0_ADDRESS_CFG_XCVR_TP
+    je      @@TP
+    cmp     al, W0_ADDRESS_CFG_XCVR_AUI
+    je      @@AUI
+    cmp     al, W0_ADDRESS_CFG_XCVR_UNDEFINED
+    je      @@Undefined
+    mov     al, NIC_XCVR_COAX
+    ret
+@@TP:
+    mov     al, NIC_XCVR_TP
+    ret
+@@AUI:
+    mov     al, NIC_XCVR_AUI
+    ret
+@@Undefined:
+    mov     al, NIC_XCVR_UNDEFINED
+    ret
+ENDP Nic_Decode_Explicit_Xcvr
+
 ; Normalize the persistent transceiver selector from the ordinal-matched
 ; discovery snapshot.  The AUTO bit is meaningful only after a reliable ASIC
 ; revision has been learned; explicit selector value 2 is the legacy alias
