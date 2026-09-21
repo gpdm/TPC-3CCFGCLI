@@ -514,8 +514,8 @@ msg_connector_separator DB ", ", '$'
 card_count      DW  0
 current_card    DW  0
 nic_table       DB  (MAX_CARDS * NIC_RECORD_SIZE) DUP(0)
-; One 37-byte record per nic_table entry: availability byte plus the 18-word
-; union of EEPROM reads used by the original ISA record-building paths.
+; One 15-byte record per nic_table entry: availability byte plus the seven
+; EEPROM words retained for post-discovery consumers.
 id_eeprom_cache DB  (MAX_CARDS * ID_EEPROM_SNAPSHOT_SIZE) DUP(0)
 nic_capabilities       DW  MAX_CARDS DUP(0)
 nic_capability_valid   DW  MAX_CARDS DUP(0)
@@ -1495,6 +1495,10 @@ PROC Cmd_SaveConfig NEAR
 @@FdUnsupported:
     mov     [save_fd_valid], 0
 @@FdDone:
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    mov     [save_asic_rev], al
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    mov     [save_product_id], ax
     call    Save_Read_Adapter
     jc      @@ReadFail
 
@@ -2092,10 +2096,6 @@ PROC Save_Read_Id_Eeprom_Snapshot NEAR
     mov     ax, [WORD di + ID_EEPROM_SOFTWARE_INFO]
     mov     [save_word0d], ax
 
-    mov     al, [BYTE si + NIC_ASIC_REV]
-    mov     [save_asic_rev], al
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    mov     [save_product_id], ax
     mov     [save_word13], 0
     cmp     [save_pnp_valid], 0
     je      @@Success
@@ -2272,52 +2272,34 @@ PROC Save_Build_Command NEAR
     shr     ax, cl
     and     ax, 0003h
     cmp     al, 1
-    je      @@OptDosLength
+    je      @@OptDos
     cmp     al, 2
-    je      @@OptWindowsOs2Length
+    je      @@OptWindowsOS2
     cmp     al, 3
-    je      @@OptServerLength
+    je      @@OptServer
     ; 00b is reserved; use a parser-valid, conservative restore fallback.
+    mov     di, OFFSET save_dos
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_DOS
-    jmp     @@OptLengthDone
-@@OptDosLength:
+    jmp     @@OptSelected
+@@OptDos:
+    mov     di, OFFSET save_dos
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_DOS
-    jmp     @@OptLengthDone
-@@OptWindowsOs2Length:
+    jmp     @@OptSelected
+@@OptWindowsOS2:
+    mov     di, OFFSET save_windows_os2
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_WINDOWS_OS2
-    jmp     @@OptLengthDone
-@@OptServerLength:
+    jmp     @@OptSelected
+@@OptServer:
+    mov     di, OFFSET save_server
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_SERVER
-@@OptLengthDone:
+@@OptSelected:
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
     mov     si, OFFSET save_optimize
     call    Save_Append_String
     jc      @@Fail
-    mov     ax, [save_word0d]
-    mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
-    shr     ax, cl
-    and     ax, 0003h
-    cmp     al, 1
-    je      @@OptDos
-    cmp     al, 2
-    je      @@OptWindowsOS2
-    cmp     al, 3
-    je      @@OptServer
-    mov     si, OFFSET save_dos
-    jmp     @@OptDone
-@@OptDos:
-    mov     si, OFFSET save_dos
-    jmp     @@OptDone
-@@OptWindowsOS2:
-    ; Value 10b is Windows and OS/2 client, as in the original UI,
-    ; which also combines both display values.
-    mov     si, OFFSET save_windows_os2
-    jmp     @@OptDone
-@@OptServer:
-    mov     si, OFFSET save_server
-@@OptDone:
+    mov     si, di
     call    Save_Append_String
     jc      @@Fail
 

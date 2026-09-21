@@ -55,7 +55,9 @@ Changelog 0.8.0
     through isolated temporary access and publishes it only after restoration.
   - Added direct regression coverage for per-adapter capability enrichment
     with both distinct and duplicate configured IOBASE values.
-
+  - Simplified SAVECONFIG staging by centralizing adapter static facts
+    and decoding /OPTIMIZE once per exported command.
+    
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
     transaction instead of property-specific completion messages.
