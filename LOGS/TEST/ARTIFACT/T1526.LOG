@@ -1,0 +1,19 @@
+3CSEED - 3C509B mock state seeder v0.8.0
+Seed file created (INIT).
+3Com EtherLink III CLI Configuration Program v0.8.0
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+TR parameter accepted. Requested transceiver: AUTO
+
+Configuration completed successfully.
+3Com EtherLink III CLI Configuration Program v0.8.0
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+PNP parameter accepted. Requested Plug and Play mode: disabled
+
+Configuration completed successfully.
+HWMOCK contract test passed.

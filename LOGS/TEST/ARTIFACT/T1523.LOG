@@ -9,9 +9,7 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-IOBASE parameter accepted. Requested IOBASE: 0300
-MODEM parameter accepted. Requested setting: 9600
-FULLDUPLEX parameter accepted. Requested mode: enabled
+TR parameter accepted. Requested transceiver: AUTO
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.0
@@ -22,35 +20,41 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 NIC                            NIC
 Number                       Description
 --------------------------------------------------------------------------
-  1    3Com 3C509B-TP: Ethernet Address = 02608C654301
+  1    3Com 3C509B: Ethernet Address = 02608C654301
        EtherLink III 16-bit ISA NIC (ASIC Revision 2)
-       Connectors = TP, AUI
-       Full Duplex Capability = yes
+       Connectors = AUI, COAX
+       Full Duplex Capability = no
        Plug and Play Capability = yes
               ---
        IOBASE = 0300, IRQ = 10
-       Transceiver = on-board TP
+       Transceiver = auto select
        Plug and Play = enabled
        Boot ROM = disabled
        Optimization = DOS
        MODEM Interrupt Disable Time = 25 us
-       Full Duplex = disabled
-  2    3Com 3C509B-Combo: Ethernet Address = 02608C654302
+       Full Duplex = not supported
+  2    3Com 3C509B: Ethernet Address = 02608C654302
        EtherLink III 16-bit ISA NIC (ASIC Revision 2)
-       Connectors = TP, AUI, COAX
-       Full Duplex Capability = yes
+       Connectors = AUI, COAX
+       Full Duplex Capability = no
        Plug and Play Capability = yes
               ---
-       IOBASE = 0300, IRQ = 5
-       Transceiver = on-board TP
+       IOBASE = 0300, IRQ = 10
+       Transceiver = on-board coax
        Plug and Play = enabled
        Boot ROM = disabled
        Optimization = DOS
-       MODEM Interrupt Disable Time = 500 us (9600 bd)
-       Full Duplex = enabled
+       MODEM Interrupt Disable Time = 25 us
+       Full Duplex = not supported
 3Com EtherLink III CLI Configuration Program v0.8.0
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-Configuration restore batch file created: LOGS\TEST\ARTIFACT\T1507.BAT
+Configuration restore batch file created: LOGS\TEST\ARTIFACT\T1523.BAT
+3Com EtherLink III CLI Configuration Program v0.8.0
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+HWMOCK contract test passed.

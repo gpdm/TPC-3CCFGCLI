@@ -35,8 +35,8 @@ Number                       Description
        Optimization = DOS
        MODEM Interrupt Disable Time = 25 us
        Full Duplex = disabled
-  2    3Com 3C509/3C509B: Ethernet Address = 02608C654303
-       EtherLink III 16-bit ISA NIC (ASIC Revision read error (possible I/O conflict))
+  2    3Com 3C509B: Ethernet Address = 02608C654303
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
        Connectors = AUI, COAX
        Full Duplex Capability = no
        Plug and Play Capability = yes
@@ -48,8 +48,8 @@ Number                       Description
        Optimization = DOS
        MODEM Interrupt Disable Time = 25 us
        Full Duplex = not supported
-  3    3Com 3C509/3C509B-Combo: Ethernet Address = 02608C654302
-       EtherLink III 16-bit ISA NIC (ASIC Revision read error (possible I/O conflict))
+  3    3Com 3C509B-Combo: Ethernet Address = 02608C654302
+       EtherLink III 16-bit ISA NIC (ASIC Revision 2)
        Connectors = TP, AUI, COAX
        Full Duplex Capability = yes
        Plug and Play Capability = yes

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results" tests="173" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-09-21T18:09:04.186362+02:00" tests="184" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -702,7 +702,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="MULTI_NIC: Verify multi-NIC behaviour" tests="18" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="MULTI_NIC: Verify multi-NIC behaviour" tests="29" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t15xx"/>
 			<property name="description" value="Verify multi-NIC behaviour"/>
@@ -813,6 +813,72 @@
 			<properties>
 				<property name="description" value="canonical enrichment isolates duplicate IOBASE adapters"/>
 				<property name="artifact" value="ARTIFACT/T1519.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1520: canonical AUTO port type uses ID snapshot" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="canonical AUTO port type uses ID snapshot"/>
+				<property name="artifact" value="ARTIFACT/T1520.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1521: canonical explicit port type retains AUTO-clear" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="canonical explicit port type retains AUTO-clear"/>
+				<property name="artifact" value="ARTIFACT/T1521.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1522: duplicate IOBASE preserves ASIC revisions" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="duplicate IOBASE preserves ASIC revisions"/>
+				<property name="artifact" value="ARTIFACT/T1522.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1523: duplicate IOBASE preserves port modes" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="duplicate IOBASE preserves port modes"/>
+				<property name="artifact" value="ARTIFACT/T1523.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1524: restore fail keeps ASIC/port, caps unpublished" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="restore fail keeps ASIC/port, caps unpublished"/>
+				<property name="artifact" value="ARTIFACT/T1524.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1525: CONFIGURE uses published capability cache" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="CONFIGURE uses published capability cache"/>
+				<property name="artifact" value="ARTIFACT/T1525.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1526: PNP fallback uses retained ID snapshot" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="PNP fallback uses retained ID snapshot"/>
+				<property name="artifact" value="ARTIFACT/T1526.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1527: missing FD fallback data reports unavailable" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="missing FD fallback data reports unavailable"/>
+				<property name="artifact" value="ARTIFACT/T1527.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1528: missing TR fallback data reports unavailable" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="missing TR fallback data reports unavailable"/>
+				<property name="artifact" value="ARTIFACT/T1528.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1529: combined CONFIGURE uses one capability fallback" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="combined CONFIGURE uses one capability fallback"/>
+				<property name="artifact" value="ARTIFACT/T1529.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1530: duplicate IOBASE capability cache uses ordinal" classname="MULTI_NIC">
+			<properties>
+				<property name="description" value="duplicate IOBASE capability cache uses ordinal"/>
+				<property name="artifact" value="ARTIFACT/T1530.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>

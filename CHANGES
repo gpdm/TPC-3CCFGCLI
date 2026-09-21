@@ -57,6 +57,10 @@ Changelog 0.8.0
     with both distinct and duplicate configured IOBASE values.
   - Simplified SAVECONFIG staging by centralizing adapter static facts
     and decoding /OPTIMIZE once per exported command.
+  - Cleanup: removed the redundant `ext_revision_info` LIST temporary
+    state. `Read_Extended_Nic_Info_At_Base` now reads EEPROM word 14h
+    directly from the existing per-record ID EEPROM snapshot via
+    Get_Id_Eeprom_Snapshot
     
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful

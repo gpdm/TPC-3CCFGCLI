@@ -155,7 +155,6 @@ NIC_CAP_VALID_FULLDUPLEX EQU 04h
 LIST_EEPROM_VALID_ADDR_CFG       EQU 01h
 LIST_EEPROM_VALID_SOFTWARE_INFO  EQU 02h
 LIST_EEPROM_VALID_CONFIG_CONTROL EQU 04h
-LIST_EEPROM_VALID_REVISION_INFO  EQU 08h
 
 ; Common CONFIGURE result codes.
 CFG_ERR_NONE                EQU 0
@@ -543,7 +542,6 @@ pic_gate_enforce   DB 0
 ; enumeration record layout remains unchanged.
 ext_addr_cfg      DW 0FFFFh
 ext_config_ctrl   DW 0FFFFh
-ext_revision_info DW 0FFFFh
 ext_eeprom_valid DW 0
 ext_nic_capabilities DW 0FFFFh
 ext_nic_capability_valid DW 0
@@ -4536,9 +4534,7 @@ PROC List_Load_Id_Eeprom_Snapshot NEAR
     mov     [ext_software_info], ax
     mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
     mov     [ext_config_ctrl], ax
-    mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
-    mov     [ext_revision_info], ax
-    mov     [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG + LIST_EEPROM_VALID_SOFTWARE_INFO + LIST_EEPROM_VALID_CONFIG_CONTROL + LIST_EEPROM_VALID_REVISION_INFO
+    mov     [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG + LIST_EEPROM_VALID_SOFTWARE_INFO + LIST_EEPROM_VALID_CONFIG_CONTROL
 @@Done:
     pop     di
     pop     ax
@@ -8358,9 +8354,16 @@ PROC Read_Extended_Nic_Info_At_Base NEAR
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 2
     jb      @@RestoreWindow
-    test    [ext_eeprom_valid], LIST_EEPROM_VALID_REVISION_INFO
-    jz      @@RestoreWindow
-    mov     ax, [ext_revision_info]
+    ; DI currently holds the window to restore; save it across the snapshot
+    ; lookup below, which returns its own pointer in DI.
+    push    di
+    call    Get_Id_Eeprom_Snapshot
+    jnc     @@RevisionAvailable
+    pop     di
+    jmp     @@RestoreWindow
+@@RevisionAvailable:
+    mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
+    pop     di
     test    ax, EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
     jz      @@BootRomSizeInvalid
     mov     [ext_boot_rom_size_valid], 1
@@ -8411,7 +8414,6 @@ PROC Read_Extended_Nic_Info NEAR
 
     mov     [ext_addr_cfg], 0FFFFh
     mov     [ext_config_ctrl], 0FFFFh
-    mov     [ext_revision_info], 0FFFFh
     mov     [ext_eeprom_valid], 0
     mov     [ext_software_info], 0FFFFh
     mov     [ext_nic_capabilities], 0FFFFh
