@@ -1400,6 +1400,31 @@ PROC Cmd_SaveConfig NEAR
     or      dx, dx
     jz      @@SkipAdapter
 
+    ; Capability facts are parallel to nic_table by logical record ordinal.
+    mov     bx, [current_card]
+    shl     bx, 1
+    mov     ax, [WORD bx + nic_capability_valid]
+    test    ax, NIC_CAP_VALID_PNP
+    jz      @@PnpUnsupported
+    mov     ax, [WORD bx + nic_capabilities]
+    test    ax, NIC_CAP_PNP
+    jz      @@PnpUnsupported
+    mov     [save_pnp_valid], 1
+    jmp     @@PnpDone
+@@PnpUnsupported:
+    mov     [save_pnp_valid], 0
+@@PnpDone:
+    mov     ax, [WORD bx + nic_capability_valid]
+    test    ax, NIC_CAP_VALID_FULLDUPLEX
+    jz      @@FdUnsupported
+    mov     ax, [WORD bx + nic_capabilities]
+    test    ax, NIC_CAP_FULLDUPLEX
+    jz      @@FdUnsupported
+    mov     [save_fd_valid], 1
+    jmp     @@FdDone
+@@FdUnsupported:
+    mov     [save_fd_valid], 0
+@@FdDone:
     call    Save_Read_Adapter
     jc      @@ReadOrAmbiguous
 
@@ -2022,15 +2047,8 @@ PROC Save_Read_At_Base NEAR
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     mov     [save_product_id], ax
     mov     [save_word13], 0
-    mov     [save_pnp_valid], 0
-    mov     [save_fd_valid], 0
-    mov     al, [save_asic_rev]
-    cmp     al, 0FFh
+    cmp     [save_pnp_valid], 0
     je      @@Done
-    cmp     al, 2
-    jb      @@Done
-    mov     [save_pnp_valid], 1
-    mov     [save_fd_valid], 1
     mov     al, EEPROM_CONFIG_CONTROL
     call    Nic_EEPROM_Read
     jc      @@Fail
@@ -2067,36 +2085,10 @@ PROC Save_Read_Id_Eeprom_Snapshot NEAR
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     mov     [save_product_id], ax
     mov     [save_word13], 0
-    mov     [save_pnp_valid], 0
-    mov     [save_fd_valid], 0
-    mov     al, [save_asic_rev]
-    cmp     al, 0FFh
-    je      @@SnapshotCapabilities
-    cmp     al, 2
-    jb      @@Success
-    mov     [save_pnp_valid], 1
-    mov     [save_fd_valid], 1
+    cmp     [save_pnp_valid], 0
+    je      @@Success
     mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
     mov     [save_word13], ax
-    jmp     @@Success
-
-@@SnapshotCapabilities:
-    mov     ax, [WORD di + ID_EEPROM_CAPABILITY]
-    cmp     ax, EEPROM_CAPABILITY_3C509B
-    jne     @@Success
-    mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
-    mov     [save_word13], ax
-    mov     [save_pnp_valid], 1
-    mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
-    and     ax, 00FFh
-    cmp     ax, EEPROM_REVISION_3C509B
-    jb      @@Success
-    mov     ax, [save_product_id]
-    cmp     ax, PRODUCT_3C509
-    je      @@Success
-    cmp     ax, PRODUCT_3C509_TPC
-    je      @@Success
-    mov     [save_fd_valid], 1
 @@Success:
     pop     di
     pop     ax

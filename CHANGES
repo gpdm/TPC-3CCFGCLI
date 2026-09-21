@@ -25,10 +25,10 @@ Changelog 0.8.0
     redundancies and lowering the space requirement to fix again on the 360K disk image.
   - NIC capability collection is centralized in the shared
     Nic_Read_Capabilities routine and global per-adapter discovery cache.
-    LIST consumes the cached connector, Plug and Play, and Full Duplex facts
-    by logical adapter identity, including for duplicate configured IOBASE
-    records, while unrelated extended information retains its existing access
-    paths.
+    LIST and SAVECONFIG consume cached Plug and Play and Full Duplex support
+    facts by logical adapter identity, including duplicate configured IOBASE
+    records, while persistent configuration values continue to come from the
+    per-adapter EEPROM snapshot.
   - Shared temporary adapter access now uses caller-neutral NIC routines,
     allowing safe ID-tagged scratch IOBASE access to be reused across commands.
   - CONFIGURE temporary access acquisition and restore are now delegated to
