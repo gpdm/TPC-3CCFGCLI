@@ -33,7 +33,10 @@ Changelog 0.8.0
     Nic_Read_Capabilities routine and global per-adapter discovery cache.
     LIST and SAVECONFIG consume cached Plug and Play and Full Duplex support
     facts by logical adapter identity, including duplicate configured IOBASE
-    records, while persistent configuration values continue to come from the
+    records. CONFIGURE uses the same canonical cache for Plug and Play, Full
+    Duplex, and connector validation, with a transaction-time fallback only
+    when a required capability domain was not published during discovery,
+    while persistent configuration values continue to come from the
     per-adapter EEPROM snapshot.
   - Shared temporary adapter access now uses caller-neutral NIC routines,
     allowing safe ID-tagged scratch IOBASE access to be reused across commands.

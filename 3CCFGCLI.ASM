@@ -605,8 +605,7 @@ cfg_bsize_value       DB 0
 cfg_bsize_disabled    DB 0
 ; cfg_tr_value: 0=TP, 1=AUI, 3=COAX, 0FFh=AUTO sentinel.
 cfg_tr_value          DB 0
-; OPT7: single capability snapshot shared by the PNP/FULLDUPLEX/TR gates in
-; Cfg_Txn_Execute, so a combined transaction reads capabilities only once.
+; Resolved capability snapshot shared by the PNP/FULLDUPLEX/TR gates.
 cfg_txn_capabilities      DW 0
 cfg_txn_capability_valid  DW 0
 
@@ -763,6 +762,12 @@ cli_kw_mock_explicit DB 'EXPLICIT', 0
 cli_kw_mock_duprev DB 'DUPREV', 0
 cli_kw_mock_dupmode DB 'DUPMODE', 0
 cli_kw_mock_restorefail DB 'RESTOREFAIL', 0
+cli_kw_mock_cfgcache DB 'CFGCACHE', 0
+cli_kw_mock_cfgpnp DB 'CFGPNP', 0
+cli_kw_mock_cfgfdfail DB 'CFGFDFAIL', 0
+cli_kw_mock_cfgtrfail DB 'CFGTRFAIL', 0
+cli_kw_mock_cfgcombo DB 'CFGCOMBO', 0
+cli_kw_mock_cfgdup DB 'CFGDUP', 0
 msg_mocktest_pass DB 'HWMOCK contract test passed.', 0Dh, 0Ah, '$'
 msg_mocktest_fail DB 'HWMOCK contract test failed.', 0Dh, 0Ah, '$'
 ENDIF
@@ -1156,8 +1161,44 @@ IFDEF MOCKHW
     jnc     @@MockDupMode
     mov     bx, OFFSET cli_kw_mock_restorefail
     call    Cli_Match_Token
+    jnc     @@MockRestoreFail
+    mov     bx, OFFSET cli_kw_mock_cfgcache
+    call    Cli_Match_Token
+    jnc     @@MockCfgCache
+    mov     bx, OFFSET cli_kw_mock_cfgpnp
+    call    Cli_Match_Token
+    jnc     @@MockCfgPnp
+    mov     bx, OFFSET cli_kw_mock_cfgfdfail
+    call    Cli_Match_Token
+    jnc     @@MockCfgFdFail
+    mov     bx, OFFSET cli_kw_mock_cfgtrfail
+    call    Cli_Match_Token
+    jnc     @@MockCfgTrFail
+    mov     bx, OFFSET cli_kw_mock_cfgcombo
+    call    Cli_Match_Token
+    jnc     @@MockCfgCombo
+    mov     bx, OFFSET cli_kw_mock_cfgdup
+    call    Cli_Match_Token
     jc      @@Help
+    mov     al, 16
+    jmp     @@RunMockTest
+@@MockRestoreFail:
     mov     al, 10
+    jmp     @@RunMockTest
+@@MockCfgCache:
+    mov     al, 11
+    jmp     @@RunMockTest
+@@MockCfgPnp:
+    mov     al, 12
+    jmp     @@RunMockTest
+@@MockCfgFdFail:
+    mov     al, 13
+    jmp     @@RunMockTest
+@@MockCfgTrFail:
+    mov     al, 14
+    jmp     @@RunMockTest
+@@MockCfgCombo:
+    mov     al, 15
     jmp     @@RunMockTest
 @@MockTemporaryBase:
     mov     al, 3
@@ -4692,6 +4733,10 @@ PROC Nic_Read_Capabilities NEAR
     push    di
     push    bp
 
+IFDEF MOCKHW
+    inc     [mock_capability_read_count]
+ENDIF
+
     mov     di, si
     call    Nic_Get_Current_Window
     mov     bp, ax
@@ -7510,6 +7555,119 @@ PROC Cfg_Txn_Report_Implicit_FD_Notice NEAR
     ret
 ENDP Cfg_Txn_Report_Implicit_FD_Notice
 
+; Resolve the selected logical adapter's canonical capability cache entry.
+; Missing required domains are collected once through the current transaction
+; access and merged only where the canonical cache did not publish validity.
+PROC Cfg_Txn_Resolve_Capabilities NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    mov     si, [cfg_selected_ptr]
+    mov     ax, si
+    sub     ax, OFFSET nic_table
+    mov     cl, 4
+    shr     ax, cl                  ; zero-based logical record ordinal
+    mov     di, ax
+    shl     di, 1                  ; parallel capability arrays are words
+
+    mov     ax, [WORD di + nic_capabilities]
+    mov     [cfg_txn_capabilities], ax
+    mov     ax, [WORD di + nic_capability_valid]
+    mov     [cfg_txn_capability_valid], ax
+
+    xor     dx, dx                  ; validity domains required by this request
+    mov     al, [BYTE si + NIC_ASIC_REV]
+
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@RequireFD
+    cmp     al, 0FFh
+    je      @@NeedPNP
+    cmp     al, 2
+    jb      @@RequireFD
+@@NeedPNP:
+    or      dx, NIC_CAP_VALID_PNP
+
+@@RequireFD:
+    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    jz      @@RequireConnectors
+    cmp     al, 0FFh
+    je      @@NeedFD
+    cmp     al, 2
+    jb      @@RequireConnectors
+@@NeedFD:
+    or      dx, NIC_CAP_VALID_FULLDUPLEX
+
+@@RequireConnectors:
+    test    [cfg_parse_flags], CFG_PARSE_TR
+    jz      @@CheckValidity
+    cmp     [cfg_tr_value], 0FFh
+    jne     @@NeedConnectors
+    cmp     al, 0FFh
+    je      @@CheckValidity
+    cmp     al, 2
+    jb      @@CheckValidity
+@@NeedConnectors:
+    or      dx, NIC_CAP_VALID_CONNECTORS
+
+@@CheckValidity:
+    mov     ax, [cfg_txn_capability_valid]
+    and     ax, dx
+    cmp     ax, dx
+    je      @@Done
+
+    mov     dx, [cfg_txn_access_base]
+    call    Nic_Read_Capabilities
+    mov     cx, ax                  ; fallback capability bits
+    mov     dx, bx                  ; fallback validity bits
+
+    test    [cfg_txn_capability_valid], NIC_CAP_VALID_PNP
+    jnz     @@MergeFD
+    test    dx, NIC_CAP_VALID_PNP
+    jz      @@MergeFD
+    or      [cfg_txn_capability_valid], NIC_CAP_VALID_PNP
+    and     [cfg_txn_capabilities], NOT NIC_CAP_PNP
+    test    cx, NIC_CAP_PNP
+    jz      @@MergeFD
+    or      [cfg_txn_capabilities], NIC_CAP_PNP
+
+@@MergeFD:
+    test    [cfg_txn_capability_valid], NIC_CAP_VALID_FULLDUPLEX
+    jnz     @@MergeConnectors
+    test    dx, NIC_CAP_VALID_FULLDUPLEX
+    jz      @@MergeConnectors
+    or      [cfg_txn_capability_valid], NIC_CAP_VALID_FULLDUPLEX
+    and     [cfg_txn_capabilities], NOT NIC_CAP_FULLDUPLEX
+    test    cx, NIC_CAP_FULLDUPLEX
+    jz      @@MergeConnectors
+    or      [cfg_txn_capabilities], NIC_CAP_FULLDUPLEX
+
+@@MergeConnectors:
+    test    [cfg_txn_capability_valid], NIC_CAP_VALID_CONNECTORS
+    jnz     @@Done
+    test    dx, NIC_CAP_VALID_CONNECTORS
+    jz      @@Done
+    or      [cfg_txn_capability_valid], NIC_CAP_VALID_CONNECTORS
+    mov     ax, [cfg_txn_capabilities]
+    and     ax, NOT (NIC_CAP_TP OR NIC_CAP_AUI OR NIC_CAP_BNC)
+    mov     bx, cx
+    and     bx, NIC_CAP_TP OR NIC_CAP_AUI OR NIC_CAP_BNC
+    or      ax, bx
+    mov     [cfg_txn_capabilities], ax
+
+@@Done:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Txn_Resolve_Capabilities
+
 ; Single centralized CONFIGURE transaction entry point.
 PROC Cfg_Txn_Execute NEAR
     push    ax
@@ -7541,18 +7699,7 @@ PROC Cfg_Txn_Execute NEAR
 ; passed by the time it runs.
 ; ----------------------------------------------------------------------------
 @@CapabilitySnapshot:
-    ; OPT7: take one combined capability snapshot up front if any of the
-    ; PNP/FULLDUPLEX/TR gates below will need it, instead of each gate
-    ; calling Nic_Read_Capabilities independently. Validity bits (BX) are
-    ; independent per property, so a failure to obtain one property's data
-    ; (e.g. connectors) does not affect another property's validity (e.g. PNP).
-    test    [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_FULLDUPLEX + CFG_PARSE_TR
-    jz      @@GatePNP
-    mov     si, [cfg_selected_ptr]
-    mov     dx, [cfg_txn_access_base]
-        call    Nic_Read_Capabilities
-    mov     [cfg_txn_capabilities], ax
-    mov     [cfg_txn_capability_valid], bx
+    call    Cfg_Txn_Resolve_Capabilities
 
 @@GatePNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
@@ -7569,11 +7716,8 @@ PROC Cfg_Txn_Execute NEAR
     ; EEPROM_CAPABILITY bit 0 is the authoritative PNP capability source.
     mov     ax, [cfg_txn_capabilities]
     mov     bx, [cfg_txn_capability_valid]
-    ; In the reachable CONFIGURE path, ASIC revision FFh was already
-    ; resolved by Cfg_Txn_Begin_Access via temporary-base validation and
-    ; signature checking.  Revisions below 2 were rejected above; therefore
-    ; for revision 2+, a missing PNP validity bit means the snapshot was
-    ; unavailable and Nic_EEPROM_Read timed out, its only reported failure.
+    ; Missing validity after cache resolution and its optional fallback keeps
+    ; the existing defensive EEPROM-busy attribution.
     test    bx, NIC_CAP_VALID_PNP
     jz      @@PNPCapReadFail
     test    ax, NIC_CAP_PNP

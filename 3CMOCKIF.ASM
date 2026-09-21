@@ -122,6 +122,10 @@ mock_contender_index DB 0FFh
 ; 3Com_Cards restore-failure branch without disturbing any ordinary present-
 ; device read observed earlier in the same discovery pass.
 mock_force_restore_fail DB 0
+mock_fail_config_control_reads DB 0
+mock_capability_read_count DB 0
+mock_capability_eeprom_read_count DB 0
+mock_contract_test DB 0
 
 CODESEG
 
@@ -927,6 +931,14 @@ PROC Mock_Reg_Read_Word NEAR
     or      ax, dx
     jmp     @@Done
 @@Window0:
+    cmp     bx, EL3_W0_CONFIG_CONTROL
+    jne     @@Window0Eeprom
+    cmp     [byte mock_fail_config_control_reads], 0
+    je      @@ReadRaw
+    dec     [byte mock_fail_config_control_reads]
+    mov     ax, 0FFFFh
+    jmp     @@Done
+@@Window0Eeprom:
     cmp     bx, EL3_W0_EEPROM_COMMAND
     jne     @@ReadRaw
     call    Mock_Eeprom_Read_Command
@@ -1269,6 +1281,10 @@ PROC Nic_EEPROM_Read NEAR
     push    dx
     push    si
 
+    cmp     al, EEPROM_CAPABILITY
+    jne     @@NotCapability
+    inc     [byte mock_capability_eeprom_read_count]
+@@NotCapability:
     xor     ah, ah
     mov     si, ax
     xor     al, al
@@ -2016,26 +2032,63 @@ PROC Mock_Id_Send_Sequence_Core NEAR
     ret
 ENDP Mock_Id_Send_Sequence_Core
 
+; Select one zero-based logical record for an in-process CONFIGURE contract.
+PROC Mock_Select_Config_Record NEAR
+    push    ax
+    push    bx
+
+    xor     ah, ah
+    mov     bx, ax
+    shl     bx, 1
+    shl     bx, 1
+    shl     bx, 1
+    shl     bx, 1
+    add     bx, OFFSET nic_table
+    mov     [cfg_selected_ptr], bx
+    inc     al
+    mov     [cfg_adapter_ordinal], al
+    mov     [cfg_parse_flags], 0
+    mov     [cfg_last_error], CFG_ERR_NONE
+    mov     [cli_flags], 0
+
+    pop     bx
+    pop     ax
+    ret
+ENDP Mock_Select_Config_Record
+
 ; MOCKHW-only low-level contract probe invoked by the hidden MOCKTEST verb.
 ; Input AL: 1 invalid tag, 2 activation without selection, 3 temporary base,
 ;           4 distinct-IOBASE capability cache, 5 duplicate-IOBASE cache,
 ;           6 canonical port type normalization.
 ;           7 explicit port type, 8 duplicate revisions, 9 duplicate modes,
-;           10 restore failure keeps normalized state, unpublished caches.
+;           10 restore failure keeps normalized state, unpublished caches,
+;           11 CONFIGURE cache hit, 12 PNP restore-failure recovery,
+;           13 FD fallback failure, 14 TR fallback failure,
+;           15 combined one-shot fallback, 16 duplicate cache identity.
 ; Output CF clear when the requested observable contract holds.
 PROC Mock_Run_Contract_Test NEAR
     push    ax
     push    bx
     push    dx
 
+    mov     [byte mock_contract_test], al
+    mov     [byte mock_capability_read_count], 0
+    mov     [byte mock_capability_eeprom_read_count], 0
+    mov     [byte mock_fail_config_control_reads], 0
     mov     bl, al
     cmp     bl, 10
-    jne     @@NoArmRestoreFail
+    je      @@ArmRestoreFail
+    cmp     bl, 12
+    jb      @@NoArmRestoreFail
+    cmp     bl, 15
+    ja      @@NoArmRestoreFail
+@@ArmRestoreFail:
     mov     [byte mock_force_restore_fail], 1
 @@NoArmRestoreFail:
     call    Scan_All_3Com_Cards
     cmp     [card_count], 0
     je      @@Fail
+    mov     bl, [byte mock_contract_test]
     cmp     bl, 1
     je      @@InvalidTag
     cmp     bl, 2
@@ -2054,6 +2107,18 @@ PROC Mock_Run_Contract_Test NEAR
     je      @@DuplicateModes
     cmp     bl, 10
     je      @@RestoreFail
+    cmp     bl, 11
+    je      @@ConfigureCacheHit
+    cmp     bl, 12
+    je      @@ConfigurePnpRecovery
+    cmp     bl, 13
+    je      @@ConfigureFdFallbackFail
+    cmp     bl, 14
+    je      @@ConfigureTrFallbackFail
+    cmp     bl, 15
+    je      @@ConfigureCombinedFallback
+    cmp     bl, 16
+    je      @@ConfigureDuplicateCache
 
     ; Tag 1 is explicitly moved to 0280h. Normal I/O must work at the
     ; temporary base, while its persistent EEPROM selector remains 0300h.
@@ -2190,6 +2255,151 @@ PROC Mock_Run_Contract_Test NEAR
     cmp     [WORD nic_capabilities], 0
     jne     @@Fail
     cmp     [WORD nic_capability_valid], 0
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@ConfigureCacheHit:
+    cmp     [card_count], 1
+    jne     @@Fail
+    cmp     [byte mock_capability_read_count], 1
+    jne     @@Fail
+    xor     al, al
+    call    Mock_Select_Config_Record
+    mov     [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_FULLDUPLEX + CFG_PARSE_TR
+    mov     [cfg_pnp_value], 0
+    mov     [cfg_fullduplex_value], 0
+    mov     [cfg_tr_value], NIC_PORT_TP
+    call    Cfg_Txn_Execute
+    cmp     [cfg_last_error], CFG_ERR_NONE
+    jne     @@Fail
+    cmp     [byte mock_capability_read_count], 1
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@ConfigurePnpRecovery:
+    cmp     [card_count], 1
+    jne     @@Fail
+    cmp     [WORD nic_capabilities], 0
+    jne     @@Fail
+    cmp     [WORD nic_capability_valid], 0
+    jne     @@Fail
+    cmp     [BYTE nic_table + NIC_ASIC_REV], 2
+    jne     @@Fail
+    cmp     [BYTE nic_table + NIC_PORT_TYPE], NIC_PORT_AUTO
+    jne     @@Fail
+    cmp     [BYTE id_eeprom_cache + ID_EEPROM_SNAPSHOT_VALID], 0
+    je      @@Fail
+    test    [WORD id_eeprom_cache + ID_EEPROM_CAPABILITY], EEPROM_CAPABILITY_PNP
+    jz      @@Fail
+    cmp     [byte mock_capability_read_count], 1
+    jne     @@Fail
+    xor     al, al
+    call    Mock_Select_Config_Record
+    mov     [cfg_parse_flags], CFG_PARSE_PNP
+    mov     [cfg_pnp_value], 0
+    call    Cfg_Txn_Execute
+    cmp     [cfg_last_error], CFG_ERR_NONE
+    jne     @@Fail
+    cmp     [byte mock_capability_read_count], 2
+    jne     @@Fail
+    cmp     [byte mock_capability_eeprom_read_count], 0
+    jne     @@Fail
+    test    [cfg_txn_capability_valid], NIC_CAP_VALID_PNP
+    jz      @@Fail
+    test    [cfg_txn_capabilities], NIC_CAP_PNP
+    jz      @@Fail
+    cmp     [WORD nic_capability_valid], 0
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@ConfigureFdFallbackFail:
+    cmp     [card_count], 1
+    jne     @@Fail
+    mov     [byte mock_fail_config_control_reads], 1
+    xor     al, al
+    call    Mock_Select_Config_Record
+    mov     [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
+    mov     [cfg_fullduplex_value], 0
+    call    Cfg_Txn_Execute
+    cmp     [cfg_last_error], CFG_ERR_FD_CAPABILITY_READ
+    jne     @@Fail
+    cmp     [byte mock_capability_read_count], 2
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@ConfigureTrFallbackFail:
+    cmp     [card_count], 1
+    jne     @@Fail
+    mov     [byte mock_fail_config_control_reads], 1
+    xor     al, al
+    call    Mock_Select_Config_Record
+    mov     [cfg_parse_flags], CFG_PARSE_TR
+    mov     [cfg_tr_value], NIC_PORT_TP
+    call    Cfg_Txn_Execute
+    cmp     [cfg_last_error], CFG_ERR_TR_CAPABILITY_READ
+    jne     @@Fail
+    cmp     [byte mock_capability_read_count], 2
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@ConfigureCombinedFallback:
+    cmp     [card_count], 1
+    jne     @@Fail
+    mov     [WORD nic_capabilities], 0
+    mov     [WORD nic_capability_valid], NIC_CAP_VALID_PNP
+    xor     al, al
+    call    Mock_Select_Config_Record
+    mov     [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_FULLDUPLEX + CFG_PARSE_TR
+    mov     [cfg_pnp_value], 0
+    mov     [cfg_fullduplex_value], 0
+    mov     [cfg_tr_value], NIC_PORT_TP
+    call    Cfg_Txn_Execute
+    cmp     [cfg_last_error], CFG_ERR_PNP_NOT_CAPABLE
+    jne     @@Fail
+    cmp     [byte mock_capability_read_count], 2
+    jne     @@Fail
+    mov     ax, [cfg_txn_capability_valid]
+    and     ax, NIC_CAP_VALID_PNP OR NIC_CAP_VALID_FULLDUPLEX OR NIC_CAP_VALID_CONNECTORS
+    cmp     ax, NIC_CAP_VALID_PNP OR NIC_CAP_VALID_FULLDUPLEX OR NIC_CAP_VALID_CONNECTORS
+    jne     @@Fail
+    test    [cfg_txn_capabilities], NIC_CAP_PNP
+    jnz     @@Fail
+    test    [cfg_txn_capabilities], NIC_CAP_FULLDUPLEX
+    jz      @@Fail
+    test    [cfg_txn_capabilities], NIC_CAP_TP
+    jz      @@Fail
+    cmp     [WORD nic_capability_valid], NIC_CAP_VALID_PNP
+    jne     @@Fail
+    clc
+    jmp     @@Done
+
+@@ConfigureDuplicateCache:
+    cmp     [card_count], 2
+    jne     @@Fail
+    cmp     [byte mock_capability_read_count], 2
+    jne     @@Fail
+    xor     al, al
+    call    Mock_Select_Config_Record
+    mov     [cfg_parse_flags], CFG_PARSE_TR
+    mov     [cfg_tr_value], NIC_PORT_COAX
+    call    Cfg_Txn_Execute
+    cmp     [cfg_last_error], CFG_ERR_TR_NOT_CAPABLE
+    jne     @@Fail
+    cmp     [byte mock_capability_read_count], 2
+    jne     @@Fail
+    mov     al, 1
+    call    Mock_Select_Config_Record
+    mov     [cfg_parse_flags], CFG_PARSE_TR
+    mov     [cfg_tr_value], NIC_PORT_COAX
+    call    Cfg_Txn_Execute
+    cmp     [cfg_last_error], CFG_ERR_NONE
+    jne     @@Fail
+    cmp     [byte mock_capability_read_count], 2
     jne     @@Fail
     clc
     jmp     @@Done
