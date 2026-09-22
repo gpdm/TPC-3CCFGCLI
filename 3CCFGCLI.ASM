@@ -5162,7 +5162,7 @@ PROC Cfg_Txn_Has_Valid_Tag NEAR
     mov     al, [BYTE si + NIC_TAG]
     or      al, al
     jz      @@Bad
-    cmp     al, 7
+    cmp     al, MAX_CARDS
     ja      @@Bad
 
     pop     si
@@ -5242,7 +5242,7 @@ PROC Nic_Begin_Temporary_Access NEAR
     mov     al, [BYTE si + NIC_TAG]
     or      al, al
     jz      @@Fail
-    cmp     al, 7
+    cmp     al, MAX_CARDS
     ja      @@Fail
 
     call    Nic_Find_Temporary_Base
@@ -6669,9 +6669,8 @@ PROC Cfg_Txn_Verify_IOBASE NEAR
     mov     [cfg_last_error], CFG_ERR_IOBASE_VERIFY
     jmp     @@FailReturn
 @@ReachFailShared:
-    ; An IOBASE change reachability failure without an explicit /IOBASE
-    ; request (e.g. one implied by a TR transceiver migration) is attributed
-    ; the same generic verify error the INT section would report.
+    ; Defensive fallback for an inconsistent change-flag state.  The current
+    ; change detector sets CFG_TXN_IOBASE_CHANGED only for explicit /IOBASE.
     cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
     je      @@FailReturn
     mov     [cfg_last_error], CFG_ERR_VERIFY

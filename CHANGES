@@ -90,6 +90,8 @@ Changelog 0.8.0
     unchanged.
   - `cfg_tr_value` AUTO now uses `NIC_XCVR_AUTO` instead of the `0FFh` sentinel.
   - Removed obsolete SAVECONFIG and CONFIGURE snapshot failure paths.
+  - Fixed valid NIC tag check to reject reserved tag 7 (ID_TAG_SKIP_EISA)
+    using MAX_CARDS as the upper bound instead of the literal 7.
     
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
