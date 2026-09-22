@@ -15,6 +15,6 @@ semantics, and testing architecture, see the documents below.
 | [Capabilities](CAPABILITIES.md) | Product, EEPROM, connector, revision and derived capability handling |
 | [Mock](MOCK.md) | 3CMOCKIF hardware model and 3CSEED fixtures |
 | [Low Level Conventions](LOW_LEVEL_CONVENTIONS.md) | CF, FLAGS, interrupt state and low level procedure contracts |
-| [Testing](TESTING.md) | TEST.MK, TESTHWC.MK and TESTHWL.MK |
+| [Testing](TESTING.md) | TEST.MK mock regression, HWCTEST.BAT/HWCREAD.MK/HWCWRITE.MK real hardware conformance, and TESTHWL.BAT memory limit testing |
 | [Architectural Invariants](INVARIANTS.md) | Rules that must remain true when modifying the implementation |
 | [Design Decisions](DESIGN_DECISIONS.md) | Design Decisions that influence the implementation scope |

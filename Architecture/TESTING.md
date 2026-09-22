@@ -14,7 +14,10 @@ The current framework consists primarily of:
 * `autoexec-test`
 * `3CSEED.EXE`
 * `3CHWMOCK.EXE`
-* `TESTHWC.MK`
+* `HWCTEST.BAT`
+* `HWCREAD.MK`
+* `HWCWRITE.MK`
+* `HWCLIB.MK`
 * `TESTHWL.BAT`
 * `autoexec-testhwl.template`
 
@@ -90,11 +93,19 @@ test.sh
 Real hardware conformance is separate:
 
 ```text
-TESTHWC.MK
+HWCTEST.BAT
     |
-    +--> original 3Com utility writes configuration
+    +--> detect installed EtherLink III model
     |
-    +--> 3CCFGCLI LIST observes resulting state
+    +--> HWCREAD.MK  (READ / READROM)
+    |       |
+    |       +--> original 3Com utility writes configuration
+    |       +--> 3CCFGCLI LIST / SAVECONFIG observes resulting state
+    |
+    +--> HWCWRITE.MK (WRITE / WRITEROM)
+            |
+            +--> 3CCFGCLI CONFIGURE writes configuration
+            +--> fresh 3CCFGCLI LIST observes resulting state
 ```
 
 The real hardware suite is deliberately not invoked by the normal automated test path.
@@ -641,31 +652,49 @@ When correctness depends on testing freshly modified source, the normal developm
 
 ## 26. Real Hardware Conformance
 
-`TESTHWC.MK` is deliberately separate from `TEST.BAT` and `test.sh`.
+`HWCTEST.BAT`, `HWCREAD.MK`, `HWCWRITE.MK`, and the shared `HWCLIB.MK` are
+deliberately separate from `TEST.BAT` and `test.sh`.
 
-It is intended to run manually on a DOS system containing one or more physical EtherLink III adapters.
+They are intended to run manually on a DOS system containing one physical
+EtherLink III adapter. The current scripts operate on adapter number 1.
 
-Only the first logical adapter is used by the current test sequence.
-
-The default roles are:
+`HWCTEST.BAT` is the common entry point. It runs `3CCFGCLI LIST` to detect the
+installed model, then dispatches to the matching MAKE file and target:
 
 ```text
-writer
-    original 3Com 3C5X9CFG utility
-
-observer
-    3CCFGCLI
+READ / READROM      -> HWCREAD.MK  target hwcr
+WRITE / WRITEROM     -> HWCWRITE.MK target hwcw
 ```
 
-The original utility writes each requested configuration.
+The roles differ between the two suites:
 
-`3CCFGCLI LIST` then reads the resulting adapter state.
+```text
+HWCREAD.MK
+    writer   = original 3Com 3C5X9CFG utility
+    observer = 3CCFGCLI (LIST and SAVECONFIG)
 
-This tests whether 3CCFGCLI interprets real EEPROM and live hardware state consistently with configuration written by the original utility.
+HWCWRITE.MK
+    writer   = 3CCFGCLI (CONFIGURE)
+    observer = 3CCFGCLI (a fresh LIST process after each write)
+```
+
+For `HWCREAD.MK`, the original utility writes each requested configuration and
+`3CCFGCLI LIST`/`SAVECONFIG` reads the resulting adapter state. This tests
+whether 3CCFGCLI interprets real EEPROM and live hardware state consistently
+with configuration written by the original utility.
+
+For `HWCWRITE.MK`, `3CCFGCLI CONFIGURE` performs each write and a separate
+`3CCFGCLI LIST` process observes the resulting persistent state afterward.
+This exercises the physical CONFIGURE write path together with persistent
+readback through an independent process, rather than only through the
+in-process result of the CONFIGURE command itself.
+
+The full entry point, detection, and dispatch mechanics are documented in
+[HWCTEST.md](../HWCTEST.md).
 
 ## 27. What Real Hardware Conformance Proves
 
-The default real hardware suite provides evidence for:
+`HWCREAD.MK` provides evidence for:
 
 * physical adapter discovery
 * active register access
@@ -675,99 +704,84 @@ The default real hardware suite provides evidence for:
 * LIST compatibility with original utility configuration semantics
 * SAVECONFIG reading of the physical adapter
 
-It does not directly prove the correctness of the normal `3CCFGCLI CONFIGURE` write path.
+It does not directly prove the correctness of the normal `3CCFGCLI CONFIGURE`
+write path, because the original utility is the writer for every `HWCREAD.MK`
+case.
 
-The original utility is the writer during the individual conformance cases.
+`HWCWRITE.MK` provides the complementary evidence: it exercises the physical
+`3CCFGCLI CONFIGURE` write path itself, verified by persistent readback
+through a separate `3CCFGCLI LIST` process.
 
-This distinction is important.
+After either suite, `HWCTEST.BAT` also drives the original 3Com utility
+through `STUFFIT` to capture a post-configuration `.SET` dump as additional
+vendor-tool evidence. The current implementation only checks that this dump
+file was created; it does not parse or verify its contents, so the `.SET`
+file should be treated as captured evidence, not an asserted test result.
 
-A successful HWC run must not be described as complete proof that every 3CCFGCLI EEPROM write sequence is correct on physical hardware.
+A successful HWC run must not be described as complete proof that every
+3CCFGCLI EEPROM write sequence is correct on physical hardware; the two
+suites together provide read-path and write-path evidence, but Boot ROM
+write conformance is not currently exercised by either (see below).
 
 ## 28. Current Real Hardware Cases
 
-The current enabled real hardware suite contains these cases:
+Both MAKE files share a per-model baseline and primary test-value set
+defined in `HWCLIB.MK`, and both include an adapter identity/capability
+check as their first numbered case. `HWCREAD.MK` covers `/INT`, `/IOBASE`,
+`/PNP`, `/MODEM`, `/FULLDUPLEX`, `/OPTIMIZE`, and a model-specific
+transceiver write, followed by a `SAVECONFIG` aggregate check.
+`HWCWRITE.MK` covers the same properties through `3CCFGCLI CONFIGURE`
+instead of the original utility, plus an additional combined multi-property
+case. Cases are skipped per adapter model where the property is not
+supported (for example, `/PNP` and `/FULLDUPLEX` on the original 3C509-TP).
 
-| Case     | Original utility operation | 3CCFGCLI observation                     |
-| -------- | -------------------------- | ---------------------------------------- |
-| `hwc001` | `/INT`                     | IRQ                                      |
-| `hwc002` | `/IOBASE`                  | I/O base                                 |
-| `hwc003` | `/PNP`                     | Plug and Play output                     |
-| `hwc004` | `/MODEM`                   | Modem interrupt disable timing           |
-| `hwc005` | `/FULLDUPLEX`              | Full Duplex state                        |
-| `hwc006` | `/OPTIMIZE`                | Optimization state                       |
-| `hwc007` | `/TR`                      | Transceiver state                        |
-| `hwc008` | `/XCVR`                    | Original transceiver alias compatibility |
+`READROM`/`WRITEROM` run the same complete suite with `ROM_TEST` defined.
+Boot ROM recipes exist in both MAKE files, but the current card mappings do
+not yet select them: ROM runs currently report `NOT IMPLEMENTED` for
+supported models and `NOT SUPPORTED` for the 3C509B TPO.
 
-Physical Boot ROM conformance is currently disabled because a suitable physical ROM is not available for the test.
+The complete, authoritative test matrix, per-model baseline and test values,
+and exact assertions are documented in [HWCTEST.md](../HWCTEST.md).
 
 ## 29. Real Hardware Preservation And Restoration
 
-The actual `hwc` dependency chain currently runs:
+The shared `hwcr`/`hwcw` dependency chains run, in order:
 
 ```text
 clean
 prep
 save-config
-set-default
-HWC_CONFIGURATION
-restore-config
+set-default-<card>
+<numbered per-model cases>
 complete
 ```
 
-Therefore the adapter configuration is saved before the deterministic test baseline is written.
+`save-config` runs `3CCFGCLI SAVECONFIG` before `set-default-<card>` writes
+the deterministic test baseline, so the adapter's preexisting configuration
+is captured before the suite changes anything. The restore batch file names
+the writer used to restore the configuration: `HWCREAD.MK` embeds the
+original 3C5X9CFG utility as the restore executable, and `HWCWRITE.MK`
+embeds `3CCFGCLI` itself, matching each suite's own writer role.
 
-`save-config` uses:
+`restore-config` does not currently invoke the restore command
+automatically. Restoring the generated batch file through MAKE is broken on
+some earlier DOS versions, so `restore-config` instead prints the exact
+command to run manually once the suite has finished.
 
-```text
-3CCFGCLI SAVECONFIG
-```
+## 30. Physical Hardware Test Values
 
-to produce the restore batch.
+Real hardware tests use configurable default and test values, for example a
+baseline IRQ/I-O-base/transceiver combination and a distinct primary test
+value for each property (see [HWCTEST.md](../HWCTEST.md) for the exact
+current values).
 
-The test then writes a known configuration using the original utility.
+These values must be appropriate and conflict free on the physical machine.
 
-After the conformance cases, the generated restore batch is executed.
+Unlike the mock suite, the hardware test environment cannot assume that
+arbitrary ISA resources are safe. The operator remains responsible for
+choosing suitable test resources.
 
-By default, restoration is performed through the original 3Com utility.
-
-This reduces dependence on the project's own write path while real hardware write confidence is still being established.
-
-## 30. Self Restoration Mode
-
-`TESTHWC.MK` provides:
-
-```text
-hwc-restore-self
-```
-
-which changes the restore executable from the original utility to `3CCFGCLI`.
-
-This causes the generated restore commands to be replayed through the project's own CONFIGURE implementation.
-
-This mode provides additional physical write exercise.
-
-It is still not equivalent to a complete property by property hardware write conformance suite because the individual HWC cases continue to use the original utility as their writer.
-
-## 31. Physical Hardware Test Values
-
-Real hardware tests use configurable default and test values.
-
-Values such as:
-
-```text
-IRQ
-I/O base
-Plug and Play state
-transceiver
-```
-
-must be appropriate and conflict free on the physical machine.
-
-Unlike the mock suite, the hardware test environment cannot assume that arbitrary ISA resources are safe.
-
-The operator remains responsible for choosing suitable test resources.
-
-## 32. `TEST.MK real` Is Not The Hardware Conformance Suite
+## 31. `TEST.MK real` Is Not The Hardware Conformance Suite
 
 `TEST.MK` contains a `real` target that substitutes:
 
@@ -783,28 +797,25 @@ Changing only `BINAPP` does not reproduce those fixtures on physical hardware.
 
 The same smoke suite also contains write tests that would modify the physical adapter.
 
-Therefore the `TEST.MK real` target must not be treated as equivalent to `TESTHWC.MK` or as authoritative real hardware conformance evidence.
+Therefore the `TEST.MK real` target must not be treated as equivalent to the
+dedicated HWC suite (`HWCTEST.BAT`, `HWCREAD.MK`, `HWCWRITE.MK`) or as
+authoritative real hardware conformance evidence.
 
-The dedicated real hardware architecture is `TESTHWC.MK`.
+The dedicated real hardware architecture is `HWCTEST.BAT` together with
+`HWCREAD.MK`/`HWCWRITE.MK`/`HWCLIB.MK`, documented in
+[HWCTEST.md](../HWCTEST.md).
 
-## 33. Current HWC Ordering Comment Issue
+## 32. Known HWCTEST.BAT Documentation Quirk
 
-A comment in the current `TESTHWC.MK` states that the sane default configuration is written before the baseline SAVECONFIG capture.
+The current `HWCTEST.BAT` help text prints `WRITEPROM` in its usage list.
 
-The actual dependency chain does the opposite:
+The actual dispatch label and working command are `WRITEROM`.
 
-```text
-save-config
-set-default
-```
+This is a known cosmetic defect in the batch file's own help text, not a
+behavioral difference; it is recorded here and in
+[HWCTEST.md](../HWCTEST.md) so it is not mistaken for an undocumented verb.
 
-The executed order is authoritative.
-
-This is desirable for preservation because it captures the adapter's preexisting configuration before test defaults are written.
-
-The comment should not be used to infer the runtime behavior.
-
-## 34. Hardware Limit Testing
+## 33. Hardware Limit Testing
 
 The hardware limit phase is separate from the functional regression suite.
 
@@ -831,7 +842,7 @@ core = normal
 
 and sets the requested conventional memory size.
 
-## 35. `TESTHWL.BAT`
+## 34. `TESTHWL.BAT`
 
 The memory test performs:
 
@@ -859,7 +870,7 @@ HWLIMIT PASS memsizekb=N
 
 The host wrapper searches for this exact marker.
 
-## 36. What The Hardware Limit Test Proves
+## 35. What The Hardware Limit Test Proves
 
 The hardware limit suite proves only that the executable can be loaded and execute the HELP path under the tested DOSBox X 8086 memory configurations.
 
@@ -878,7 +889,7 @@ It is a resource startup test.
 
 It must not be described as a complete 8086 functional regression suite.
 
-## 37. 8086 Validation Boundary
+## 36. 8086 Validation Boundary
 
 The project targets 8086 and 8088 compatible code.
 
@@ -898,7 +909,7 @@ Therefore architectural 8086 compatibility still depends on source and build dis
 
 The test framework alone does not execute all functional paths under explicit 8086 emulation.
 
-## 38. Mock Tests Versus Original Utility Compatibility
+## 37. Mock Tests Versus Original Utility Compatibility
 
 The mock regression suite validates the behavior defined by this project.
 
@@ -914,7 +925,7 @@ Regression tests should therefore encode:
 
 The original utility is a reference for compatibility behavior, not an automatic source of new requirements.
 
-## 39. Mock Tests Versus Real Hardware
+## 38. Mock Tests Versus Real Hardware
 
 Mock testing provides advantages that physical testing cannot easily provide.
 
@@ -948,7 +959,7 @@ real hardware
     physical implementation evidence
 ```
 
-## 40. Adding A Regression Test
+## 39. Adding A Regression Test
 
 A new normal regression should normally:
 
@@ -976,9 +987,9 @@ A new normal regression should normally:
 
 12. Leave the test count and execution marker mechanism intact.
 
-## 41. Adding A Real Hardware Test
+## 40. Adding A Real Hardware Test
 
-A new `TESTHWC.MK` case must be treated more conservatively.
+A new `HWCREAD.MK` or `HWCWRITE.MK` case must be treated more conservatively.
 
 It should:
 
@@ -988,7 +999,9 @@ It should:
 
 3. Preserve the original configuration before modification.
 
-4. Use the original utility as the writer when the purpose is observer conformance.
+4. Use the original utility as the writer in `HWCREAD.MK` when the purpose is
+   observer conformance, or `3CCFGCLI CONFIGURE` as the writer in
+   `HWCWRITE.MK` when the purpose is write-path conformance.
 
 5. Use `3CCFGCLI LIST` as the observation path.
 
@@ -998,9 +1011,10 @@ It should:
 
 8. Clearly identify tests that require optional physical hardware such as an Option ROM.
 
-9. Avoid implying that observer conformance proves the project's own write implementation.
+9. Avoid implying that `HWCREAD.MK` observer conformance proves the project's
+   own write implementation.
 
-## 42. Required Architectural Invariants
+## 41. Required Architectural Invariants
 
 The following rules are mandatory for future test framework changes.
 
@@ -1044,7 +1058,7 @@ The following rules are mandatory for future test framework changes.
 
 20. The full smoke suite must not be represented as explicitly running under 8086 emulation unless its DOSBox X configuration is changed to do so.
 
-21. `TESTHWC.MK` must remain separate from normal unattended mock regression execution.
+21. `HWCTEST.BAT`/`HWCREAD.MK`/`HWCWRITE.MK` must remain separate from normal unattended mock regression execution.
 
 22. Default HWC observer tests must distinguish original utility writes from 3CCFGCLI writes.
 
@@ -1058,7 +1072,7 @@ The following rules are mandatory for future test framework changes.
 
 27. Current known harness defects must not be converted into architectural expectations merely because a test file contains them.
 
-## 43. Summary
+## 42. Summary
 
 The current test architecture is layered:
 
@@ -1069,8 +1083,8 @@ TEST.MK plus MOCKHW
 test.sh
     orchestration, completeness checks, host assertions, final status
 
-TESTHWC.MK
-    manual original utility versus real hardware observation conformance
+HWCTEST.BAT / HWCREAD.MK / HWCWRITE.MK
+    manual original utility versus real hardware observation and write conformance
 
 TESTHWL.BAT
     constrained 8086 startup and memory sanity

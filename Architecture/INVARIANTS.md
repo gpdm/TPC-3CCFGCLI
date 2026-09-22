@@ -221,7 +221,7 @@ See [MOCK.md](MOCK.md).
 | `INV-TEST-11` | Synchronization tests must retain fixtures in which persistent and live state deliberately disagree.                                                                            |
 | `INV-TEST-12` | Multi adapter behavior must remain covered through deterministic mock records.                                                                                                  |
 | `INV-TEST-13` | Real hardware conformance must remain separate from normal unattended mock regression execution.                                                                                |
-| `INV-TEST-14` | Default `TESTHWC.MK` conformance uses the original utility as writer and `3CCFGCLI` as observer. That evidence must not be represented as proof of every `3CCFGCLI` write path. |
+| `INV-TEST-14` | Default `HWCREAD.MK` conformance uses the original utility as writer and `3CCFGCLI` as observer. That evidence must not be represented as proof of every `3CCFGCLI` write path. |
 | `INV-TEST-15` | The hardware limit test must remain described according to what it actually proves: executable startup and HELP execution under the tested constrained 8086 environments.       |
 | `INV-TEST-16` | The normal functional smoke suite must not be described as running fully under explicit 8086 emulation unless its DOSBox configuration is changed accordingly.                  |
 | `INV-TEST-17` | Regression behavior must reflect the intended scope and architecture of this project rather than blindly reproducing every behavior of the original utility.                    |

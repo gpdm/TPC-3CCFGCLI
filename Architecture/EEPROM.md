@@ -537,7 +537,7 @@ For the conventional ISA configuration path supported by `3CCFGCLI`,
 The original 3Com utility also has a PnP BIOS path in which Boot ROM
 configuration is represented differently. System PnP BIOS integration is
 intentionally outside the scope of `3CCFGCLI`; see
-[`DESIGN_DECISIONS.md`](../DESIGN_DECISIONS.md).
+[`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md).
 
 This is important because the same word contains adapter revision
 information used elsewhere in the program.

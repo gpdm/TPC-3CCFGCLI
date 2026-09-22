@@ -7,9 +7,8 @@
 |                                                                                   |
 |  EXPERIMENTAL RELEASE, LIMITED HARDWARE TESTING                                   |
 |                                                                                   |
-|  3CCFGLI has seen limited hardware testing on a real 3C509B-TPC NIC.              |
-|  Other models have not yet been tested in the real world, bugs may be present!    |
-|                                                                                   |
+|  3CCFGLI has seen limited hardware testing on real                                |
+|  5C509-TP, 3C509B-TP and 3C509B-TPCoax NICS.                                      |
 |  Generally, all config verbs are expected to behave correctly at this time.       |
 |  TO BE CONSIDERED AS *UNSAFE* ARE /BADDR AND /BSIZE OPERATIONS.                   |
 |  USE ENTIRELY AT YOUR OWN RISK.                                                   |
@@ -56,7 +55,8 @@ and validation methodology behind `3CCFGCLI` are documented separately in
 
 ## Implementation status
 
-Current task notes and open follow ups are tracked in [TODO.md](TODO.md).
+Current task notes and open follow ups are tracked as
+[GitHub issues](https://github.com/gpdm/TPC-3CCFGCLI/issues).
 
 The implementation currently provides:
 
@@ -316,6 +316,12 @@ Number                       Description
 
 The implementation is split into several assembly modules.
 
+For a detailed internal architecture reference, including the hardware
+backend contract, discovery, state model, CONFIGURE transactions, EEPROM
+layout, capability model, the mock hardware model, low level conventions,
+testing architecture, and the standing architectural invariants, see
+[Architecture/ARCHITECTURE.md](Architecture/ARCHITECTURE.md).
+
 CLI behavior is kept separate from hardware access. Real hardware access and
 the equivalent mock interface are exposed through common interfaces, allowing
 the same main program logic to operate against either backend.
@@ -334,8 +340,8 @@ mock state file format is v4.
 | [3CSHIF.ASM](3CSHIF.ASM)       | Backend-independent NIC algorithms.                                                       |
 | [3CSEED.ASM](3CSEED.ASM)     | Mock state seeder used to create deterministic test fixtures.                                 |
 | [TEST.MK](TEST.MK)           | Smoke test suite orchestration.                                                               |
-| [TESTHWL.MK](TESTHWL.MK)     | Test run on an emulated IBM PC compatible constrained system with 64, 128, and 256 KB of RAM. |
-| [TESTHWC.MK](TESTHWC.MK)     | Limited EEPROM read and write Hardware Compliance Test.                                       |
+| [TESTHWL.BAT](TESTHWL.BAT)   | Test run on an emulated IBM PC compatible constrained system with 64, 128, and 256 KB of RAM. |
+| [HWCTEST.BAT](HWCTEST.BAT), [HWCREAD.MK](HWCREAD.MK), [HWCWRITE.MK](HWCWRITE.MK), [HWCLIB.MK](HWCLIB.MK) | Real hardware Compliance suite; see [HWCTEST.md](HWCTEST.md). |
 
 ## Build
 
@@ -477,19 +483,39 @@ The normal test run consists of:
 prepares mock NIC state in `3C509B.MCK` so tests can begin from known card
 profiles, capability overrides, configuration values, and cleanup states.
 
-| Verb           | Description                                                                                 |
+Usage is `3CSEED verb [options]`, where `verb` is one of `INIT`, `ADD`, `CLEAR`,
+or an explicit model name. `INIT` and `ADD` both accept the same model names
+and options; `INIT` (re)creates the seed file with one card, `ADD` appends a
+card to an existing seed file (defaulting to the next free I/O base), and a
+bare model name is a shorthand for `INIT model`.
+
+| Verb / model   | Description                                                                                 |
 | -------------- | ------------------------------------------------------------------------------------------- |
-| `INIT`         | Deterministic 3C509B-TP profile, Product 9050h, TP + AUI, IRQ 10, base 0x0300. Default for most tests. |
+| `INIT`         | Alias for `INIT 3C509B-TP`: Product 9050h, ASIC revision 2, TP + AUI, IRQ 10, base 0x0300. Default for most tests. |
+| `ADD model`    | Appends one card of the given model to the existing seed file.                              |
 | `CLEAR`        | Deletes `3C509B.MCK`.                                                                       |
-| `3C509B-TP`    | Product 9050h, TP + AUI.                                                                    |
-| `3C509B-COAX`  | Product 9150h, AUI + BNC.                                                                   |
-| `3C509B-COMBO` | Product 9450h, TP + AUI + BNC.                                                              |
-| `3C509B-TPO`   | Product 9550h, TP only.                                                                     |
-| `3C509B-TPC`   | Product 9850h, media coax.                                                                  |
-| `3C509-TP`     | 3C509-TP, ASIC revision 1, product 9050h, TP + AUI connectors, no B-specific PNP/Full Duplex/AUTO/Boot ROM CONFIGURE semantics. |
-| `MODEMFIELDS`  | INIT plus non MODEM Software Information fields set for preservation tests.                 |
-| `M1200US`      | INIT plus MODEM raw value `2Fh`, 1200 microseconds, for serialization tests.                |
-| `NOLINKBEAT`   | INIT plus `EEPROM_SOFTWARE_INFO` bit 14 set for MODEM preservation tests.                   |
+| `3C509B-TP`    | Product 9050h, ASIC revision 2, TP + AUI.                                                    |
+| `3C509B-COAX`  | Product 9150h, ASIC revision 2, AUI + BNC.                                                   |
+| `3C509B-COMBO` | Product 9450h, ASIC revision 2, TP + AUI + BNC.                                              |
+| `3C509B-TPO`   | Product 9550h, ASIC revision 2, TP only.                                                     |
+| `3C509B-TPC`   | Product 9850h, ASIC revision 2, BNC.                                                         |
+| `3C509-TP`     | Product 9050h, ASIC revision 1, TP + AUI, no B-specific PNP/Full Duplex/AUTO/Boot ROM CONFIGURE semantics. |
+| `3C509-COAX`   | Product 9150h, ASIC revision 1, AUI + BNC.                                                   |
+| `3C509-COMBO`  | Product 9450h, ASIC revision 1, TP + AUI + BNC.                                              |
+| `3C509-TPO`    | Product 9550h, ASIC revision 1, TP only.                                                     |
+| `3C509-TPC`    | Product 9850h, ASIC revision 1, TP + BNC.                                                    |
+
+Optional `/`-prefixed attributes accepted by `INIT`/`ADD`/a bare model name:
+
+| Option           | Description                                                        |
+| ---------------- | ------------------------------------------------------------------- |
+| `/IOBASE:value`  | Sets the initial I/O base address.                                  |
+| `/INT:value`     | Sets the initial IRQ.                                                |
+| `/MODEMPRESERVE` | Seeds EEPROM word `0Dh` preservation-test fields (non-MODEM bits, including Link Beat policy). |
+| `/M1200US`       | Seeds the MODEM raw value `2Fh`, 1200 microseconds, for serialization tests. |
+| `/ROM8K`         | Attaches an 8 KB mock Boot ROM.                                      |
+| `/ROM16K`        | Attaches a 16 KB mock Boot ROM.                                      |
+| `/ROM32K`        | Attaches a 32 KB mock Boot ROM.                                      |
 
 ### Test flow
 
@@ -517,7 +543,7 @@ profiles, capability overrides, configuration values, and cleanup states.
    command line limit.
 
 7. [test.sh](test.sh) then performs hardware limit checks using
-   [autoexec-testhwl](autoexec-testhwl), generating:
+   [autoexec-testhwl.template](autoexec-testhwl.template), generating:
 
    * `ARTIFACT/HWL64.LOG`
    * `ARTIFACT/HWL128.LOG`

@@ -829,6 +829,11 @@ They are not a replacement for persistent and live verification.
 
 `3C509B.MCK` contains more than EEPROM contents.
 
+The complete per-record mock state layout, ID-port contention/tagging model,
+and fault-injection mechanisms are documented in [`MOCK.md`](MOCK.md). This
+section summarizes only the state-model rationale for keeping that state
+persistent.
+
 It persists enough modeled state to allow separate utility invocations to
 continue operating on the same virtual adapters.
 

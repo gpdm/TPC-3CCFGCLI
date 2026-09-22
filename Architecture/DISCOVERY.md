@@ -453,6 +453,9 @@ This is an example of the distinction described in
 Equivalent application semantics do not require identical internal backend
 implementations.
 
+The full mock ID-port tagging and activation model is documented in
+[`MOCK.md`](MOCK.md).
+
 ## Activation failure
 
 Failure to activate a tagged adapter does not automatically remove the

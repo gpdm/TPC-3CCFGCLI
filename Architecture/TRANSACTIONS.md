@@ -862,7 +862,7 @@ Boot ROM Size Valid therefore remains clear. The original 3Com utility uses
 a different Boot ROM representation when a system PnP BIOS participates in
 resource assignment. System PnP BIOS integration is intentionally outside
 the scope of `3CCFGCLI`; see
-[`DESIGN_DECISIONS.md`](../DESIGN_DECISIONS.md).
+[`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md).
 
 A disabled request clears the Boot ROM mapping fields.
 
