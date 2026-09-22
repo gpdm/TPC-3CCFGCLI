@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-09-22T22:22:31.577696+02:00" tests="184" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-09-23T01:08:33.166543+02:00" tests="174" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -702,7 +702,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="MULTI_NIC: Verify multi-NIC behaviour" tests="29" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="MULTI_NIC: Verify multi-NIC behaviour" tests="19" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t15xx"/>
 			<property name="description" value="Verify multi-NIC behaviour"/>
@@ -785,48 +785,6 @@
 				<property name="artifact" value="ARTIFACT/T1514.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1515: invalid ID tag does not activate another adapter" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="invalid ID tag does not activate another adapter"/>
-				<property name="artifact" value="ARTIFACT/T1515.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1516: activation without tag selection has no target" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="activation without tag selection has no target"/>
-				<property name="artifact" value="ARTIFACT/T1516.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1517: temporary activation preserves persistent IOBASE" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="temporary activation preserves persistent IOBASE"/>
-				<property name="artifact" value="ARTIFACT/T1517.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1518: canonical enrichment stores per-adapter capabilities" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="canonical enrichment stores per-adapter capabilities"/>
-				<property name="artifact" value="ARTIFACT/T1518.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1519: canonical enrichment isolates duplicate IOBASE adapters" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="canonical enrichment isolates duplicate IOBASE adapters"/>
-				<property name="artifact" value="ARTIFACT/T1519.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1520: canonical AUTO port type uses ID snapshot" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="canonical AUTO port type uses ID snapshot"/>
-				<property name="artifact" value="ARTIFACT/T1520.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1521: canonical explicit port type retains AUTO-clear" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="canonical explicit port type retains AUTO-clear"/>
-				<property name="artifact" value="ARTIFACT/T1521.LOG"/>
-			</properties>
-		</testcase>
 		<testcase name="t1522: duplicate IOBASE preserves ASIC revisions" classname="MULTI_NIC">
 			<properties>
 				<property name="description" value="duplicate IOBASE preserves ASIC revisions"/>
@@ -837,18 +795,6 @@
 			<properties>
 				<property name="description" value="duplicate IOBASE preserves port modes"/>
 				<property name="artifact" value="ARTIFACT/T1523.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1524: restore fail keeps ASIC/port, caps unpublished" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="restore fail keeps ASIC/port, caps unpublished"/>
-				<property name="artifact" value="ARTIFACT/T1524.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1525: CONFIGURE uses published capability cache" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="CONFIGURE uses published capability cache"/>
-				<property name="artifact" value="ARTIFACT/T1525.LOG"/>
 			</properties>
 		</testcase>
 		<testcase name="t1526: PNP fallback uses retained ID snapshot" classname="MULTI_NIC">
@@ -867,12 +813,6 @@
 			<properties>
 				<property name="description" value="missing TR fallback data reports unavailable"/>
 				<property name="artifact" value="ARTIFACT/T1528.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1529: combined CONFIGURE uses one capability fallback" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="combined CONFIGURE uses one capability fallback"/>
-				<property name="artifact" value="ARTIFACT/T1529.LOG"/>
 			</properties>
 		</testcase>
 		<testcase name="t1530: duplicate IOBASE capability cache uses ordinal" classname="MULTI_NIC">

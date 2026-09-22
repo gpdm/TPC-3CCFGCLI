@@ -252,36 +252,16 @@ Seed file created (INIT).
 [t1513] PASSED
 [t1514] multi-NIC sequential selected access remains isolated
 [t1514] PASSED
-[t1515] invalid ID tag does not activate another adapter
-[t1515] PASSED
-[t1516] activation without tag selection has no target
-[t1516] PASSED
-[t1517] temporary activation preserves persistent IOBASE
-[t1517] PASSED
-[t1518] canonical enrichment stores per-adapter capabilities
-[t1518] PASSED
-[t1519] canonical enrichment isolates duplicate IOBASE adapters
-[t1519] PASSED
-[t1520] canonical AUTO port type uses ID snapshot
-[t1520] PASSED
-[t1521] canonical explicit port type retains AUTO-clear
-[t1521] PASSED
 [t1522] duplicate IOBASE preserves ASIC revisions
 [t1522] PASSED
 [t1523] duplicate IOBASE preserves port modes
 [t1523] PASSED
-[t1524] restore fail keeps ASIC/port, caps unpublished
-[t1524] PASSED
-[t1525] CONFIGURE uses published capability cache
-[t1525] PASSED
 [t1526] PNP fallback uses retained ID snapshot
 [t1526] PASSED
 [t1527] missing FD fallback data reports unavailable
 [t1527] PASSED
 [t1528] missing TR fallback data reports unavailable
 [t1528] PASSED
-[t1529] combined CONFIGURE uses one capability fallback
-[t1529] PASSED
 [t1530] duplicate IOBASE capability cache uses ordinal
 [t1530] PASSED
 [t16xx] SAVECONFIG_TEST: Verify save configuration behaviour
@@ -407,8 +387,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 180
-    Executed Tests           : 180
+    Defined Tests            : 170
+    Executed Tests           : 170
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS
