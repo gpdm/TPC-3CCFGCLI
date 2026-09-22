@@ -731,27 +731,6 @@ cli_kw_list     DB 'LIST', 0
 cli_kw_saveconfig DB 'SAVECONFIG', 0
 cli_kw_configure DB 'CONFIGURE', 0
 cli_kw_verbose  DB 'VERBOSE', 0
-IFDEF MOCKHW
-cli_kw_mocktest DB 'MOCKTEST', 0
-cli_kw_mock_invalid_tag DB 'INVALIDTAG', 0
-cli_kw_mock_no_select DB 'NOSELECT', 0
-cli_kw_mock_temporary_base DB 'TEMPBASE', 0
-cli_kw_mock_capcache1 DB 'CAPCACHE1', 0
-cli_kw_mock_capcache2 DB 'CAPCACHE2', 0
-cli_kw_mock_xcvrtype DB 'PORTTYPE', 0
-cli_kw_mock_explicit DB 'EXPLICIT', 0
-cli_kw_mock_duprev DB 'DUPREV', 0
-cli_kw_mock_dupmode DB 'DUPMODE', 0
-cli_kw_mock_restorefail DB 'RESTOREFAIL', 0
-cli_kw_mock_cfgcache DB 'CFGCACHE', 0
-cli_kw_mock_cfgpnp DB 'CFGPNP', 0
-cli_kw_mock_cfgfdfail DB 'CFGFDFAIL', 0
-cli_kw_mock_cfgtrfail DB 'CFGTRFAIL', 0
-cli_kw_mock_cfgcombo DB 'CFGCOMBO', 0
-cli_kw_mock_cfgdup DB 'CFGDUP', 0
-msg_mocktest_pass DB 'HWMOCK contract test passed.', 0Dh, 0Ah, '$'
-msg_mocktest_fail DB 'HWMOCK contract test failed.', 0Dh, 0Ah, '$'
-ENDIF
 save_execfile_kw DB 'EXECFILE:', 0
 save_buffer     DB  SAVE_BUFFER_SIZE DUP(0)
 save_length     DW  0
@@ -1068,12 +1047,6 @@ PROC Parse_And_Execute NEAR
     call    Cli_Match_Token
     jnc     @@List
 
-IFDEF MOCKHW
-    mov     bx, OFFSET cli_kw_mocktest
-    call    Cli_Match_Token
-    jnc     @@MockTest
-ENDIF
-
     mov     bx, OFFSET cli_kw_saveconfig
     call    Cli_Match_Token
     jc      @@CheckConfig
@@ -1103,121 +1076,6 @@ ENDIF
     jne     @@Help
     call    Cmd_List
     ret
-
-IFDEF MOCKHW
-@@MockTest:
-    add     si, 8
-    call    Cli_Collect_Args
-    jc      @@Done
-    cmp     [cli_arg_count], 1
-    jne     @@Help
-    call    Cli_Next_Arg
-    jc      @@Help
-    mov     bx, OFFSET cli_kw_mock_invalid_tag
-    call    Cli_Match_Token
-    jnc     @@MockInvalidTag
-    mov     bx, OFFSET cli_kw_mock_no_select
-    call    Cli_Match_Token
-    jnc     @@MockNoSelect
-    mov     bx, OFFSET cli_kw_mock_temporary_base
-    call    Cli_Match_Token
-    jnc     @@MockTemporaryBase
-    mov     bx, OFFSET cli_kw_mock_capcache1
-    call    Cli_Match_Token
-    jnc     @@MockCapCache1
-    mov     bx, OFFSET cli_kw_mock_capcache2
-    call    Cli_Match_Token
-    jnc     @@MockCapCache2
-    mov     bx, OFFSET cli_kw_mock_xcvrtype
-    call    Cli_Match_Token
-    jnc     @@MockXcvrType
-    mov     bx, OFFSET cli_kw_mock_explicit
-    call    Cli_Match_Token
-    jnc     @@MockExplicit
-    mov     bx, OFFSET cli_kw_mock_duprev
-    call    Cli_Match_Token
-    jnc     @@MockDupRev
-    mov     bx, OFFSET cli_kw_mock_dupmode
-    call    Cli_Match_Token
-    jnc     @@MockDupMode
-    mov     bx, OFFSET cli_kw_mock_restorefail
-    call    Cli_Match_Token
-    jnc     @@MockRestoreFail
-    mov     bx, OFFSET cli_kw_mock_cfgcache
-    call    Cli_Match_Token
-    jnc     @@MockCfgCache
-    mov     bx, OFFSET cli_kw_mock_cfgpnp
-    call    Cli_Match_Token
-    jnc     @@MockCfgPnp
-    mov     bx, OFFSET cli_kw_mock_cfgfdfail
-    call    Cli_Match_Token
-    jnc     @@MockCfgFdFail
-    mov     bx, OFFSET cli_kw_mock_cfgtrfail
-    call    Cli_Match_Token
-    jnc     @@MockCfgTrFail
-    mov     bx, OFFSET cli_kw_mock_cfgcombo
-    call    Cli_Match_Token
-    jnc     @@MockCfgCombo
-    mov     bx, OFFSET cli_kw_mock_cfgdup
-    call    Cli_Match_Token
-    jc      @@Help
-    mov     al, 16
-    jmp     @@RunMockTest
-@@MockRestoreFail:
-    mov     al, 10
-    jmp     @@RunMockTest
-@@MockCfgCache:
-    mov     al, 11
-    jmp     @@RunMockTest
-@@MockCfgPnp:
-    mov     al, 12
-    jmp     @@RunMockTest
-@@MockCfgFdFail:
-    mov     al, 13
-    jmp     @@RunMockTest
-@@MockCfgTrFail:
-    mov     al, 14
-    jmp     @@RunMockTest
-@@MockCfgCombo:
-    mov     al, 15
-    jmp     @@RunMockTest
-@@MockTemporaryBase:
-    mov     al, 3
-    jmp     @@RunMockTest
-@@MockInvalidTag:
-    mov     al, 1
-    jmp     @@RunMockTest
-@@MockNoSelect:
-    mov     al, 2
-    jmp     @@RunMockTest
-@@MockCapCache1:
-    mov     al, 4
-    jmp     @@RunMockTest
-@@MockCapCache2:
-    mov     al, 5
-    jmp     @@RunMockTest
-@@MockXcvrType:
-    mov     al, 6
-    jmp     @@RunMockTest
-@@MockExplicit:
-    mov     al, 7
-    jmp     @@RunMockTest
-@@MockDupRev:
-    mov     al, 8
-    jmp     @@RunMockTest
-@@MockDupMode:
-    mov     al, 9
-@@RunMockTest:
-    call    Mock_Run_Contract_Test
-    jc      @@MockFail
-    mov     dx, OFFSET msg_mocktest_pass
-    call    Print_String
-    ret
-@@MockFail:
-    mov     dx, OFFSET msg_mocktest_fail
-    call    Print_String
-    ret
-ENDIF
 
 @@Help:
     mov     dx, OFFSET msg_help
@@ -4539,10 +4397,6 @@ PROC Nic_Read_Capabilities NEAR
     push    si
     push    di
     push    bp
-
-IFDEF MOCKHW
-    inc     [mock_capability_read_count]
-ENDIF
 
     mov     di, si
     call    Nic_Get_Current_Window

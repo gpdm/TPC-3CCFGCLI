@@ -308,49 +308,7 @@ This satisfies `INV-MOCK-14`: same-I/O-base multi-adapter conflicts are a
 deliberate conflict simulation, not a claim that this exact ambiguity is the
 only possible physical outcome.
 
-## 14. Fault And Failure Injection
-
-Two complementary mechanisms let the regression suite exercise failure paths
-that are otherwise difficult to reach deterministically:
-
-* **`mock_force_restore_fail`**: when armed, the next `Nic_IO_Read_Word` call
-  that would otherwise observe a genuinely absent decoder instead reports a
-  bogus present-looking reading once, then disarms itself. This exists
-  specifically to prove a restore-failure branch without disturbing any
-  ordinary present-device read observed earlier in the same discovery pass.
-* **`mock_fail_config_control_reads`**: when nonzero, a read of
-  `EL3_W0_CONFIG_CONTROL` returns `FFFFh` and decrements the counter,
-  modeling an unavailable Configuration Control source for capability
-  validity testing.
-
-Both are driven through the hidden `MOCKTEST` CLI verb, implemented by
-`Mock_Run_Contract_Test`. This is a MOCKHW-only low-level contract probe: it
-accepts a numbered scenario (invalid tag, activation without selection,
-temporary base, distinct/duplicate capability cache identity, transceiver
-type normalization, duplicate ASIC revisions, duplicate ID modes, restore
-failure, CONFIGURE capability cache reuse, PNP/Full-Duplex/transceiver
-capability-fallback recovery, and combined fallback and duplicate-cache
-scenarios), arms the corresponding fault state, runs discovery or the
-relevant CONFIGURE path, and reports success through CF. `TEST.MK` invokes
-specific scenarios directly, for example:
-
-```text
-3CHWMOCK MOCKTEST DUPREV
-3CHWMOCK MOCKTEST CFGPNP
-3CHWMOCK MOCKTEST CFGFDFAIL
-```
-
-`mock_capability_read_count` and `mock_capability_eeprom_read_count` are
-companion counters that let a contract-test scenario assert how many times a
-particular capability source was actually consulted, rather than only
-checking the final result.
-
-This is explicitly testing-convenience infrastructure, not a hardware model:
-real EtherLink III hardware has no "MOCKTEST" concept. It exists so
-regression tests can reach branches that are otherwise dependent on rare or
-inconvenient real-world conditions.
-
-## 15. What The Mock Does Not Model
+## 14. What The Mock Does Not Model
 
 Some behavior is deliberately not modeled, or modeled only as
 configuration-visible state:
@@ -373,7 +331,7 @@ represented conservatively (for example, returning zero or failing the
 operation) rather than inventing a plausible-looking answer merely to satisfy
 an application code path that happens to ask for it.
 
-## 16. `3CSEED` And The Mock
+## 15. `3CSEED` And The Mock
 
 `3CSEED.EXE` creates or appends deterministic records directly into
 `3C509B.MCK` using the same `MCK_*` / `MCK3R_*` layout `3CMOCKIF.ASM` reads,
@@ -396,7 +354,7 @@ deliberately construct disagreement between hardware information sources
 policy) precisely because that disagreement is the condition a test needs to
 exercise; that is a legitimate fixture, not a modeling defect.
 
-## 17. Mock Architecture Invariants
+## 16. Mock Architecture Invariants
 
 The following rules should remain true when modifying the mock backend. They
 restate section 10 of [INVARIANTS.md](INVARIANTS.md) in the context of this
