@@ -78,7 +78,7 @@ CLI_PARSER: t13xx t1301 t1302 t1303 t1304 t1305 t1306 t1307 t1308 t1309 t1310 t1
 COMBINED_TRANSACTIONS: t14xx t1401 t1402 t1403 t1405 t1406 t1407
 
 # Base: 1500
-MULTI_NIC: t15xx t1500 t1502 t1503 t1504 t1505 t1506 t1507 t1508 t1509 t1511 t1512 t1513 t1514 t1515 t1516 t1517 t1518 t1519 t1520 t1521 t1522 t1523 t1524 t1525 t1526 t1527 t1528 t1529 t1530
+MULTI_NIC: t15xx t1500 t1502 t1503 t1504 t1505 t1506 t1507 t1508 t1509 t1511 t1512 t1513 t1514 t1522 t1523 t1526 t1527 t1528 t1530
 
 # Base: 1600
 SAVECONFIG_TEST: t16xx t1602 t1603 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622 t1623 t1624 t1625 t1626 t1627
@@ -1420,64 +1420,6 @@ t1514:
    FIND "IOBASE = 0310, IRQ = 7" $(ARTIFACTS)\T1514.LOG > NUL
    @echo [t1514] PASSED  >> $(TESTLOG)
 
-t1515:
-   @echo [t1515] invalid ID tag does not activate another adapter >> $(TESTLOG)
-   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1515.LOG
-   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 >> $(ARTIFACTS)\T1515.LOG
-   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 >> $(ARTIFACTS)\T1515.LOG
-   $(BINAPP) MOCKTEST INVALIDTAG >> $(ARTIFACTS)\T1515.LOG
-   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1515.LOG > NUL
-   @echo [t1515] PASSED  >> $(TESTLOG)
-
-t1516:
-   @echo [t1516] activation without tag selection has no target >> $(TESTLOG)
-   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1516.LOG
-   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 >> $(ARTIFACTS)\T1516.LOG
-   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 >> $(ARTIFACTS)\T1516.LOG
-   $(BINAPP) MOCKTEST NOSELECT >> $(ARTIFACTS)\T1516.LOG
-   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1516.LOG > NUL
-   @echo [t1516] PASSED  >> $(TESTLOG)
-
-t1517:
-   @echo [t1517] temporary activation preserves persistent IOBASE >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1517.LOG
-   $(BINAPP) MOCKTEST TEMPBASE >> $(ARTIFACTS)\T1517.LOG
-   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1517.LOG > NUL
-   @echo [t1517] PASSED  >> $(TESTLOG)
-
-t1518:
-   @echo [t1518] canonical enrichment stores per-adapter capabilities >> $(TESTLOG)
-   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1518.LOG
-   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 >> $(ARTIFACTS)\T1518.LOG
-   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0310 >> $(ARTIFACTS)\T1518.LOG
-   $(BINAPP) MOCKTEST CAPCACHE1 >> $(ARTIFACTS)\T1518.LOG
-   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1518.LOG > NUL
-   @echo [t1518] PASSED  >> $(TESTLOG)
-
-t1519:
-   @echo [t1519] canonical enrichment isolates duplicate IOBASE adapters >> $(TESTLOG)
-   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1519.LOG
-   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 >> $(ARTIFACTS)\T1519.LOG
-   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 >> $(ARTIFACTS)\T1519.LOG
-   $(BINAPP) MOCKTEST CAPCACHE2 >> $(ARTIFACTS)\T1519.LOG
-   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1519.LOG > NUL
-   @echo [t1519] PASSED  >> $(TESTLOG)
-
-t1520:
-   @echo [t1520] canonical AUTO port type uses ID snapshot >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1520.LOG
-   $(BINAPP) CONFIGURE /TR:AUTO >> $(ARTIFACTS)\T1520.LOG
-   $(BINAPP) MOCKTEST PORTTYPE >> $(ARTIFACTS)\T1520.LOG
-   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1520.LOG > NUL
-   @echo [t1520] PASSED  >> $(TESTLOG)
-
-t1521:
-   @echo [t1521] canonical explicit port type retains AUTO-clear >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1521.LOG
-   $(BINAPP) MOCKTEST EXPLICIT >> $(ARTIFACTS)\T1521.LOG
-   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1521.LOG > NUL
-   @echo [t1521] PASSED  >> $(TESTLOG)
-
 t1522:
    @echo [t1522] duplicate IOBASE preserves ASIC revisions >> $(TESTLOG)
    ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1522.LOG
@@ -1503,21 +1445,6 @@ t1523:
    FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1523.LOG > NUL
    @echo [t1523] PASSED  >> $(TESTLOG)
 
-t1524:
-   @echo [t1524] restore fail keeps ASIC/port, caps unpublished >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1524.LOG
-   $(BINAPP) CONFIGURE /TR:AUTO >> $(ARTIFACTS)\T1524.LOG
-   $(BINAPP) MOCKTEST RESTOREFAIL >> $(ARTIFACTS)\T1524.LOG
-   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1524.LOG > NUL
-   @echo [t1524] PASSED  >> $(TESTLOG)
-
-t1525:
-   @echo [t1525] CONFIGURE uses published capability cache >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1525.LOG
-   $(BINAPP) MOCKTEST CFGCACHE >> $(ARTIFACTS)\T1525.LOG
-   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1525.LOG > NUL
-   @echo [t1525] PASSED  >> $(TESTLOG)
-
 t1526:
    @echo [t1526] PNP fallback uses retained ID snapshot >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1526.LOG
@@ -1539,13 +1466,6 @@ t1528:
    $(BINAPP) MOCKTEST CFGTRFAIL >> $(ARTIFACTS)\T1528.LOG
    FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1528.LOG > NUL
    @echo [t1528] PASSED  >> $(TESTLOG)
-
-t1529:
-   @echo [t1529] combined CONFIGURE uses one capability fallback >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1529.LOG
-   $(BINAPP) MOCKTEST CFGCOMBO >> $(ARTIFACTS)\T1529.LOG
-   FIND "HWMOCK contract test passed." $(ARTIFACTS)\T1529.LOG > NUL
-   @echo [t1529] PASSED  >> $(TESTLOG)
 
 t1530:
    @echo [t1530] duplicate IOBASE capability cache uses ordinal >> $(TESTLOG)

@@ -1,99 +1,47 @@
 Changelog 0.8.0
-  - Cleanup: removed unreachable snapshot-invariant failure paths from
-    SAVECONFIG and CONFIGURE.  Discovery-created records always carry their
-    ordinal ID-port EEPROM snapshot, so the obsolete SAVECONFIG read error
-    and CONFIGURE early-failure branch were retired without changing stable
-    error numbering.
-  - Retired the obsolete SAVECONFIG ambiguity error. Duplicate IOBASE records
-    retain separate ID tags and ordinal EEPROM snapshots, so SAVECONFIG no
-    longer needs to infer persistent EEPROM ownership from a shared live base.
-  - Cleanup: removed unreachable post-temporary-access unknown ASIC revision
-    branches from CONFIGURE capability and activation paths.
-  - The per-adapter ID EEPROM snapshot now retains only persistent and
-    capability words used after discovery, avoiding redundant snapshot state
-    and unnecessary ID-port EEPROM reads.
-  - Logical NIC records now rely on their ordinal ID EEPROM snapshot for
-    persistent adapter state, retaining live access only for transaction
-    verification and diagnostics that require current hardware state.
-  - Discovered NIC records retain reliably identified ASIC revision and the
-    complete configured transceiver mode, including 3C509B Auto Select. LIST
-    and SAVECONFIG consume the normalized per-adapter transceiver value directly
-    from each logical NIC record instead of independently interpreting EEPROM
-    Address Configuration bits, including duplicate IOBASE records with distinct
-    port modes.
-  - Cleanup: removed the retired direct-versus-temporary-access branches in
-    Cfg_Txn_Read_Current and Cfg_Txn_Activate_If_Needed, which had become
-    unreachable once CONFIGURE was unified around a mandatory temporary
-    working base; cfg_txn_working_access and its remaining meaningful
-    checks are unchanged.
-  - Cleanup: consolidated ISA IOBASE and Address Configuration selector
-    conversion in the shared backend-independent layer while preserving the
-    special unassigned/EISA selector 1Fh behavior.
-  - Cleanup: consolidated byte decimal output through the shared
-    Print_DecWord conversion routine while preserving Print_DecByte's
-    register contract.
-  - Cleanup: removed the unreachable CONFIGURE inactive-adapter error dispatch,
-    also retiring nine affected error slots without changing stable error numbering.
-  - Cleanup: consolidated the duplicated Full/Short ID port sequence loop in each of
-    3CHWIF.ASM and 3CMOCKIF.ASM into one internal shared sequence core per backend.
-  - Cleanup: removed legacy active-only NIC record creation. ID-port discovery
-    is now the sole source of supported records; the final active-base sweep
-    only refreshes uniquely matched ID-derived records and ignores unmatched
-    or duplicate IOBASE responses.
-  - Cleanup: replaced the historical 31-address active-base sweep with
-    validation of uniquely owned ID-discovered records only; io_scan_table
-    remains available for CONFIGURE temporary working-base selection.
+  - Reworked adapter discovery around ID-port-derived logical records. Removed
+    legacy active-only record creation and the historical 31-address active-base
+    sweep; normal I/O access now only validates uniquely owned ID-derived
+    records, preserving separate identities for duplicate configured IOBASE
+    values.
+  - Made the ordinal per-adapter ID-port EEPROM snapshot the authoritative
+    source for persistent state used by LIST, SAVECONFIG, and CONFIGURE. The
+    snapshot now retains only the persistent and capability words required after
+    discovery, and obsolete snapshot-read and ambiguous-ownership failure paths
+    were retired while preserving stable error-code slots.
+  - Centralized capability collection in Nic_Read_Capabilities and canonical
+    per-adapter capability caches. Discovery enriches each tagged adapter
+    through isolated temporary access and publishes the result only after
+    successful restoration. LIST and SAVECONFIG consume cached capability facts
+    by logical adapter identity, while CONFIGURE performs a transaction-time
+    fallback only for capability domains not already available.
+  - Generalized tagged-adapter temporary access into caller-neutral
+    Nic_Begin_Temporary_Access and Nic_End_Temporary_Access routines.
+    CONFIGURE uses the same mandatory temporary working-base mechanism, and
+    obsolete direct-access alternatives and unreachable post-success
+    unknown-ASIC-revision branches were removed.
+  - Reworked transceiver handling around the canonical NIC_XCVR_* domain.
+    Raw W0_ADDRESS_CFG_XCVR_* selectors are decoded explicitly, raw selector 2
+    remains NIC_XCVR_UNDEFINED, AUTO uses NIC_XCVR_AUTO, and CONFIGURE
+    explicitly maps canonical TP/AUI/COAX values back to raw hardware selectors
+    before writing. LIST and SAVECONFIG consume the normalized transceiver value
+    stored in each logical NIC record.
+  - Split the oversized Cfg_Txn_Verify routine into per-property NEAR helpers
+    with a common carry-based success/failure contract. Verification order,
+    EEPROM readback-cache reuse, error attribution, and message behavior remain
+    unchanged while branch distances are localized and the previous
+    code-layout sensitivity is removed.
+  - Completed the CONFIGURE and SAVECONFIG error-model cleanup by retiring
+    unreachable error paths and dispatch entries without renumbering stable
+    error slots, and corrected shared live-update and Boot ROM verification
+    error attribution.
+  - Consolidated low-level duplicated code: ISA IOBASE/Address Configuration
+    selector conversion now lives in the shared backend-independent layer,
+    Full/Short ID-port sequences share one core loop per backend, Print_DecByte
+    reuses Print_DecWord, and valid NIC tag checks use MAX_CARDS so the reserved
+    EISA skip tag is rejected.
   - Reworked HWCREAD and HWCWRITE to use a shared include file, reducing
-    redundancies and lowering the space requirement to fix again on the 360K disk image.
-  - NIC capability collection is centralized in the shared
-    Nic_Read_Capabilities routine and global per-adapter discovery cache.
-    LIST and SAVECONFIG consume cached Plug and Play and Full Duplex support
-    facts by logical adapter identity, including duplicate configured IOBASE
-    records. CONFIGURE uses the same canonical cache for Plug and Play, Full
-    Duplex, and connector validation, with a transaction-time fallback only
-    when a required capability domain was not published during discovery,
-    while persistent configuration values continue to come from the
-    per-adapter EEPROM snapshot.
-  - Shared temporary adapter access now uses caller-neutral NIC routines,
-    allowing safe ID-tagged scratch IOBASE access to be reused across commands.
-  - CONFIGURE temporary access acquisition and restore are now delegated to
-    caller-neutral shared NIC routines while preserving the existing
-    transaction bookkeeping and validation semantics.
-  - Added zero-initialized per-adapter capability and validity storage for
-    canonical discovery enrichment.
-  - Discovery now enriches each ID-tagged adapter's canonical capability cache
-    through isolated temporary access and publishes it only after restoration.
-  - Added direct regression coverage for per-adapter capability enrichment
-    with both distinct and duplicate configured IOBASE values.
-  - Simplified SAVECONFIG staging by centralizing adapter static facts
-    and decoding /OPTIMIZE once per exported command.
-  - Cleanup: removed the redundant `ext_revision_info` LIST temporary
-    state. `Read_Extended_Nic_Info_At_Base` now reads EEPROM word 14h
-    directly from the existing per-record ID EEPROM snapshot via
-    Get_Id_Eeprom_Snapshot
-  - Added `W0_ADDRESS_CFG_XCVR_*` hardware-selector symbols and renamed
-    transceiver values and fields from `NIC_PORT_*` to `NIC_XCVR_*`.
-  - Added the canonical `NIC_XCVR_UNDEFINED` constant and the new
-    `Nic_Decode_Explicit_Xcvr` selector decoder
-  - `Nic_Normalize_Xcvr_Type` now decodes explicit raw selectors
-     through `Nic_Decode_Explicit_Xcvr`.
-  - Cleanup: split the monolithic Cfg_Txn_Verify into per-property NEAR
-    helpers (Cfg_Txn_Verify_IOBASE, _INT, _PNP, _MODEM, _FULLDUPLEX,
-    _OPTIMIZE, _BootRom, _TR) using a shared CF-based success/failure
-    contract, shortening branch distances and localizing each property's
-    failure attribution while preserving all verification order, EEPROM
-    read/cache reuse, and message behavior.
-  - `Cfg_Handle_TR` and the CONFIGURE `/TR` capability gating and reporting
-    paths now compare and assign `cfg_tr_value` using the canonical
-    `NIC_XCVR_TP`, `NIC_XCVR_AUI`, and `NIC_XCVR_COAX` symbols instead of
-    their equivalent raw numeric literals; the `0FFh` AUTO sentinel is
-    unchanged.
-  - `cfg_tr_value` AUTO now uses `NIC_XCVR_AUTO` instead of the `0FFh` sentinel.
-  - Removed obsolete SAVECONFIG and CONFIGURE snapshot failure paths.
-  - Fixed valid NIC tag check to reject reserved tag 7 (ID_TAG_SKIP_EISA)
-    using MAX_CARDS as the upper bound instead of the literal 7.
-  - VI.B cleanup: retired unreachable CONFIGURE error paths and corrected
-    shared live-update and Boot ROM verification error attribution.
+    duplication and lowering their space requirements for the 360K disk image.
     
 Changelog 0.7.9
   - CONFIGURE now uses one general success message for every successful
