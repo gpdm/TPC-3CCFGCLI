@@ -160,6 +160,35 @@ The stricter enforcement path is deliberately kept in the code so that this poli
 The currently unreachable enforcement path is therefore intentional reserved functionality and must not be treated as dead code or removed during cleanup.
 
 
+## Adapter Activation State Preservation
+
+### Decision
+
+3CCFGCLI does not preserve or restore the adapter activation state that existed before discovery or CONFIGURE.
+
+After successful discovery, supported ID discovered adapters are activated at their configured I/O base and remain active.
+
+After CONFIGURE, the selected adapter is likewise left active at its configured I/O base.
+
+This intentionally differs from the original 3Com utility, which preserves the previous activation state and restores an originally inactive adapter to the inactive state.
+
+### Rationale
+
+The current behavior provides a simple and deterministic final state without additional activation state tracking and restoration logic.
+
+Preserving the previous active or inactive state is not required for the configuration model exposed by 3CCFGCLI.
+
+The difference from the original utility is therefore accepted as an intentional behavioral deviation rather than treated as a defect. This follows the purpose of this document to record deliberate differences and prevent them from being repeatedly identified as open issues.
+
+### Resulting Behavior
+
+Successful discovery leaves supported discovered adapters active.
+
+Successful CONFIGURE leaves the configured adapter active.
+
+No cleanup is required solely to restore an adapter to a previously inactive state.
+
+
 ## No CLI Exit Code Support
 
 ### Decision
