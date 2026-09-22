@@ -330,7 +330,7 @@ msg_cfg_checksum_updated DB "EEPROM checksum updated.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_verified DB "EEPROM IRQ verified: ", '$'
 msg_cfg_live_verified DB "Live IRQ verified: ", '$'
 msg_cfg_checksum_fail DB "EEPROM checksum update failed.", 0Dh, 0Ah, '$'
-msg_cfg_live_fail DB "Live IRQ configuration update failed.", 0Dh, 0Ah, '$'
+msg_cfg_live_fail DB "Live hardware configuration update failed.", 0Dh, 0Ah, '$'
 msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
 ; /IOBASE diagnostics.
 msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.", 0Dh, 0Ah, '$'
@@ -6933,9 +6933,9 @@ PROC Cfg_Txn_Verify_BootRom NEAR
     mov     dx, [cfg_txn_access_base]
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Read
-    jc      @@VerifyFail
+    jc      @@VerifyFailBSize
     cmp     ax, [cfg_txn_new_word14]
-    jne     @@VerifyFail
+    jne     @@VerifyFailBSize
 @@Word08:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jz      @@Live
