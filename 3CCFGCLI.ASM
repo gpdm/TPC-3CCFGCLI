@@ -1492,7 +1492,7 @@ PROC Cmd_SaveConfig NEAR
     mov     [save_asic_rev], al
     mov     ax, [WORD si + NIC_PRODUCT_ID]
     mov     [save_product_id], ax
-    call    Save_Read_Adapter
+    call    Save_Read_Id_Eeprom_Snapshot
 
     mov     ax, [current_card]
     inc     ax
@@ -2094,14 +2094,6 @@ PROC Save_Read_Id_Eeprom_Snapshot NEAR
     pop     ax
     ret
 ENDP Save_Read_Id_Eeprom_Snapshot
-
-; Read one logical NIC record's persistent configuration for SAVECONFIG from
-; its ordinal-matched ID-port EEPROM snapshot.  Every record produced by the
-; discovery scan owns this snapshot.
-PROC Save_Read_Adapter NEAR
-    call    Save_Read_Id_Eeprom_Snapshot
-    ret
-ENDP Save_Read_Adapter
 
 PROC Save_Build_Command NEAR
     push    ax
