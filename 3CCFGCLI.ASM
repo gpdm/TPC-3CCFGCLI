@@ -178,7 +178,7 @@ CFG_ERR_BAD_IOBASE          EQU 21
 CFG_ERR_IOBASE_INACTIVE     EQU 22      ; retired; slot retained for compatibility
 CFG_ERR_IOBASE_CONFLICT     EQU 23      ; retired; slot retained for compatibility
 CFG_ERR_IOBASE_DEACTIVATE   EQU 24
-CFG_ERR_IOBASE_REACTIVATE   EQU 25
+CFG_ERR_IOBASE_REACTIVATE   EQU 25      ; retired; slot retained for compatibility
 CFG_ERR_IOBASE_EEPROM_READ  EQU 26      ; retired; slot retained for compatibility
 CFG_ERR_IOBASE_EEPROM_WRITE EQU 27      ; retired; slot retained for compatibility
 CFG_ERR_IOBASE_LIVE         EQU 28
@@ -335,7 +335,6 @@ msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
 ; /IOBASE diagnostics.
 msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_deactivate_fail DB "Selected adapter deactivation failed before IOBASE migration.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_reactivate_fail DB "Adapter reactivation at the requested IOBASE failed.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_live_fail DB "Live I/O configuration access or update failed.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_verify_fail DB "IOBASE configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_activate_fail DB "Adapter did not become reachable at the requested IOBASE.", 0Dh, 0Ah, '$'
@@ -867,7 +866,7 @@ LABEL cfg_error_messages WORD
     DW      0                                             ; 22 CFG_ERR_IOBASE_INACTIVE, retired
     DW      0                                             ; 23 CFG_ERR_IOBASE_CONFLICT, retired
     DW      OFFSET msg_cfg_iobase_deactivate_fail        ; 24 CFG_ERR_IOBASE_DEACTIVATE
-    DW      OFFSET msg_cfg_iobase_reactivate_fail        ; 25 CFG_ERR_IOBASE_REACTIVATE
+    DW      0                                             ; 25 CFG_ERR_IOBASE_REACTIVATE, retired
     DW      0                                             ; 26 CFG_ERR_IOBASE_EEPROM_READ, retired
     DW      0                                             ; 27 CFG_ERR_IOBASE_EEPROM_WRITE, retired
     DW      OFFSET msg_cfg_iobase_live_fail              ; 28 CFG_ERR_IOBASE_LIVE
@@ -6068,11 +6067,7 @@ ENDP Cfg_Txn_Detect_Changes
 PROC Cfg_Txn_Preflight NEAR
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
     jz      @@ActivationChoice
-    call    Cfg_Txn_Has_Valid_Tag
-    jnc     @@MarkActivation
-    mov     [cfg_last_error], CFG_ERR_IOBASE_REACTIVATE
-    stc
-    ret
+    jmp     @@MarkActivation
 
 @@ActivationChoice:
     ; When an ID-tagged adapter is available, a real IRQ change uses the
@@ -7605,8 +7600,9 @@ PROC Cfg_Txn_Execute NEAR
     ; EEPROM_CAPABILITY bit 0 is the authoritative PNP capability source.
     mov     ax, [cfg_txn_capabilities]
     mov     bx, [cfg_txn_capability_valid]
-    ; Missing validity after cache resolution and its optional fallback keeps
-    ; the existing defensive EEPROM-busy attribution.
+    ; PNP validity is guaranteed for valid production records by the ordinal
+    ; EEPROM snapshot.  Keep this as a defensive fallback in case that invariant
+    ; is ever broken and runtime capability resolution also fails.
     test    bx, NIC_CAP_VALID_PNP
     jz      @@PNPCapReadFail
     test    ax, NIC_CAP_PNP
@@ -7683,7 +7679,6 @@ PROC Cfg_Txn_Execute NEAR
     ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration.
     ; Word 14h is snapshotted here as Boot ROM transaction state.
     call    Get_Id_Eeprom_Snapshot
-    jc      @@BootRomCapReadFail
     mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
     mov     [cfg_txn_old_word14], ax
     mov     ax, [WORD si + NIC_PRODUCT_ID]
@@ -7693,9 +7688,6 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@Done
 @@BootRomUnsupportedCard:
     mov     [cfg_last_error], CFG_ERR_BOOTROM_UNSUPPORTED_CARD
-    jmp     @@Done
-@@BootRomCapReadFail:
-    mov     [cfg_last_error], CFG_ERR_EEPROM_BUSY
     jmp     @@Done
 
 @@Requested:
