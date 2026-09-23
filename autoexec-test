@@ -9,6 +9,8 @@ working directory default = .
 
 [cpu]
 cycles=max limit 50000
+turbo = true
+turbo stop on key = false
 
 [autoexec]
 @ECHO OFF
