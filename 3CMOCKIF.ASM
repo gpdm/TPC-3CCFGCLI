@@ -242,7 +242,7 @@ PROC Mock_Commit_Loaded_Record NEAR
     call    Mock_Get_Record_Ptr
 
     mov     ax, [word mock_state + EL3_W0_MFG_ID]
-    cmp     ax, 06D50h
+    cmp     ax, EEPROM_MFG_ID_3COM
     jne     @@NoPresent
     mov     [BYTE di + MCK3R_PRESENT], 1
     jmp     @@StoreHeader
@@ -365,7 +365,7 @@ PROC Mock_Load_Record_By_Index NEAR
     and     al, MCKRF_COAX_STARTED
     mov     [byte mock_coax_started], al
 
-    mov     [word mock_state + EL3_W0_MFG_ID], 06D50h
+    mov     [word mock_state + EL3_W0_MFG_ID], EEPROM_MFG_ID_3COM
     mov     ax, [WORD di + MCK3R_W0_PRODUCT]
     mov     [word mock_state + EL3_W0_PRODUCT_ID], ax
     mov     ax, [WORD di + MCK3R_W0_CONFIG_CONTROL]

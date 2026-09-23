@@ -3755,8 +3755,8 @@ ENDP Scan_All_3Com_Cards
 ; The original enumeration applies F0FFh and accepts 9050h family products.
 PROC Is_3C509_Family NEAR
     push    ax
-    and     ax, 0F0FFh
-    cmp     ax, 09050h
+    and     ax, PRODUCT_3C509_FAMILY_MASK
+    cmp     ax, PRODUCT_3C509_FAMILY_SIGNATURE
     jne     @@No
     pop     ax
     clc

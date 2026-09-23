@@ -114,15 +114,15 @@ PROC Nic_Check_3Com_Signature NEAR
     mov     bx, EL3_W0_MFG_ID
     call    Nic_Reg_Read_Word
     ; Documented Window 0 Manufacturer ID register value.
-    cmp     ax, 06D50h
+    cmp     ax, EEPROM_MFG_ID_3COM
     jne     @@RestoreFail
 
     mov     dx, si
     mov     bx, EL3_W0_PRODUCT_ID
     call    Nic_Reg_Read_Word
     mov     di, ax
-    and     ax, 0F0FFh
-    cmp     ax, 09050h
+    and     ax, PRODUCT_3C509_FAMILY_MASK
+    cmp     ax, PRODUCT_3C509_FAMILY_SIGNATURE
     jne     @@RestoreFail
 
     mov     dx, si
