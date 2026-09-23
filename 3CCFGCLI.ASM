@@ -4832,7 +4832,6 @@ PROC Cfg_Checksum_17_Low NEAR
     ret
 ENDP Cfg_Checksum_17_Low
 
-; Secondary high checksum: EEPROM words 10h-12h and 20h-3Fh.
 ; ============================================================================
 ; /IOBASE hardware transaction
 ; ============================================================================
