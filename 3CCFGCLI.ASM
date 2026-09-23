@@ -8704,7 +8704,7 @@ ENDP Print_Full_Duplex_Value
 ; and SAVECONFIG (Save_Build_Command) so the two cannot diverge.
 ; Input:  BX = raw selector, DI = size in KB (8/16/32),
 ;         CH = 3C509B-generation flag derived from NIC_ASIC_REV (1 = 3C509B).
-; Output: BX = normalized selector.  AX, CX, DX clobbered.
+; Output: BX = normalized selector.
 PROC Normalize_Boot_Rom_Selector NEAR
     cmp     di, 8
     je      @@Done
