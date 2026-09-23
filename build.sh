@@ -2,6 +2,57 @@
 
 set -u
 
+# ---------------------------------------------------------------------------
+# Concurrency lock, shared between build.sh and test.sh.
+#
+# Rebuilding the sources while a test run is executing the previously built
+# binaries produces bogus results. Both scripts therefore serialize on one
+# common lock file. This implementation must stay identical in both scripts.
+# ---------------------------------------------------------------------------
+LOCK_FILE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/.3CCFG.LOCK"
+LOCK_NOTIFY_INTERVAL=15
+LOCK_HELD=0
+
+release_lock() {
+    if (( LOCK_HELD == 1 )); then
+        LOCK_HELD=0
+        rm -f "${LOCK_FILE}"
+    fi
+    return 0
+}
+
+acquire_lock() {
+    local waited=0
+    local owner
+
+    while true; do
+        # atomic create, fails if the lock file already exists
+        if ( set -o noclobber; echo "$$ $( basename "$0" ) $( date )" > "${LOCK_FILE}" ) 2>/dev/null; then
+            LOCK_HELD=1
+            trap 'release_lock' EXIT
+            trap 'release_lock; exit 130' INT TERM HUP
+            return 0
+        fi
+
+        # drop a stale lock whose owning process no longer exists
+        owner=$( awk 'NR==1 { print $1 }' "${LOCK_FILE}" 2>/dev/null )
+        if [ -n "${owner}" ] && ! kill -0 "${owner}" 2>/dev/null; then
+            echo "Removing stale lock of no longer running process ${owner} ..."
+            rm -f "${LOCK_FILE}"
+            continue
+        fi
+
+        if (( waited % LOCK_NOTIFY_INTERVAL == 0 )); then
+            echo "A concurrent build/test process is still running, waiting for it to complete ..."
+        fi
+
+        sleep 1
+        waited=$(( waited + 1 ))
+    done
+}
+
+acquire_lock
+
 LOGDIR="LOGS/BUILD"
 BUILD_LOG="${LOGDIR}/BUILD.LOG"
 ARTIFACT_DIR="${LOGDIR}/ARTIFACT"

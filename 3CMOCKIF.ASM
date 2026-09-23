@@ -666,6 +666,9 @@ PROC Mock_Load_State_File NEAR
     mov     dx, OFFSET mock_file_state
     mov     ah, 3Fh
     int     21h
+    jc      @@ReadInvalid
+    cmp     ax, MCK_FILE_SIZE
+    jne     @@ReadInvalid
     mov     ah, 3Eh
     int     21h
 
@@ -689,6 +692,9 @@ PROC Mock_Load_State_File NEAR
     mov     [byte mock_record_count], al
     jmp     @@Done
 
+@@ReadInvalid:
+    mov     ah, 3Eh
+    int     21h
 @@Invalid:
     call    Mock_Init_State
     call    Mock_Init_Empty_File
@@ -904,9 +910,6 @@ PROC Mock_Reg_Read_Word NEAR
     or      ax, dx
     jmp     @@Done
 @@Window0:
-    cmp     bx, EL3_W0_CONFIG_CONTROL
-    jne     @@Window0Eeprom
-@@Window0Eeprom:
     cmp     bx, EL3_W0_EEPROM_COMMAND
     jne     @@ReadRaw
     call    Mock_Eeprom_Read_Command
