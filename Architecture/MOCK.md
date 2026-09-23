@@ -90,6 +90,12 @@ or ID state merely because the backend was opened (`INV-STATE-08`). If the
 mock recreated every live register from EEPROM on every process start, many
 real-hardware persistence bugs would become impossible to reproduce.
 
+Statefile persistence is internal mock infrastructure, not a NIC operation.
+When a modeled ID-port transition occurs inside an interrupt-masked common
+sequence, `3CMOCKIF.ASM` commits its model, temporarily enables interrupts
+only for DOS file I/O, and restores the caller's original FLAGS. `3CCFGCLI`
+does not participate in this housekeeping.
+
 ## 4. Per-Adapter Mock Record
 
 Each of the up to `MCK_MAX_RECORDS` slots in the file is a 256-byte

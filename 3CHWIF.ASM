@@ -3,10 +3,6 @@
 ; Real hardware backend primitives for 3CCFGCLI.
 ; ---------------------------------------------------------------------------
 
-PROC Nic_Sync_State NEAR
-    ret
-ENDP Nic_Sync_State
-
 PROC Nic_IdPort_Write_Command NEAR
     push    dx
     mov     dx, ID_PORT

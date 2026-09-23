@@ -1014,7 +1014,6 @@ Start:
     call    Print_String
 
     call    Parse_And_Execute
-    call    Nic_Sync_State
 
     mov     ax, 4C00h
     int     21h
@@ -5124,7 +5123,6 @@ PROC Nic_End_Temporary_Access NEAR
     cmp     ax, 0FFFFh
     jne     @@RestoreFail
     popf
-    call    Nic_Sync_State
     pop     si
     pop     dx
     pop     ax
@@ -5132,7 +5130,6 @@ PROC Nic_End_Temporary_Access NEAR
     ret
 @@RestoreFail:
     popf
-    call    Nic_Sync_State
     pop     si
     pop     dx
     pop     ax

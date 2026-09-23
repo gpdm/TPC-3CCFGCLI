@@ -62,10 +62,12 @@ DATASEG
 MOCK_STATE_FILE DB '3C509B.MCK', 0
 mock_file_state DB MCK_FILE_SIZE DUP (0)
 
+; The statefile is MOCK infrastructure, not 3C509 behavior.  Persistence is
+; invisible to 3CCFGCLI: after committing modeled state, this backend alone
+; temporarily enables interrupts for DOS file I/O and restores caller FLAGS.
 ; Scratch image for the currently loaded mock record.
 mock_state DB MOCK_STATE_SIZE DUP (0)
 mock_state_dirty DB 0
-mock_persistence_pending DB 0
 mock_current_window DB 0
 mock_active_base DW 0000h
 mock_tag DB 0
@@ -166,7 +168,7 @@ PROC Mock_Clear_Scratch NEAR
     ret
 ENDP Mock_Clear_Scratch
 
-PROC Init_State NEAR
+PROC Mock_Init_State NEAR
     call    Mock_Clear_Scratch
     mov     [byte mock_selected_tag], 0
     mov     [byte mock_selected_valid], 0
@@ -174,9 +176,8 @@ PROC Init_State NEAR
     mov     [byte mock_record_count], 0
     mov     [byte mock_loaded_index], 0FFh
     mov     [byte mock_contender_index], 0FFh
-    mov     [byte mock_persistence_pending], 0
     ret
-ENDP Init_State
+ENDP Mock_Init_State
 
 PROC Mock_Init_Empty_File NEAR
     push    ax
@@ -204,8 +205,6 @@ PROC Mock_Init_Empty_File NEAR
     mov     [byte mock_selected_tag], 0
     mov     [byte mock_contender_visible], 0
     mov     [byte mock_state_dirty], 0
-    mov     [byte mock_persistence_pending], 0
-
     pop     di
     pop     cx
     pop     ax
@@ -648,13 +647,13 @@ PROC Mock_Ensure_Record_By_Tag NEAR
     ret
 ENDP Mock_Ensure_Record_By_Tag
 
-PROC Load_State NEAR
+PROC Mock_Load_State_File NEAR
     push    ax
     push    bx
     push    cx
     push    dx
 
-    call    Init_State
+    call    Mock_Init_State
     call    Mock_Init_Empty_File
 
     mov     dx, OFFSET MOCK_STATE_FILE
@@ -691,7 +690,7 @@ PROC Load_State NEAR
     jmp     @@Done
 
 @@Invalid:
-    call    Init_State
+    call    Mock_Init_State
     call    Mock_Init_Empty_File
 @@Done:
     pop     dx
@@ -699,13 +698,14 @@ PROC Load_State NEAR
     pop     bx
     pop     ax
     ret
-ENDP Load_State
+ENDP Mock_Load_State_File
 
-PROC Save_State NEAR
+PROC Mock_Save_State_File NEAR
     push    ax
     push    bx
     push    cx
     push    dx
+    pushf
 
     call    Mock_Commit_Loaded_Record
 
@@ -721,8 +721,7 @@ PROC Save_State NEAR
     pop     ax
     test    ax, 0200h
     jnz     @@Write
-    mov     [byte mock_persistence_pending], 1
-    jmp     @@Done
+    sti
 
 @@Write:
     mov     ah, 3Ch
@@ -738,29 +737,14 @@ PROC Save_State NEAR
     int     21h
     mov     ah, 3Eh
     int     21h
-    mov     [byte mock_persistence_pending], 0
 @@Done:
+    popf
     pop     dx
     pop     cx
     pop     bx
     pop     ax
     ret
-ENDP Save_State
-
-; Flush deferred persistence only when called with interrupts enabled.
-PROC Nic_Sync_State NEAR
-    push    ax
-    pushf
-    pop     ax
-    test    ax, 0200h
-    jz      @@Done
-    cmp     [byte mock_persistence_pending], 0
-    je      @@Done
-    call    Save_State
-@@Done:
-    pop     ax
-    ret
-ENDP Nic_Sync_State
+ENDP Mock_Save_State_File
 
 
 
@@ -801,7 +785,7 @@ PROC Mock_Eeprom_Read_Command NEAR
     jz      @@Ready
     dec     [byte mock_eeprom_busy]
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
     mov     ax, EEPROM_BUSY
     jmp     @@Done
 @@Ready:
@@ -814,7 +798,7 @@ PROC Mock_Eeprom_Read_Command NEAR
     mov     [word mock_state + EL3_W0_EEPROM_DATA], ax
     and     [byte mock_eeprom_flags], NOT MCKEF_DATA_VALID
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
 @@Return:
     mov     ax, [word mock_state + EL3_W0_EEPROM_COMMAND]
     and     ax, 7FFFh
@@ -982,7 +966,7 @@ PROC Mock_Resolve_And_Read_Word NEAR
     or      ax, STATUS_CMD_BUSY
     dec     [byte mock_command_busy]
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
     jmp     @@ResolveDone
 @@RegisterPath:
     call    Mock_Reg_Read_Word
@@ -1087,7 +1071,7 @@ PROC Mock_Reg_Write_Word NEAR
     and     ax, W4_NET_DIAG_WRITABLE
     mov     [word mock_w4_netdiag], ax
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
     jmp     @@Done
 @@MediaStatus:
     cmp     bx, EL3_W4_MEDIA_STATUS
@@ -1095,14 +1079,14 @@ PROC Mock_Reg_Write_Word NEAR
     and     ax, W4_MEDIA_STATUS_WRITABLE
     mov     [word mock_state + 30h], ax
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
     jmp     @@Done
 @@Window0:
     cmp     bx, EL3_W0_EEPROM_COMMAND
     jne     @@StoreDirect
     call    Mock_Eeprom_Write_Command
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
     jmp     @@Done
 @@StoreDirect:
     cmp     bx, EL3_W0_MFG_ID
@@ -1119,7 +1103,7 @@ PROC Mock_Reg_Write_Word NEAR
     test    ax, W0_CONFIG_CONTROL_RST
     jz      @@PersistLive
     call    Mock_Automatic_Configuration
-    call    Save_State
+    call    Mock_Save_State_File
     jmp     @@Done
 @@StoreRaw:
     mov     [word mock_state + bx], ax
@@ -1129,7 +1113,7 @@ PROC Mock_Reg_Write_Word NEAR
     cmp     bx, EL3_W0_RESOURCE_CFG
     jne     @@Done
 @@PersistLive:
-    call    Save_State
+    call    Mock_Save_State_File
     jmp     @@Done
 @@Window2:
     ; Live station address; independent of EEPROM, plain read/write storage.
@@ -1148,7 +1132,7 @@ PROC Mock_Reg_Write_Word NEAR
     mov     [word mock_w2_station + 4], ax
 @@W2Store:
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
     jmp     @@Done
 @@Window3:
     ; Live Internal Configuration; each 16-bit half is plain read/write
@@ -1165,7 +1149,7 @@ PROC Mock_Reg_Write_Word NEAR
     mov     [word mock_w3_config_hi], ax
 @@W3Store:
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
 @@Done:
     pop     di
     pop     si
@@ -1196,7 +1180,7 @@ PROC Mock_Command_Register_Write NEAR
     and     ax, 0007h
     mov     [byte mock_current_window], al
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
     jmp     @@CmdDone
 @@CheckGlobalReset:
     cmp     bx, CMD_GLOBAL_RESET
@@ -1206,14 +1190,14 @@ PROC Mock_Command_Register_Write NEAR
     ; The access that issued this command is intentionally its final access
     ; at the old base until a subsequent normal ID-port activation.
     call    Mock_Reset_Loaded_Record
-    call    Save_State
+    call    Mock_Save_State_File
     jmp     @@CmdDone
 @@CheckStartCoax:
     cmp     bx, CMD_START_COAX
     jne     @@CmdDone
     mov     [byte mock_coax_started], 1
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
 @@CmdDone:
     pop     bx
     ret
@@ -1668,7 +1652,7 @@ PROC Mock_Id_Global_Reset_All NEAR
     mov     [byte mock_selected_valid], 0
     mov     [byte mock_selected_tag], 0
     mov     [byte mock_loaded_index], 0FFh
-    call    Save_State
+    call    Mock_Save_State_File
     pop     di
     pop     dx
     pop     cx
@@ -1714,7 +1698,7 @@ PROC Mock_Id_Select_Tag NEAR
     jmp     @@Loop
 @@Done:
     mov     [byte mock_loaded_index], 0FFh
-    call    Save_State
+    call    Mock_Save_State_File
     pop     di
     pop     dx
     pop     bx
@@ -1780,7 +1764,7 @@ PROC Mock_Id_Activate_Eligible NEAR
     mov     [byte mock_selected_valid], 0
     mov     [byte mock_selected_tag], 0
     mov     [byte mock_loaded_index], 0FFh
-    call    Save_State
+    call    Mock_Save_State_File
     pop     di
     pop     dx
     pop     cx
@@ -1818,7 +1802,7 @@ PROC Mock_Id_Clear_All_Tags NEAR
     mov     [byte mock_selected_valid], 0
     mov     [byte mock_selected_tag], 0
     mov     [byte mock_loaded_index], 0FFh
-    call    Save_State
+    call    Mock_Save_State_File
     pop     di
     pop     dx
     pop     bx
@@ -2013,7 +1997,7 @@ ENDP Nic_IdPort_Eeprom_Delay
 PROC Nic_Init_Id_Port NEAR
     push    ax
 
-    call    Load_State
+    call    Mock_Load_State_File
     mov     [byte mock_selected_valid], 0
     mov     [byte mock_selected_tag], 0
     mov     [byte mock_contender_visible], 0
@@ -2282,7 +2266,7 @@ PROC Nic_Rom_Set_Page NEAR
 
     mov     [byte mock_rom_page], bl
     mov     [byte mock_state_dirty], 1
-    call    Save_State
+    call    Mock_Save_State_File
 
     mov     al, ch
     call    Nic_Select_Window
