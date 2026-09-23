@@ -839,6 +839,12 @@ CODESEG
 ; mock backend can be selected at compile time by defining /dMOCKHW.
 ; ---------------------------------------------------------------------------
 IFDEF REALHW
+IFDEF MOCKHW
+    ERR <REALHW and MOCKHW cannot both be defined>
+ENDIF
+ENDIF
+
+IFDEF REALHW
     include '3CHWIF.ASM'
 ENDIF
 
