@@ -18,6 +18,8 @@ DATASEG
 include 'VERSION.INC'
 
 MOCK_STATE_FILE DB '3C509B.MCK', 0
+MOCK_TEMP_FILE DB '3C509B.TMP', 0
+MOCK_BACKUP_FILE DB '3C509B.BAK', 0
 
 msg_banner_prefix DB '3CSEED - 3C509B mock state seeder v', '$'
 msg_banner_suffix DB 0Dh, 0Ah, '$'
@@ -87,6 +89,7 @@ cmd_buffer   DB 128 DUP (0)
 state_blob   DB MCK_FILE_SIZE DUP (0)
 state_record_offset DW MCK_HEADER_SIZE
 state_record_count DB 0
+state_backup_present DB 0
 
 seed_product DW PRODUCT_3C509_TP
 seed_base    DW 0300h
@@ -814,14 +817,37 @@ PROC Load_State_File NEAR
 
     call    Init_State_Blob
 
+@@OpenCanonical:
     mov     dx, OFFSET MOCK_STATE_FILE
     xor     al, al
     mov     ah, 3Dh
     int     21h
     jnc     @@Opened
     cmp     ax, 02h
+    je      @@BackupCheck
+    jmp     @@Fail
+
+@@BackupCheck:
+    mov     dx, OFFSET MOCK_BACKUP_FILE
+    xor     al, al
+    mov     ah, 3Dh
+    int     21h
+    jnc     @@BackupExists
+    cmp     ax, 02h
     je      @@Done
     jmp     @@Fail
+
+@@BackupExists:
+    mov     bx, ax
+    mov     ah, 3Eh
+    int     21h
+    jc      @@Fail
+    mov     ah, 56h
+    mov     dx, OFFSET MOCK_BACKUP_FILE
+    mov     di, OFFSET MOCK_STATE_FILE
+    int     21h
+    jc      @@Fail
+    jmp     @@OpenCanonical
 
 @@Opened:
     mov     bx, ax
@@ -1509,6 +1535,8 @@ PROC Write_State_File NEAR
     push    bx
     push    cx
     push    dx
+    push    di
+    push    si
  
     mov     [BYTE state_blob + MCK_OFF_MAGIC0], MCK_MAGIC_0
     mov     [BYTE state_blob + MCK_OFF_MAGIC1], MCK_MAGIC_1
@@ -1518,9 +1546,45 @@ PROC Write_State_File NEAR
     mov     al, [byte state_record_count]
     mov     [BYTE state_blob + MCK_OFF_RECORD_COUNT], al
 
+    ; Remove only a stale temporary file before creating the replacement.
+    mov     ah, 41h
+    mov     dx, OFFSET MOCK_TEMP_FILE
+    int     21h
+    jnc     @@TempReady
+    cmp     ax, 2
+    jne     @@Fail
+@@TempReady:
+    ; Preserve a backup if it is the only surviving copy of the state.
+    mov     ah, 3Dh
+    xor     al, al
+    mov     dx, OFFSET MOCK_STATE_FILE
+    int     21h
+    jnc     @@CanonicalExists
+    cmp     ax, 2
+    jne     @@Fail
+    mov     ah, 56h
+    mov     dx, OFFSET MOCK_BACKUP_FILE
+    mov     di, OFFSET MOCK_STATE_FILE
+    int     21h
+    jnc     @@BackupReady
+    cmp     ax, 2
+    jne     @@Fail
+    jmp     @@BackupReady
+@@CanonicalExists:
+    mov     bx, ax
+    mov     ah, 3Eh
+    int     21h
+    jc      @@Fail
+    mov     ah, 41h
+    mov     dx, OFFSET MOCK_BACKUP_FILE
+    int     21h
+    jnc     @@BackupReady
+    cmp     ax, 2
+    jne     @@Fail
+@@BackupReady:
     mov     ah, 3Ch
     xor     cx, cx
-    mov     dx, OFFSET MOCK_STATE_FILE
+    mov     dx, OFFSET MOCK_TEMP_FILE
     int     21h
     jc      @@Fail
     mov     bx, ax
@@ -1529,13 +1593,55 @@ PROC Write_State_File NEAR
     mov     cx, MCK_FILE_SIZE
     mov     dx, OFFSET state_blob
     int     21h
-    jc      @@CloseFail
+    jc      @@TempWriteFail
     cmp     ax, MCK_FILE_SIZE
-    jne     @@CloseFail
+    jne     @@TempWriteFail
 
     mov     ah, 3Eh
     int     21h
+    jc      @@TempCloseFail
 
+    ; Preserve the existing file while the completed temporary file is
+    ; installed.  A missing original is a normal first-write case.
+    mov     [BYTE state_backup_present], 0
+    mov     ah, 56h
+    mov     dx, OFFSET MOCK_STATE_FILE
+    mov     di, OFFSET MOCK_BACKUP_FILE
+    int     21h
+    jnc     @@OriginalBackedUp
+    cmp     ax, 2
+    jne     @@ReplacementFail
+    jmp     @@InstallTemp
+@@OriginalBackedUp:
+    mov     [BYTE state_backup_present], 1
+
+@@InstallTemp:
+    mov     ah, 56h
+    mov     dx, OFFSET MOCK_TEMP_FILE
+    mov     di, OFFSET MOCK_STATE_FILE
+    int     21h
+    jnc     @@Installed
+
+    ; Restore the original after a failed install whenever it was backed up.
+    cmp     [BYTE state_backup_present], 0
+    je      @@ReplacementFail
+    mov     ah, 56h
+    mov     dx, OFFSET MOCK_BACKUP_FILE
+    mov     di, OFFSET MOCK_STATE_FILE
+    int     21h
+    jmp     @@ReplacementFail
+
+@@Installed:
+    cmp     [BYTE state_backup_present], 0
+    je      @@Success
+    mov     ah, 41h
+    mov     dx, OFFSET MOCK_BACKUP_FILE
+    int     21h
+    ; The new canonical file is committed; backup cleanup is best effort.
+
+@@Success:
+    pop     si
+    pop     di
     pop     dx
     pop     cx
     pop     bx
@@ -1543,10 +1649,25 @@ PROC Write_State_File NEAR
     clc
     ret
 
-@@CloseFail:
+@@TempCloseFail:
+    mov     ah, 41h
+    mov     dx, OFFSET MOCK_TEMP_FILE
+    int     21h
+    jmp     @@Fail
+@@TempWriteFail:
     mov     ah, 3Eh
     int     21h
+    mov     ah, 41h
+    mov     dx, OFFSET MOCK_TEMP_FILE
+    int     21h
+    jmp     @@Fail
+@@ReplacementFail:
+    mov     ah, 41h
+    mov     dx, OFFSET MOCK_TEMP_FILE
+    int     21h
 @@Fail:
+    pop     si
+    pop     di
     pop     dx
     pop     cx
     pop     bx
