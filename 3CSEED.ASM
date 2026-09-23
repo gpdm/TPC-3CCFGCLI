@@ -256,7 +256,13 @@ PROC Parse_And_Run NEAR
     push    dx
     call    Seed_Direct
     pop     dx
-    jc      @@IoFail
+    jnc     @@DirectOk
+    cmp     al, 0
+    jne     @@IoFail
+    mov     dx, OFFSET msg_bad_arg
+    call    Print_String
+    jmp     @@Help
+@@DirectOk:
     call    Print_String
     jmp     @@Done
 
@@ -996,11 +1002,12 @@ ENDP Set_Default_Macs_For_Index
 
 ; The selected model setter establishes the SKU profile before this proc.
 ; Seed_Direct resets seed attributes, parses slash options, then builds and
-; persists the complete state.
+; persists the complete state.  CF clear indicates success.  CF set indicates
+; failure, with AL=0 for invalid arguments and AL=1 for file I/O.
 PROC Seed_Direct NEAR
     call    Reset_Seed_Attributes
     call    Parse_Seed_Options
-    jc      @@Bad
+    jc      @@BadArgument
     mov     [BYTE factory_mac+0], 02h
     mov     [BYTE factory_mac+1], 60h
     mov     [BYTE factory_mac+2], 8Ch
@@ -1015,9 +1022,16 @@ PROC Seed_Direct NEAR
     mov     [BYTE oem_mac+5], 21h
     call    Build_State
     call    Write_State_File
-    ret
-@@Bad:
+    jnc     @@Success
+    mov     al, 1
     stc
+    ret
+@@BadArgument:
+    mov     al, 0
+    stc
+    ret
+@@Success:
+    clc
     ret
 ENDP Seed_Direct
 
