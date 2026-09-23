@@ -2069,8 +2069,8 @@ PROC Save_Build_Command NEAR
     ; does, so the emitted /BADDRESS matches what LIST would display.
     mov     bx, [save_word08]
     and     bx, 0F00h
-    mov     cl, 8
-    shr     bx, cl
+    mov     bl, bh
+    xor     bh, bh
     mov     ax, [save_word08]
     and     ax, 3000h
     mov     cl, 12
@@ -3402,8 +3402,8 @@ PROC Cfg_Handle_MODEM NEAR
     jnz     @@Invalid
     ; AX = step count (1-64); raw Maximum Interrupt Disable Time = (count-1) << 8.
     dec     ax
-    mov     cl, 8
-    shl     ax, cl
+    mov     ah, al
+    xor     al, al
     jmp     @@Accept
 
 @@Named1200:
@@ -5470,8 +5470,8 @@ PROC Cfg_Prepare_Boot_ROM NEAR
 @@HaveSelector:
     xor     bx, bx
     mov     bl, al
-    mov     cl, 8
-    shl     bx, cl
+    mov     bh, bl
+    xor     bl, bl
     xor     ax, ax
     mov     al, [cfg_bsize_value]
     mov     cl, 12
@@ -8584,8 +8584,8 @@ PROC Decode_Modem_Value NEAR
     and     ax, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
     cmp     ax, EEPROM_MODEM_NONE
     je      @@None
-    mov     cl, 8
-    shr     ax, cl
+    mov     al, ah
+    xor     ah, ah
     inc     ax
     mov     cx, 25
     mul     cx
@@ -8791,8 +8791,8 @@ PROC Print_Boot_Rom_Value NEAR
 @@CheckBase:
     mov     bx, [ext_addr_cfg]
     and     bx, 0F00h
-    mov     cl, 8
-    shr     bx, cl
+    mov     bl, bh
+    xor     bh, bh
     mov     ax, [ext_addr_cfg]
     and     ax, 3000h
     mov     cl, 12
