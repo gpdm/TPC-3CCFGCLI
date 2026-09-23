@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-09-23T11:01:58.209569+02:00" tests="168" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-09-23T11:18:32.256351+02:00" tests="168" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
