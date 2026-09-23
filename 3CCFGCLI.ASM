@@ -1384,7 +1384,9 @@ PROC Save_Match_Keyword NEAR
     inc     si
     jmp     @@Loop
 @@Matched:
-    pop     ax                      ; discard saved SI, keep advanced SI
+    ; Keep the advanced SI from the successful match.
+    ; Discard the saved original SI while restoring DI and AX.
+    pop     ax
     pop     di
     pop     ax
     clc
