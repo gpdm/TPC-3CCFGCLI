@@ -147,14 +147,11 @@ Start:
     mov     ds, ax
 
     mov     dx, OFFSET msg_banner_prefix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     dx, OFFSET VERSION_STRING
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     mov     dx, OFFSET msg_banner_suffix
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
     call    Parse_And_Run
 
@@ -206,8 +203,7 @@ PROC Parse_And_Run NEAR
     jnc     @@RunDirect
 
     mov     dx, OFFSET msg_bad_arg
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Help
 
 @@Slash:
@@ -218,8 +214,7 @@ PROC Parse_And_Run NEAR
     cmp     al, 'H'
     je      @@Help
     mov     dx, OFFSET msg_bad_arg
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Help
 
 @@DoInit:
@@ -233,8 +228,7 @@ PROC Parse_And_Run NEAR
     call    Seed_Add
     jc      @@Done
     mov     dx, OFFSET msg_ok_add
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Done
 
 @@DoClear:
@@ -245,14 +239,12 @@ PROC Parse_And_Run NEAR
     call    Seed_Clear
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_clear
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Done
 
 @@BadClear:
     mov     dx, OFFSET msg_bad_arg
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Help
 
 ; Shared direct command path: model has already been selected and the
@@ -264,20 +256,17 @@ PROC Parse_And_Run NEAR
     call    Seed_Direct
     pop     dx
     jc      @@IoFail
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Done
 
 @@IoFail:
     mov     dx, OFFSET msg_fail_io
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     jmp     @@Done
 
 @@Help:
     mov     dx, OFFSET msg_help
-    mov     ah, 09h
-    int     21h
+    call    Print_String
 
 @@Done:
     pop     si
@@ -1030,8 +1019,7 @@ PROC Seed_Add NEAR
     call    Parse_Model_Token
     jnc     @@ModelOk
     mov     dx, OFFSET msg_bad_arg
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     stc
     jmp     @@Done
 
@@ -1039,8 +1027,7 @@ PROC Seed_Add NEAR
     call    Load_State_File
     jnc     @@Loaded
     mov     dx, OFFSET msg_fail_io
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     stc
     jmp     @@Done
 
@@ -1049,8 +1036,7 @@ PROC Seed_Add NEAR
     cmp     al, MCK_MAX_RECORDS
     jb      @@RoomOk
     mov     dx, OFFSET msg_add_too_many
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     stc
     jmp     @@Done
 
@@ -1075,8 +1061,7 @@ PROC Seed_Add NEAR
 
 @@BadAddOptions:
     mov     dx, OFFSET msg_bad_arg
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     stc
     jmp     @@Done
 
@@ -1084,8 +1069,7 @@ PROC Seed_Add NEAR
     call    Choose_Default_Base
     jnc     @@Append
     mov     dx, OFFSET msg_no_free_iobase
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     stc
     jmp     @@Done
 
@@ -1101,8 +1085,7 @@ PROC Seed_Add NEAR
     call    Write_State_File
     jnc     @@Success
     mov     dx, OFFSET msg_fail_io
-    mov     ah, 09h
-    int     21h
+    call    Print_String
     stc
     jmp     @@Done
 
@@ -1675,5 +1658,14 @@ PROC Write_State_File NEAR
     stc
     ret
 ENDP Write_State_File
+
+; Input DX = '$'-terminated string.
+PROC Print_String NEAR
+    push    ax
+    mov     ah, 09h
+    int     21h
+    pop     ax
+    ret
+ENDP Print_String
 
 END Start
