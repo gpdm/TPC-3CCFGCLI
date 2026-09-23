@@ -99,6 +99,7 @@ seed_rom_selected DB 0
 seed_software_info DW EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
 seed_sw_selected DB 0
 seed_base_explicit DB 0
+seed_irq_explicit DB 0
 
 factory_mac  DB 6 DUP (0)
 oem_mac      DB 6 DUP (0)
@@ -234,12 +235,22 @@ PROC Parse_And_Run NEAR
     jmp     @@Done
 
 @@DoClear:
+    call    Consume_Token
+    call    Skip_Spaces
+    cmp     [BYTE si], 0
+    jne     @@BadClear
     call    Seed_Clear
     jc      @@IoFail
     mov     dx, OFFSET msg_ok_clear
     mov     ah, 09h
     int     21h
     jmp     @@Done
+
+@@BadClear:
+    mov     dx, OFFSET msg_bad_arg
+    mov     ah, 09h
+    int     21h
+    jmp     @@Help
 
 ; Shared direct command path: model has already been selected and the
 ; model token consumed; DX holds the success message to print.  Builds
@@ -374,6 +385,7 @@ PROC Reset_Seed_Attributes NEAR
     mov     [seed_base], 0300h
     mov     [seed_irq], 10
     mov     [BYTE seed_base_explicit], 0
+    mov     [BYTE seed_irq_explicit], 0
     mov     [BYTE seed_rom_size], MCK_ROM_NONE
     mov     [BYTE seed_rom_selected], 0
     mov     [BYTE seed_sw_selected], 0
@@ -417,13 +429,18 @@ PROC Parse_Seed_Options NEAR
     jmp     @@Bad
 
 @@IOBase:
+    cmp     [BYTE seed_base_explicit], 0
+    jne     @@Bad
     call    Parse_IOBase_Token
     jc      @@Bad
     mov     [BYTE seed_base_explicit], 1
     jmp     @@Next
 @@IRQ:
+    cmp     [BYTE seed_irq_explicit], 0
+    jne     @@Bad
     call    Parse_IRQ_Token
     jc      @@Bad
+    mov     [BYTE seed_irq_explicit], 1
     jmp     @@Next
 @@ModemPreserve:
     cmp     [BYTE seed_sw_selected], 0
