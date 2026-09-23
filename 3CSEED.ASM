@@ -32,7 +32,7 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  3C509B-COAX          Product 9150h, Rev 2, AUI + BNC.', 0Dh, 0Ah
              DB '  3C509B-COMBO         Product 9450h, Rev 2, TP + AUI + BNC.', 0Dh, 0Ah
              DB '  3C509B-TPO           Product 9550h, Rev 2, TP only.', 0Dh, 0Ah
-             DB '  3C509B-TPC           Product 9850h, Rev 2, BNC.', 0Dh, 0Ah
+             DB '  3C509B-TPC           Product 9850h, Rev 2, TP + BNC.', 0Dh, 0Ah
              DB '  3C509-TP             Product 9050h, Rev 1, TP + AUI.', 0Dh, 0Ah
              DB '  3C509-COAX           Product 9150h, Rev 1, AUI + BNC.', 0Dh, 0Ah
              DB '  3C509-COMBO          Product 9450h, Rev 1, TP + AUI + BNC.', 0Dh, 0Ah
@@ -715,6 +715,7 @@ PROC Parse_IRQ_Token NEAR
 @@CheckValue:
     mov     si, di
     mov     bx, OFFSET irq_table
+    ; Fixed count for the supported EtherLink III hardware set.
     mov     cx, 8
 @@Check:
     cmp     dl, [BYTE bx]
@@ -941,6 +942,7 @@ PROC Choose_Default_Base NEAR
     push    dx
     push    si
 
+    ; Fixed count for the supported EtherLink III hardware set.
     mov     cx, 31
     mov     si, OFFSET iobase_table
 @@Loop:
@@ -1299,9 +1301,8 @@ PROC Build_Record_Current NEAR
     cmp     [byte seed_asic_rev], 1
     jne     @@AddrCfgNoAuto
     ; 3C509 (ASIC rev 1) regression fixture: set Address
-    ; Configuration bit 7 while keeping the explicit TP transceiver
-    ; selector above, so LIST/CONFIGURE/SAVECONFIG can prove bit 7 is
-    ; ignored as a B-only Auto Select field on revision 1.
+    ; Configuration bit 7 while keeping the selected transceiver above,
+    ; so LIST/CONFIGURE/SAVECONFIG can prove Rev 1 ignores Auto Select.
     or      ax, W0_ADDRESS_CFG_AUTO_SELECT
 @@AddrCfgNoAuto:
     mov     si, EEPROM_ADDR_CFG
