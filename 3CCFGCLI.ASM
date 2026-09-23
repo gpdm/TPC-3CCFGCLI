@@ -1481,8 +1481,7 @@ PROC Save_Append_String NEAR
     or      al, al
     jz      @@Done
     call    Save_Append_Char
-    jc      @@Fail
-    jmp     @@Loop
+    jnc     @@Loop
 @@Fail:
     pop     ax
     stc
@@ -2178,8 +2177,7 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     jc      @@Fail
     call    Save_Flush_Command
-    jc      @@Fail
-    jmp     @@Done
+    jnc     @@Done
 @@Fail:
     stc
 @@Done:
@@ -2779,9 +2777,7 @@ PROC Cfg_Handle_INT NEAR
     cmp     al, '7'
     je      @@StoreOne
     cmp     al, '9'
-    je      @@StoreOne
-    jmp     @@Invalid
-
+    jne     @@Invalid
 @@StoreOne:
     sub     al, '0'
     jmp     @@Accepted
@@ -5771,8 +5767,7 @@ ENDP Cfg_Txn_Detect_Changes
 ; Read only conflict and activation preflight.  Nothing has been modified yet.
 PROC Cfg_Txn_Preflight NEAR
     test    [cfg_txn_change_flags], CFG_TXN_MIGRATE_IO
-    jz      @@ActivationChoice
-    jmp     @@MarkActivation
+    jnz     @@MarkActivation
 
 @@ActivationChoice:
     ; When an ID-tagged adapter is available, a real IRQ change uses the
@@ -5800,8 +5795,7 @@ PROC Cfg_Txn_Activate_If_Needed NEAR
     push    si
 
     cmp     [cfg_txn_activation_needed], 0
-    jne     @@Start
-    jmp     @@Success
+    je      @@Success
 
 @@Start:
     test    [cli_flags], CLI_FLAG_VERBOSE
@@ -5975,8 +5969,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     push    si
 
     test    [cfg_txn_change_flags], CFG_TXN_EEPROM_MASK
-    jnz     @@Start
-    jmp     @@Success
+    jz      @@Success
 
 @@Start:
     test    [cli_flags], CLI_FLAG_VERBOSE
@@ -6770,8 +6763,7 @@ PROC Cfg_Txn_Verify NEAR
     mov     [cfg_txn_verify_word0d_valid], 0
 
     test    [cfg_txn_change_flags], CFG_TXN_COMMIT_MASK
-    jnz     @@Start
-    jmp     @@Success
+    jz      @@Success
 
 @@Start:
     test    [cli_flags], CLI_FLAG_VERBOSE
@@ -6952,8 +6944,7 @@ PROC Cfg_Txn_Report_Current NEAR
     push    dx
 
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jnz     @@Start
-    jmp     @@Done
+    jz      @@Done
 @@Start:
     mov     dx, OFFSET msg_cfg_txn_current_active_base
     call    Print_String
@@ -7058,8 +7049,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     push    dx
 
     test    [cli_flags], CLI_FLAG_VERBOSE
-    jnz     @@Start
-    jmp     @@Done
+    jz      @@Done
 @@Start:
     mov     dx, OFFSET msg_cfg_txn_prepare
     call    Print_String
@@ -7367,8 +7357,7 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@BootRomCapabilityGate
 @@BootRomEnabled:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jz      @@BootRomIncomplete
-    jmp     @@BootRomCapabilityGate
+    jnz     @@BootRomCapabilityGate
 @@BootRomIncomplete:
     mov     [cfg_last_error], CFG_ERR_BOOTROM_INCOMPLETE
     jmp     @@Done
@@ -8400,8 +8389,7 @@ PROC Print_Connector_Capabilities NEAR
     jz      @@Done
     mov     dx, OFFSET msg_connector_separator
     test    ax, NIC_CAP_TP + NIC_CAP_AUI
-    jnz     @@PrintBncSeparator
-    jmp     @@PrintBnc
+    jz      @@PrintBnc
 @@PrintBncSeparator:
     call    Print_String
 @@PrintBnc:
