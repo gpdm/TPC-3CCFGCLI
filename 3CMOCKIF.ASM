@@ -107,7 +107,7 @@ mock_command_busy DB 0
 ; mirrors MCKRF_ACTIVE.  Set by a (currently unreachable) Start Coaxial
 ; Transceiver command; configuration-visible state only, no analog model.
 mock_coax_started DB 0
-mock_rom_size DB 0
+mock_rom_size DB MCK_ROM_NONE
 mock_rom_page DB 0
 
 ; Global mock discovery state.
@@ -156,7 +156,7 @@ PROC Mock_Clear_Scratch NEAR
     mov     [word mock_w3_config_hi], 0
     mov     [byte mock_command_busy], 0
     mov     [byte mock_coax_started], 0
-    mov     [byte mock_rom_size], 0
+    mov     [byte mock_rom_size], MCK_ROM_NONE
     mov     [byte mock_rom_page], 0
     mov     [word mock_w2_station + 0], 0
     mov     [word mock_w2_station + 2], 0
