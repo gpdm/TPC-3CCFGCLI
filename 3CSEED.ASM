@@ -192,36 +192,15 @@ PROC Parse_And_Run NEAR
     mov     dx, OFFSET kw_clear
     call    Match_Token
     jnc     @@DoClear
-    mov     dx, OFFSET kw_tp
-    call    Match_Token
-    jnc     @@DoTP
-    mov     dx, OFFSET kw_combo
-    call    Match_Token
-    jnc     @@DoCombo
-    mov     dx, OFFSET kw_coax
-    call    Match_Token
-    jnc     @@DoCoax
-    mov     dx, OFFSET kw_tpo
-    call    Match_Token
-    jnc     @@DoTPO
-    mov     dx, OFFSET kw_tpc
-    call    Match_Token
-    jnc     @@DoTPC
-    mov     dx, OFFSET kw_509tp
-    call    Match_Token
-    jnc     @@Do509TP
-    mov     dx, OFFSET kw_509coax
-    call    Match_Token
-    jnc     @@Do509Coax
-    mov     dx, OFFSET kw_509combo
-    call    Match_Token
-    jnc     @@Do509Combo
-    mov     dx, OFFSET kw_509tpo
-    call    Match_Token
-    jnc     @@Do509TPO
-    mov     dx, OFFSET kw_509tpc
-    call    Match_Token
-    jnc     @@Do509TPC
+
+    ; Direct model commands (TP, COMBO, COAX, TPO, TPC and the 3C509
+    ; variants) share their token recognition and model selection with
+    ; the ADD command's model argument via Parse_Model_Token.  On success
+    ; the model token is consumed, the model is selected, and DX holds
+    ; the model specific success message to print after Seed_Direct.
+    call    Parse_Model_Token
+    jnc     @@RunDirect
+
     mov     dx, OFFSET msg_bad_arg
     mov     ah, 09h
     int     21h
@@ -242,12 +221,8 @@ PROC Parse_And_Run NEAR
 @@DoInit:
     call    Set_Model_509B_TP
     call    Consume_Token
-    call    Seed_Direct
-    jc      @@IoFail
     mov     dx, OFFSET msg_ok_init
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
+    jmp     @@RunDirect
 
 @@DoAdd:
     call    Consume_Token
@@ -266,102 +241,15 @@ PROC Parse_And_Run NEAR
     int     21h
     jmp     @@Done
 
-@@DoTP:
-    call    Set_Model_509B_TP
-    call    Consume_Token
+; Shared direct command path: model has already been selected and the
+; model token consumed; DX holds the success message to print.  Builds
+; and persists the seed state via Seed_Direct, then reports success or
+; failure.
+@@RunDirect:
+    push    dx
     call    Seed_Direct
+    pop     dx
     jc      @@IoFail
-    mov     dx, OFFSET msg_ok_tp
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoCombo:
-    call    Set_Model_509B_Combo
-    call    Consume_Token
-    call    Seed_Direct
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_combo
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoCoax:
-    call    Set_Model_509B_Coax
-    call    Consume_Token
-    call    Seed_Direct
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_coax
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoTPO:
-    call    Set_Model_509B_TPO
-    call    Consume_Token
-    call    Seed_Direct
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_tpo
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@DoTPC:
-    call    Set_Model_509B_TPC
-    call    Consume_Token
-    call    Seed_Direct
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_tpc
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@Do509TP:
-    call    Set_Model_509_TP
-    call    Consume_Token
-    call    Seed_Direct
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_509tp
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@Do509Coax:
-    call    Set_Model_509_Coax
-    call    Consume_Token
-    call    Seed_Direct
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_509coax
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@Do509Combo:
-    call    Set_Model_509_Combo
-    call    Consume_Token
-    call    Seed_Direct
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_509combo
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@Do509TPO:
-    call    Set_Model_509_TPO
-    call    Consume_Token
-    call    Seed_Direct
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_509tpo
-    mov     ah, 09h
-    int     21h
-    jmp     @@Done
-
-@@Do509TPC:
-    call    Set_Model_509_TPC
-    call    Consume_Token
-    call    Seed_Direct
-    jc      @@IoFail
-    mov     dx, OFFSET msg_ok_509tpc
     mov     ah, 09h
     int     21h
     jmp     @@Done
@@ -585,7 +473,10 @@ PROC Parse_Seed_Options NEAR
     ret
 ENDP Parse_Seed_Options
 
-; Recognize an ADD model token and apply the shared canonical model profile.
+; Recognize a model token and apply the shared canonical model profile.
+; On success (carry clear) the model token has been consumed and DX holds
+; the OFFSET of the model specific success message; on failure (carry set)
+; DX is restored to its incoming value and SI is unchanged.
 PROC Parse_Model_Token NEAR
     push    dx
 
@@ -627,60 +518,70 @@ PROC Parse_Model_Token NEAR
     call    Set_Model_509B_TP
     call    Consume_Token
     pop     dx
+    mov     dx, OFFSET msg_ok_tp
     clc
     ret
 @@Coax:
     call    Set_Model_509B_Coax
     call    Consume_Token
     pop     dx
+    mov     dx, OFFSET msg_ok_coax
     clc
     ret
 @@Combo:
     call    Set_Model_509B_Combo
     call    Consume_Token
     pop     dx
+    mov     dx, OFFSET msg_ok_combo
     clc
     ret
 @@TPO:
     call    Set_Model_509B_TPO
     call    Consume_Token
     pop     dx
+    mov     dx, OFFSET msg_ok_tpo
     clc
     ret
 @@TPC:
     call    Set_Model_509B_TPC
     call    Consume_Token
     pop     dx
+    mov     dx, OFFSET msg_ok_tpc
     clc
     ret
 @@P509TP:
     call    Set_Model_509_TP
     call    Consume_Token
     pop     dx
+    mov     dx, OFFSET msg_ok_509tp
     clc
     ret
 @@P509Coax:
     call    Set_Model_509_Coax
     call    Consume_Token
     pop     dx
+    mov     dx, OFFSET msg_ok_509coax
     clc
     ret
 @@P509Combo:
     call    Set_Model_509_Combo
     call    Consume_Token
     pop     dx
+    mov     dx, OFFSET msg_ok_509combo
     clc
     ret
 @@P509TPO:
     call    Set_Model_509_TPO
     call    Consume_Token
     pop     dx
+    mov     dx, OFFSET msg_ok_509tpo
     clc
     ret
 @@P509TPC:
     call    Set_Model_509_TPC
     call    Consume_Token
     pop     dx
+    mov     dx, OFFSET msg_ok_509tpc
     clc
     ret
 ENDP Parse_Model_Token
