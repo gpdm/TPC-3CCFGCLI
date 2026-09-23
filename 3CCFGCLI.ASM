@@ -978,8 +978,7 @@ PROC Parse_And_Execute NEAR
     add     si, 10
     call    Cli_Collect_Args
     jc      @@Done
-    call    Cmd_SaveConfig
-    ret
+    jmp     Cmd_SaveConfig
 
 @@CheckConfig:
     mov     bx, OFFSET cli_kw_configure
@@ -989,8 +988,7 @@ PROC Parse_And_Execute NEAR
     add     si, 9
     call    Cli_Collect_Args
     jc      @@Done
-    call    Cmd_Configure
-    ret
+    jmp     Cmd_Configure
 
 @@List:
     add     si, 4
@@ -999,8 +997,7 @@ PROC Parse_And_Execute NEAR
     ; LIST owns no arguments of its own, so any residual token is invalid.
     cmp     [cli_arg_count], 0
     jne     @@Help
-    call    Cmd_List
-    ret
+    jmp     Cmd_List
 
 @@Help:
     mov     dx, OFFSET msg_help
@@ -1658,8 +1655,7 @@ PROC Save_Append_Hex_Nibble NEAR
     jbe     @@Out
     add     al, 7
 @@Out:
-    call    Save_Append_Char
-    ret
+    jmp     Save_Append_Char
 ENDP Save_Append_Hex_Nibble
 
 PROC Save_Append_Hex_Word NEAR
@@ -2718,48 +2714,39 @@ ENDP Cfg_Dispatch_Parsed_Properties
 PROC Cfg_Dispatch_Property NEAR
     cmp     al, CFG_OPT_INT
     jne     @@IOBase
-    call    Cfg_Handle_INT
-    ret
+    jmp     Cfg_Handle_INT
 @@IOBase:
     cmp     al, CFG_OPT_IOBASE
     jne     @@BAddress
-    call    Cfg_Handle_IOBASE
-    ret
+    jmp     Cfg_Handle_IOBASE
 @@BAddress:
     cmp     al, CFG_OPT_BADDRESS
     jne     @@BSize
-    call    Cfg_Handle_BADDRESS
-    ret
+    jmp     Cfg_Handle_BADDRESS
 @@BSize:
     cmp     al, CFG_OPT_BSIZE
     jne     @@TR
-    call    Cfg_Handle_BSIZE
-    ret
+    jmp     Cfg_Handle_BSIZE
 @@TR:
     cmp     al, CFG_OPT_TR
     jne     @@Modem
-    call    Cfg_Handle_TR
-    ret
+    jmp     Cfg_Handle_TR
 @@Modem:
     cmp     al, CFG_OPT_MODEM
     jne     @@Optimize
-    call    Cfg_Handle_MODEM
-    ret
+    jmp     Cfg_Handle_MODEM
 @@Optimize:
     cmp     al, CFG_OPT_OPTIMIZE
     jne     @@PnP
-    call    Cfg_Handle_OPTIMIZE
-    ret
+    jmp     Cfg_Handle_OPTIMIZE
 @@PnP:
     cmp     al, CFG_OPT_PNP
     jne     @@FullDuplex
-    call    Cfg_Handle_PNP
-    ret
+    jmp     Cfg_Handle_PNP
 @@FullDuplex:
     cmp     al, CFG_OPT_FULLDUPLEX
     jne     @@Bad
-    call    Cfg_Handle_FULLDUPLEX
-    ret
+    jmp     Cfg_Handle_FULLDUPLEX
 @@Bad:
     mov     [cfg_last_error], CFG_ERR_BAD_OPTION
     ret
@@ -3569,8 +3556,7 @@ PROC Cmd_List NEAR
     jne     @@HaveCards
 
     mov     dx, OFFSET msg_no_cards
-    call    Print_String
-    ret
+    jmp     Print_String
 
 @@HaveCards:
     mov     dx, OFFSET msg_list_hdr
@@ -8823,8 +8809,7 @@ PROC Print_HexAddress20 NEAR
     call    Print_HexNibble
     pop     dx
     pop     ax
-    call    Print_HexWord
-    ret
+    jmp     Print_HexWord
 ENDP Print_HexAddress20
 
 PROC Print_Extended_Nic_Info NEAR
@@ -9033,8 +9018,7 @@ PROC Print_HexWord NEAR
     mov     al, ah
     call    Print_HexByte
     pop     ax
-    call    Print_HexByte
-    ret
+    jmp     Print_HexByte
 ENDP Print_HexWord
 
 PROC Print_DecByte NEAR
