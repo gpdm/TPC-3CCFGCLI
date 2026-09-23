@@ -674,8 +674,6 @@ SAVE_ERR_NONE EQU 0
 SAVE_ERR_WRITE EQU 1
 SAVE_ERR_LINE_TOO_LONG EQU 2
 SAVE_ERR_BAD_EXECFILE EQU 3
-SAVE_ERR_READ EQU 4       ; retired; slot retained for compatibility
-SAVE_ERR_AMBIGUOUS EQU 5       ; retired; slot retained for compatibility
 
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
