@@ -2039,8 +2039,8 @@ PROC Save_Build_Command NEAR
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_DOS
     jmp     @@OptSelected
 @@OptWindowsOS2:
-    mov     di, OFFSET save_windows_os2
-    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_WINDOWS_OS2
+    mov     di, OFFSET save_windows
+    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_WINDOWS
     jmp     @@OptSelected
 @@OptServer:
     mov     di, OFFSET save_server
