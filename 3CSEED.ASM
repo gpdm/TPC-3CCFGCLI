@@ -868,6 +868,24 @@ PROC Init_State_Blob NEAR
     ret
 ENDP Init_State_Blob
 
+; Loads the mock state file into state_blob.
+;
+; Returns CF clear and a valid (possibly freshly initialized) state_blob on
+; success. Success covers two distinct cases: a genuinely absent state file
+; (DOS open reports file-not-found, error 2), which is treated as an empty
+; initial state so that ADD can create the first record, and a fully read
+; existing file with a valid magic and a supported version. A record count
+; above MCK_MAX_RECORDS is clamped to MCK_MAX_RECORDS rather than rejected.
+;
+; Returns CF set, with state_blob reset to an empty state, on any other
+; failure: an open error other than file-not-found (including path-not-found,
+; which is not expected for this fixed, directory-less filename and is
+; therefore treated as a real error rather than as "missing"), a failed or
+; short DOS read that did not return the complete MCK_FILE_SIZE structure, a
+; failed close, an invalid magic, or an unsupported version. Callers must not
+; treat a CF-set return as an empty state; an existing but unreadable or
+; corrupt file must never be silently overwritten as though no previous
+; state existed.
 PROC Load_State_File NEAR
     push    ax
     push    bx
@@ -882,27 +900,37 @@ PROC Load_State_File NEAR
     xor     al, al
     mov     ah, 3Dh
     int     21h
-    jc      @@Done
+    jnc     @@Opened
+    cmp     ax, 02h
+    je      @@Done
+    jmp     @@Fail
+
+@@Opened:
     mov     bx, ax
     mov     cx, MCK_FILE_SIZE
     mov     dx, OFFSET state_blob
     mov     ah, 3Fh
     int     21h
+    jc      @@CloseAndFail
+    cmp     ax, MCK_FILE_SIZE
+    jne     @@CloseAndFail
+
     mov     ah, 3Eh
     int     21h
+    jc      @@Fail
 
     cmp     [BYTE state_blob + MCK_OFF_MAGIC0], MCK_MAGIC_0
-    jne     @@Reset
+    jne     @@Fail
     cmp     [BYTE state_blob + MCK_OFF_MAGIC1], MCK_MAGIC_1
-    jne     @@Reset
+    jne     @@Fail
     cmp     [BYTE state_blob + MCK_OFF_MAGIC2], MCK_MAGIC_2
-    jne     @@Reset
+    jne     @@Fail
     cmp     [BYTE state_blob + MCK_OFF_MAGIC3], MCK_MAGIC_3
-    jne     @@Reset
+    jne     @@Fail
 
     mov     ax, [WORD state_blob + MCK_OFF_VERSION]
     cmp     ax, MCK_VERSION
-    jne     @@Reset
+    jne     @@Fail
     mov     al, [BYTE state_blob + MCK_OFF_RECORD_COUNT]
     cmp     al, MCK_MAX_RECORDS
     jbe     @@CountOk
@@ -912,9 +940,18 @@ PROC Load_State_File NEAR
     mov     [BYTE state_blob + MCK_OFF_RECORD_COUNT], al
     jmp     @@Done
 
-@@Reset:
+@@CloseAndFail:
+    push    ax
+    mov     ah, 3Eh
+    int     21h
+    pop     ax
+@@Fail:
     call    Init_State_Blob
+    stc
+    jmp     @@Return
 @@Done:
+    clc
+@@Return:
     pop     di
     pop     si
     pop     dx
@@ -1056,6 +1093,14 @@ PROC Seed_Add NEAR
 
 @@ModelOk:
     call    Load_State_File
+    jnc     @@Loaded
+    mov     dx, OFFSET msg_fail_io
+    mov     ah, 09h
+    int     21h
+    stc
+    jmp     @@Done
+
+@@Loaded:
     mov     al, [byte state_record_count]
     cmp     al, MCK_MAX_RECORDS
     jb      @@RoomOk
