@@ -16,15 +16,20 @@ SET TARGET=
 SET MKFILE=
 SET ROMTEST=
 
-REM Sanitize 
-IF EXIST %INITLOG% DEL %INITLOG% > NUL
+REM Sanitize initial log file, ensure it's truncated
+ECHO. > %INITLOG%
 
-REM FIXME should remove this
-REM IF NOT EXIST ARTIFACT\NUL MD ARTIFACT
-REM IF EXIST ARTIFACT\HWCTEST.LOG DEL ARTIFACT\HWCTEST.LOG > NUL
-REM IF EXIST ARTIFACT\*.SET DEL ARTIFACT\*.SET > NUL
+REM Perform Mem Check
+CHKMEM 448
+IF ERRORLEVEL 1 GOTO MEMERROR
+GOTO HWSCAN
 
+:MEMERROR
+    ECHO Memory check failed. At least 448 KB of conventional memory is required. >> %INITLOG%
+    ECHO Memory check failed. At least 448 KB of conventional memory is required.
+GOTO END
 
+:HWSCAN
 REM Perform initial hardware scan
 3CCFGCLI.EXE LIST > %INITLOG%
 
@@ -33,6 +38,7 @@ REM CLI dispatch
 REM I know, it's superugly, but this make arguments work case-insensitive.
 REM Yes, an invalid argument will cause a LABEL NOT FOUND error.
 REM But it's just a bloody batch for HWC regressions, so who cares?
+:CLIDISPATCH
 GOTO O_%1
 
 :O_
@@ -266,3 +272,7 @@ FIND "3Com " %LOGFILE% > NUL
 
 :END
 SET HWC_TAG=
+SET MKFILE=
+SET TARGET=
+SET HWC_SUITE=
+SET DETECTED_NIC=

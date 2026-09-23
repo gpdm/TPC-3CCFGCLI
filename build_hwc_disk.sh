@@ -148,6 +148,7 @@ copy_payload()
         "TASM2/MAKE.EXE" \
         "STUFFIT/STUFFIT.COM" \
         "BIN/PKLITE/3CCFGCLI.EXE" \
+        "UTILS/CHKMEM.COM" \
         "HWCREAD.MK" \
         "HWCTEST.BAT" \
         "HWCWRITE.MK" \
