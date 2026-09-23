@@ -754,6 +754,10 @@ save_dos        DB  'DOS', 0
 SAVE_LEN_DOS EQU 3
 save_windows_os2        DB  'Windows or OS/2', 0
 SAVE_LEN_WINDOWS_OS2 EQU 15
+save_windows    DB  'WINDOWS', 0
+SAVE_LEN_WINDOWS EQU 7
+save_os2        DB  'OS/2', 0
+SAVE_LEN_OS2 EQU 4
 save_server     DB  'SERVER', 0
 SAVE_LEN_SERVER EQU 6
 save_tp         DB  'TP', 0
@@ -3105,28 +3109,16 @@ PROC Cfg_Handle_BSIZE NEAR
     push    bx
     push    dx
     push    si
+    push    di
 
     mov     [cfg_bsize_disabled], 0
 
     ; DISABLED turns off the Boot ROM and is valid only without /BADDRESS.
-    cmp     cx, 8
+    cmp     cx, SAVE_LEN_DISABLED
     jne     @@ParseSize
-    cmp     [BYTE si], 'D'
-    jne     @@ParseSize
-    cmp     [BYTE si+1], 'I'
-    jne     @@ParseSize
-    cmp     [BYTE si+2], 'S'
-    jne     @@ParseSize
-    cmp     [BYTE si+3], 'A'
-    jne     @@ParseSize
-    cmp     [BYTE si+4], 'B'
-    jne     @@ParseSize
-    cmp     [BYTE si+5], 'L'
-    jne     @@ParseSize
-    cmp     [BYTE si+6], 'E'
-    jne     @@ParseSize
-    cmp     [BYTE si+7], 'D'
-    jne     @@ParseSize
+    mov     di, OFFSET save_disabled
+    call    Cfg_Match_Name_Prefix
+    jc      @@ParseSize
     mov     [cfg_bsize_value], 0
     mov     [cfg_bsize_disabled], 1
     or      [cfg_parse_flags], CFG_PARSE_BSIZE
@@ -3182,6 +3174,7 @@ PROC Cfg_Handle_BSIZE NEAR
     mov     [cfg_last_error], CFG_ERR_BAD_BSIZE
 
 @@Done:
+    pop     di
     pop     si
     pop     dx
     pop     bx
@@ -3269,50 +3262,37 @@ ENDP Cfg_Probe_Boot_ROM
 PROC Cfg_Handle_TR NEAR
     push    si
     push    cx
+    push    di
 
-    ; Match TP (2), AUI (3), COAX (4), AUTO (4) by length then character.
-    cmp     cx, 2
+    ; Match TP (2), AUI (3), COAX (4), AUTO (4) by length then keyword.
+    cmp     cx, SAVE_LEN_TP
     jne     @@NotTP
-    cmp     [BYTE si], 'T'
-    jne     @@NotTP
-    cmp     [BYTE si+1], 'P'
-    jne     @@NotTP
+    mov     di, OFFSET save_tp
+    call    Cfg_Match_Name_Prefix
+    jc      @@NotTP
     mov     [cfg_tr_value], NIC_XCVR_TP ; TP  -> bits 15:14 = 00
     jmp     @@Accept
 @@NotTP:
-    cmp     cx, 3
+    cmp     cx, SAVE_LEN_AUI
     jne     @@NotAUI
-    cmp     [BYTE si], 'A'
-    jne     @@NotAUI
-    cmp     [BYTE si+1], 'U'
-    jne     @@NotAUI
-    cmp     [BYTE si+2], 'I'
-    jne     @@NotAUI
+    mov     di, OFFSET save_aui
+    call    Cfg_Match_Name_Prefix
+    jc      @@NotAUI
     mov     [cfg_tr_value], NIC_XCVR_AUI ; AUI -> bits 15:14 = 01
     jmp     @@Accept
 @@NotAUI:
-    cmp     cx, 4
+    cmp     cx, SAVE_LEN_COAX ; COAX and AUTO share length 4.
     jne     @@Invalid
-    cmp     [BYTE si], 'C'
-    jne     @@NotCOAX
-    cmp     [BYTE si+1], 'O'
-    jne     @@NotCOAX
-    cmp     [BYTE si+2], 'A'
-    jne     @@NotCOAX
-    cmp     [BYTE si+3], 'X'
-    jne     @@NotCOAX
-    mov     [cfg_tr_value], NIC_XCVR_COAX ; COAX -> bits 15:14 = 11
-    jmp     @@Accept
-@@NotCOAX:
-    cmp     [BYTE si], 'A'
-    jne     @@Invalid
-    cmp     [BYTE si+1], 'U'
-    jne     @@Invalid
-    cmp     [BYTE si+2], 'T'
-    jne     @@Invalid
-    cmp     [BYTE si+3], 'O'
-    jne     @@Invalid
+    mov     di, OFFSET save_coax
+    call    Cfg_Match_Name_Prefix
+    jnc     @@Coax
+    mov     di, OFFSET save_auto
+    call    Cfg_Match_Name_Prefix
+    jc      @@Invalid
     mov     [cfg_tr_value], NIC_XCVR_AUTO ; AUTO sentinel -> bit 7 of word 08h
+    jmp     @@Accept
+@@Coax:
+    mov     [cfg_tr_value], NIC_XCVR_COAX ; COAX -> bits 15:14 = 11
     jmp     @@Accept
 @@Invalid:
     mov     [cfg_last_error], CFG_ERR_BAD_TR
@@ -3321,6 +3301,7 @@ PROC Cfg_Handle_TR NEAR
     or      [cfg_parse_flags], CFG_PARSE_TR
     mov     [cfg_last_error], CFG_ERR_NONE
 @@Done:
+    pop     di
     pop     cx
     pop     si
     ret
@@ -3443,67 +3424,39 @@ PROC Cfg_Handle_OPTIMIZE NEAR
     push    ax
     push    bx
     push    cx
+    push    di
 
-    cmp     cx, 3
-    je      @@Dos
-    cmp     cx, 4
-    je      @@Os2
-    cmp     cx, 6
-    je      @@Server
-    cmp     cx, 7
-    je      @@Windows
-    jmp     @@Invalid
-
-@@Dos:
-    cmp     [BYTE si], 'D'
-    jne     @@Invalid
-    cmp     [BYTE si+1], 'O'
-    jne     @@Invalid
-    cmp     [BYTE si+2], 'S'
-    jne     @@Invalid
+    ; Match DOS, WINDOWS, OS/2, SERVER by length then keyword.  WINDOWS and
+    ; OS/2 intentionally map to the same value (2).
+    cmp     cx, SAVE_LEN_DOS
+    jne     @@NotDos
+    mov     di, OFFSET save_dos
+    call    Cfg_Match_Name_Prefix
+    jc      @@Invalid
     mov     al, 1
     jmp     @@Accept
-@@Windows:
-    cmp     [BYTE si], 'W'
-    jne     @@Invalid
-    cmp     [BYTE si+1], 'I'
-    jne     @@Invalid
-    cmp     [BYTE si+2], 'N'
-    jne     @@Invalid
-    cmp     [BYTE si+3], 'D'
-    jne     @@Invalid
-    cmp     [BYTE si+4], 'O'
-    jne     @@Invalid
-    cmp     [BYTE si+5], 'W'
-    jne     @@Invalid
-    cmp     [BYTE si+6], 'S'
-    jne     @@Invalid
+@@NotDos:
+    cmp     cx, SAVE_LEN_WINDOWS
+    jne     @@NotWindows
+    mov     di, OFFSET save_windows
+    call    Cfg_Match_Name_Prefix
+    jc      @@Invalid
     mov     al, 2
     jmp     @@Accept
-@@Os2:
-    cmp     [BYTE si], 'O'
-    jne     @@Invalid
-    cmp     [BYTE si+1], 'S'
-    jne     @@Invalid
-    cmp     [BYTE si+2], '/'
-    jne     @@Invalid
-    cmp     [BYTE si+3], '2'
-    jne     @@Invalid
+@@NotWindows:
+    cmp     cx, SAVE_LEN_OS2
+    jne     @@NotOs2
+    mov     di, OFFSET save_os2
+    call    Cfg_Match_Name_Prefix
+    jc      @@Invalid
     mov     al, 2
     jmp     @@Accept
-@@Server:
-    cmp     [BYTE si], 'S'
+@@NotOs2:
+    cmp     cx, SAVE_LEN_SERVER
     jne     @@Invalid
-    cmp     [BYTE si+1], 'E'
-    jne     @@Invalid
-    cmp     [BYTE si+2], 'R'
-    jne     @@Invalid
-    cmp     [BYTE si+3], 'V'
-    jne     @@Invalid
-    cmp     [BYTE si+4], 'E'
-    jne     @@Invalid
-    cmp     [BYTE si+5], 'R'
-    jne     @@Invalid
+    mov     di, OFFSET save_server
+    call    Cfg_Match_Name_Prefix
+    jc      @@Invalid
     mov     al, 3
 @@Accept:
     mov     [cfg_optimize_value], al
@@ -3513,6 +3466,7 @@ PROC Cfg_Handle_OPTIMIZE NEAR
 @@Invalid:
     mov     [cfg_last_error], CFG_ERR_BAD_OPTIMIZE
 @@Done:
+    pop     di
     pop     cx
     pop     bx
     pop     ax
