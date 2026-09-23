@@ -8,3 +8,5 @@ WINDOWS
 .DS_Store
 # ignore VSCode artifacts
 .vscode
+# ignore the shared build/test concurrency lock
+.3CCFG.LOCK
