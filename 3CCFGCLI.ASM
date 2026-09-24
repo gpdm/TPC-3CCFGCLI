@@ -5733,33 +5733,9 @@ PROC Cfg_Txn_Detect_Changes NEAR
     or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
 
 @@MODEM:
-    test    [cfg_parse_flags], CFG_PARSE_MODEM
-    jz      @@FULLDUPLEX
-    mov     ax, [cfg_txn_old_word0d]
-    cmp     ax, [cfg_txn_new_word0d]
-    je      @@FULLDUPLEX
-    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-
-@@FULLDUPLEX:
-    test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
-    jz      @@Optimize
-    mov     ax, [cfg_txn_old_word0d]
-    cmp     ax, [cfg_txn_new_word0d]
-    je      @@Optimize
-    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-
-@@Optimize:
-    test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
-    jz      @@TRImplicitFD
-    mov     ax, [cfg_txn_old_word0d]
-    cmp     ax, [cfg_txn_new_word0d]
-    je      @@TRImplicitFD
-    or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
-
-@@TRImplicitFD:
     ; /TR alone can still change word 0Dh via the implicit persistent
     ; FULLDUPLEX disable derived in Cfg_Prepare_TR; detect that too.
-    test    [cfg_parse_flags], CFG_PARSE_TR
+    test    [cfg_parse_flags], CFG_PARSE_MODEM + CFG_PARSE_FULLDUPLEX + CFG_PARSE_OPTIMIZE + CFG_PARSE_TR
     jz      @@Done
     mov     ax, [cfg_txn_old_word0d]
     cmp     ax, [cfg_txn_new_word0d]
