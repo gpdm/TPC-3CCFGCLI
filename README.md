@@ -434,7 +434,7 @@ then exits DOSBox X.
 
 7. `build.sh` prints `BUILD.LOG` and a build summary after DOSBox X exits.
 
-### Interactive DOSBox X session
+### Interactive DOSBox-X session
 
 For manual or incremental build and test work, run:
 
@@ -442,7 +442,7 @@ For manual or incremental build and test work, run:
 ./interactive.sh
 ```
 
-This starts DOSBox X with
+This starts DOSBox-X with
 [autoexec-interactive](autoexec-interactive), mounts the repository root as
 `C:`, and leaves you at a DOS prompt instead of running an automatic build or
 test command.
@@ -469,7 +469,7 @@ This is useful when iterating on one area and avoiding a complete host side
 
 ## Test
 
-Tests use the same DOSBox X environment.
+Tests use the same DOSBox-X environment.
 
 The normal test run consists of:
 
@@ -498,7 +498,7 @@ bare model name is a shorthand for `INIT model`.
 | `3C509B-COAX`  | Product 9150h, ASIC revision 2, AUI + BNC.                                                   |
 | `3C509B-COMBO` | Product 9450h, ASIC revision 2, TP + AUI + BNC.                                              |
 | `3C509B-TPO`   | Product 9550h, ASIC revision 2, TP only.                                                     |
-| `3C509B-TPC`   | Product 9850h, ASIC revision 2, BNC.                                                         |
+| `3C509B-TPC`   | Product 9850h, ASIC revision 2, TP + BNC.                                                    |
 | `3C509-TP`     | Product 9050h, ASIC revision 1, TP + AUI, no B-specific PNP/Full Duplex/AUTO/Boot ROM CONFIGURE semantics. |
 | `3C509-COAX`   | Product 9150h, ASIC revision 1, AUI + BNC.                                                   |
 | `3C509-COMBO`  | Product 9450h, ASIC revision 1, TP + AUI + BNC.                                              |
@@ -511,7 +511,7 @@ Optional `/`-prefixed attributes accepted by `INIT`/`ADD`/a bare model name:
 | ---------------- | ------------------------------------------------------------------- |
 | `/IOBASE:value`  | Sets the initial I/O base address.                                  |
 | `/INT:value`     | Sets the initial IRQ.                                                |
-| `/MODEMPRESERVE` | Seeds EEPROM word `0Dh` preservation-test fields (non-MODEM bits, including Link Beat policy). |
+| `/MODEMPRESERVE` | Seeds EEPROM word `0Dh` preservation-test fields (non-MODEM bits). |
 | `/M1200US`       | Seeds the MODEM raw value `2Fh`, 1200 microseconds, for serialization tests. |
 | `/ROM8K`         | Attaches an 8 KB mock Boot ROM.                                      |
 | `/ROM16K`        | Attaches a 16 KB mock Boot ROM.                                      |
@@ -585,28 +585,7 @@ development work.
 
 ### Running tests against real hardware
 
-
-```text
-The following section is outdated as of release 0.7.5.
-TEST.MK is no longer the appropriate target for hardware regressions.
-
-New equivalent for hardware regression test is coming soon.
-The section is kept in place until the final implementation is available.
-```
-
-The same smoke suite can be executed against the real hardware binary from
-vanilla DOS using:
-
-```text
-FIXME
-```
-
-The target system must provide:
-
-* `MAKE.EXE` at `\TASM\BIN\MAKE`
-* `TEST.MK` in the current working directory
-* `3CCFGCLI.EXE` at `\BIN\`
-
+A minimal Hardware Compliance Checks test suite is provided, see [HWCTEST.md](HWCTEST.md)
 
 ## AI Development Transparency
 
