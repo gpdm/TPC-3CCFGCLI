@@ -796,7 +796,9 @@ MCK3R_ASIC_REV           EQU 0Ah    ; DB, decoded ASIC revision (1=3C509, 2=3C50
 ; 0Bh reserved, formerly per record ID sequence position.
 MCK3R_ID_SHIFT           EQU 0Ch    ; DW
 MCK3R_ID_BITS_LEFT       EQU 0Eh    ; DB
-MCK3R_EEPROM_PENDING     EQU 0Fh    ; DB
+; 0Fh reserved, formerly the pending EEPROM word address (unused; the
+; pending address is derived from MCK3R_EEPROM_COMMAND instead). Old v4
+; state files may still hold an arbitrary value here; the mock ignores it.
 MCK3R_W0_PRODUCT         EQU 10h    ; DW
 MCK3R_W0_CONFIG_CONTROL  EQU 12h    ; DW
 MCK3R_W0_ADDRESS_CFG     EQU 14h    ; DW

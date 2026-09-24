@@ -107,7 +107,7 @@ Each of the up to `MCK_MAX_RECORDS` slots in the file is a 256-byte
 | Presence / identity            | `MCK3R_PRESENT`, `MCK3R_ASIC_REV`                                                                         |
 | ID-port / activation state     | `MCK3R_ID_STATE`, `MCK3R_TAG`, `MCK3R_FLAGS`, `MCK3R_ACTIVE_BASE`, `MCK3R_ID_SHIFT`, `MCK3R_ID_BITS_LEFT` |
 | Live register state            | `MCK3R_CURRENT_WINDOW`, `MCK3R_W0_PRODUCT`, `MCK3R_W0_CONFIG_CONTROL`, `MCK3R_W0_ADDRESS_CFG`, `MCK3R_W0_RESOURCE_CFG`, `MCK3R_W2_STATION`, `MCK3R_W3_INTERNAL_CONFIG`, `MCK3R_W4_NET_DIAG_WRITE`, `MCK3R_W4_MEDIA_WRITE`, `MCK3R_W4_MEDIA_INPUT` |
-| Command / EEPROM state         | `MCK3R_COMMAND_BUSY`, `MCK3R_EEPROM_BUSY`, `MCK3R_EEPROM_FLAGS`, `MCK3R_EEPROM_PENDING`, `MCK3R_EEPROM_COMMAND`, `MCK3R_EEPROM_DATA` |
+| Command / EEPROM state         | `MCK3R_COMMAND_BUSY`, `MCK3R_EEPROM_BUSY`, `MCK3R_EEPROM_FLAGS`, `MCK3R_EEPROM_COMMAND`, `MCK3R_EEPROM_DATA` |
 | Persistent EEPROM               | `MCK3R_EEPROM` (64 words)                                                                                 |
 | Physical Option ROM             | `MCK3R_ROM_SIZE`, `MCK3R_ROM_PAGE`                                                                        |
 
@@ -260,10 +260,9 @@ Persistent EEPROM data lives in the 64-word `MCK3R_EEPROM` area of the loaded
 adapter's record. `Nic_EEPROM_Read` in the mock issues the same
 command/data register protocol the application uses for REALHW, then polls
 `EEPROM_BUSY` via register reads rather than short-circuiting the data
-directly out of the record. `mock_eeprom_busy`, `mock_eeprom_flags`, and
-`mock_eeprom_pending` are persisted per record so a busy or pending EEPROM
-operation observed by one process can still be observed correctly by a
-later one.
+directly out of the record. `mock_eeprom_busy` and `mock_eeprom_flags`
+are persisted per record so a busy EEPROM operation observed by one
+process can still be observed correctly by a later one.
 
 Per `INV-MOCK-07`, EEPROM writes are not continuously mirrored into live
 registers. A later read of a live register that happens to share bits with a
