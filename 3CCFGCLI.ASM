@@ -2021,17 +2021,12 @@ PROC Save_Build_Command NEAR
     mov     cl, EEPROM_SOFTWARE_INFO_OPTIMIZE_SHIFT
     shr     ax, cl
     and     ax, 0003h
-    cmp     al, 1
-    je      @@OptDos
     cmp     al, 2
     je      @@OptWindowsOS2
     cmp     al, 3
     je      @@OptServer
-    ; 00b is reserved; use a parser-valid, conservative restore fallback.
-    mov     di, OFFSET save_dos
-    mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_DOS
-    jmp     @@OptSelected
-@@OptDos:
+    ; 00b and 01b both restore as DOS; 00b is reserved but still needs a
+    ; parser-valid, conservative fallback string.
     mov     di, OFFSET save_dos
     mov     cx, SAVE_LEN_OPTIMIZE + SAVE_LEN_DOS
     jmp     @@OptSelected
