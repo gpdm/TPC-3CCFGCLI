@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-09-21T01:30:12.133024+02:00" tests="11" failures="0" errors="0" skipped="3" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-09-24T10:21:20.129762+02:00" tests="11" failures="0" errors="0" skipped="3" time="0.0">
 	<testsuite name="HWCR_READ: Hardware Compliance Read checks for 3C509-TP" tests="11" errors="0" failures="0" skipped="3" time="0">
 		<properties>
 			<property name="header_id" value="hwcr00xx"/>
