@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-09-21T01:30:12.687313+02:00" tests="6" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-09-24T10:21:20.674931+02:00" tests="6" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="HWCW_MULTI: Multi NIC Hardware Compliance Write checks" tests="6" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="hwcwm00xx"/>
