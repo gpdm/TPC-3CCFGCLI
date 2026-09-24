@@ -42,9 +42,7 @@ msg_help     DB 'Usage: 3CSEED [verb]', 0Dh, 0Ah
              DB '  /INT:value           Set the initial IRQ.', 0Dh, 0Ah
              DB '  /MODEMPRESERVE       Seed EEPROM word 0Dh preservation-test fields.', 0Dh, 0Ah
              DB '  /M1200US             Seed the 1200 us MODEM timing fixture.', 0Dh, 0Ah
-             DB '  /ROM8K               Attach an 8 KB mock Boot ROM.', 0Dh, 0Ah
-             DB '  /ROM16K              Attach a 16 KB mock Boot ROM.', 0Dh, 0Ah
-             DB '  /ROM32K              Attach a 32 KB mock Boot ROM.', 0Dh, 0Ah
+             DB '  /ROM:8|16|32         Attach a mock Boot ROM of the given size (KB).', 0Dh, 0Ah
              DB '$'
 msg_ok_init  DB 'Seed file created (INIT).', 0Dh, 0Ah, '$'
 msg_ok_clear DB 'Seed file deleted (or already absent).', 0Dh, 0Ah, '$'
@@ -81,9 +79,7 @@ kw_opt_iobase DB '/IOBASE:', 0
 kw_opt_int DB '/INT:', 0
 kw_opt_modempreserve DB '/MODEMPRESERVE', 0
 kw_opt_m1200us DB '/M1200US', 0
-kw_opt_rom8k DB '/ROM8K', 0
-kw_opt_rom16k DB '/ROM16K', 0
-kw_opt_rom32k DB '/ROM32K', 0
+kw_opt_rom   DB '/ROM:', 0
 
 cmd_buffer   DB 128 DUP (0)
 state_blob   DB MCK_FILE_SIZE DUP (0)
@@ -408,6 +404,9 @@ PROC Parse_Seed_Options NEAR
     mov     dx, OFFSET kw_opt_int
     call    Match_Option_Prefix
     jnc     @@IRQ
+    mov     dx, OFFSET kw_opt_rom
+    call    Match_Option_Prefix
+    jnc     @@Rom
 
     mov     dx, OFFSET kw_opt_modempreserve
     call    Match_Token
@@ -415,15 +414,6 @@ PROC Parse_Seed_Options NEAR
     mov     dx, OFFSET kw_opt_m1200us
     call    Match_Token
     jnc     @@M1200
-    mov     dx, OFFSET kw_opt_rom8k
-    call    Match_Token
-    jnc     @@Rom8K
-    mov     dx, OFFSET kw_opt_rom16k
-    call    Match_Token
-    jnc     @@Rom16K
-    mov     dx, OFFSET kw_opt_rom32k
-    call    Match_Token
-    jnc     @@Rom32K
     jmp     @@Bad
 
 @@IOBase:
@@ -439,6 +429,13 @@ PROC Parse_Seed_Options NEAR
     call    Parse_IRQ_Token
     jc      @@Bad
     mov     [BYTE seed_irq_explicit], 1
+    jmp     @@Next
+@@Rom:
+    cmp     [BYTE seed_rom_selected], 0
+    jne     @@Bad
+    call    Parse_ROM_Token
+    jc      @@Bad
+    mov     [BYTE seed_rom_selected], 1
     jmp     @@Next
 @@ModemPreserve:
     cmp     [BYTE seed_sw_selected], 0
@@ -457,27 +454,6 @@ PROC Parse_Seed_Options NEAR
     jne     @@Bad
     mov     [BYTE seed_sw_selected], 1
     mov     [WORD seed_software_info], 2F00h OR EEPROM_SOFTWARE_INFO_OPTIMIZE_DOS
-    call    Consume_Token
-    jmp     @@Next
-@@Rom8K:
-    cmp     [BYTE seed_rom_selected], 0
-    jne     @@Bad
-    mov     [BYTE seed_rom_selected], 1
-    mov     [BYTE seed_rom_size], MCK_ROM_8K
-    call    Consume_Token
-    jmp     @@Next
-@@Rom16K:
-    cmp     [BYTE seed_rom_selected], 0
-    jne     @@Bad
-    mov     [BYTE seed_rom_selected], 1
-    mov     [BYTE seed_rom_size], MCK_ROM_16K
-    call    Consume_Token
-    jmp     @@Next
-@@Rom32K:
-    cmp     [BYTE seed_rom_selected], 0
-    jne     @@Bad
-    mov     [BYTE seed_rom_selected], 1
-    mov     [BYTE seed_rom_size], MCK_ROM_32K
     call    Consume_Token
     jmp     @@Next
 @@Bad:
@@ -755,6 +731,72 @@ PROC Parse_IRQ_Token NEAR
     stc
     ret
 ENDP Parse_IRQ_Token
+
+PROC Parse_ROM_Token NEAR
+    push    bx
+    push    cx
+    push    dx
+
+    xor     dx, dx
+    xor     cx, cx
+@@Loop:
+    mov     al, [BYTE si]
+    or      al, al
+    jz      @@DoneDigits
+    cmp     al, ' '
+    je      @@DoneDigits
+    cmp     al, 09h
+    je      @@DoneDigits
+    cmp     al, '0'
+    jb      @@Bad
+    cmp     al, '9'
+    ja      @@Bad
+    cmp     cx, 2
+    jae     @@Bad
+    sub     al, '0'
+    mov     bl, al
+    xor     bh, bh
+    mov     ax, dx
+    shl     ax, 1
+    shl     dx, 1
+    shl     dx, 1
+    shl     dx, 1
+    add     dx, ax
+    add     dx, bx
+    inc     si
+    inc     cx
+    jmp     @@Loop
+@@DoneDigits:
+    or      cx, cx
+    jz      @@Bad
+    cmp     dx, 8
+    je      @@Rom8
+    cmp     dx, 16
+    je      @@Rom16
+    cmp     dx, 32
+    je      @@Rom32
+    jmp     @@Bad
+@@Rom8:
+    mov     [BYTE seed_rom_size], MCK_ROM_8K
+    jmp     @@Good
+@@Rom16:
+    mov     [BYTE seed_rom_size], MCK_ROM_16K
+    jmp     @@Good
+@@Rom32:
+    mov     [BYTE seed_rom_size], MCK_ROM_32K
+@@Good:
+    pop     dx
+    pop     cx
+    pop     bx
+    clc
+    ret
+@@Bad:
+    pop     dx
+    pop     cx
+    pop     bx
+    stc
+    ret
+ENDP Parse_ROM_Token
 
 PROC Set_Record_Offset_By_Index NEAR
     push    bx
