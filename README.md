@@ -101,7 +101,7 @@ The following Product IDs are recognized:
 | `9150h`    | `PRODUCT_3C509`       |            Yes |    Yes | 3C509 family variant      |
 | `9450h`    | `PRODUCT_3C509_COMBO` |            Yes |    Yes | Combo variant             |
 | `9550h`    | `PRODUCT_3C509_TPO`   |            Yes |    Yes | TPO variant               |
-| `9850h`    | `PRODUCT_3C509_TPC`   |             No |    Yes | 3C509B-generation variant |
+| `9850h`    | `PRODUCT_3C509_TPC`   |            Yes |    Yes | 3C509B-generation variant |
 
 Support for a Product ID does not imply that every configuration feature is available on every adapter generation.
 
