@@ -80,7 +80,6 @@ mock_w4_media_status DW 0000h
 mock_asic_rev DB 2
 mock_eeprom_busy DB 0
 mock_eeprom_flags DB 0
-mock_eeprom_pending DB 0
 mock_id_shift DW 0
 mock_id_bits_left DB 0
 mock_id_state DB MCK_ID_WAIT
@@ -143,7 +142,6 @@ PROC Mock_Clear_Scratch NEAR
     mov     [byte mock_asic_rev], 2
     mov     [byte mock_eeprom_busy], 0
     mov     [byte mock_eeprom_flags], 0
-    mov     [byte mock_eeprom_pending], 0
     mov     [word mock_id_shift], 0
     mov     [byte mock_id_bits_left], 0
     mov     [byte mock_id_state], MCK_ID_WAIT
@@ -284,8 +282,6 @@ PROC Mock_Commit_Loaded_Record NEAR
     mov     [BYTE di + MCK3R_EEPROM_BUSY], al
     mov     al, [byte mock_eeprom_flags]
     mov     [BYTE di + MCK3R_EEPROM_FLAGS], al
-    mov     al, [byte mock_eeprom_pending]
-    mov     [BYTE di + MCK3R_EEPROM_PENDING], al
     mov     al, [byte mock_asic_rev]
     mov     [BYTE di + MCK3R_ASIC_REV], al
     mov     ax, [word mock_w4_netdiag]
@@ -382,8 +378,6 @@ PROC Mock_Load_Record_By_Index NEAR
     mov     [byte mock_eeprom_busy], al
     mov     al, [BYTE di + MCK3R_EEPROM_FLAGS]
     mov     [byte mock_eeprom_flags], al
-    mov     al, [BYTE di + MCK3R_EEPROM_PENDING]
-    mov     [byte mock_eeprom_pending], al
     mov     al, [BYTE di + MCK3R_ASIC_REV]
     mov     [byte mock_asic_rev], al
     mov     ax, [WORD di + MCK3R_W4_NET_DIAG_WRITE]
@@ -846,7 +840,6 @@ PROC Mock_Eeprom_Write_Command NEAR
     and     cx, 003Fh
     cmp     dx, EEPROM_CMD_READ
     jne     @@WriteOrErase
-    mov     [byte mock_eeprom_pending], cl
     or      [byte mock_eeprom_flags], MCKEF_DATA_VALID
     mov     [byte mock_eeprom_busy], 1
     jmp     @@Done
@@ -1317,7 +1310,6 @@ PROC Mock_Automatic_Configuration NEAR
     or      [word mock_w4_media_status], W4_MEDIA_STATUS_RESERVED_ONE
     mov     [byte mock_eeprom_busy], 0
     and     [byte mock_eeprom_flags], NOT MCKEF_WRITE_ENABLED
-    mov     [byte mock_eeprom_pending], 0
     mov     [byte mock_command_busy], 0
     mov     [byte mock_coax_started], 0
     mov     [byte mock_rom_page], 0
