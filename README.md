@@ -147,7 +147,7 @@ Because the 3C509 and the 3C509B are closely related, the utility also supports 
 areas, including deliberately omitted functionality and a small number of
 extensions.
 
-### Not Implemented Features
+### Omitted Functionality
 
 The following functionality of the original `3C5X9CFG.EXE` was deliberately
 omitted:
@@ -157,47 +157,13 @@ omitted:
 * `/LANGUAGE` CLI verb
 * `/ECHOSERVER` CLI verb
 * `/RUN` CLI verb
+* `/LINKBEAT` configuration verb
+* `/SYNCREADY` configuration verb
+* `/CONFIGPORT` configuration verb
 
-### /LINKBEAT configuration verb
+For more details, see [DESIGN DECISIONS](Architecture/DESIGN_DECISIONS.md).
 
-`CONFIGURE /LINKBEAT` was investigated across the available reference utility
-versions.
-
-Versions 3.2 and 3.0 advertise `/LINKBEAT` in their HELP text, but neither
-branches into an actual implementation. Version 2.1 still contains an active
-`/LINKBEAT` parser path.
-
-The associated EEPROM behavior is documented in
-[3C509DEF.INC](3C509DEF.INC), including how the setting could be implemented.
-LINKBEAT is effectively treated as driver policy rather than an adapter
-configuration requirement.
-
-Because `3CCFGCLI` targets compatibility with the latest available
-`3C5X9CFG.EXE` v3.2 behavior, `/LINKBEAT` is intentionally not implemented.
-
-### /SYNCREADY configuration verb
-
-Versions 3.x and 2.1 of `3C5X9CFG.EXE` also advertise a `/SYNCREADY`
-configuration verb in their HELP text, but no corresponding implementation
-path was found.
-
-For compatibility with the targeted `3C5X9CFG.EXE` v3.2 behavior,
-`/SYNCREADY` is not implemented.
-
-### /CONFIGPORT configuration verb
-
-`/CONFIGPORT` is an ISA specific workaround parameter in the original utility.
-
-According to its HELP text, it is intended for systems where the program has
-trouble operating through the default adapter ID port. It accepts an I/O
-address in the `100h` through `1E0h` range, in increments of `10h`, and
-relocates the ID port used during EEPROM and ISA probing.
-
-It does not configure a persistent adapter setting.
-
-`CONFIGURE /CONFIGPORT` is not currently implemented in `3CCFGCLI`.
-
-### /VERBOSE global CLI option
+### New /VERBOSE global CLI option
 
 `/VERBOSE` is a new global option handled by the common command parser before
 dispatch to the selected command verb. It may therefore be supplied with any
@@ -223,7 +189,7 @@ transaction sequencing.
 `LIST` and `SAVECONFIG` accept the global option but do not currently produce
 additional diagnostic output.
 
-### SAVECONFIG command verb
+### New SAVECONFIG command verb
 
 `SAVECONFIG [/OUTPUTFILE:file] [/EXECFILE:program]` reads the persistent
 configuration of every installed adapter with an active IOBASE and writes a
