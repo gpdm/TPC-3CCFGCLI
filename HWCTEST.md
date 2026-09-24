@@ -90,8 +90,10 @@ The supported batch entry points are:
 ```text
 HWCTEST.BAT READ
 HWCTEST.BAT READROM
+HWCTEST.BAT READMULTI
 HWCTEST.BAT WRITE
 HWCTEST.BAT WRITEROM
+HWCTEST.BAT WRITEMULTI
 ```
 
 `READ` runs the normal hardware read compliance suite.
@@ -102,15 +104,19 @@ HWCTEST.BAT WRITEROM
 
 `WRITEROM` runs the same complete WRITE suite with `ROM_TEST` defined. It is not a ROM only run.
 
-The current help text in `HWCTEST.BAT` prints `WRITEPROM` in its usage list. The actual dispatch label and working command are `WRITEROM`.
+`READMULTI` runs read regression against a system with two NICs installed (more may work, but only the first two are considered).
+
+`WRITEMULTI` runs write regression against a system with two NICs installed (more may work, but only the first two are considered).
 
 Conceptually, the dispatch is:
 
 ```text
 READ       => HWCREAD.MK    + CARD_<model>             => hwcr
 READROM    => HWCREAD.MK    + CARD_<model> + ROM_TEST  => hwcr
+READMULTI  => HWCREAD.MK    + CARD_MUTLI               => hwcrm
 WRITE      => HWCWRITE.MK   + CARD_<model>             => hwcw
 WRITEROM   => HWCWRITE.MK   + CARD_<model> + ROM_TEST  => hwcw
+WRITEMULTI => HWCWRITE.MK   + CARD_MUTLI               => hwcwm
 ```
 
 For example, a normal WRITE run on a detected 3C509B TPCoax invokes the equivalent of:
@@ -148,7 +154,7 @@ This initial LIST output is used only for adapter detection and as the beginning
 
 ### Recognized adapter models
 
-The current batch file recognizes these six models:
+The current batch file recognizes these models:
 
 | Detection text from `3CCFGCLI LIST` | Batch card code | MAKE definition | MAKE card type | Model name used by MAKE |
 | ----------------------------------- | --------------- | --------------- | -------------- | ----------------------- |
@@ -158,8 +164,11 @@ The current batch file recognizes these six models:
 | `3Com 3C509B-TPO:`                  | `BTPO`          | `CARD_BTPO`     | `btpo`         | `3C509B-TPO`            |
 | `3Com 3C509B-TPCoax:`               | `BTPC`          | `CARD_BTPC`     | `btpc`         | `3C509B-TPCoax`         |
 | `3Com 3C509-TP:`                    | `TP`            | `CARD_TP`       | `tp`           | `3C509-TP`              |
+| `3Com 3C509:`                       | `COAX`          | `CARD_COAX`     | `coax`         | `3C509-COAX`            |
+| `3Com 3C509-Combo:`                 | `COMBO`         | `CARD_COMBO`    | `combo`        | `3C509-Combo`           |
+| `3Com 3C509-TPO:`                   | `TPO`           | `CARD_TPO`      | `tpo`          | `3C509-TPO`             |
+| `3Com 3C509-TPCoax:`                | `TPC`           | `CARD_TPC`      | `tpc`          | `3C509-TPCoax`          |
 
-Other EtherLink III model strings are currently rejected as unsupported.
 
 The detection order checks the more specific 3C509B model strings before the generic `3Com 3C509B:` string.
 
@@ -195,6 +204,13 @@ ROM mode keeps the same target and adds `ROM_TEST`:
 ```text
 MAKE -fHWCREAD.MK -DCARD_BTP -DROM_TEST hwcr
 MAKE -fHWCWRITE.MK -DCARD_BTPC -DROM_TEST hwcw
+```
+
+And for MULTI:
+
+```text
+MAKE -fHWCREAD.MK -DCARD_MULTI hwcrm
+MAKE -fHWCWRITE.MK -DCARD_MUTLI hwcw,
 ```
 
 Model specific differences are resolved while the MAKE file is parsed. An unknown or missing card definition triggers `!error No valid card model selected` before hardware testing starts.
@@ -252,6 +268,9 @@ against text known to exist in the initial successful LIST output, resetting `ER
 ## Common configuration values
 
 `HWCREAD.MK` and `HWCWRITE.MK` currently use the same baseline values and the same primary test values.
+Most definitions and even test targets are shared and thus located in `HWCLIB.MK`.
+
+`HWCREAD.MK` and `HWCWRITE.MK` only apply more specific overrides where required.
 
 ### Baseline values
 
@@ -281,6 +300,10 @@ Model specific baseline settings are:
 | `3C509B-TPO`    | `ENABLED`     | not issued by baseline | not issued, Boot ROM unsupported |
 | `3C509B-TPCoax` | `ENABLED`     | `DISABLED`             | `BSIZE:DISABLED`                 |
 | `3C509-TP`      | not supported | not supported          | `BSIZE:DISABLED`                 |
+| `3C509B-COAX`   | not supported | not issued             | `BSIZE:DISABLED`                 |
+| `3C509B-Combo`  | not supported | not supported          | `BSIZE:DISABLED`                 |
+| `3C509B-TPO`    | not supported | not supported          | not issued, Boot ROM unsupported |
+| `3C509B-TPCoax` | not supported | not supported          | `BSIZE:DISABLED`                 |
 
 All baseline writes are performed through the original `3C5X9CFG.EXE` utility.
 
@@ -324,6 +347,10 @@ The current expectations are:
 | `3C509B-TPO`    | 2             | `TP`            | yes                      | yes                    |
 | `3C509B-TPCoax` | 2             | `TP, COAX`      | yes                      | yes                    |
 | `3C509-TP`      | 1             | `TP, AUI`       | not supported            | not supported          |
+| `3C509-COAX`    | 1             | `AUI, COAX`     | not supported            | not supported          |
+| `3C509-Combo`   | 1             | `TP, AUI, COAX` | not supported            | not supported          |
+| `3C509-TPO`     | 1             | `TP`            | not supported            | not supported          |
+| `3C509-TPCoax`  | 1             | `TP, COAX`      | not supported            | not supported          |
 
 For the 3C509B COAX, the LIST identity string matched by the tests is the unsuffixed:
 
@@ -727,6 +754,7 @@ The dormant READ Boot ROM recipe currently uses `HWCR010.LOG` and `HWCR010.BAT` 
 
 The hardware compliance suite currently requires:
 
+* at least 448K of free conventional memory (mostly because of `3C5X9CFG.EXE`)
 * a physical supported 3Com EtherLink III adapter
 * `3CCFGCLI.EXE`
 * the original 3Com Configuration and Diagnostic Program, `3C5X9CFG.EXE`, version 3.2
