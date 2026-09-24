@@ -1471,6 +1471,7 @@ PROC Save_Append_Char NEAR
     stosb
     inc     [save_length]
     pop     di
+    clc
     ret
 @@Overflow:
     pop     di
