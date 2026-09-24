@@ -751,8 +751,6 @@ save_disabled   DB  'DISABLED', 0
 SAVE_LEN_DISABLED EQU 8
 save_dos        DB  'DOS', 0
 SAVE_LEN_DOS EQU 3
-save_windows_os2        DB  'Windows or OS/2', 0
-SAVE_LEN_WINDOWS_OS2 EQU 15
 save_windows    DB  'WINDOWS', 0
 SAVE_LEN_WINDOWS EQU 7
 save_os2        DB  'OS/2', 0
