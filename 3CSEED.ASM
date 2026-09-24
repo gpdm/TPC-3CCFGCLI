@@ -109,10 +109,9 @@ oem_mac      DB 6 DUP (0)
 
 irq_table    DB 3, 5, 7, 9, 10, 11, 12, 15
 
-iobase_table DW 0300h, 0310h, 0320h, 0330h, 0340h, 0350h, 0360h, 0370h
-            DW 0380h, 0390h, 03A0h, 03B0h, 03C0h, 03D0h, 03E0h
-            DW 0200h, 0210h, 0220h, 0230h, 0240h, 0250h, 0260h, 0270h
-            DW 0280h, 0290h, 02A0h, 02B0h, 02C0h, 02D0h, 02E0h, 02F0h
+; Shared sequence defined by ISA_IOBASE_TABLE in 3C509DEF.INC; fixed
+; ISA_IOBASE_COUNT entries, no terminating word.
+ISA_IOBASE_TABLE iobase_table
 
 CODESEG
 
@@ -960,7 +959,7 @@ PROC Choose_Default_Base NEAR
     push    si
 
     ; Fixed count for the supported EtherLink III hardware set.
-    mov     cx, 31
+    mov     cx, ISA_IOBASE_COUNT
     mov     si, OFFSET iobase_table
 @@Loop:
     mov     dx, [WORD si]

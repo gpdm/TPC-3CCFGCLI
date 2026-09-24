@@ -678,10 +678,9 @@ SAVE_ERR_BAD_EXECFILE EQU 3
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
 ; Index 31 means no assigned base, therefore 03F0h is not a valid selection.
-io_scan_table   DW  0300h, 0310h, 0320h, 0330h, 0340h, 0350h, 0360h, 0370h
-                DW  0380h, 0390h, 03A0h, 03B0h, 03C0h, 03D0h, 03E0h
-                DW  0200h, 0210h, 0220h, 0230h, 0240h, 0250h, 0260h, 0270h
-                DW  0280h, 0290h, 02A0h, 02B0h, 02C0h, 02D0h, 02E0h, 02F0h
+; Shared sequence defined by ISA_IOBASE_TABLE in 3C509DEF.INC; zero-terminated
+; here for Nic_Find_Temporary_Base's scan loop.
+ISA_IOBASE_TABLE io_scan_table
                 DW  0000h
 
 cmd_buffer      DB  128 DUP(0)
@@ -5979,10 +5978,8 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     jz      @@Success
 
 @@Start:
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Word08
     mov     dx, OFFSET msg_cfg_txn_write
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Word08:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
@@ -6015,10 +6012,8 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_RESOURCE_CFG
     call    Cfg_Eeprom_Write
     jc      @@Fail
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Word0D
     mov     dx, OFFSET msg_cfg_irq_word_written
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Word0D:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
@@ -6061,10 +6056,8 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_CONFIG_CONTROL
     call    Cfg_Eeprom_Write
     jc      @@Fail
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Word14
     mov     dx, OFFSET msg_cfg_pnp_word_written
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Word14:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
@@ -6081,10 +6074,8 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cfg_txn_change_flags], CFG_TXN_SECONDARY_CHECKSUM_MASK
     jz      @@ChecksumUpdated
 @@ChecksumAnnounce:
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@PrimaryChecksum
     mov     dx, OFFSET msg_cfg_update_checksum
-    call    Print_String
+    call    Print_If_Verbose
 @@PrimaryChecksum:
     test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
     jz      @@SecondaryChecksum
@@ -6137,10 +6128,8 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     cmp     ax, [cfg_txn_checksum_word]
     jne     @@ChecksumFail
 @@ChecksumUpdated:
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Success
     mov     dx, OFFSET msg_cfg_checksum_updated
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Success:
     pop     si
@@ -6190,10 +6179,8 @@ PROC Cfg_Txn_Write_Live NEAR
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jz      @@Success
 @@Need:
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Select
     mov     dx, OFFSET msg_cfg_txn_live
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Select:
     mov     dx, [cfg_txn_access_base]
@@ -6465,10 +6452,8 @@ PROC Cfg_Txn_Verify_PNP NEAR
     jc      @@VerifyFail
     cmp     ax, [cfg_txn_new_word13]
     jne     @@VerifyFail
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Success
     mov     dx, OFFSET msg_cfg_pnp_verified
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Success:
     clc
@@ -6509,10 +6494,8 @@ PROC Cfg_Txn_Verify_MODEM NEAR
     and     bx, EEPROM_SOFTWARE_INFO_INT_DISABLE_MASK
     cmp     ax, bx
     jne     @@VerifyFail
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Success
     mov     dx, OFFSET msg_cfg_modem_verified
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Success:
     clc
@@ -6559,10 +6542,8 @@ PROC Cfg_Txn_Verify_FULLDUPLEX NEAR
     and     bx, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     cmp     ax, bx
     jne     @@VerifyFail
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Success
     mov     dx, OFFSET msg_cfg_fd_verified
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Success:
     clc
@@ -6602,10 +6583,8 @@ PROC Cfg_Txn_Verify_OPTIMIZE NEAR
     and     bx, EEPROM_SOFTWARE_INFO_OPTIMIZE_MASK
     cmp     ax, bx
     jne     @@VerifyFail
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Success
     mov     dx, OFFSET msg_cfg_optimize_verified
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Success:
     clc
@@ -6688,10 +6667,8 @@ PROC Cfg_Txn_Verify_BootRom NEAR
     and     ax, 3F00h
     cmp     bx, ax
     jne     @@VerifyFail
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Success
     mov     dx, OFFSET msg_cfg_bootrom_live_verified
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Success:
     clc
@@ -6734,10 +6711,8 @@ PROC Cfg_Txn_Verify_TR NEAR
     xor     ax, [cfg_txn_new_word08]
     test    ax, W0_ADDRESS_CFG_XCVR_MASK OR W0_ADDRESS_CFG_AUTO_SELECT
     jnz     @@VerifyFail
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Success
     mov     dx, OFFSET msg_cfg_tr_verified
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Success:
     clc
@@ -6773,10 +6748,8 @@ PROC Cfg_Txn_Verify NEAR
     jz      @@Success
 
 @@Start:
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Verify
     mov     dx, OFFSET msg_cfg_txn_verify
-    call    Print_String
+    call    Print_If_Verbose
 
 @@Verify:
     call    Cfg_Txn_Verify_IOBASE
@@ -6912,10 +6885,8 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
     test    [cfg_txn_new_word0d], EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jnz     @@VerifyFail
 @@Verified:
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@RestoreSuccess
     mov     dx, OFFSET msg_cfg_fd_live_verified
-    call    Print_String
+    call    Print_If_Verbose
     jmp     @@RestoreSuccess
 
 @@UpdateFail:
@@ -7588,10 +7559,8 @@ PROC Cfg_Txn_Execute NEAR
     call    Print_String
 
 @@Read:
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@ReadNow
     mov     dx, OFFSET msg_cfg_txn_read
-    call    Print_String
+    call    Print_If_Verbose
 @@ReadNow:
     call    Cfg_Txn_Read_Current
     call    Cfg_Txn_Report_Current
@@ -7738,10 +7707,8 @@ PROC Cfg_Txn_Execute NEAR
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jnz     @@SyncUnchangedFD
 @@ReportNoChanges:
-    test    [cli_flags], CLI_FLAG_VERBOSE
-    jz      @@Success
     mov     dx, OFFSET msg_cfg_txn_no_changes
-    call    Print_String
+    call    Print_If_Verbose
     jmp     @@Success
 @@SyncUnchangedFD:
     call    Cfg_Txn_Sync_Live_FullDuplex
@@ -8991,6 +8958,21 @@ PROC Print_String NEAR
     pop     ax
     ret
 ENDP Print_String
+
+; Input DX = '$'-terminated string.  Prints it via Print_String only when
+; CLI_FLAG_VERBOSE is set in cli_flags; otherwise does nothing.  Consolidates
+; the repeated "test [cli_flags], CLI_FLAG_VERBOSE / jz @@Skip / call
+; Print_String" pattern used throughout the CONFIGURE transaction code.
+; Register/FLAGS contract matches Print_String: AX, BX, CX, DX and all other
+; registers are preserved; FLAGS are not guaranteed preserved (same as a
+; direct call to Print_String).
+PROC Print_If_Verbose NEAR
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@Skip
+    call    Print_String
+@@Skip:
+    ret
+ENDP Print_If_Verbose
 
 PROC Print_HexByte NEAR
     push    ax
