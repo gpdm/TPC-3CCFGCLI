@@ -3855,7 +3855,7 @@ ENDP Normalize_IRQ
 ; Decode a raw EEPROM Address Configuration transceiver selector into the
 ; canonical NIC_XCVR_* value it represents.  Unlike the legacy normalization
 ; below, the undefined selector is decoded as NIC_XCVR_UNDEFINED rather than
-; aliased to AUI.  Not yet called from anywhere.
+; aliased to AUI.
 ; Input AL = W0_ADDRESS_CFG_XCVR_* raw selector.
 ; Output AL = corresponding NIC_XCVR_* canonical value.
 PROC Nic_Decode_Explicit_Xcvr NEAR
