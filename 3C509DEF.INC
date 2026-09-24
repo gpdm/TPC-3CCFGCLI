@@ -732,6 +732,27 @@ VALID_IOBASE_MIN        EQU 0200h
 VALID_IOBASE_MAX        EQU 03E0h
 VALID_IOBASE_STEP       EQU 0010h
 
+; Number of entries emitted by ISA_IOBASE_TABLE below.
+ISA_IOBASE_COUNT        EQU 31
+
+; ---------------------------------------------------------------------------
+; Shared ISA IOBASE priority sequence.
+; ---------------------------------------------------------------------------
+; Emits the 31 valid selectable 3C509 ISA I/O bases, in EEPROM Address
+; Configuration selector priority order (selector indexes 0 through 30).
+; Index 31 means no assigned base, therefore 03F0h is not a valid selection.
+;
+; table_name becomes the DW table's label, so each caller keeps its own
+; existing symbol name.  No terminating word is emitted here: 3CCFGCLI.ASM
+; appends its own 0000h terminator, while 3CSEED.ASM relies on the fixed
+; ISA_IOBASE_COUNT entry count instead.
+MACRO ISA_IOBASE_TABLE table_name
+table_name DW  0300h, 0310h, 0320h, 0330h, 0340h, 0350h, 0360h, 0370h
+           DW  0380h, 0390h, 03A0h, 03B0h, 03C0h, 03D0h, 03E0h
+           DW  0200h, 0210h, 0220h, 0230h, 0240h, 0250h, 0260h, 0270h
+           DW  0280h, 0290h, 02A0h, 02B0h, 02C0h, 02D0h, 02E0h, 02F0h
+ENDM
+
 ; ---------------------------------------------------------------------------
 ; 3C509B.MCK file layout (v4, register-accurate multi-record; see the
 ; MCK3R_* device image below)
