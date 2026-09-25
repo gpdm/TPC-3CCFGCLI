@@ -201,6 +201,7 @@ CFG_ERR_PNP_UNSUPPORTED_CARD EQU 44
 CFG_ERR_TR_AUTO_UNSUPPORTED_CARD EQU 45
 CFG_ERR_BOOTROM_UNSUPPORTED_CARD EQU 46
 CFG_ERR_INT_REQUIRES_SLAVE_PIC EQU 47
+CFG_ERR_PNP_BIOS_REQUIRED EQU 48
 
 DATASEG
 
@@ -276,6 +277,10 @@ msg_cfg_pic_warning_suffix DB " requires a secondary interrupt controller,", 0Dh
                            DB "but no secondary PIC was detected on this system.", 0Dh, 0Ah, '$'
 msg_cfg_pic_gate_error DB "Requested IRQ requires a secondary interrupt controller,", 0Dh, 0Ah
                        DB "but no secondary PIC was detected on this system.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_bios_warning DB "WARNING: No Plug and Play BIOS was detected on this system.", 0Dh, 0Ah
+                         DB "Enabling ISA Plug and Play may require additional system support.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_bios_gate_error DB "Requested /PNP:ENABLED requires a Plug and Play BIOS,", 0Dh, 0Ah
+                            DB "but none was detected on this system.", 0Dh, 0Ah, '$'
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
 msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER.", 0Dh, 0Ah, '$'
@@ -497,6 +502,8 @@ id_eeprom_contender DB ID_EEPROM_SNAPSHOT_SIZE DUP(0)
 ; PIC policy change; do not remove it as dead code during cleanup.
 pic_slave_present DB 0
 pic_gate_enforce   DB 0
+pnp_bios_present DB 0
+pnp_bios_gate_enforce DB 0
 
 ; Temporary EEPROM values used only by the LIST output.
 ; These are deliberately separate from nic_table so the known good 16 byte
@@ -827,6 +834,7 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_tr_auto_unsupported_card      ; 45 CFG_ERR_TR_AUTO_UNSUPPORTED_CARD
     DW      OFFSET msg_cfg_bootrom_unsupported_card      ; 46 CFG_ERR_BOOTROM_UNSUPPORTED_CARD
     DW      OFFSET msg_cfg_pic_gate_error                ; 47 CFG_ERR_INT_REQUIRES_SLAVE_PIC
+    DW      OFFSET msg_cfg_pnp_bios_gate_error           ; 48 CFG_ERR_PNP_BIOS_REQUIRED
 LABEL cfg_error_messages_end WORD
 
 CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2
@@ -901,10 +909,84 @@ PROC Host_Detect_Secondary_PIC NEAR
     ret
 ENDP Host_Detect_Secondary_PIC
 
+; Scan F000:0000 through F000:FFF0 for a valid PnP BIOS installation structure.
+; The declared structure must fit within the BIOS segment and have a valid
+; checksum before it can establish presence.
+PROC Host_Detect_PnP_BIOS NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    si
+    push    di
+    push    es
+
+    mov     [pnp_bios_present], 0
+    mov     ax, 0F000h
+    mov     es, ax
+    xor     di, di
+
+@@Candidate:
+    mov     al, [BYTE es:di]
+    cmp     al, 24h
+    jne     @@NextCandidate
+    mov     al, [BYTE es:di+1]
+    cmp     al, 'P'
+    jne     @@NextCandidate
+    mov     al, [BYTE es:di+2]
+    cmp     al, 'n'
+    jne     @@NextCandidate
+    mov     al, [BYTE es:di+3]
+    cmp     al, 'P'
+    jne     @@NextCandidate
+
+    mov     al, [BYTE es:di+4]
+    cmp     al, 10h
+    jb      @@NextCandidate
+    mov     cl, [BYTE es:di+5]
+    xor     ch, ch
+    cmp     cx, 21h
+    jb      @@NextCandidate
+
+    ; Check the final byte address before checksum traversal so SI cannot wrap.
+    mov     bx, cx
+    dec     bx
+    mov     ax, di
+    add     ax, bx
+    jc      @@NextCandidate
+
+    mov     si, di
+    xor     al, al
+@@Checksum:
+    add     al, [BYTE es:si]
+    inc     si
+    loop    @@Checksum
+    or      al, al
+    jnz     @@NextCandidate
+
+    mov     [pnp_bios_present], 1
+    jmp     @@Done
+
+@@NextCandidate:
+    cmp     di, 0FFF0h
+    je      @@Done
+    add     di, 10h
+    jmp     @@Candidate
+
+@@Done:
+    pop     es
+    pop     di
+    pop     si
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Host_Detect_PnP_BIOS
+
 ; Detect host hardware once before command parsing. Additional host detection
 ; routines can be added here without changing the startup sequence.
 PROC Host_Detect_Environment NEAR
     call    Host_Detect_Secondary_PIC
+    call    Host_Detect_PnP_BIOS
     ret
 ENDP Host_Detect_Environment
 
@@ -7286,7 +7368,7 @@ PROC Cfg_Txn_Execute NEAR
     jz      @@PNPCapReadFail
     test    ax, NIC_CAP_PNP
     jz      @@PNPNotCapable
-    jmp     @@GateFULLDUPLEX
+    jmp     @@PNPCapable
 @@PNPUnsupportedCard:
     mov     [cfg_last_error], CFG_ERR_PNP_UNSUPPORTED_CARD
     jmp     @@Done
@@ -7295,6 +7377,20 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@Done
 @@PNPNotCapable:
     mov     [cfg_last_error], CFG_ERR_PNP_NOT_CAPABLE
+    jmp     @@Done
+
+@@PNPCapable:
+    cmp     [cfg_pnp_value], 0
+    je      @@GateFULLDUPLEX
+    cmp     [pnp_bios_present], 0
+    jne     @@GateFULLDUPLEX
+    cmp     [pnp_bios_gate_enforce], 0
+    jne     @@PNPBiosRequired
+    mov     dx, OFFSET msg_cfg_pnp_bios_warning
+    call    Print_String
+    jmp     @@GateFULLDUPLEX
+@@PNPBiosRequired:
+    mov     [cfg_last_error], CFG_ERR_PNP_BIOS_REQUIRED
     jmp     @@Done
 
 @@GateFULLDUPLEX:
