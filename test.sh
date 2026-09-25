@@ -177,6 +177,30 @@ test_pic() {
   echo "PC Interrupt Controller tests: run completed" >> "${TEST_LOG}"
 }
 
+test_pnp_bios() {
+  local conf
+  conf=$(mktemp "/tmp/autoexec-test.XXXXXX")
+  local template="autoexec-test"
+
+  echo "Running PnP BIOS tests ..." >> "${TEST_LOG}"
+
+  # Clear only artifacts owned by the PnP BIOS group.
+  find "${ARTIFACT_DIR}" -maxdepth 1 -type f -name 'T20*.LOG' -exec rm -f {} \;
+
+  sed -e "s:CALL TEST:CALL TEST PNP_BIOS_GATE:g" -e $'/\\[cpu\\]/a\\\nisapnpbios = false\\\n' "${template}" > "${conf}"
+
+  echo "Dispatching tests to DOSBox-X ..." >> "${TEST_LOG}"
+  "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
+  rm -f "$conf"
+
+  if grep -q '^\[t2001\] PASSED' "${TEST_LOG}" &&
+     grep -q '^\[t2002\] PASSED' "${TEST_LOG}"; then
+    echo "PnP BIOS tests: run completed" >> "${TEST_LOG}"
+    return 0
+  fi
+
+  return 1
+}
 
 
 # Agent doesn't like if there's no output for prolonged time.
@@ -188,7 +212,7 @@ TAIL_PID=$!
 # run tests in sequence
 # chaining only on successful assertion of previous tests
 #
-test_regressions && test_saveconfig_line_lengths && test_hwlimits && test_pic
+test_regressions && test_saveconfig_line_lengths && test_hwlimits && test_pic && test_pnp_bios
 
 # render junit xml file if uv is available
 #
@@ -215,12 +239,14 @@ SMOKE_FAIL=1
 SAVECONFIG_FAIL=1
 PIC_FAIL=1
 HWLIMIT_FAIL=1
+PNP_BIOS_FAIL=1
 
 # run completed usually means success, but there may be exceptions
 grep -q '^Smoke test: run completed' "${TEST_LOG}" && SMOKE_FAIL=0
 grep -q '^SAVECONFIG: run completed' "${TEST_LOG}" && SAVECONFIG_FAIL=0
 grep -q '^Hardware Limit test: run completed' "${TEST_LOG}" && HWLIMIT_FAIL=0
 grep -q '^PC Interrupt Controller tests: run completed' "${TEST_LOG}" && PIC_FAIL=0
+grep -q '^PnP BIOS tests: run completed' "${TEST_LOG}" && PNP_BIOS_FAIL=0
 
 # check defined vs. executed tests and see if we anyway
 # had a delta, which would indicate a failure.
@@ -240,11 +266,12 @@ Smoke Test                   : $( (( SMOKE_FAIL + TESTS_FAILED == 0 )) && echo S
 SAVECONFIG Test              : $( (( SAVECONFIG_FAIL == 0 )) && echo SUCCESS || echo FAILED )
 Hardware Limit Test          : $( (( HWLIMIT_FAIL == 0 )) && echo SUCCESS || echo FAILED )
 PC Interrupt Controller Test : $( (( PIC_FAIL == 0 )) && echo SUCCESS || echo FAILED )
+PnP BIOS Test                : $( (( PNP_BIOS_FAIL == 0 )) && echo SUCCESS || echo FAILED )
 
-Overall result        : $( (( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + TESTS_FAILED > 0 )) && echo FAIL || echo PASS )
+Overall result        : $( (( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + PNP_BIOS_FAIL + TESTS_FAILED > 0 )) && echo FAIL || echo PASS )
 
 EOF
 
 # emmit return code based on assertions of the individual tests.
 #
-exit $(( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + TESTS_FAILED > 0 ))
+exit $(( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + PNP_BIOS_FAIL + TESTS_FAILED > 0 ))

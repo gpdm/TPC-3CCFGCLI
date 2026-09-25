@@ -44,6 +44,10 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
+Host System:
+  Interrupt Controllers = 2 PICs
+  Plug and Play BIOS = detected
+
 NIC                            NIC
 Number                       Description
 --------------------------------------------------------------------------
