@@ -256,6 +256,7 @@ msg_save_execfile_not_found DB "SAVECONFIG /EXECFILE file not found.", 0Dh, 0Ah,
 msg_save_line_too_long DB "SAVECONFIG restore command line would exceed DOS batch line limit.", 0Dh, 0Ah, '$'
 msg_save_no_active DB "SAVECONFIG found no adapters with an active IOBASE.", 0Dh, 0Ah, '$'
 msg_save_write_fail DB "Unable to write SAVECONFIG output file.", 0Dh, 0Ah, '$'
+msg_save_unsupported_rom_size DB "SAVECONFIG found an active Boot ROM with an unsupported size.", 0Dh, 0Ah, '$'
 msg_save_ok DB "Configuration restore batch file created: ", '$'
 
 ; CONFIGURE framework diagnostics.
@@ -674,6 +675,7 @@ SAVE_ERR_NONE EQU 0
 SAVE_ERR_WRITE EQU 1
 SAVE_ERR_LINE_TOO_LONG EQU 2
 SAVE_ERR_BAD_EXECFILE EQU 3
+SAVE_ERR_UNSUPPORTED_ROM_SIZE EQU 4
 
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
@@ -1314,6 +1316,8 @@ PROC Cmd_SaveConfig NEAR
 @@SaveFail:
     cmp     [save_error], SAVE_ERR_LINE_TOO_LONG
     je      @@LineTooLong
+    cmp     [save_error], SAVE_ERR_UNSUPPORTED_ROM_SIZE
+    je      @@UnsupportedRomSize
 @@WriteFail:
     call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_write_fail
@@ -1342,6 +1346,10 @@ PROC Cmd_SaveConfig NEAR
 @@LineTooLong:
     call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_line_too_long
+    jmp     @@Print
+@@UnsupportedRomSize:
+    call    Save_Cleanup_Partial_File
+    mov     dx, OFFSET msg_save_unsupported_rom_size
     jmp     @@Print
 @@BadName:
     mov     dx, OFFSET msg_save_bad_name
@@ -2061,7 +2069,7 @@ PROC Save_Build_Command NEAR
     cmp     ax, PRODUCT_3C509_TPO
     je      @@Tr
     mov     ax, [save_word08]
-    and     ax, 3F00h              ; Base (bits 11:8) and size (bits 13:12).
+    and     ax, 0F00h              ; ROM Base selector (bits 11:8).
     jz      @@NoRom
 
     ; Decode the raw selector (bits 11:8) and size code (bits 13:12) into
@@ -2081,6 +2089,8 @@ PROC Save_Build_Command NEAR
     mov     di, 16
     cmp     ax, 1
     je      @@HaveSizeK
+    cmp     ax, 2
+    jne     @@UnsupportedRomSize
     mov     di, 32
 @@HaveSizeK:
     ; ASIC revision 1 is the 3C509; revision 2 or later is the
@@ -2128,6 +2138,9 @@ PROC Save_Build_Command NEAR
     jmp     @@Tr
 @@AddrFail:
     pop     ax
+    jmp     @@Fail
+@@UnsupportedRomSize:
+    mov     [save_error], SAVE_ERR_UNSUPPORTED_ROM_SIZE
     jmp     @@Fail
 @@NoRom:
     ; The original utility does not accept /BADDRESS:NONE; disabling the
@@ -5387,6 +5400,9 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     cmp     [cfg_bsize_disabled], 1
     je      @@Disable
 
+    cmp     [cfg_bsize_value], 2
+    ja      @@InvalidSize
+
     mov     bl, [cfg_baddress_value]
     cmp     [cfg_bsize_value], 0
     jne     @@Check16K
@@ -5437,6 +5453,11 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     mov     [cfg_txn_new_live06], ax
     and     [cfg_txn_new_word14], NOT EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
     clc
+    jmp     @@Done
+
+@@InvalidSize:
+    mov     [cfg_last_error], CFG_ERR_BAD_BSIZE
+    stc
     jmp     @@Done
 
 @@Invalid:
@@ -8677,16 +8698,10 @@ PROC Print_Boot_Rom_Value NEAR
     mov     cl, 12
     shr     ax, cl
     or      bx, bx
-    jz      @@CheckDisabled
-    cmp     ax, 3
-    je      @@Invalid
-    jmp     @@HaveSize
-
-@@CheckDisabled:
-    or      ax, ax
     jz      @@Disabled
     cmp     ax, 3
     je      @@Invalid
+    jmp     @@HaveSize
 
 @@HaveSize:
 
