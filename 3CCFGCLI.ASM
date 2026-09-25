@@ -408,10 +408,9 @@ msg_list_hdr    DB  "NIC                            NIC", 0Dh, 0Ah
                 DB  "--------------------------------------------------------------------------", 0Dh, 0Ah, '$'
 msg_list_host_system DB "Host System:", 0Dh, 0Ah
                     DB "  Interrupt Controllers = ", '$'
-msg_list_pic_one DB "1 PIC", 0Dh, 0Ah
-                DB "  Plug and Play BIOS = ", '$'
-msg_list_pic_two DB "2 PICs", 0Dh, 0Ah
-                DB "  Plug and Play BIOS = ", '$'
+msg_list_pic_one DB "1 PIC", 0Dh, 0Ah, '$'
+msg_list_pic_two DB "2 PICs", 0Dh, 0Ah, '$'
+msg_list_pnp_label DB "  Plug and Play BIOS = ", '$'
 msg_list_pnp_detected DB "detected", 0Dh, 0Ah, 0Dh, 0Ah, '$'
 msg_list_pnp_not_detected DB "not detected", 0Dh, 0Ah, 0Dh, 0Ah, '$'
 
@@ -504,13 +503,12 @@ id_addr_cfg     DW  0
 id_resource_cfg DW  0
 id_eeprom_contender DB ID_EEPROM_SNAPSHOT_SIZE DUP(0)
 
-; Host PIC topology state used only by the /INT configuration gate.
-; pic_gate_enforce = 0 warns and continues, nonzero rejects the selection.
-; This disabled strict path is intentional reserved functionality for a future
-; PIC policy change; do not remove it as dead code during cleanup.
+; Cached host detection results are used by LIST and their CONFIGURE gates.
 pic_slave_present DB 0
+; pic_gate_enforce = 0 warns and continues; nonzero rejects high IRQs.
 pic_gate_enforce   DB 0
 pnp_bios_present DB 0
+; pnp_bios_gate_enforce = 0 warns and continues; nonzero rejects /PNP:ENABLED.
 pnp_bios_gate_enforce DB 0
 
 ; Temporary EEPROM values used only by the LIST output.
@@ -934,17 +932,9 @@ PROC Host_Detect_PnP_BIOS NEAR
     xor     di, di
 
 @@Candidate:
-    mov     al, [BYTE es:di]
-    cmp     al, 24h
+    cmp     [WORD es:di], 5024h
     jne     @@NextCandidate
-    mov     al, [BYTE es:di+1]
-    cmp     al, 'P'
-    jne     @@NextCandidate
-    mov     al, [BYTE es:di+2]
-    cmp     al, 'n'
-    jne     @@NextCandidate
-    mov     al, [BYTE es:di+3]
-    cmp     al, 'P'
+    cmp     [WORD es:di+2], 506Eh
     jne     @@NextCandidate
 
     mov     al, [BYTE es:di+4]
@@ -3677,6 +3667,8 @@ PROC List_Print_Host_System NEAR
 @@PrintPICs:
     call    Print_String
 
+    mov     dx, OFFSET msg_list_pnp_label
+    call    Print_String
     cmp     [pnp_bios_present], 0
     jne     @@PnPDetected
     mov     dx, OFFSET msg_list_pnp_not_detected
