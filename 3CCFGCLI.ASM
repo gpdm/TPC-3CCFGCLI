@@ -1022,8 +1022,6 @@ Start:
     mov     ax, @data
     mov     ds, ax
 
-    call    Host_Detect_Environment
-
     mov     dx, OFFSET msg_banner_prefix
     call    Print_String
 
@@ -2325,6 +2323,8 @@ PROC Cmd_Configure NEAR
 
     call    Cfg_Parse_Options
     jc      @@Report
+
+    call    Host_Detect_Environment
 
     ; Reuse the exact discovery path used by LIST.  No second scanner exists.
     call    Scan_All_3Com_Cards
@@ -3681,6 +3681,7 @@ PROC List_Print_Host_System NEAR
 ENDP List_Print_Host_System
 
 PROC Cmd_List NEAR
+    call    Host_Detect_Environment
     call    Scan_All_3Com_Cards
     call    List_Print_Host_System
 
