@@ -368,19 +368,30 @@ Dispatching tests to DOSBox-X ...
 [t1901] PASSED
 [t1902] single PIC warns but permits high IRQ
 [t1902] PASSED
+[t1903] LIST reports a single PIC
+[t1903] PASSED
 PC Interrupt Controller tests: run completed
+Running PnP BIOS tests ...
+Dispatching tests to DOSBox-X ...
+[t20xx] PNP_BIOS_GATE: Verify missing PnP BIOS behaviour
+[t2001] /PNP:ENABLED warns without a PnP BIOS
+[t2001] PASSED
+[t2002] LIST reports no PnP BIOS
+[t2002] PASSED
+PnP BIOS tests: run completed
 Rendering test results as JUnit XML ...
 JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 164
-    Executed Tests           : 164
+    Defined Tests            : 167
+    Executed Tests           : 167
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS
 PC Interrupt Controller Test : SUCCESS
+PnP BIOS Test                : SUCCESS
 
 Overall result        : PASS
 

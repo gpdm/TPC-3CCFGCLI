@@ -92,7 +92,11 @@ VERIFICATION_CONTROL_FLOW: t17xx t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708
 # Base: 1900
 # NOTE: This group is deliberately not included in smoke-core.
 #       It will be called up during standalone tests from test.sh.
-PIC_GATE: t19xx t1901 t1902
+PIC_GATE: t19xx t1901 t1902 t1903
+
+# Base: 2000
+# NOTE: This group is deliberately not included in smoke-core.
+PNP_BIOS_GATE: t20xx t2001 t2002
 
 # Imported hardware compliance SET verification.
 # NOTE: This group is deliberately not included in smoke-core.
@@ -1961,6 +1965,35 @@ t1902:
    FIND "IRQ = 9" $(ARTIFACTS)\T1902.LOG > NUL
    @echo [t1902] PASSED  >> $(TESTLOG)
 
+t1903:
+   @echo [t1903] LIST reports a single PIC  >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T1903.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1903.LOG
+   FIND "Host System:" $(ARTIFACTS)\T1903.LOG > NUL
+   FIND "Interrupt Controllers = 1 PIC" $(ARTIFACTS)\T1903.LOG > NUL
+   @echo [t1903] PASSED  >> $(TESTLOG)
+
+t20xx:
+   @echo [t20xx] PNP_BIOS_GATE: Verify missing PnP BIOS behaviour  >> $(TESTLOG)
+
+t2001:
+   @echo [t2001] /PNP:ENABLED warns without a PnP BIOS  >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T2001S.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED > $(ARTIFACTS)\T2001D.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED > $(ARTIFACTS)\T2001.LOG
+   FIND "WARNING: No Plug and Play BIOS was detected on this system." $(ARTIFACTS)\T2001.LOG > NUL
+   FIND "Enabling ISA Plug and Play may require additional system support." $(ARTIFACTS)\T2001.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T2001.LOG > NUL
+   @echo [t2001] PASSED  >> $(TESTLOG)
+
+t2002:
+   @echo [t2002] LIST reports no PnP BIOS  >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T2002.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T2002.LOG
+   FIND "Host System:" $(ARTIFACTS)\T2002.LOG > NUL
+   FIND "Plug and Play BIOS = not detected" $(ARTIFACTS)\T2002.LOG > NUL
+   FIND "3Com 3C509B-TP:" $(ARTIFACTS)\T2002.LOG > NUL
+   @echo [t2002] PASSED  >> $(TESTLOG)
 
 # Hardware compliance SET verification.
 #

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-09-25T19:56:09.555184+02:00" tests="168" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-09-25T20:21:43.187162+02:00" tests="171" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -1062,7 +1062,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="PIC_GATE: Verify IRQ gate behaviour on a single PIC system" tests="2" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="PIC_GATE: Verify IRQ gate behaviour on a single PIC system" tests="3" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t19xx"/>
 			<property name="description" value="Verify IRQ gate behaviour on a single PIC system"/>
@@ -1077,6 +1077,30 @@
 			<properties>
 				<property name="description" value="single PIC warns but permits high IRQ"/>
 				<property name="artifact" value="ARTIFACT/T1902.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1903: LIST reports a single PIC" classname="PIC_GATE">
+			<properties>
+				<property name="description" value="LIST reports a single PIC"/>
+				<property name="artifact" value="ARTIFACT/T1903.LOG"/>
+			</properties>
+		</testcase>
+	</testsuite>
+	<testsuite name="PNP_BIOS_GATE: Verify missing PnP BIOS behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
+		<properties>
+			<property name="header_id" value="t20xx"/>
+			<property name="description" value="Verify missing PnP BIOS behaviour"/>
+		</properties>
+		<testcase name="t2001: /PNP:ENABLED warns without a PnP BIOS" classname="PNP_BIOS_GATE">
+			<properties>
+				<property name="description" value="/PNP:ENABLED warns without a PnP BIOS"/>
+				<property name="artifact" value="ARTIFACT/T2001.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t2002: LIST reports no PnP BIOS" classname="PNP_BIOS_GATE">
+			<properties>
+				<property name="description" value="LIST reports no PnP BIOS"/>
+				<property name="artifact" value="ARTIFACT/T2002.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>

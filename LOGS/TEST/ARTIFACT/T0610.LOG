@@ -5,6 +5,10 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
+Host System:
+  Interrupt Controllers = 2 PICs
+  Plug and Play BIOS = detected
+
 NIC                            NIC
 Number                       Description
 --------------------------------------------------------------------------
@@ -68,6 +72,10 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
+Host System:
+  Interrupt Controllers = 2 PICs
+  Plug and Play BIOS = detected
+
 NIC                            NIC
 Number                       Description
 --------------------------------------------------------------------------
@@ -124,6 +132,10 @@ Configuration restore batch file created: LOGS\TEST\ARTIFACT\M192.BAT
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Host System:
+  Interrupt Controllers = 2 PICs
+  Plug and Play BIOS = detected
 
 NIC                            NIC
 Number                       Description
@@ -218,6 +230,10 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
+Host System:
+  Interrupt Controllers = 2 PICs
+  Plug and Play BIOS = detected
+
 NIC                            NIC
 Number                       Description
 --------------------------------------------------------------------------
@@ -274,6 +290,10 @@ Configuration restore batch file created: LOGS\TEST\ARTIFACT\M12.BAT
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Host System:
+  Interrupt Controllers = 2 PICs
+  Plug and Play BIOS = detected
 
 NIC                            NIC
 Number                       Description
@@ -333,6 +353,10 @@ Seed file created (INIT).
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Host System:
+  Interrupt Controllers = 2 PICs
+  Plug and Play BIOS = detected
 
 NIC                            NIC
 Number                       Description
