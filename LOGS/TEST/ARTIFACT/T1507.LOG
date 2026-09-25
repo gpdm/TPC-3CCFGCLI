@@ -1,10 +1,10 @@
-3CSEED - 3C509B mock state seeder v0.8.0
+3CSEED - 3C509B mock state seeder v0.8.1
 Seed file deleted (or already absent).
-3CSEED - 3C509B mock state seeder v0.8.0
+3CSEED - 3C509B mock state seeder v0.8.1
 Seed file updated (ADD).
-3CSEED - 3C509B mock state seeder v0.8.0
+3CSEED - 3C509B mock state seeder v0.8.1
 Seed file updated (ADD).
-3Com EtherLink III CLI Configuration Program v0.8.0
+3Com EtherLink III CLI Configuration Program v0.8.1
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -14,7 +14,7 @@ MODEM parameter accepted. Requested setting: 9600
 FULLDUPLEX parameter accepted. Requested mode: enabled
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.8.0
+3Com EtherLink III CLI Configuration Program v0.8.1
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -48,7 +48,7 @@ Number                       Description
        Optimization = DOS
        MODEM Interrupt Disable Time = 500 us (9600 bd)
        Full Duplex = enabled
-3Com EtherLink III CLI Configuration Program v0.8.0
+3Com EtherLink III CLI Configuration Program v0.8.1
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2

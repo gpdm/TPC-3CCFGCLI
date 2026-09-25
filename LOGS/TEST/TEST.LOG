@@ -1,10 +1,10 @@
 [t01xx] LISTING: Verify general card listing behaviour
 [t0101] Clearing seed and checking no-card case
-3CSEED - 3C509B mock state seeder v0.8.0
+3CSEED - 3C509B mock state seeder v0.8.1
 Seed file deleted (or already absent).
 [t0101] PASSED
 [t0102] Seeding INIT profile and checking card listing
-3CSEED - 3C509B mock state seeder v0.8.0
+3CSEED - 3C509B mock state seeder v0.8.1
 Seed file created (INIT).
 [t0102] PASSED
 [t02xx] IRQ_CHANGE: Verify IRQ change behaviour
@@ -342,7 +342,7 @@ Seed file created (INIT).
 [t1808] SAVECONFIG on 3C509-TP (ASIC rev. 1) emits only common properties
 [t1808] PASSED
 Cleaning seed file
-3CSEED - 3C509B mock state seeder v0.8.0
+3CSEED - 3C509B mock state seeder v0.8.1
 Seed file deleted (or already absent).
 Smoke test complete.
 Smoke test: run completed
