@@ -862,7 +862,7 @@ include '3CSHIF.ASM'
 
 ; Probe the secondary 8259 interrupt mask register at I/O port A1h.
 ; The original mask is restored before the saved interrupt state is restored.
-PROC Cfg_Probe_Secondary_PIC NEAR
+PROC Host_Detect_Secondary_PIC NEAR
     pushf
     cli
     push    ax
@@ -899,7 +899,14 @@ PROC Cfg_Probe_Secondary_PIC NEAR
     pop     ax
     popf
     ret
-ENDP Cfg_Probe_Secondary_PIC
+ENDP Host_Detect_Secondary_PIC
+
+; Detect host hardware once before command parsing. Additional host detection
+; routines can be added here without changing the startup sequence.
+PROC Host_Detect_Environment NEAR
+    call    Host_Detect_Secondary_PIC
+    ret
+ENDP Host_Detect_Environment
 
 ; ----------------------------------------------------------------------------
 ; Program entry
@@ -934,6 +941,8 @@ Start:
 
     mov     ax, @data
     mov     ds, ax
+
+    call    Host_Detect_Environment
 
     mov     dx, OFFSET msg_banner_prefix
     call    Print_String
@@ -2820,7 +2829,6 @@ PROC Cfg_Handle_INT NEAR
     cmp     al, 9
     jb      @@StoreAccepted
 
-    call    Cfg_Probe_Secondary_PIC
     cmp     [pic_slave_present], 0
     jne     @@StoreAccepted
     cmp     [pic_gate_enforce], 0

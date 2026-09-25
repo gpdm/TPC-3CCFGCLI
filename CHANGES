@@ -2,6 +2,8 @@ Changelog 0.8.1
   - Corrected Boot ROM size validation and SAVECONFIG handling so only 8 KB,
     16 KB, and 32 KB configurations are accepted and exported.
   - small fixes (state and carry flags, CLI parser semantics)
+  - Detect the secondary PIC once during startup and reuse the result for /INT
+    validation.
 
 Changelog 0.8.0
   - Reworked adapter discovery around ID-port-derived logical records. Removed
