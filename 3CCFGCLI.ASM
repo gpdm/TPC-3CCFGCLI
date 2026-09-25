@@ -5549,19 +5549,12 @@ PROC Cfg_Prepare_Boot_ROM NEAR
 
     mov     bl, [cfg_baddress_value]
     cmp     [cfg_bsize_value], 0
-    jne     @@Check16K
+    jne     @@CheckAlignment
     or      bl, bl
     jz      @@Invalid
     jmp     @@Encode
-@@Check16K:
-    cmp     [cfg_bsize_value], 1
-    jne     @@Check32K
-    test    bl, 1
-    jnz     @@Invalid
-    jmp     @@Encode
-@@Check32K:
-    ; Only known 3C509B-generation adapters reach this routine, so the
-    ; 3C509B 32K alignment rule applies without another ASIC check.
+@@CheckAlignment:
+    ; Both 16K and 32K require an even selector on 3C509B adapters.
     test    bl, 1
     jnz     @@Invalid
 
@@ -5607,8 +5600,6 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     ; A PnP-managed ROM has no stored ISA address to restore.
     jmp     @@CheckPnP
 @@NoRom:
-    test    [cfg_parse_flags], CFG_PARSE_BSIZE
-    jnz     @@ClearBrsv
     and     [cfg_txn_new_word08], 0C0FFh
     and     [cfg_txn_new_live06], 0C0FFh
     jmp     @@ClearBrsv
@@ -5690,24 +5681,19 @@ PROC Cfg_Txn_Probe_Boot_ROM NEAR
     call    Nic_Reg_Read_Word
     mov     [cfg_txn_probe_live06], ax
     and     ax, 0C0FFh
-    ; Probe at the requested ISA aperture, not the persistent PnP image
-    ; (whose ROM selector is intentionally zero).
-    xor     bx, bx
-    mov     bl, [cfg_baddress_value]
-    or      bl, bl
-    jnz     @@ProbeSelector
-    inc     bl
-@@ProbeSelector:
-    mov     bh, bl
-    xor     bl, bl
+    ; The staged live size survives PnP base clearing; the temporary
+    ; selector must still come from the requested ISA address.
+    mov     bx, [cfg_txn_new_live06]
+    and     bx, 3000h
     xor     cx, cx
-    mov     cl, [cfg_bsize_value]
-    push    ax
-    mov     ax, cx
-    mov     cl, 12
-    shl     ax, cl
-    or      bx, ax
-    pop     ax
+    mov     cl, [cfg_baddress_value]
+    or      cl, cl
+    jnz     @@ProbeSelector
+    inc     cl
+@@ProbeSelector:
+    mov     ch, cl
+    xor     cl, cl
+    or      bx, cx
     or      ax, bx
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Write_Word
