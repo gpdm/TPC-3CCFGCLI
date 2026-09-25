@@ -274,16 +274,9 @@ This reduced conflict model is intentional.
 
 ### Decision
 
-System PnP BIOS integration is intentionally outside the scope of
-`3CCFGCLI`.
-
-The `/PNP` option configures the adapter's persistent ISA Plug and Play
-activation policy. It does not imply detection of, or cooperation with,
-a system PnP BIOS.
-
-`3CCFGCLI` therefore implements Boot ROM configuration according to the
-conventional ISA path used when no PnP BIOS participates in resource
-assignment.
+`3CCFGCLI` detects the system PnP BIOS and uses the final adapter `/PNP`
+policy to select the persistent Boot ROM representation. It does not invoke
+PnP BIOS services or allocate resources.
 
 ### Rationale
 
@@ -296,7 +289,8 @@ The resulting persistent Boot ROM representation differs as follows:
 |---|---|---|---:|
 | **No PnP BIOS** | enabled | explicit address | **0** |
 | **No PnP BIOS** | disabled | 0 | **0** |
-| **PnP BIOS** | enabled | 0 before BIOS assignment | **1** |
+| **PnP BIOS, adapter PnP enabled** | enabled | 0 before BIOS assignment | **1** |
+| **PnP BIOS, adapter PnP disabled** | enabled | explicit address | **0** |
 | **PnP BIOS** | disabled | 0 | **0** |
 
 Without a PnP BIOS, the Boot ROM mapping is stored explicitly in the
@@ -307,22 +301,15 @@ persistent Boot ROM base is not used as a fixed ISA mapping, and
 `Boot ROM Size Valid` is set while resource assignment is handled through
 PnP.
 
-`3CCFGCLI` targets conventional ISA systems, including 8086/8088 and
-8-bit ISA environments. A system PnP BIOS is not part of the required
-platform.
-
-For that reason, `3CCFGCLI` does not implement system PnP BIOS detection,
-PnP BIOS resource assignment, or the PnP-BIOS Boot ROM representation used
-by the original 3Com utility.
-
-The `/PNP` option remains supported because adapter Plug and Play policy is
-a property of the adapter itself and is independent of whether the host
-system provides a PnP BIOS.
+The PnP BIOS signature is inspected without invoking BIOS services. An
+absent BIOS preserves conventional ISA configuration on 8086/8088 systems.
+Returning from a PnP-managed ROM to conventional ISA requires a caller-
+specified ROM address and size: unlike the original graphical UI, this CLI
+does not choose a default address.
 
 ### Resulting Behavior
 
-For supported Boot ROM configuration, `3CCFGCLI` follows the conventional
-ISA representation:
+For conventional ISA Boot ROM configuration:
 
 ```text
 Boot ROM enabled
@@ -332,8 +319,14 @@ Boot ROM enabled
 
 Boot ROM disabled
     Boot ROM base = 0
+    Boot ROM size = 0
     Boot ROM Size Valid = 0
 ```
+
+For PnP-managed ROMs, the size is retained, the base is zero, and Boot ROM
+Size Valid is one. `SAVECONFIG` cannot export that state through the existing
+CLI syntax without an address and explicitly refuses to produce a lossy
+restore file.
 
 ## Link Status Not Reported (Removed Again From `LIST` verb)
 
@@ -417,4 +410,3 @@ Future reviews must distinguish between:
 These are separate concepts.
 
 A feature must not be treated as missing merely because the hardware could theoretically support it.
-

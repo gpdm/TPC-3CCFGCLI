@@ -521,23 +521,16 @@ and only as part of Boot ROM configuration.
 
 ## Boot ROM Size Valid
 
-`Cfg_Prepare_Boot_ROM` clears:
+`Cfg_Prepare_Boot_ROM` updates:
 
 ```text
 EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID = 0010h
 ```
 
-from the prospective word `14h`.
-
-All other bits are preserved.
-
-For the conventional ISA configuration path supported by `3CCFGCLI`,
-`Boot ROM Size Valid` therefore remains clear.
-
-The original 3Com utility also has a PnP BIOS path in which Boot ROM
-configuration is represented differently. System PnP BIOS integration is
-intentionally outside the scope of `3CCFGCLI`; see
-[`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md).
+in the prospective word `14h`. It sets the bit only for an enabled ROM
+with both a host PnP BIOS and an effectively PnP-enabled adapter. It clears
+the bit for conventional ISA mappings and disabled ROMs. All other bits of
+word `14h` are preserved; see [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md).
 
 This is important because the same word contains adapter revision
 information used elsewhere in the program.
@@ -1357,4 +1350,3 @@ Then repair exactly the checksum domain that the change disturbed.
 
 The transaction machinery that stages and commits these EEPROM images is
 documented in [`TRANSACTIONS.md`](TRANSACTIONS.md).
-
