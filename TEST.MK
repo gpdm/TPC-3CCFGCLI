@@ -1981,8 +1981,8 @@ t2001:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T2001S.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED > $(ARTIFACTS)\T2001D.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED > $(ARTIFACTS)\T2001.LOG
-   FIND "WARNING: No Plug and Play BIOS was detected on this system." $(ARTIFACTS)\T2001.LOG > NUL
-   FIND "Enabling ISA Plug and Play may require additional system support." $(ARTIFACTS)\T2001.LOG > NUL
+   FIND "WARNING: No PnP BIOS detected;" $(ARTIFACTS)\T2001.LOG > NUL
+   FIND "ISA PnP may require system support." $(ARTIFACTS)\T2001.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T2001.LOG > NUL
    @echo [t2001] PASSED  >> $(TESTLOG)
 

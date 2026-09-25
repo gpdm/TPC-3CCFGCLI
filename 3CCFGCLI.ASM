@@ -202,6 +202,8 @@ CFG_ERR_TR_AUTO_UNSUPPORTED_CARD EQU 45
 CFG_ERR_BOOTROM_UNSUPPORTED_CARD EQU 46
 CFG_ERR_INT_REQUIRES_SLAVE_PIC EQU 47
 CFG_ERR_PNP_BIOS_REQUIRED EQU 48
+CFG_ERR_PNP_ROM_ADDRESS_REQUIRED EQU 49
+CFG_ERR_BOOTROM_PROBE EQU 50
 
 DATASEG
 
@@ -258,6 +260,7 @@ msg_save_line_too_long DB "SAVECONFIG restore command line would exceed DOS batc
 msg_save_no_active DB "SAVECONFIG found no adapters with an active IOBASE.", 0Dh, 0Ah, '$'
 msg_save_write_fail DB "Unable to write SAVECONFIG output file.", 0Dh, 0Ah, '$'
 msg_save_unsupported_rom_size DB "SAVECONFIG found an active Boot ROM with an unsupported size.", 0Dh, 0Ah, '$'
+msg_save_pnp_rom DB "SAVECONFIG cannot restore PnP ROM without an address.", 0Dh, 0Ah, '$'
 msg_save_ok DB "Configuration restore batch file created: ", '$'
 
 ; CONFIGURE framework diagnostics.
@@ -277,10 +280,12 @@ msg_cfg_pic_warning_suffix DB " requires a secondary interrupt controller,", 0Dh
                            DB "but no secondary PIC was detected on this system.", 0Dh, 0Ah, '$'
 msg_cfg_pic_gate_error DB "Requested IRQ requires a secondary interrupt controller,", 0Dh, 0Ah
                        DB "but no secondary PIC was detected on this system.", 0Dh, 0Ah, '$'
-msg_cfg_pnp_bios_warning DB "WARNING: No Plug and Play BIOS was detected on this system.", 0Dh, 0Ah
-                         DB "Enabling ISA Plug and Play may require additional system support.", 0Dh, 0Ah, '$'
-msg_cfg_pnp_bios_gate_error DB "Requested /PNP:ENABLED requires a Plug and Play BIOS,", 0Dh, 0Ah
-                            DB "but none was detected on this system.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_bios_warning DB "WARNING: No PnP BIOS detected;", 0Dh, 0Ah
+                         DB "ISA PnP may require system support.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_bios_gate_error DB "/PNP:ENABLED requires a PnP BIOS;", 0Dh, 0Ah
+                            DB "none detected.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_rom_address_required DB "Disabling PnP ROM requires /BADDRESS and /BSIZE.", 0Dh, 0Ah, '$'
+msg_cfg_bootrom_probe_fail DB "Boot ROM probe failed; PnP unchanged.", 0Dh, 0Ah, '$'
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
 msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER.", 0Dh, 0Ah, '$'
@@ -477,6 +482,7 @@ msg_onboard_coax DB "on-board coax", '$'
 msg_auto_select DB  "auto select", '$'
 msg_unknown_value DB "unknown", '$'
 msg_at          DB  "K at ", '$'
+msg_pnp_rom     DB  "K awaiting PnP resource assignment", '$'
 msg_hex_suffix  DB  "H", '$'
 msg_kilobytes_suffix DB "K", '$'
 msg_crlf        DB  0Dh, 0Ah, '$'
@@ -689,6 +695,7 @@ SAVE_ERR_WRITE EQU 1
 SAVE_ERR_LINE_TOO_LONG EQU 2
 SAVE_ERR_BAD_EXECFILE EQU 3
 SAVE_ERR_UNSUPPORTED_ROM_SIZE EQU 4
+SAVE_ERR_PNP_ROM EQU 5
 
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
@@ -726,6 +733,7 @@ save_word08     DW  0
 save_word09     DW  0
 save_word0d     DW  0
 save_word13     DW  0
+save_word14     DW  0
 ; Cached canonical transceiver type of the adapter currently being exported.
 save_xcvr_type  DB  0
 ; Cached ASIC revision of the adapter currently being exported, copied from
@@ -841,6 +849,8 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_bootrom_unsupported_card      ; 46 CFG_ERR_BOOTROM_UNSUPPORTED_CARD
     DW      OFFSET msg_cfg_pic_gate_error                ; 47 CFG_ERR_INT_REQUIRES_SLAVE_PIC
     DW      OFFSET msg_cfg_pnp_bios_gate_error           ; 48 CFG_ERR_PNP_BIOS_REQUIRED
+    DW      OFFSET msg_cfg_pnp_rom_address_required      ; 49 CFG_ERR_PNP_ROM_ADDRESS_REQUIRED
+    DW      OFFSET msg_cfg_bootrom_probe_fail             ; 50 CFG_ERR_BOOTROM_PROBE
 LABEL cfg_error_messages_end WORD
 
 CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2
@@ -1405,6 +1415,8 @@ PROC Cmd_SaveConfig NEAR
     je      @@LineTooLong
     cmp     [save_error], SAVE_ERR_UNSUPPORTED_ROM_SIZE
     je      @@UnsupportedRomSize
+    cmp     [save_error], SAVE_ERR_PNP_ROM
+    je      @@PnpRom
 @@WriteFail:
     call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_write_fail
@@ -1437,6 +1449,10 @@ PROC Cmd_SaveConfig NEAR
 @@UnsupportedRomSize:
     call    Save_Cleanup_Partial_File
     mov     dx, OFFSET msg_save_unsupported_rom_size
+    jmp     @@Print
+@@PnpRom:
+    call    Save_Cleanup_Partial_File
+    mov     dx, OFFSET msg_save_pnp_rom
     jmp     @@Print
 @@BadName:
     mov     dx, OFFSET msg_save_bad_name
@@ -1962,6 +1978,8 @@ PROC Save_Read_Id_Eeprom_Snapshot NEAR
     mov     [save_word09], ax
     mov     ax, [WORD di + ID_EEPROM_SOFTWARE_INFO]
     mov     [save_word0d], ax
+    mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
+    mov     [save_word14], ax
 
     mov     [save_word13], 0
     cmp     [save_pnp_valid], 0
@@ -2157,7 +2175,12 @@ PROC Save_Build_Command NEAR
     je      @@Tr
     mov     ax, [save_word08]
     and     ax, 0F00h              ; ROM Base selector (bits 11:8).
+    jnz     @@HaveRom
+    test    [save_word14], EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
     jz      @@NoRom
+    mov     [save_error], SAVE_ERR_PNP_ROM
+    jmp     @@Fail
+@@HaveRom:
 
     ; Decode the raw selector (bits 11:8) and size code (bits 13:12) into
     ; BX/DI, then normalize the selector the same way Print_Boot_Rom_Value
@@ -5217,7 +5240,7 @@ PROC Cfg_Txn_Read_Current NEAR
     ; Every production logical record owns an ordinal ID-port EEPROM snapshot.
     call    Get_Id_Eeprom_Snapshot
 
-    test    [cfg_parse_flags], CFG_PARSE_IOBASE
+    test    [cfg_parse_flags], CFG_PARSE_IOBASE + CFG_PARSE_PNP
     jnz     @@ReadWord08
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jnz     @@ReadWord08
@@ -5246,7 +5269,7 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_word09], 0
 @@Word09Done:
 
-    test    [cfg_parse_flags], CFG_PARSE_PNP
+    test    [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
     jz      @@NoWord13
     mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
     mov     [cfg_txn_old_word13], ax
@@ -5255,8 +5278,12 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_word13], 0
 @@Word13Done:
 
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
-    jnz     @@Word14Done
+    test    [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    jz      @@NoWord14
+    mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
+    mov     [cfg_txn_old_word14], ax
+    jmp     @@Word14Done
+@@NoWord14:
     mov     [cfg_txn_old_word14], 0
 @@Word14Done:
 
@@ -5276,9 +5303,8 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_word0d], 0
 @@Word0DDone:
 
-    ; PNP-only transactions use the secondary checksum and do not depend on
-    ; EEPROM word 0Fh being readable.
-    test    [cfg_parse_flags], CFG_PARSE_INT + CFG_PARSE_IOBASE + CFG_PARSE_MODEM + CFG_PARSE_FULLDUPLEX + CFG_PARSE_OPTIMIZE + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_TR
+    ; PNP-only transactions can now change word 08h as well.
+    test    [cfg_parse_flags], CFG_PARSE_INT + CFG_PARSE_IOBASE + CFG_PARSE_PNP + CFG_PARSE_MODEM + CFG_PARSE_FULLDUPLEX + CFG_PARSE_OPTIMIZE + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_TR
     jz      @@NoWord0F
     mov     ax, [WORD di + ID_EEPROM_CHECKSUM]
     mov     [cfg_txn_old_word0f], ax
@@ -5513,6 +5539,8 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     push    bx
     push    cx
 
+    test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    jz      @@ApplyMode
     cmp     [cfg_bsize_disabled], 1
     je      @@Disable
 
@@ -5567,7 +5595,56 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     and     ax, 0C0FFh
     or      ax, bx
     mov     [cfg_txn_new_live06], ax
+    cmp     [cfg_bsize_disabled], 1
+    je      @@ClearBrsv
+
+@@ApplyMode:
+    mov     ax, [cfg_txn_new_word08]
+    test    ax, 0F00h
+    jnz     @@Enabled
+    test    [cfg_txn_new_word14], EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
+    jz      @@NoRom
+    ; A PnP-managed ROM has no stored ISA address to restore.
+    jmp     @@CheckPnP
+@@NoRom:
+    test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    jnz     @@ClearBrsv
+    and     [cfg_txn_new_word08], 0C0FFh
+    and     [cfg_txn_new_live06], 0C0FFh
+    jmp     @@ClearBrsv
+@@Enabled:
+    ; Do not convert an existing unsupported 64K encoding implicitly.
+    test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    jnz     @@CheckPnP
+    and     ax, 3000h
+    cmp     ax, 3000h
+    je      @@InvalidSize
+@@CheckPnP:
+    cmp     [pnp_bios_present], 0
+    je      @@Conventional
+    test    [cfg_txn_capabilities], NIC_CAP_PNP
+    jz      @@Conventional
+    mov     ax, [cfg_txn_new_word13]
+    and     ax, 000Ch
+    cmp     ax, 0004h
+    je      @@Conventional
+    and     [cfg_txn_new_word08], 0F0FFh
+    and     [cfg_txn_new_live06], 0F0FFh
+    or      [cfg_txn_new_word14], EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
+    jmp     @@Success
+
+@@Conventional:
+    mov     ax, [cfg_txn_new_word08]
+    test    ax, 0F00h
+    jnz     @@ClearBrsv
+    test    [cfg_txn_new_word14], EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
+    jz      @@ClearBrsv
+    mov     [cfg_last_error], CFG_ERR_PNP_ROM_ADDRESS_REQUIRED
+    stc
+    jmp     @@Done
+@@ClearBrsv:
     and     [cfg_txn_new_word14], NOT EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
+@@Success:
     clc
     jmp     @@Done
 
@@ -5613,8 +5690,24 @@ PROC Cfg_Txn_Probe_Boot_ROM NEAR
     call    Nic_Reg_Read_Word
     mov     [cfg_txn_probe_live06], ax
     and     ax, 0C0FFh
-    mov     bx, [cfg_txn_new_live06]
-    and     bx, 3F00h
+    ; Probe at the requested ISA aperture, not the persistent PnP image
+    ; (whose ROM selector is intentionally zero).
+    xor     bx, bx
+    mov     bl, [cfg_baddress_value]
+    or      bl, bl
+    jnz     @@ProbeSelector
+    inc     bl
+@@ProbeSelector:
+    mov     bh, bl
+    xor     bl, bl
+    xor     cx, cx
+    mov     cl, [cfg_bsize_value]
+    push    ax
+    mov     ax, cx
+    mov     cl, 12
+    shl     ax, cl
+    or      bx, ax
+    pop     ax
     or      ax, bx
     mov     bx, EL3_W0_ADDRESS_CFG
     call    Nic_Reg_Write_Word
@@ -5667,6 +5760,12 @@ PROC Cfg_Txn_Probe_Boot_ROM NEAR
     or      ax, bx
     mov     [cfg_txn_new_word14], ax
     mov     [cfg_bootrom_rejected], 1
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jz      @@ProbeRejected
+    mov     [cfg_last_error], CFG_ERR_BOOTROM_PROBE
+    stc
+    jmp     @@Done
+@@ProbeRejected:
     mov     dx, OFFSET msg_cfg_bootrom_not_detected
     call    Print_String
 
@@ -5797,9 +5896,7 @@ PROC Cfg_Txn_Detect_Changes NEAR
 
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jnz     @@CheckWord08
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS
-    jnz     @@CheckWord08
-    test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_PNP
     jnz     @@CheckWord08
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@INT
@@ -5862,7 +5959,7 @@ PROC Cfg_Txn_Detect_Changes NEAR
     or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
 
 @@BootRom:
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_PNP
     jz      @@MODEM
     mov     ax, [cfg_txn_old_word14]
     cmp     ax, [cfg_txn_new_word14]
@@ -6286,7 +6383,7 @@ PROC Cfg_Txn_Write_Live NEAR
     jnz     @@Need
     ; An accepted Boot ROM change also synchronizes its staged live mapping.
     ; A rejected request keeps the previously active live mapping untouched.
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_PNP
     jz      @@Success
     cmp     [cfg_bootrom_rejected], 1
     je      @@Success
@@ -6323,7 +6420,7 @@ PROC Cfg_Txn_Write_Live NEAR
     ; image here; shared fields are preserved because the staged word began
     ; as an exact snapshot copy.  Readback verification of the Boot ROM bits
     ; is performed read-only by Cfg_Txn_Verify.
-    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_PNP
     jz      @@INT
     cmp     [cfg_bootrom_rejected], 1
     je      @@INT
@@ -6721,7 +6818,7 @@ ENDP Cfg_Txn_Verify_OPTIMIZE
 PROC Cfg_Txn_Verify_BootRom NEAR
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jnz     @@NeedsRead
-    test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    test    [cfg_parse_flags], CFG_PARSE_BSIZE + CFG_PARSE_PNP
     jz      @@Success
 @@NeedsRead:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08 + CFG_TXN_CHG_WORD14
@@ -6764,6 +6861,8 @@ PROC Cfg_Txn_Verify_BootRom NEAR
     ; not verified again here.  The caller's register window is restored.
     cmp     [cfg_bootrom_rejected], 1
     je      @@Success
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
+    jz      @@Success
     push    di
     mov     dx, [cfg_txn_access_base]
     call    Nic_Get_Current_Window
@@ -7729,7 +7828,10 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@PrepareTR
 @@PrepareBSizeOnly:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
+    jnz     @@PrepareBootRomNow
+    test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@PrepareTR
+@@PrepareBootRomNow:
     call    Cfg_Prepare_Boot_ROM
     jc      @@Done
 @@PrepareTR:
@@ -8828,12 +8930,17 @@ PROC Print_Boot_Rom_Value NEAR
     mov     cl, 12
     shr     ax, cl
     or      bx, bx
+    jnz     @@CheckSize
+    or      ch, ch
     jz      @@Disabled
+    push    di
+    call    Get_Id_Eeprom_Snapshot
+    test    [WORD di + ID_EEPROM_REVISION_INFO], EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
+    pop     di
+    jz      @@Disabled
+@@CheckSize:
     cmp     ax, 3
     je      @@Invalid
-    jmp     @@HaveSize
-
-@@HaveSize:
 
     mov     di, 8
     or      ax, ax
@@ -8843,7 +8950,14 @@ PROC Print_Boot_Rom_Value NEAR
     je      @@HaveSizeK
     mov     di, 32
 @@HaveSizeK:
+    or      bx, bx
+    jnz     @@HaveAddress
+    mov     ax, di
+    call    Print_DecByte
+    mov     dx, OFFSET msg_pnp_rom
+    jmp     @@PrintString
 
+@@HaveAddress:
     call    Normalize_Boot_Rom_Selector
 
     mov     ax, bx

@@ -855,14 +855,14 @@ It merges Boot ROM address and size into bits `13:8` of:
 * prospective EEPROM word `08h`
 * prospective live Window 0 Address Configuration
 
-It also clears the Boot ROM Size Valid bit in prospective EEPROM word `14h`.
-
-For the conventional ISA configuration path supported by `3CCFGCLI`,
-Boot ROM Size Valid therefore remains clear. The original 3Com utility uses
-a different Boot ROM representation when a system PnP BIOS participates in
-resource assignment. System PnP BIOS integration is intentionally outside
-the scope of `3CCFGCLI`; see
-[`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md).
+When the host has a PnP BIOS and the final adapter configuration enables PnP,
+preparation retains the ROM size, clears the persistent and final live ROM
+base selector, and sets Boot ROM Size Valid in word `14h`. The ROM probe
+temporarily maps the explicitly requested address and restores the previous
+live mapping before commit. Otherwise preparation stores the explicit ISA
+selector and clears Boot ROM Size Valid. A PnP-only transition applies the
+same policy to the existing ROM; a transition back to conventional ISA from
+a PnP-managed ROM requires an explicit address and size.
 
 A disabled request clears the Boot ROM mapping fields.
 

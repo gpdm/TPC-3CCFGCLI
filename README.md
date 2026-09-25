@@ -131,6 +131,21 @@ Boot ROM configuration is supported on all 3C509-generation adapters.
 
 But since I don't own a plain 3c509, I have disabled Boot ROM support until I can test this myself.
 
+On a 3C509B with a PnP BIOS and adapter PnP enabled, an enabled Boot ROM
+retains its configured 8, 16, or 32 KB size, but its persistent base selector
+is zero and Boot ROM Size Valid (BRSV) is set for PnP resource assignment.
+Without a PnP BIOS, or with adapter PnP disabled, an enabled ROM keeps its
+explicit ISA address and BRSV is clear. `/BSIZE:DISABLED` clears both ROM
+fields and BRSV. The utility detects the BIOS but does not allocate PnP
+resources or call its services.
+
+Switching from a PnP-managed ROM to `/PNP:DISABLED` requires an explicit
+`/BADDRESS` and `/BSIZE`; no address is chosen automatically. `LIST` displays
+the size of a PnP-managed ROM as awaiting resource assignment.
+`SAVECONFIG` refuses to export that state because the existing CONFIGURE
+syntax cannot restore the unknown ROM address; use an explicit ROM address
+when restoring instead.
+
 
 ### No 8-Bit Bus Support for 3c509 (ASIC Revision 1)
 
@@ -522,7 +537,9 @@ Optional `/`-prefixed attributes accepted by `INIT`/`ADD`/a bare model name:
 1. Run `./test.sh`.
 
 2. [test.sh](test.sh) starts DOSBox X with
-   [autoexec-test](autoexec-test).
+   [autoexec-test](autoexec-test). The smoke suite uses an absent PnP BIOS
+   to retain its conventional ISA Boot ROM assertions; it does not exercise
+   the PnP-managed ROM representation.
 
 3. [autoexec-test](autoexec-test) mounts `C:` from the current working
    directory, then runs `TEST`.

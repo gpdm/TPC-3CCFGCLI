@@ -8,6 +8,8 @@ Changelog 0.8.1
     and gate /PNP:ENABLED with a warning or optional enforcement.
   - [implement #4] Display cached host PIC and PnP BIOS status in LIST.
   - [implement #4] Implement regression test coverage 
+  - [implement #4, #3] Added automatic BRSV management based on PnP BIOS presence
+    and the adapter’s final PnP setting.
 
 Changelog 0.8.0
   - Reworked adapter discovery around ID-port-derived logical records. Removed

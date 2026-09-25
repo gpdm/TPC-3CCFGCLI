@@ -8,6 +8,7 @@ working directory option = default
 working directory default = .
 
 [cpu]
+isapnpbios = false
 cycles=max limit 50000
 turbo = true
 turbo stop on key = false

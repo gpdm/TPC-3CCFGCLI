@@ -51,7 +51,7 @@ Related documents are:
 | `INV-SCOPE-03` | The program must remain compatible with 8086 and 8088 class processors. Instructions requiring an 80186 or later CPU must not be introduced.              |
 | `INV-SCOPE-04` | The target remains 16 bit DOS using the existing TASM based build environment.                                                                            |
 | `INV-SCOPE-05` | The original 3Com utility is a compatibility reference. It is not by itself authority to reintroduce functionality that this project intentionally omits. |
-| `INV-SCOPE-06` | System PnP BIOS detection and integration are outside project scope. `/PNP` configures adapter policy only and must not be interpreted as requiring PnP BIOS cooperation or the original utility's PnP-BIOS-specific Boot ROM path. |
+| `INV-SCOPE-06` | Host PnP BIOS detection selects the Boot ROM EEPROM representation together with the adapter's final `/PNP` policy. PnP resource allocation and BIOS service calls remain outside project scope. |
 
 ## 3. Backend Boundary
 
@@ -333,4 +333,3 @@ Do not claim that a test proves more than it actually exercises.
 ```
 
 These invariants are the architectural guard rails for future development.
-
