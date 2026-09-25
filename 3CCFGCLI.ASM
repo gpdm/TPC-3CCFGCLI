@@ -406,6 +406,14 @@ msg_cfg_txn_reachable DB "Adapter reachable at working IOBASE: ", '$'
 msg_list_hdr    DB  "NIC                            NIC", 0Dh, 0Ah
                 DB  "Number                       Description", 0Dh, 0Ah
                 DB  "--------------------------------------------------------------------------", 0Dh, 0Ah, '$'
+msg_list_host_system DB "Host System:", 0Dh, 0Ah
+                    DB "  Interrupt Controllers = ", '$'
+msg_list_pic_one DB "1 PIC", 0Dh, 0Ah
+                DB "  Plug and Play BIOS = ", '$'
+msg_list_pic_two DB "2 PICs", 0Dh, 0Ah
+                DB "  Plug and Play BIOS = ", '$'
+msg_list_pnp_detected DB "detected", 0Dh, 0Ah, 0Dh, 0Ah, '$'
+msg_list_pnp_not_detected DB "not detected", 0Dh, 0Ah, 0Dh, 0Ah, '$'
 
 ; Original generic NIC description resources.
 ; Only the ISA 3C509 family selector is reachable in this reduced build.
@@ -3656,8 +3664,33 @@ ENDP Cfg_Report_Error
 ; ============================================================================
 ; LIST command
 ; ============================================================================
+PROC List_Print_Host_System NEAR
+    mov     dx, OFFSET msg_list_host_system
+    call    Print_String
+
+    cmp     [pic_slave_present], 0
+    jne     @@TwoPICs
+    mov     dx, OFFSET msg_list_pic_one
+    jmp     @@PrintPICs
+@@TwoPICs:
+    mov     dx, OFFSET msg_list_pic_two
+@@PrintPICs:
+    call    Print_String
+
+    cmp     [pnp_bios_present], 0
+    jne     @@PnPDetected
+    mov     dx, OFFSET msg_list_pnp_not_detected
+    jmp     @@PrintPnP
+@@PnPDetected:
+    mov     dx, OFFSET msg_list_pnp_detected
+@@PrintPnP:
+    call    Print_String
+    ret
+ENDP List_Print_Host_System
+
 PROC Cmd_List NEAR
     call    Scan_All_3Com_Cards
+    call    List_Print_Host_System
 
     cmp     [card_count], 0
     jne     @@HaveCards

@@ -4,8 +4,9 @@ Changelog 0.8.1
   - small fixes (state and carry flags, CLI parser semantics)
   - Detect the secondary PIC once during startup and reuse the result for /INT
     validation.
-  - [implement #3] Detect the PnP BIOS installation structure once during startup
+  - [implement #4] Detect the PnP BIOS installation structure once during startup
     and gate /PNP:ENABLED with a warning or optional enforcement.
+  - [implement #4] Display cached host PIC and PnP BIOS status in LIST.
 
 Changelog 0.8.0
   - Reworked adapter discovery around ID-port-derived logical records. Removed
