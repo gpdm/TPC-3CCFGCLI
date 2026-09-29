@@ -8,7 +8,7 @@
 |  EXPERIMENTAL RELEASE, LIMITED HARDWARE TESTING                                   |
 |                                                                                   |
 |  3CCFGLI has seen limited hardware testing on real                                |
-|  5C509-TP, 3C509B-TP and 3C509B-TPCoax NICS.                                      |
+|  5C509-TP, 3C509B-TP and 3C509B-TPCoax NICs.                                      |
 |  Generally, all config verbs are expected to behave correctly at this time.       |
 |  TO BE CONSIDERED AS *UNSAFE* ARE /BADDR AND /BSIZE OPERATIONS.                   |
 |  USE ENTIRELY AT YOUR OWN RISK.                                                   |
@@ -200,14 +200,6 @@ adapter as required.
 
 Both options are optional and may appear in either order. Each may be supplied
 only once. Duplicate and unknown options are rejected.
-
-The old positional filename form:
-
-```text
-SAVECONFIG FILE.BAT
-```
-
-is not accepted.
 
 `file` defaults to `RESTORE.BAT`. `/OUTPUTFILE:` requires a nonempty value.
 The default is used only when the option is omitted entirely.
