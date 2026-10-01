@@ -8,6 +8,10 @@ working directory option = default
 working directory default = .
 
 [cpu]
+# Intentional baseline: the normal smoke regression runs without an ISA PnP
+# BIOS. test.sh derives a complementary PNP_BIOS_GATE environment from this
+# same template with isapnpbios flipped to true (see test_pnp_bios in
+# test.sh) to provide coverage for host dependent PnP behaviour.
 isapnpbios = false
 cycles=max limit 50000
 turbo = true

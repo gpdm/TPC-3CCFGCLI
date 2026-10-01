@@ -495,9 +495,11 @@ Optional `/`-prefixed attributes accepted by `INIT`/`ADD`/a bare model name:
 1. Run `./test.sh`.
 
 2. [test.sh](test.sh) starts DOSBox X with
-   [autoexec-test](autoexec-test). The smoke suite uses an absent PnP BIOS
-   to retain its conventional ISA Boot ROM assertions; it does not exercise
-   the PnP-managed ROM representation.
+   [autoexec-test](autoexec-test). The smoke suite intentionally uses an
+   absent PnP BIOS to retain its conventional ISA Boot ROM assertions.
+   A separate `PNP_BIOS_GATE` stage re-dispatches the same template with an
+   ISA PnP BIOS present, providing complementary coverage for host dependent
+   PnP behaviour, including the PnP-managed Boot ROM representation.
 
 3. [autoexec-test](autoexec-test) mounts `C:` from the current working
    directory, then runs `TEST`.

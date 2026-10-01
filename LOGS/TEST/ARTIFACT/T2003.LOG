@@ -5,8 +5,32 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-BADDRESS parameter accepted. Requested base address: C0000H
+Adapter 1 selected.
+BADDRESS parameter accepted. Requested base address: C8000H
 BSIZE parameter accepted. Requested size: 16K
+
+Reading current configuration...
+Current active IOBASE: 0300
+Current live Address Configuration: 0010
+Current live Resource Configuration: A000
+
+Preparing requested configuration...
+Prospective active IOBASE: 0300
+New live Address Configuration: 1010
+New live Resource Configuration: A000
+
+Writing changed EEPROM configuration...
+Boot ROM configuration word written.
+
+Updating EEPROM checksum...
+EEPROM checksum updated.
+
+Synchronizing live configuration...
+
+Verifying requested configuration...
+EEPROM Boot ROM base address verified.
+EEPROM Boot ROM size verified.
+Live Boot ROM configuration verified.
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.1
@@ -16,7 +40,7 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Host System:
   Interrupt Controllers = 2 PICs
-  Plug and Play BIOS = not detected
+  Plug and Play BIOS = detected
 
 NIC                            NIC
 Number                       Description
@@ -30,7 +54,7 @@ Number                       Description
        IOBASE = 0300, IRQ = 10
        Transceiver = on-board TP
        Plug and Play = enabled
-       Boot ROM = 16K at C0000H
+       Boot ROM = 16K awaiting PnP resource assignment
        Optimization = DOS
        MODEM Interrupt Disable Time = 25 us
        Full Duplex = disabled

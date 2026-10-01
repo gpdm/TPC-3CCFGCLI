@@ -96,7 +96,10 @@ PIC_GATE: t19xx t1901 t1902 t1903
 
 # Base: 2000
 # NOTE: This group is deliberately not included in smoke-core.
-PNP_BIOS_GATE: t20xx t2001 t2002
+#       It is called up during a standalone test.sh run with isapnpbios
+#       flipped to true; the normal smoke regression intentionally retains
+#       isapnpbios = false as its baseline.
+PNP_BIOS_GATE: t20xx t2001 t2002 t2003
 
 # Imported hardware compliance SET verification.
 # NOTE: This group is deliberately not included in smoke-core.
@@ -1974,26 +1977,39 @@ t1903:
    @echo [t1903] PASSED  >> $(TESTLOG)
 
 t20xx:
-   @echo [t20xx] PNP_BIOS_GATE: Verify missing PnP BIOS behaviour  >> $(TESTLOG)
+   @echo [t20xx] PNP_BIOS_GATE: Verify present PnP BIOS behaviour  >> $(TESTLOG)
 
 t2001:
-   @echo [t2001] /PNP:ENABLED warns without a PnP BIOS  >> $(TESTLOG)
+   @echo [t2001] /PNP:ENABLED succeeds with a PnP BIOS present  >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T2001S.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED > $(ARTIFACTS)\T2001D.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED > $(ARTIFACTS)\T2001.LOG
-   FIND "WARNING: No PnP BIOS detected;" $(ARTIFACTS)\T2001.LOG > NUL
-   FIND "ISA PnP may require system support." $(ARTIFACTS)\T2001.LOG > NUL
+   FIND "PNP parameter accepted. Requested Plug and Play mode: enabled" $(ARTIFACTS)\T2001.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T2001.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T2001.LOG
+   FIND "Plug and Play = enabled" $(ARTIFACTS)\T2001.LOG > NUL
    @echo [t2001] PASSED  >> $(TESTLOG)
 
 t2002:
-   @echo [t2002] LIST reports no PnP BIOS  >> $(TESTLOG)
+   @echo [t2002] LIST reports a detected PnP BIOS  >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T2002.LOG
    $(BINAPP) LIST >> $(ARTIFACTS)\T2002.LOG
    FIND "Host System:" $(ARTIFACTS)\T2002.LOG > NUL
-   FIND "Plug and Play BIOS = not detected" $(ARTIFACTS)\T2002.LOG > NUL
+   FIND "Plug and Play BIOS = detected" $(ARTIFACTS)\T2002.LOG > NUL
    FIND "3Com 3C509B-TP:" $(ARTIFACTS)\T2002.LOG > NUL
    @echo [t2002] PASSED  >> $(TESTLOG)
+
+t2003:
+   @echo [t2003] enabled Boot ROM becomes PnP-managed with a PnP BIOS  >> $(TESTLOG)
+   ${SEEDAPP} INIT /ROM:16 > $(ARTIFACTS)\T2003.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T2003.LOG
+   FIND "Configuration completed" $(ARTIFACTS)\T2003.LOG > NUL
+   FIND "EEPROM Boot ROM base address verified." $(ARTIFACTS)\T2003.LOG > NUL
+   FIND "EEPROM Boot ROM size verified." $(ARTIFACTS)\T2003.LOG > NUL
+   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T2003.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T2003.LOG
+   FIND "Boot ROM = 16K awaiting PnP resource assignment" $(ARTIFACTS)\T2003.LOG > NUL
+   @echo [t2003] PASSED  >> $(TESTLOG)
 
 # Hardware compliance SET verification.
 #

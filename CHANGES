@@ -10,6 +10,12 @@ Changelog 0.8.1
   - [implement #4] Implement regression test coverage 
   - [implement #4, #3] Added automatic BRSV management based on PnP BIOS presence
     and the adapter’s final PnP setting.
+  - Corrected an unintended regression test environment drift: the normal
+    smoke regression now intentionally keeps isapnpbios = false as its
+    baseline, and the PNP_BIOS_GATE stage (test.sh, TEST.MK) was inverted into
+    a dedicated positive environment with isapnpbios = true, verifying
+    /PNP:ENABLED acceptance, the detected PnP BIOS LIST report, and automatic
+    PnP-managed Boot ROM (BRSV) handling.
 
 Changelog 0.8.0
   - Reworked adapter discovery around ID-port-derived logical records. Removed

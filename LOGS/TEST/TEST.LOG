@@ -373,11 +373,13 @@ Dispatching tests to DOSBox-X ...
 PC Interrupt Controller tests: run completed
 Running PnP BIOS tests ...
 Dispatching tests to DOSBox-X ...
-[t20xx] PNP_BIOS_GATE: Verify missing PnP BIOS behaviour
-[t2001] /PNP:ENABLED warns without a PnP BIOS
+[t20xx] PNP_BIOS_GATE: Verify present PnP BIOS behaviour
+[t2001] /PNP:ENABLED succeeds with a PnP BIOS present
 [t2001] PASSED
-[t2002] LIST reports no PnP BIOS
+[t2002] LIST reports a detected PnP BIOS
 [t2002] PASSED
+[t2003] enabled Boot ROM becomes PnP-managed with a PnP BIOS
+[t2003] PASSED
 PnP BIOS tests: run completed
 Rendering test results as JUnit XML ...
 JUnit report written: LOGS/TEST/TEST.JUNIT.XML
@@ -385,8 +387,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 167
-    Executed Tests           : 167
+    Defined Tests            : 168
+    Executed Tests           : 168
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS

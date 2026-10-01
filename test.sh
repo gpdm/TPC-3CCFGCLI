@@ -177,6 +177,11 @@ test_pic() {
   echo "PC Interrupt Controller tests: run completed" >> "${TEST_LOG}"
 }
 
+# This test verifies behaviour with an ISA PnP BIOS actually present.
+# The normal smoke regression intentionally runs with isapnpbios = false
+# (see autoexec-test); PNP_BIOS_GATE runs separately with isapnpbios = true
+# and provides complementary coverage for host dependent PnP behaviour.
+#
 test_pnp_bios() {
   local conf
   conf=$(mktemp "/tmp/autoexec-test.XXXXXX")
@@ -187,14 +192,15 @@ test_pnp_bios() {
   # Clear only artifacts owned by the PnP BIOS group.
   find "${ARTIFACT_DIR}" -maxdepth 1 -type f -name 'T20*.LOG' -exec rm -f {} \;
 
-  sed -e "s:CALL TEST:CALL TEST PNP_BIOS_GATE:g" -e $'/\\[cpu\\]/a\\\nisapnpbios = false\\\n' "${template}" > "${conf}"
+  sed -e "s:CALL TEST:CALL TEST PNP_BIOS_GATE:g" -e "s:isapnpbios = false:isapnpbios = true:g" "${template}" > "${conf}"
 
   echo "Dispatching tests to DOSBox-X ..." >> "${TEST_LOG}"
   "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
   rm -f "$conf"
 
   if grep -q '^\[t2001\] PASSED' "${TEST_LOG}" &&
-     grep -q '^\[t2002\] PASSED' "${TEST_LOG}"; then
+     grep -q '^\[t2002\] PASSED' "${TEST_LOG}" &&
+     grep -q '^\[t2003\] PASSED' "${TEST_LOG}"; then
     echo "PnP BIOS tests: run completed" >> "${TEST_LOG}"
     return 0
   fi

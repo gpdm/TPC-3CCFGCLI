@@ -5,6 +5,8 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
+WARNING: No PnP BIOS detected;
+ISA PnP may require system support.
 IOBASE parameter accepted. Requested IOBASE: 0300
 INT parameter accepted. Requested IRQ: 10
 PNP parameter accepted. Requested Plug and Play mode: enabled
@@ -36,7 +38,7 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Host System:
   Interrupt Controllers = 2 PICs
-  Plug and Play BIOS = detected
+  Plug and Play BIOS = not detected
 
 NIC                            NIC
 Number                       Description
