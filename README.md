@@ -315,10 +315,14 @@ This includes the current Link Status, also known as Link Beat.
 Example:
 
 ```text
-3Com EtherLink III CLI Configuration Program v0.7.5
+3Com EtherLink III CLI Configuration Program v0.8.1
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Host System:
+  Interrupt Controllers = 2 PICs
+  Plug and Play BIOS = detected
 
 NIC                            NIC
 Number                       Description
@@ -332,7 +336,7 @@ Number                       Description
        IOBASE = 0300, IRQ = 10
        Transceiver = on-board TP
        Plug and Play = enabled
-       Boot ROM = disabled
+       Boot ROM = 32K awaiting PnP resource assignment
        Optimization = DOS
        MODEM Interrupt Disable Time = 25 us
        Full Duplex = disabled
@@ -371,13 +375,13 @@ mock state file format is v4.
 
 ## Build
 
-Builds are driven through DOSBox X so the original Borland TASM toolchain can
+Builds are driven through DOSBox-X so the original Borland TASM toolchain can
 run in a DOS environment.
 
 This utility was developed on macOS, so that is the currently expected host
 environment.
 
-If your host setup differs, set `DOSBOX_BIN` to your DOSBox X executable path
+If your host setup differs, set `DOSBOX_BIN` to your DOSBox-X executable path
 when running [build.sh](build.sh), [test.sh](test.sh), or
 [interactive.sh](interactive.sh).
 
@@ -400,11 +404,11 @@ DOSBOX_BIN=/custom/path/dosbox-x ./test.sh
 * TASM, TLINK, and MAKE are not bundled with this repository. Install them
   separately. The project was built around `TASM 5.0`, that's what I recommened.
 
-* DOSBox X maps the current working directory as `C:`, so `./TASM` on the host
-  corresponds to `\TASM` inside DOSBox X.
+* DOSBox-X maps the current working directory as `C:`, so `./TASM` on the host
+  corresponds to `\TASM` inside DOSBox-X.
 
 * For interactive installation, run [interactive.sh](interactive.sh), which
-  starts DOSBox X with `C:` mapped to the current working directory. This
+  starts DOSBox-X with `C:` mapped to the current working directory. This
   allows the Borland TASM installer to be run directly from floppy disk
   images and install to `C:\TASM`.
 
@@ -435,7 +439,7 @@ DOSBOX_BIN=/custom/path/dosbox-x ./test.sh
 
 1. Run `./build.sh`.
 
-2. [build.sh](build.sh) starts DOSBox X with
+2. [build.sh](build.sh) starts DOSBox-X with
    [autoexec-build](autoexec-build).
 
 3. [autoexec-build](autoexec-build) mounts `C:` from the current working
@@ -447,7 +451,7 @@ DOSBOX_BIN=/custom/path/dosbox-x ./test.sh
 \TASM\BIN\MAKE ALL >> BUILD.LOG
 ```
 
-then exits DOSBox X.
+then exits DOSBox-X.
 
 5. [MAKEFILE](MAKEFILE) builds:
 
@@ -458,7 +462,7 @@ then exits DOSBox X.
 
 6. If PKLITE is available, `BIN\3CCFGCLI.EXE` will automatically be compressed to `BIN\PKLITE\3CCFGCLI.EXE`
 
-7. `build.sh` prints `BUILD.LOG` and a build summary after DOSBox X exits.
+7. `build.sh` prints `BUILD.LOG` and a build summary after DOSBox-X exits.
 
 ### Interactive DOSBox-X session
 
@@ -547,7 +551,7 @@ Optional `/`-prefixed attributes accepted by `INIT`/`ADD`/a bare model name:
 
 1. Run `./test.sh`.
 
-2. [test.sh](test.sh) starts DOSBox X with
+2. [test.sh](test.sh) starts DOSBox-X with
    [autoexec-test](autoexec-test). The smoke suite intentionally uses an
    absent PnP BIOS to retain its conventional ISA Boot ROM assertions.
    A separate `PNP_BIOS_GATE` stage re-dispatches the same template with an
@@ -582,7 +586,7 @@ Optional `/`-prefixed attributes accepted by `INIT`/`ADD`/a bare model name:
    Progress and result information is also appended to `TEST.LOG`.
 
 The smoke suite exercises `BIN\3CHWMOCK.EXE` by default because there is
-currently no suitable emulation of a 3Com EtherLink III in DOSBox X, 86Box,
+currently no suitable emulation of a 3Com EtherLink III in DOSBox-X, 86Box,
 or PCem.
 
 
