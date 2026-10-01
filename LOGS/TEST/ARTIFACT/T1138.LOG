@@ -5,35 +5,10 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-Adapter 1 selected.
-BADDRESS parameter accepted. Requested base address: C2000H
-BSIZE parameter accepted. Requested size: 8K
-
-Reading current configuration...
-Current active IOBASE: 0300
-Current live Address Configuration: 0010
-Current live Resource Configuration: A000
-Memory range C2000-C3FFF appears occupied.
+BADDRESS parameter accepted. Requested base address: C8000H
+BSIZE parameter accepted. Requested size: 16K
+Memory range C8000-CBFFF appears occupied.
 WARNING: Boot ROM mapping may conflict with existing memory.
-Boot ROM page 0 header: 55 AA 10 00 00 00 00 00 00 00 00 00 00 00 00 00
-
-Preparing requested configuration...
-Prospective active IOBASE: 0300
-New live Address Configuration: 0110
-New live Resource Configuration: A000
-
-Writing changed EEPROM configuration...
-Boot ROM configuration word written.
-
-Updating EEPROM checksum...
-EEPROM checksum updated.
-
-Synchronizing live configuration...
-
-Verifying requested configuration...
-EEPROM Boot ROM base address verified.
-EEPROM Boot ROM size verified.
-Live Boot ROM configuration verified.
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.1
@@ -57,7 +32,7 @@ Number                       Description
        IOBASE = 0300, IRQ = 10
        Transceiver = on-board TP
        Plug and Play = enabled
-       Boot ROM = 8K at C2000H
+       Boot ROM = 16K at C8000H
        Optimization = DOS
        MODEM Interrupt Disable Time = 25 us
        Full Duplex = disabled

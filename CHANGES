@@ -1,4 +1,9 @@
 Changelog 0.8.1
+  - Added an optional Boot ROM diagnostic: with /VERBOSE, the Boot ROM probe
+    dumps the first 16 bytes of ROM page 0 as hexadecimal values on one
+    labelled line. The reads go through the existing Nic_Rom_Read_Byte
+    abstraction and are skipped entirely without /VERBOSE. ROM signature,
+    size, checksum, page handling, and the probe result are unchanged.
   - Added an informational read-only host memory preflight for an explicit
     CONFIGURE /BADDRESS. The requested range is inspected before the adapter
     Boot ROM is temporarily mapped and reported as appearing unused (all FFh)

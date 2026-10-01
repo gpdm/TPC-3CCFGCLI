@@ -168,6 +168,12 @@ Seed file created (INIT).
 [t1135] PASSED
 [t1136] idempotent Boot ROM re-request reports no changes
 [t1136] PASSED
+[t1137] /VERBOSE dumps the 16K Boot ROM page 0 header
+[t1137] PASSED
+[t1138] without /VERBOSE no Boot ROM header dump is emitted
+[t1138] PASSED
+[t1139] /VERBOSE 32K header dump keeps page handling intact
+[t1139] PASSED
 [t12xx] XCVR_CHANGE: Verify transceiver change behaviour
 [t1201] CONFIGURE /TR:TP on 3C509B-TP (should succeed)
 [t1201] PASSED
@@ -389,8 +395,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 169
-    Executed Tests           : 169
+    Defined Tests            : 172
+    Executed Tests           : 172
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS

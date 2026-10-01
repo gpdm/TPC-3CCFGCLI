@@ -223,8 +223,39 @@ additional EEPROM and live register read and write details so transactions can
 be traced while investigating hardware behavior, mock state, or parser and
 transaction sequencing.
 
-`LIST` and `SAVECONFIG` accept the global option but do not currently produce
-additional diagnostic output.
+A typical `/VERBOSE` transaction may look like this:
+
+```text
+Adapter 1 selected.
+BADDRESS parameter accepted. Requested base address: C2000H
+BSIZE parameter accepted. Requested size: 8K
+
+Reading current configuration...
+Current active IOBASE: 0300
+Current live Address Configuration: 0010
+Current live Resource Configuration: A000
+Memory range C2000-C3FFF appears occupied.
+WARNING: Boot ROM mapping may conflict with existing memory.
+Boot ROM page 0 header: 55 AA 10 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+Preparing requested configuration...
+Prospective active IOBASE: 0300
+New live Address Configuration: 0110
+New live Resource Configuration: A000
+
+Writing changed EEPROM configuration...
+Boot ROM configuration word written.
+
+Updating EEPROM checksum...
+EEPROM checksum updated.
+
+Synchronizing live configuration...
+
+Verifying requested configuration...
+EEPROM Boot ROM base address verified.
+EEPROM Boot ROM size verified.
+Live Boot ROM configuration verified.
+```
 
 ### New SAVECONFIG command verb
 

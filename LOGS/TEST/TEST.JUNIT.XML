@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-10-01T10:10:53.474305+02:00" tests="173" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-10-01T10:30:17.680140+02:00" tests="176" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -324,7 +324,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="BOOTROM_CHANGE: Verify boot ROM change behaviour" tests="32" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="BOOTROM_CHANGE: Verify boot ROM change behaviour" tests="35" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t11xx"/>
 			<property name="description" value="Verify boot ROM change behaviour"/>
@@ -519,6 +519,24 @@
 			<properties>
 				<property name="description" value="idempotent Boot ROM re-request reports no changes"/>
 				<property name="artifact" value="ARTIFACT/T1136.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1137: /VERBOSE dumps the 16K Boot ROM page 0 header" classname="BOOTROM_CHANGE">
+			<properties>
+				<property name="description" value="/VERBOSE dumps the 16K Boot ROM page 0 header"/>
+				<property name="artifact" value="ARTIFACT/T1137.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1138: without /VERBOSE no Boot ROM header dump is emitted" classname="BOOTROM_CHANGE">
+			<properties>
+				<property name="description" value="without /VERBOSE no Boot ROM header dump is emitted"/>
+				<property name="artifact" value="ARTIFACT/T1138.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1139: /VERBOSE 32K header dump keeps page handling intact" classname="BOOTROM_CHANGE">
+			<properties>
+				<property name="description" value="/VERBOSE 32K header dump keeps page handling intact"/>
+				<property name="artifact" value="ARTIFACT/T1139.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>

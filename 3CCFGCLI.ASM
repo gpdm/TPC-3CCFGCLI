@@ -374,6 +374,10 @@ msg_cfg_baddress_verify_fail DB "Boot ROM base address configuration verificatio
 msg_cfg_baddress_not_capable DB "This adapter does not support Boot ROM configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_not_detected DB "No valid Boot ROM detected at the requested address.", 0Dh, 0Ah
                              DB "Boot ROM configuration was skipped.", 0Dh, 0Ah, '$'
+; Verbose-only Boot ROM header diagnostic.  Each value is emitted with a
+; leading separator, so the label intentionally carries no trailing blank.
+msg_cfg_bootrom_dump DB "Boot ROM page 0 header:", '$'
+msg_cfg_bootrom_dump_sep DB " ", '$'
 ; Read-only host memory preflight for an explicitly requested /BADDRESS.
 ; Purely informational: neither result changes the Boot ROM transaction.
 msg_cfg_memchk_prefix DB "Memory range ", '$'
@@ -3296,6 +3300,51 @@ PROC Cfg_Handle_BSIZE NEAR
     ret
 ENDP Cfg_Handle_BSIZE
 
+; Verbose-only diagnostic.  Dumps the first 16 bytes of the already selected
+; Boot ROM page 0 as hexadecimal values on one labelled line.
+;
+; Input:  DX = adapter I/O base, ES:BX = Boot ROM aperture base,
+;         ROM page 0 already selected.
+; Output: None.  Purely diagnostic; the ROM is read through the existing
+;         Nic_Rom_Read_Byte abstraction only.
+; Preserves all registers and FLAGS, so the caller's ROM address, I/O base
+; and configured ROM size stay live across the dump.
+PROC Cfg_Dump_Boot_ROM_Header NEAR
+    pushf
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+
+    ; The DOS output helpers take their argument in DX and clobber DL, so the
+    ; adapter I/O base is parked in SI and restored before every ROM read.
+    mov     si, dx
+    mov     dx, OFFSET msg_cfg_bootrom_dump
+    call    Print_String
+
+    mov     cx, 16
+@@Byte:
+    mov     dx, si
+    call    Nic_Rom_Read_Byte
+    mov     dx, OFFSET msg_cfg_bootrom_dump_sep
+    call    Print_String
+    call    Print_HexByte
+    inc     bx
+    loop    @@Byte
+
+    mov     dx, OFFSET msg_crlf
+    call    Print_String
+
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    popf
+    ret
+ENDP Cfg_Dump_Boot_ROM_Header
+
 ; Input:  DX = adapter I/O base, ES:BX = Boot ROM aperture base,
 ;         CX = configured Boot ROM size in bytes.
 ; Output: CF clear = valid ROM, CF set = invalid or inaccessible ROM.
@@ -3311,6 +3360,14 @@ PROC Cfg_Probe_Boot_ROM NEAR
     xor     al, al
     call    Nic_Rom_Set_Page
 
+    ; Optional verbose header dump.  The test gates the 16 diagnostic ROM
+    ; reads themselves, not merely their output, so a non-verbose run
+    ; performs exactly the reads the validation below needs.
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@Validate
+    call    Cfg_Dump_Boot_ROM_Header
+
+@@Validate:
     call    Nic_Rom_Read_Byte
     cmp     al, ROM_SIGNATURE_0
     jne     @@Invalid

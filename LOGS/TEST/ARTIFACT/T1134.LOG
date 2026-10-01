@@ -19,6 +19,7 @@ Current EEPROM word 09h: A000
 Current live Resource Configuration: A000
 Memory range C8000-CBFFF appears occupied.
 WARNING: Boot ROM mapping may conflict with existing memory.
+Boot ROM page 0 header: FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF
 No valid Boot ROM detected at the requested address.
 Boot ROM configuration was skipped.
 

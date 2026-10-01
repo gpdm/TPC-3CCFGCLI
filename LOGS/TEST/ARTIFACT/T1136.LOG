@@ -24,6 +24,7 @@ Reading current configuration...
 Current active IOBASE: 0300
 Current live Address Configuration: 1410
 Current live Resource Configuration: A000
+Boot ROM page 0 header: 55 AA 20 00 00 00 00 00 00 00 00 00 00 00 00 00
 
 Preparing requested configuration...
 Prospective active IOBASE: 0300
