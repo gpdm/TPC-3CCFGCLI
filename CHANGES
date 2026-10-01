@@ -1,4 +1,10 @@
 Changelog 0.8.1
+  - Added an informational read-only host memory preflight for an explicit
+    CONFIGURE /BADDRESS. The requested range is inspected before the adapter
+    Boot ROM is temporarily mapped and reported as appearing unused (all FFh)
+    or occupied with a conflict warning. The result never changes Boot ROM
+    validation, staging, probing, or commit behavior, and the check is skipped
+    for an unchanged active mapping of the selected adapter itself.
   - Corrected Boot ROM size validation and SAVECONFIG handling so only 8 KB,
     16 KB, and 32 KB configurations are accepted and exported.
   - small fixes (state and carry flags, CLI parser semantics)

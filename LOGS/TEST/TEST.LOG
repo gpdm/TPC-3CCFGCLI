@@ -380,6 +380,8 @@ Dispatching tests to DOSBox-X ...
 [t2002] PASSED
 [t2003] enabled Boot ROM becomes PnP-managed with a PnP BIOS
 [t2003] PASSED
+[t2004] Boot ROM preflight reports an occupied range
+[t2004] PASSED
 PnP BIOS tests: run completed
 Rendering test results as JUnit XML ...
 JUnit report written: LOGS/TEST/TEST.JUNIT.XML
@@ -387,8 +389,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 168
-    Executed Tests           : 168
+    Defined Tests            : 169
+    Executed Tests           : 169
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS

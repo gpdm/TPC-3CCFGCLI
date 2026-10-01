@@ -99,7 +99,7 @@ PIC_GATE: t19xx t1901 t1902 t1903
 #       It is called up during a standalone test.sh run with isapnpbios
 #       flipped to true; the normal smoke regression intentionally retains
 #       isapnpbios = false as its baseline.
-PNP_BIOS_GATE: t20xx t2001 t2002 t2003
+PNP_BIOS_GATE: t20xx t2001 t2002 t2003 t2004
 
 # Imported hardware compliance SET verification.
 # NOTE: This group is deliberately not included in smoke-core.
@@ -2010,6 +2010,17 @@ t2003:
    $(BINAPP) LIST >> $(ARTIFACTS)\T2003.LOG
    FIND "Boot ROM = 16K awaiting PnP resource assignment" $(ARTIFACTS)\T2003.LOG > NUL
    @echo [t2003] PASSED  >> $(TESTLOG)
+
+t2004:
+   @echo [t2004] Boot ROM preflight reports an occupied range  >> $(TESTLOG)
+   ${SEEDAPP} INIT /ROM:32 > $(ARTIFACTS)\T2004.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:32 >> $(ARTIFACTS)\T2004.LOG
+   FIND "C0000-C7FFF appears occupied." $(ARTIFACTS)\T2004.LOG > NUL
+   FIND "WARNING: Boot ROM mapping may conflict" $(ARTIFACTS)\T2004.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T2004.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T2004.LOG
+   FIND "Boot ROM = 32K awaiting PnP resource" $(ARTIFACTS)\T2004.LOG > NUL
+   @echo [t2004] PASSED  >> $(TESTLOG)
 
 # Hardware compliance SET verification.
 #

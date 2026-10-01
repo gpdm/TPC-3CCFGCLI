@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-10-01T02:27:51.371857+02:00" tests="172" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-10-01T10:10:53.474305+02:00" tests="173" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -1086,7 +1086,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="PNP_BIOS_GATE: Verify present PnP BIOS behaviour" tests="3" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="PNP_BIOS_GATE: Verify present PnP BIOS behaviour" tests="4" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t20xx"/>
 			<property name="description" value="Verify present PnP BIOS behaviour"/>
@@ -1107,6 +1107,12 @@
 			<properties>
 				<property name="description" value="enabled Boot ROM becomes PnP-managed with a PnP BIOS"/>
 				<property name="artifact" value="ARTIFACT/T2003.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t2004: Boot ROM preflight reports an occupied range" classname="PNP_BIOS_GATE">
+			<properties>
+				<property name="description" value="Boot ROM preflight reports an occupied range"/>
+				<property name="artifact" value="ARTIFACT/T2004.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>

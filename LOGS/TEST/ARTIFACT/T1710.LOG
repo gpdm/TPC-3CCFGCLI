@@ -62,6 +62,8 @@ Current active IOBASE: 0300
 Current live Address Configuration: 0010
 Current live Resource Configuration: 5000
 Current EEPROM word 0Dh: DOS
+Memory range C8000-C9FFF appears occupied.
+WARNING: Boot ROM mapping may conflict with existing memory.
 
 Preparing requested configuration...
 Prospective active IOBASE: 0300

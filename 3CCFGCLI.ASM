@@ -374,6 +374,13 @@ msg_cfg_baddress_verify_fail DB "Boot ROM base address configuration verificatio
 msg_cfg_baddress_not_capable DB "This adapter does not support Boot ROM configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_not_detected DB "No valid Boot ROM detected at the requested address.", 0Dh, 0Ah
                              DB "Boot ROM configuration was skipped.", 0Dh, 0Ah, '$'
+; Read-only host memory preflight for an explicitly requested /BADDRESS.
+; Purely informational: neither result changes the Boot ROM transaction.
+msg_cfg_memchk_prefix DB "Memory range ", '$'
+msg_cfg_memchk_dash DB "-", '$'
+msg_cfg_memchk_unused DB " appears unused.", 0Dh, 0Ah, '$'
+msg_cfg_memchk_occupied DB " appears occupied.", 0Dh, 0Ah
+                        DB "WARNING: Boot ROM mapping may conflict with existing memory.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verified DB "EEPROM Boot ROM size verified.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_live_verified DB "Live Boot ROM configuration verified.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verify_fail DB "Boot ROM size configuration verification failed.", 0Dh, 0Ah, '$'
@@ -5655,6 +5662,120 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     ret
 ENDP Cfg_Prepare_Boot_ROM
 
+; Read-only informational preflight of the host memory range that an explicit
+; /BADDRESS + /BSIZE request would use as the temporary Boot ROM aperture.
+; Runs before Cfg_Txn_Probe_Boot_ROM maps the adapter ROM, so the bytes seen
+; still belong to whatever already occupies that range.
+;
+; Strictly read only: no host byte is written, no RAM test is performed, no
+; BIOS reservation is attempted, and no device is touched.  The classification
+; is a conservative heuristic; an all-FFh range only appears unused.
+;
+; The result is reported only.  It never changes staging, probing, commit or
+; rollback behavior and never fails the transaction.
+; Preserves all registers.  CF is cleared on return.
+PROC Cfg_Preflight_Boot_ROM_Memory NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+    push    es
+
+    ; An exact, unchanged active Boot ROM mapping of the selected adapter
+    ; would otherwise be reported as foreign occupancy.  Skip the preflight
+    ; in that case, because the bytes in the range are this adapter's own ROM.
+    ; The temporary selector substitution matches Cfg_Txn_Probe_Boot_ROM.
+    xor     ax, ax
+    mov     al, [cfg_baddress_value]
+    or      al, al
+    jnz     @@HaveSelector
+    inc     al
+@@HaveSelector:
+    mov     ah, al
+    xor     al, al
+    mov     bx, ax
+    xor     ax, ax
+    mov     al, [cfg_bsize_value]
+    mov     cl, 12
+    shl     ax, cl
+    or      ax, bx
+    mov     bx, [cfg_txn_old_live06]
+    and     bx, 3F00h
+    cmp     ax, bx
+    je      @@Done
+
+    ; Aperture segment and length, derived exactly like the temporary mapping
+    ; that Cfg_Txn_Probe_Boot_ROM builds from the same parsed request.
+    xor     ax, ax
+    mov     al, [cfg_baddress_value]
+    mov     cl, 9
+    shl     ax, cl
+    add     ax, 0C000h
+    mov     bx, ax
+    mov     cx, 2000h
+    mov     di, 200h
+    cmp     [cfg_bsize_value], 0
+    je      @@HaveLength
+    mov     cx, 4000h
+    mov     di, 400h
+    cmp     [cfg_bsize_value], 1
+    je      @@HaveLength
+    mov     cx, 8000h
+    mov     di, 800h
+@@HaveLength:
+    add     di, bx
+
+    mov     es, bx
+    xor     si, si
+    mov     ah, 1
+    mov     al, 0FFh
+@@Scan:
+    cmp     [BYTE es:si], al
+    jne     @@Occupied
+    inc     si
+    loop    @@Scan
+    jmp     @@Report
+@@Occupied:
+    xor     ah, ah
+
+@@Report:
+    push    ax
+    mov     dx, OFFSET msg_cfg_memchk_prefix
+    call    Print_String
+    mov     ax, bx
+    mov     cx, 16
+    mul     cx
+    call    Print_HexAddress20
+    mov     dx, OFFSET msg_cfg_memchk_dash
+    call    Print_String
+    mov     ax, di
+    dec     ax
+    mov     cx, 16
+    mul     cx
+    add     ax, 15
+    call    Print_HexAddress20
+    pop     ax
+    mov     dx, OFFSET msg_cfg_memchk_occupied
+    or      ah, ah
+    jz      @@Print
+    mov     dx, OFFSET msg_cfg_memchk_unused
+@@Print:
+    call    Print_String
+
+@@Done:
+    clc
+    pop     es
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+ENDP Cfg_Preflight_Boot_ROM_Memory
+
 ; Temporarily map and validate an enabled prospective Boot ROM.  The adapter
 ; remains reachable at its current I/O base because only Boot ROM bits 13:8
 ; are merged into the current live Address Configuration value.
@@ -7836,6 +7957,9 @@ PROC Cfg_Txn_Execute NEAR
 @@DetectChanges:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@DetectChangesNow
+    ; Informational read-only host memory preflight of the requested
+    ; aperture, before the adapter Boot ROM is mapped there.
+    call    Cfg_Preflight_Boot_ROM_Memory
     call    Cfg_Txn_Probe_Boot_ROM
     jc      @@Done
 @@DetectChangesNow:

@@ -14,6 +14,8 @@ Reading current configuration...
 Current active IOBASE: 0300
 Current live Address Configuration: 0010
 Current live Resource Configuration: A000
+Memory range C8000-CBFFF appears occupied.
+WARNING: Boot ROM mapping may conflict with existing memory.
 
 Preparing requested configuration...
 Prospective active IOBASE: 0300

@@ -5,9 +5,9 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-BADDRESS parameter accepted. Requested base address: DC000H
+BADDRESS parameter accepted. Requested base address: C0000H
 BSIZE parameter accepted. Requested size: 32K
-Memory range DC000-E3FFF appears occupied.
+Memory range C0000-C7FFF appears occupied.
 WARNING: Boot ROM mapping may conflict with existing memory.
 
 Configuration completed successfully.
@@ -18,7 +18,7 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Host System:
   Interrupt Controllers = 2 PICs
-  Plug and Play BIOS = not detected
+  Plug and Play BIOS = detected
 
 NIC                            NIC
 Number                       Description
@@ -32,7 +32,7 @@ Number                       Description
        IOBASE = 0300, IRQ = 10
        Transceiver = on-board TP
        Plug and Play = enabled
-       Boot ROM = 32K at DC000H
+       Boot ROM = 32K awaiting PnP resource assignment
        Optimization = DOS
        MODEM Interrupt Disable Time = 25 us
        Full Duplex = disabled

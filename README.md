@@ -146,6 +146,28 @@ the size of a PnP-managed ROM as awaiting resource assignment.
 syntax cannot restore the unknown ROM address; use an explicit ROM address
 when restoring instead.
 
+Whenever `/BADDRESS` is given explicitly, the requested host memory range is
+inspected read-only before the adapter Boot ROM is temporarily mapped there,
+and the result is reported, for example:
+
+```text
+Memory range D8000-DFFFF appears unused.
+```
+
+```text
+Memory range C0000-C7FFF appears occupied.
+WARNING: Boot ROM mapping may conflict with existing memory.
+```
+
+A range consisting entirely of FFh bytes appears unused; any other byte makes
+the range appear occupied. This conservative heuristic cannot prove that a
+range is free, so the check is purely informational: no memory is written, and
+neither result changes Boot ROM validation, staging, or commit behavior. The
+check is skipped when the request matches the selected adapter's already active
+Boot ROM mapping, because the bytes in that range are the adapter's own ROM.
+For `/PNP:ENABLED`, the check covers only the temporary probe address; it
+cannot validate the address a PnP BIOS assigns later.
+
 
 ### No 8-Bit Bus Support for 3c509 (ASIC Revision 1)
 

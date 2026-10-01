@@ -22,6 +22,8 @@ MODEM parameter accepted. Requested setting: 1200
 BADDRESS parameter accepted. Requested base address: C8000H
 BSIZE parameter accepted. Requested size: 16K
 TR parameter accepted. Requested transceiver: TP
+Memory range C8000-CBFFF appears occupied.
+WARNING: Boot ROM mapping may conflict with existing memory.
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.1
