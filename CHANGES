@@ -1,6 +1,7 @@
 Changelog 0.8.2
   - Added generation-aware 3C509 Boot ROM base validation while keeping its
     unsupported ROM probe path safely blocked.
+  - Modeled original 3C509 32K mock ROM mappings as a linear aperture without page switching.
 
 Changelog 0.8.1
   - Added an optional Boot ROM diagnostic: with /VERBOSE, the Boot ROM probe

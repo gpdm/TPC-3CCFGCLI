@@ -2090,9 +2090,17 @@ PROC Nic_Rom_Read_Byte NEAR
     ; Address calculation:
     ; 8K:  base index uses full DI, aperture = 2000h (8K)
     ; 16K: base index & 0Eh, aperture = 4000h (16K)
-    ; 32K: base index & 0Eh, aperture = 4000h (16K window in host memory)
+    ; 32K: 3C509 uses & 0Ch and an 8000h linear aperture; 3C509B uses
+    ;      & 0Eh and a 4000h page window.
     cmp     si, 0
     je      @@CalcBase
+    cmp     si, 2
+    jne     @@Normalize16K
+    cmp     [byte mock_asic_rev], 2
+    jae     @@Normalize16K
+    and     di, 000Ch
+    jmp     @@CalcBase
+@@Normalize16K:
     and     di, 000Eh
 
 @@CalcBase:
@@ -2117,11 +2125,15 @@ PROC Nic_Rom_Read_Byte NEAR
     add     ax, bx                  ; AX = linear offset from base of window
     jc      @@ReturnFF              ; Overflow past 64K
 
-    ; Aperture check:
-    ; SI = size code:
-    ;   0 -> 8K  (aperture = 2000h)
-    ;   1 -> 16K (aperture = 4000h)
-    ;   2 -> 32K (aperture = 4000h window)
+    ; Original 3C509 32K mappings expose the full linear image.
+    cmp     si, 2
+    jne     @@Check16KAperture
+    cmp     [byte mock_asic_rev], 2
+    jae     @@Check16KAperture
+    cmp     ax, 8000h
+    jae     @@ReturnFF
+    jmp     @@ApertureOk
+@@Check16KAperture:
     cmp     si, 0
     je      @@Check8K
     cmp     ax, 4000h
@@ -2177,6 +2189,20 @@ PROC Nic_Rom_Read_Byte NEAR
     jmp     @@Done
 
 @@Rom32K:
+    cmp     [byte mock_asic_rev], 2
+    jae     @@Rom32K_PageWindow
+    cmp     cx, 0000h
+    je      @@Header55
+    cmp     cx, 0001h
+    je      @@HeaderAA
+    cmp     cx, 0002h
+    je      @@Size32K
+    cmp     cx, 7FFFh
+    je      @@Checksum32K
+    xor     al, al
+    jmp     @@Done
+
+@@Rom32K_PageWindow:
     cmp     dl, 0
     je      @@Rom32K_Page0
     cmp     dl, 1
@@ -2252,6 +2278,9 @@ PROC Nic_Rom_Set_Page NEAR
     push    cx
     push    dx
 
+    cmp     [byte mock_asic_rev], 2
+    jb      @@Done
+
     mov     bl, al
     call    Nic_Get_Current_Window
     mov     ch, al
@@ -2266,6 +2295,7 @@ PROC Nic_Rom_Set_Page NEAR
     mov     al, ch
     call    Nic_Select_Window
 
+@@Done:
     pop     dx
     pop     cx
     pop     bx

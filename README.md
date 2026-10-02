@@ -129,9 +129,9 @@ Support for a Product ID does not imply that every configuration feature is avai
 
 3C509B Boot ROM configuration is supported. Original 3C509 configuration is
 being implemented: phase 1 adds generation-specific base and alignment
-semantics, but enabled requests remain blocked before ROM probing because the
-revision-1 linear probe is not implemented yet. `/BSIZE:DISABLED` needs no ROM
-probe and remains available.
+semantics, and phase 2 adds generation-aware mock ROM modeling. Enabled 3C509
+requests remain blocked before probing until the revision-1 probe is completed.
+`/BSIZE:DISABLED` needs no ROM probe and remains available.
 
 On a 3C509B with a PnP BIOS and adapter PnP enabled, an enabled Boot ROM
 retains its configured 8, 16, or 32 KB size, but its persistent base selector
