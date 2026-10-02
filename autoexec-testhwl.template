@@ -20,7 +20,7 @@ memsizekb = __MEMKB__
 @ECHO OFF
 CLS
 SET PATH=%PATH%;C:\TASM\BIN;C:\PKLITE;C:\BIN
-MOUNT C: __BUILD_DIR__ >NUL
+MOUNT C: . >NUL
 C:
 REM TESTHWL doesn't log itself, therefore forcing it through
 REM COMMAND /C invocation so we can capture the LOG from "outside"

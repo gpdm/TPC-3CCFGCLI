@@ -64,6 +64,22 @@ ARTIFACT_DIR="${LOGDIR}/ARTIFACT"
 SAVE_MAX_BATCH_LINE=128
 UV=$(command -v uv 2>/dev/null)
 
+# ---------------------------------------------------------------------------
+# Troubleshooting aid: selectively enable/disable individual test steps.
+#
+# Each step defaults to enabled (1). Set the corresponding variable to 0 to
+# skip that step, e.g.: RUN_PIC=0 RUN_PNPBIOS=0 ./test.sh
+#
+# The canonical step order and fail-fast chaining are unaffected by these
+# toggles: skipped steps are simply bypassed, disabled steps do not count
+# towards failure, and a failing enabled step still stops all later steps.
+# ---------------------------------------------------------------------------
+RUN_REGRESSIONS=${RUN_REGRESSIONS:-1}
+RUN_SAVECONFIG=${RUN_SAVECONFIG:-1}
+RUN_HWLIMIT=${RUN_HWLIMIT:-1}
+RUN_PIC=${RUN_PIC:-1}
+RUN_PNPBIOS=${RUN_PNPBIOS:-1}
+
 
 # ensure log directories exist
 [ ! -d "${LOGDIR}" ] && mkdir -p "${LOGDIR}"
@@ -132,7 +148,7 @@ test_hwlimits() {
 
     echo "Dispatching resource test with ${memkb} KB memory limit to DOSBox-X ..." >> "${TEST_LOG}"
     echo "[HWL${memkb}] 8086/8088 with ${memkb} KB memory limit" >> "${TEST_LOG}"
-    sed "s:__MEMKB__:${memkb}:g;s:__BUILD_DIR__:$( pwd ):g" "${template}" > "${conf}"
+    sed "s:__MEMKB__:${memkb}:g;s:MOUNT C\: .:MOUNT C\: $( pwd ):g" "${template}" > "${conf}"
     "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
     rm -f "$conf"
 
@@ -159,7 +175,7 @@ test_hwlimits() {
 #
 test_pic() {
   local conf
-  conf=$(mktemp "/tmp/autoexec-test.XXXXXX")
+  conf=$(mktemp "/tmp/autoexec-test-pic.XXXXXX")
   local template="autoexec-test"
 
   echo "Running PC Interrupt Controller tests ..." >> "${TEST_LOG}"
@@ -167,8 +183,7 @@ test_pic() {
   # clear old logs - if any ...
   find "${ARTIFACT_DIR}" -maxdepth 1 -type f -name 'PIC*.LOG' -exec rm -f {} \;
 
-  sed -e "s:CALL TEST:CALL TEST PIC_GATE:g" -e $'/\\[dosbox\\]/a\\\nenable slave pic = false\\\nenable pc nmi mask = true\\\n' "${template}" > "${conf}"
-  
+  sed -e "s:CALL TEST:CALL TEST PIC_GATE:g;s:MOUNT C\: .:MOUNT C\: $( pwd ):g" -e $'/\\[dosbox\\]/a\\\nenable slave pic = false\\\nenable pc nmi mask = true\\\n' "${template}" > "${conf}"
   echo "Dispatching tests to DOSBox-X ..." >> "${TEST_LOG}"
   "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
   # FIXME check return code for imminent fail
@@ -184,7 +199,7 @@ test_pic() {
 #
 test_pnp_bios() {
   local conf
-  conf=$(mktemp "/tmp/autoexec-test.XXXXXX")
+  conf=$(mktemp "/tmp/autoexec-test-pnp-bios.XXXXXX")
   local template="autoexec-test"
 
   echo "Running PnP BIOS tests ..." >> "${TEST_LOG}"
@@ -192,8 +207,7 @@ test_pnp_bios() {
   # Clear only artifacts owned by the PnP BIOS group.
   find "${ARTIFACT_DIR}" -maxdepth 1 -type f -name 'T20*.LOG' -exec rm -f {} \;
 
-  sed -e "s:CALL TEST:CALL TEST PNP_BIOS_GATE:g" -e "s:isapnpbios = false:isapnpbios = true:g" "${template}" > "${conf}"
-
+  sed -e "s:CALL TEST:CALL TEST PNP_BIOS_GATE:g;s:MOUNT C\: .:MOUNT C\: $( pwd ):g" -e "s:isapnpbios = false:isapnpbios = true:g" "${template}" > "${conf}"
   echo "Dispatching tests to DOSBox-X ..." >> "${TEST_LOG}"
   "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
   rm -f "$conf"
@@ -215,10 +229,30 @@ tail -f ${TEST_LOG} &
 TAIL_PID=$!
 
 
+# Runs a single test step unless it was disabled via its RUN_* toggle.
+# A skipped step returns success (0) so the fail-fast chain below keeps
+# moving on to the next step; it does not count as a pass or a failure.
+#
+run_step() {
+  local enabled="$1"
+  local fn="$2"
+
+  if [ "${enabled}" != "1" ]; then
+    echo "${fn}: SKIPPED (disabled via troubleshooting toggle)" >> "${TEST_LOG}"
+    return 0
+  fi
+
+  "${fn}"
+}
+
 # run tests in sequence
 # chaining only on successful assertion of previous tests
 #
-test_regressions && test_saveconfig_line_lengths && test_hwlimits && test_pic && test_pnp_bios
+run_step "${RUN_REGRESSIONS}" test_regressions &&
+  run_step "${RUN_SAVECONFIG}" test_saveconfig_line_lengths &&
+  run_step "${RUN_HWLIMIT}" test_hwlimits &&
+  run_step "${RUN_PIC}" test_pic &&
+  run_step "${RUN_PNPBIOS}" test_pnp_bios
 
 # render junit xml file if uv is available
 #
@@ -254,25 +288,59 @@ grep -q '^Hardware Limit test: run completed' "${TEST_LOG}" && HWLIMIT_FAIL=0
 grep -q '^PC Interrupt Controller tests: run completed' "${TEST_LOG}" && PIC_FAIL=0
 grep -q '^PnP BIOS tests: run completed' "${TEST_LOG}" && PNP_BIOS_FAIL=0
 
+# steps disabled via a RUN_* troubleshooting toggle were never run, so they
+# must not count as failures towards the overall result or exit code.
+[ "${RUN_REGRESSIONS}" != "1" ] && SMOKE_FAIL=0
+[ "${RUN_SAVECONFIG}" != "1" ] && SAVECONFIG_FAIL=0
+[ "${RUN_HWLIMIT}" != "1" ] && HWLIMIT_FAIL=0
+[ "${RUN_PIC}" != "1" ] && PIC_FAIL=0
+[ "${RUN_PNPBIOS}" != "1" ] && PNP_BIOS_FAIL=0
+
 # check defined vs. executed tests and see if we anyway
 # had a delta, which would indicate a failure.
-TESTS_DEFINED=$(grep -Ec '^t[0-9]{4}:' "$TEST_MK")
-TESTS_PASSED=$(grep -Ec '\[t[0-9]{4}\]\sPASSED' "$TEST_LOG")
-TESTS_FAILED=$(( TESTS_DEFINED != TESTS_PASSED ))
+# this comparison is only meaningful if the regressions step actually ran.
+if [ "${RUN_REGRESSIONS}" = "1" ]; then
+  TESTS_DEFINED=$(grep -Ec '^t[0-9]{4}:' "$TEST_MK")
+  TESTS_PASSED=$(grep -Ec '\[t[0-9]{4}\]\sPASSED' "$TEST_LOG")
+  TESTS_FAILED=$(( TESTS_DEFINED != TESTS_PASSED ))
+else
+  TESTS_DEFINED=0
+  TESTS_PASSED=0
+  TESTS_FAILED=0
+fi
 
+# formats a step's summary status: SKIPPED if disabled via its RUN_*
+# toggle, otherwise SUCCESS/FAILED based on the step's fail flag(s).
+step_status() {
+  local enabled="$1"
+  shift
+  local fail_sum=0
+  local f
+
+  if [ "${enabled}" != "1" ]; then
+    echo SKIPPED
+    return 0
+  fi
+
+  for f in "$@"; do
+    fail_sum=$(( fail_sum + f ))
+  done
+
+  (( fail_sum == 0 )) && echo SUCCESS || echo FAILED
+}
 
 cat <<EOF | tee >> "${TEST_LOG}"
 
 Test summary
 ============
-Smoke Test                   : $( (( SMOKE_FAIL + TESTS_FAILED == 0 )) && echo SUCCESS || echo FAILED )
+Smoke Test                   : $( step_status "${RUN_REGRESSIONS}" "${SMOKE_FAIL}" "${TESTS_FAILED}" )
     Defined Tests            : ${TESTS_DEFINED}
     Executed Tests           : ${TESTS_PASSED}
-    Failed Tests             : $( (( TESTS_FAILED == 0 )) && echo NONE || echo YES )
-SAVECONFIG Test              : $( (( SAVECONFIG_FAIL == 0 )) && echo SUCCESS || echo FAILED )
-Hardware Limit Test          : $( (( HWLIMIT_FAIL == 0 )) && echo SUCCESS || echo FAILED )
-PC Interrupt Controller Test : $( (( PIC_FAIL == 0 )) && echo SUCCESS || echo FAILED )
-PnP BIOS Test                : $( (( PNP_BIOS_FAIL == 0 )) && echo SUCCESS || echo FAILED )
+    Failed Tests             : $( [ "${RUN_REGRESSIONS}" != "1" ] && echo N/A || { (( TESTS_FAILED == 0 )) && echo NONE || echo YES; } )
+SAVECONFIG Test              : $( step_status "${RUN_SAVECONFIG}" "${SAVECONFIG_FAIL}" )
+Hardware Limit Test          : $( step_status "${RUN_HWLIMIT}" "${HWLIMIT_FAIL}" )
+PC Interrupt Controller Test : $( step_status "${RUN_PIC}" "${PIC_FAIL}" )
+PnP BIOS Test                : $( step_status "${RUN_PNPBIOS}" "${PNP_BIOS_FAIL}" )
 
 Overall result        : $( (( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + PNP_BIOS_FAIL + TESTS_FAILED > 0 )) && echo FAIL || echo PASS )
 
