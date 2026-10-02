@@ -1,10 +1,10 @@
 [t01xx] LISTING: Verify general card listing behaviour
 [t0101] Clearing seed and checking no-card case
-3CSEED - 3C509B mock state seeder v0.8.1
+3CSEED - 3C509B mock state seeder v0.8.2
 Seed file deleted (or already absent).
 [t0101] PASSED
 [t0102] Seeding INIT profile and checking card listing
-3CSEED - 3C509B mock state seeder v0.8.1
+3CSEED - 3C509B mock state seeder v0.8.2
 Seed file created (INIT).
 [t0102] PASSED
 [t02xx] IRQ_CHANGE: Verify IRQ change behaviour
@@ -337,7 +337,7 @@ Seed file created (INIT).
 [t1803] PASSED
 [t1804] /TR:AUTO rejection on 3C509-TP (ASIC revision 1)
 [t1804] PASSED
-[t1805] Boot ROM rejection on 3C509-TP (ASIC revision 1)
+[t1805] valid 8K ROM request stops before 3C509 probe
 [t1805] PASSED
 [t1806] combined valid + reject options perform no partial write
 [t1806] PASSED
@@ -345,8 +345,12 @@ Seed file created (INIT).
 [t1807] PASSED
 [t1808] SAVECONFIG on 3C509-TP (ASIC rev. 1) emits only common properties
 [t1808] PASSED
+[t1809] 3C509 accepts aligned 32K C0000 preparation
+[t1809] PASSED
+[t1810] 3C509 rejects 16K-only aligned 32K base
+[t1810] PASSED
 Cleaning seed file
-3CSEED - 3C509B mock state seeder v0.8.1
+3CSEED - 3C509B mock state seeder v0.8.2
 Seed file deleted (or already absent).
 Smoke test complete.
 Smoke test: run completed
@@ -357,49 +361,18 @@ SAVECONFIG: run completed
 Running Hardware Limit test ...
 Dispatching resource test with 64 KB memory limit to DOSBox-X ...
 [HWL64] 8086/8088 with 64 KB memory limit
-[HWL64] PASSED
-Dispatching resource test with 128 KB memory limit to DOSBox-X ...
-[HWL128] 8086/8088 with 128 KB memory limit
-[HWL128] PASSED
-Dispatching resource test with 256 KB memory limit to DOSBox-X ...
-[HWL256] 8086/8088 with 256 KB memory limit
-[HWL256] PASSED
-Hardware Limit test: run completed
-Running PC Interrupt Controller tests ...
-Dispatching tests to DOSBox-X ...
-[t19xx] PIC_GATE:Verify IRQ gate behaviour on a single PIC system
-[t1901] single PIC permits low IRQ without warning
-[t1901] PASSED
-[t1902] single PIC warns but permits high IRQ
-[t1902] PASSED
-[t1903] LIST reports a single PIC
-[t1903] PASSED
-PC Interrupt Controller tests: run completed
-Running PnP BIOS tests ...
-Dispatching tests to DOSBox-X ...
-[t20xx] PNP_BIOS_GATE: Verify present PnP BIOS behaviour
-[t2001] /PNP:ENABLED succeeds with a PnP BIOS present
-[t2001] PASSED
-[t2002] LIST reports a detected PnP BIOS
-[t2002] PASSED
-[t2003] enabled Boot ROM becomes PnP-managed with a PnP BIOS
-[t2003] PASSED
-[t2004] Boot ROM preflight reports an occupied range
-[t2004] PASSED
-PnP BIOS tests: run completed
 Rendering test results as JUnit XML ...
-JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 
 Test summary
 ============
-Smoke Test                   : SUCCESS
-    Defined Tests            : 171
-    Executed Tests           : 171
-    Failed Tests             : NONE
+Smoke Test                   : FAILED
+    Defined Tests            : 173
+    Executed Tests           : 166
+    Failed Tests             : YES
 SAVECONFIG Test              : SUCCESS
-Hardware Limit Test          : SUCCESS
-PC Interrupt Controller Test : SUCCESS
-PnP BIOS Test                : SUCCESS
+Hardware Limit Test          : FAILED
+PC Interrupt Controller Test : FAILED
+PnP BIOS Test                : FAILED
 
-Overall result        : PASS
+Overall result        : FAIL
 

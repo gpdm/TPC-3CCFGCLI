@@ -8,7 +8,7 @@
 |  EXPERIMENTAL RELEASE, LIMITED HARDWARE TESTING                                   |
 |                                                                                   |
 |  3CCFGLI has seen limited hardware testing on real                                |
-|  5C509-TP, 3C509B-TP and 3C509B-TPCoax NICs.                                      |
+|  3C509-TP, 3C509B-TP and 3C509B-TPCoax NICs.                                      |
 |  Generally, all config verbs are expected to behave correctly at this time.       |
 |  TO BE CONSIDERED AS *UNSAFE* ARE /BADDR AND /BSIZE OPERATIONS.                   |
 |  USE ENTIRELY AT YOUR OWN RISK.                                                   |
@@ -121,15 +121,17 @@ Support for a Product ID does not imply that every configuration feature is avai
 | `/OPTIMIZE:value`         |            Yes |    Yes | Configures software optimization                                           |
 | `/FULLDUPLEX:value`       |             No |    Yes | Full Duplex is a 3C509B-generation feature      |
 | `/PNP:value`              |             No |    Yes | ISA Plug and Play configuration is supported only on the 3C509B generation |
-| `/BADDRESS:value`         |             No |    Yes | Boot ROM currently only available for 3C509B adapters |
-| `/BSIZE:value`            |             No |    Yes | Boot ROM currently only available for 3C509B adapters |
+| `/BADDRESS:value`         |             No |    Yes | 3C509B support is complete; enabled 3C509 mappings remain blocked pending probe support |
+| `/BSIZE:value`            |             No |    Yes | 3C509B support is complete; enabled 3C509 mappings remain blocked pending probe support |
 | `SAVECONFIG`              |            Yes |    Yes | Exports supported configuration settings                                   |
 
 ### Boot ROM configuration
 
-Boot ROM configuration is supported on all 3C509-generation adapters.
-
-But since I don't own a plain 3c509, I have disabled Boot ROM support until I can test this myself.
+3C509B Boot ROM configuration is supported. Original 3C509 configuration is
+being implemented: phase 1 adds generation-specific base and alignment
+semantics, but enabled requests remain blocked before ROM probing because the
+revision-1 linear probe is not implemented yet. `/BSIZE:DISABLED` needs no ROM
+probe and remains available.
 
 On a 3C509B with a PnP BIOS and adapter PnP enabled, an enabled Boot ROM
 retains its configured 8, 16, or 32 KB size, but its persistent base selector
@@ -315,7 +317,7 @@ This includes the current Link Status, also known as Link Beat.
 Example:
 
 ```text
-3Com EtherLink III CLI Configuration Program v0.8.1
+3Com EtherLink III CLI Configuration Program v0.8.2
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -529,7 +531,7 @@ bare model name is a shorthand for `INIT model`.
 | `3C509B-COMBO` | Product 9450h, ASIC revision 2, TP + AUI + BNC.                                              |
 | `3C509B-TPO`   | Product 9550h, ASIC revision 2, TP only.                                                     |
 | `3C509B-TPC`   | Product 9850h, ASIC revision 2, TP + BNC.                                                    |
-| `3C509-TP`     | Product 9050h, ASIC revision 1, TP + AUI, no B-specific PNP/Full Duplex/AUTO/Boot ROM CONFIGURE semantics. |
+| `3C509-TP`     | Product 9050h, ASIC revision 1, TP + AUI, no B-specific PNP/Full Duplex/AUTO semantics. |
 | `3C509-COAX`   | Product 9150h, ASIC revision 1, AUI + BNC.                                                   |
 | `3C509-COMBO`  | Product 9450h, ASIC revision 1, TP + AUI + BNC.                                              |
 | `3C509-TPO`    | Product 9550h, ASIC revision 1, TP only.                                                     |

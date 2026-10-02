@@ -1,3 +1,7 @@
+Changelog 0.8.2
+  - Added generation-aware 3C509 Boot ROM base validation while keeping its
+    unsupported ROM probe path safely blocked.
+
 Changelog 0.8.1
   - Added an optional Boot ROM diagnostic: with /VERBOSE, the Boot ROM probe
     dumps the first 16 bytes of ROM page 0 as hexadecimal values on one

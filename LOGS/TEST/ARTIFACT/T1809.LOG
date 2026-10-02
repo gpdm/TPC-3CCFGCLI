@@ -5,4 +5,6 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-Full duplex is not supported for this card type.
+BADDRESS parameter accepted. Requested base address: C0000H
+BSIZE parameter accepted. Requested size: 32K
+Boot ROM mapping cannot be safely validated on a 3C509 adapter.

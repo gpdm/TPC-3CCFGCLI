@@ -204,6 +204,7 @@ CFG_ERR_INT_REQUIRES_SLAVE_PIC EQU 47
 CFG_ERR_PNP_BIOS_REQUIRED EQU 48
 CFG_ERR_PNP_ROM_ADDRESS_REQUIRED EQU 49
 CFG_ERR_BOOTROM_PROBE EQU 50
+CFG_ERR_BOOTROM_REV1_PROBE_UNSUPPORTED EQU 51
 
 DATASEG
 
@@ -286,6 +287,7 @@ msg_cfg_pnp_bios_gate_error DB "/PNP:ENABLED requires a PnP BIOS;", 0Dh, 0Ah
                             DB "none detected.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_rom_address_required DB "Disabling PnP ROM requires /BADDRESS and /BSIZE.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_probe_fail DB "Boot ROM probe failed; PnP unchanged.", 0Dh, 0Ah, '$'
+msg_cfg_bootrom_rev1_probe_unsupported DB "Boot ROM mapping cannot be safely validated on a 3C509 adapter.", 0Dh, 0Ah, '$'
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
 msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER.", 0Dh, 0Ah, '$'
@@ -862,6 +864,7 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_pnp_bios_gate_error           ; 48 CFG_ERR_PNP_BIOS_REQUIRED
     DW      OFFSET msg_cfg_pnp_rom_address_required      ; 49 CFG_ERR_PNP_ROM_ADDRESS_REQUIRED
     DW      OFFSET msg_cfg_bootrom_probe_fail             ; 50 CFG_ERR_BOOTROM_PROBE
+    DW      OFFSET msg_cfg_bootrom_rev1_probe_unsupported ; 51 CFG_ERR_BOOTROM_REV1_PROBE_UNSUPPORTED
 LABEL cfg_error_messages_end WORD
 
 CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2
@@ -5333,8 +5336,14 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_word09], 0
 @@Word09Done:
 
-    test    [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jnz     @@ReadWord13
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
     jz      @@NoWord13
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jb      @@NoWord13
+@@ReadWord13:
     mov     ax, [WORD di + ID_EEPROM_CONFIG_CONTROL]
     mov     [cfg_txn_old_word13], ax
     jmp     @@Word13Done
@@ -5342,8 +5351,14 @@ PROC Cfg_Txn_Read_Current NEAR
     mov     [cfg_txn_old_word13], 0
 @@Word13Done:
 
-    test    [cfg_parse_flags], CFG_PARSE_PNP + CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    test    [cfg_parse_flags], CFG_PARSE_PNP
+    jnz     @@ReadWord14
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
     jz      @@NoWord14
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jb      @@NoWord14
+@@ReadWord14:
     mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
     mov     [cfg_txn_old_word14], ax
     jmp     @@Word14Done
@@ -5435,6 +5450,7 @@ ENDP Cfg_Txn_Read_Current
 ; Prospective state always begins as an exact copy of the snapshot.
 PROC Cfg_Txn_Init_Prospective NEAR
     push    ax
+    push    si
 
     mov     ax, [cfg_txn_old_word08]
     mov     [cfg_txn_new_word08], ax
@@ -5444,8 +5460,13 @@ PROC Cfg_Txn_Init_Prospective NEAR
     mov     [cfg_txn_new_word0d], ax
     mov     ax, [cfg_txn_old_word13]
     mov     [cfg_txn_new_word13], ax
+    mov     [cfg_txn_new_word14], 0
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jb      @@Word14Done
     mov     ax, [cfg_txn_old_word14]
     mov     [cfg_txn_new_word14], ax
+@@Word14Done:
     mov     ax, [cfg_txn_old_word0f]
     mov     [cfg_txn_new_word0f], ax
     mov     ax, [cfg_txn_old_live06]
@@ -5457,6 +5478,7 @@ PROC Cfg_Txn_Init_Prospective NEAR
     mov     [cfg_txn_change_flags], 0
     mov     [cfg_txn_activation_needed], 0
 
+    pop     si
     pop     ax
     ret
 ENDP Cfg_Txn_Init_Prospective
@@ -5595,13 +5617,11 @@ ENDP Cfg_Prepare_OPTIMIZE
 ; Validate and merge the complete staged Boot ROM request into both persistent
 ; and prospective live Address Configuration images. Enabled C0000h uses
 ; selector 1 because selector zero disables the Boot ROM.
-; Reachable only for known 3C509B-generation adapters; the centralized Boot
-; ROM capability gate rejects 3C509 and unknown-generation adapters
-; before staging, so no 3C509-specific alignment rules remain here.
 PROC Cfg_Prepare_Boot_ROM NEAR
     push    ax
     push    bx
     push    cx
+    push    si
 
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jz      @@ApplyMode
@@ -5618,7 +5638,17 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     jz      @@Invalid
     jmp     @@Encode
 @@CheckAlignment:
-    ; Both 16K and 32K require an even selector on 3C509B adapters.
+    ; 16K mappings use even selectors. Original 3C509 32K mappings require
+    ; 8000h alignment, unlike 3C509B's 16K page-window aliases.
+    cmp     [cfg_bsize_value], 2
+    jne     @@CheckEvenSelector
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jae     @@CheckEvenSelector
+    test    bl, 3
+    jnz     @@Invalid
+    jmp     @@Encode
+@@CheckEvenSelector:
     test    bl, 1
     jnz     @@Invalid
 
@@ -5652,6 +5682,9 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     and     ax, 0C0FFh
     or      ax, bx
     mov     [cfg_txn_new_live06], ax
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jb      @@Success
     cmp     [cfg_bsize_disabled], 1
     je      @@ClearBrsv
 
@@ -5713,6 +5746,7 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     stc
 
 @@Done:
+    pop     si
     pop     cx
     pop     bx
     pop     ax
@@ -6125,6 +6159,9 @@ PROC Cfg_Txn_Detect_Changes NEAR
 @@BootRom:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE + CFG_PARSE_PNP
     jz      @@MODEM
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jb      @@MODEM
     mov     ax, [cfg_txn_old_word14]
     cmp     ax, [cfg_txn_new_word14]
     je      @@MODEM
@@ -7732,15 +7769,11 @@ PROC Cfg_Txn_Execute NEAR
     jmp     @@Done
 
 @@BootRomCapabilityGate:
-    ; The Boot ROM write path is intentionally supported only on
-    ; 3C509B-generation adapters (ASIC revision 2 or later), before EEPROM
-    ; word 14h is read as Boot ROM transaction state and before staging begins.
     mov     si, [cfg_selected_ptr]
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 2
-    jb      @@BootRomUnsupportedCard
-    ; Guard: 3C509B-TPO adapters do not support Boot ROM configuration.
-    ; Word 14h is snapshotted here as Boot ROM transaction state.
+    jb      @@Requested
+    ; Word 14h carries Boot ROM Size Valid only on 3C509B-generation adapters.
     call    Get_Id_Eeprom_Snapshot
     mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
     mov     [cfg_txn_old_word14], ax
@@ -7748,9 +7781,6 @@ PROC Cfg_Txn_Execute NEAR
     cmp     ax, PRODUCT_3C509_TPO
     jne     @@Requested
     mov     [cfg_last_error], CFG_ERR_BADDRESS_NOT_CAPABLE
-    jmp     @@Done
-@@BootRomUnsupportedCard:
-    mov     [cfg_last_error], CFG_ERR_BOOTROM_UNSUPPORTED_CARD
     jmp     @@Done
 
 @@Requested:
@@ -8014,6 +8044,13 @@ PROC Cfg_Txn_Execute NEAR
 @@DetectChanges:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@DetectChangesNow
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jae     @@ProbeBootRom
+    mov     [cfg_last_error], CFG_ERR_BOOTROM_REV1_PROBE_UNSUPPORTED
+    stc
+    jmp     @@Done
+@@ProbeBootRom:
     ; Informational read-only host memory preflight of the requested
     ; aperture, before the adapter Boot ROM is mapped there.
     call    Cfg_Preflight_Boot_ROM_Memory
