@@ -16,7 +16,7 @@ Current live Address Configuration: 0010
 Current live Resource Configuration: A000
 Memory range C8000-CBFFF appears occupied.
 WARNING: Boot ROM mapping may conflict with existing memory.
-Boot ROM page 0 header: 55 AA 20 00 00 00 00 00 00 00 00 00 00 00 00 00
+Boot ROM header: 55 AA 20 00 00 00 00 00 00 00 00 00 00 00 00 00
 
 Preparing requested configuration...
 Prospective active IOBASE: 0300

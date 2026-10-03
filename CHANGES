@@ -6,6 +6,7 @@ Changelog 0.8.2
   - Added generation-aware ROM probing and aperture preflight for 3C509 CONFIGURE.
   - Added original 3C509 Boot ROM SAVECONFIG restore support and enforced TPO Boot ROM exclusion across generations.
   - Removed the obsolete 3C509B-only Boot ROM error and added focused 3C509 16K coverage.
+  - Made the verbose Boot ROM header label generation-neutral.
 
 Changelog 0.8.1
   - Added an optional Boot ROM diagnostic: with /VERBOSE, the Boot ROM probe

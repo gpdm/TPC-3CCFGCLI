@@ -375,7 +375,7 @@ msg_cfg_bootrom_not_detected DB "No valid Boot ROM detected at the requested add
                              DB "Boot ROM configuration was skipped.", 0Dh, 0Ah, '$'
 ; Verbose-only Boot ROM header diagnostic.  Each value is emitted with a
 ; leading separator, so the label intentionally carries no trailing blank.
-msg_cfg_bootrom_dump DB "Boot ROM page 0 header:", '$'
+msg_cfg_bootrom_dump DB "Boot ROM header:", '$'
 msg_cfg_bootrom_dump_sep DB " ", '$'
 ; Read-only host memory preflight for an explicitly requested /BADDRESS.
 ; Purely informational: neither result changes the Boot ROM transaction.
