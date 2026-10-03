@@ -3413,6 +3413,7 @@ PROC Cfg_Probe_Boot_ROM NEAR
     jnz     @@Next
     cmp     cx, 1
     jbe     @@Next
+    mov     di, 4000h
     push    si
     mov     si, [cfg_selected_ptr]
     cmp     [BYTE si + NIC_ASIC_REV], 2

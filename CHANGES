@@ -8,6 +8,7 @@ Changelog 0.8.2
   - Removed the obsolete 3C509B-only Boot ROM error and added focused 3C509 16K coverage.
   - Made the verbose Boot ROM header label generation-neutral.
   - Simplified Boot ROM generation handling and normalized active-mapping preflight checks.
+  - Implement Boot ROM probe boundary explicit across 16K blocks.
 
 Changelog 0.8.1
   - Added an optional Boot ROM diagnostic: with /VERBOSE, the Boot ROM probe
