@@ -349,6 +349,8 @@ Seed file created (INIT).
 [t1809] PASSED
 [t1810] 3C509 rejects 16K-only aligned 32K base
 [t1810] PASSED
+[t1811] 3C509 16K Boot ROM configure succeeds
+[t1811] PASSED
 Cleaning seed file
 3CSEED - 3C509B mock state seeder v0.8.2
 Seed file deleted (or already absent).
@@ -397,8 +399,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 166
-    Executed Tests           : 166
+    Defined Tests            : 167
+    Executed Tests           : 167
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS

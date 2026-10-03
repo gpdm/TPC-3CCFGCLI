@@ -199,11 +199,10 @@ CFG_ERR_FD_LIVE_VERIFY      EQU 42
 CFG_ERR_FD_UNSUPPORTED_CARD EQU 43
 CFG_ERR_PNP_UNSUPPORTED_CARD EQU 44
 CFG_ERR_TR_AUTO_UNSUPPORTED_CARD EQU 45
-CFG_ERR_BOOTROM_UNSUPPORTED_CARD EQU 46
-CFG_ERR_INT_REQUIRES_SLAVE_PIC EQU 47
-CFG_ERR_PNP_BIOS_REQUIRED EQU 48
-CFG_ERR_PNP_ROM_ADDRESS_REQUIRED EQU 49
-CFG_ERR_BOOTROM_PROBE EQU 50
+CFG_ERR_INT_REQUIRES_SLAVE_PIC EQU 46
+CFG_ERR_PNP_BIOS_REQUIRED EQU 47
+CFG_ERR_PNP_ROM_ADDRESS_REQUIRED EQU 48
+CFG_ERR_BOOTROM_PROBE EQU 49
 
 DATASEG
 
@@ -388,7 +387,6 @@ msg_cfg_memchk_occupied DB " appears occupied.", 0Dh, 0Ah
 msg_cfg_bsize_verified DB "EEPROM Boot ROM size verified.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_live_verified DB "Live Boot ROM configuration verified.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verify_fail DB "Boot ROM size configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_bootrom_unsupported_card DB "Boot ROM configuration requires a 3C509B-generation adapter.", 0Dh, 0Ah, '$'
 
 ; /TR (/XCVR) diagnostics.  Transceiver selection shares EEPROM word 08h
 ; bits 15:14 (and bit 7 for AUTO) with /IOBASE, /BADDRESS, and /BSIZE.
@@ -857,11 +855,10 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_fd_unsupported_card           ; 43 CFG_ERR_FD_UNSUPPORTED_CARD
     DW      OFFSET msg_cfg_pnp_unsupported_card          ; 44 CFG_ERR_PNP_UNSUPPORTED_CARD
     DW      OFFSET msg_cfg_tr_auto_unsupported_card      ; 45 CFG_ERR_TR_AUTO_UNSUPPORTED_CARD
-    DW      OFFSET msg_cfg_bootrom_unsupported_card      ; 46 CFG_ERR_BOOTROM_UNSUPPORTED_CARD
-    DW      OFFSET msg_cfg_pic_gate_error                ; 47 CFG_ERR_INT_REQUIRES_SLAVE_PIC
-    DW      OFFSET msg_cfg_pnp_bios_gate_error           ; 48 CFG_ERR_PNP_BIOS_REQUIRED
-    DW      OFFSET msg_cfg_pnp_rom_address_required      ; 49 CFG_ERR_PNP_ROM_ADDRESS_REQUIRED
-    DW      OFFSET msg_cfg_bootrom_probe_fail             ; 50 CFG_ERR_BOOTROM_PROBE
+    DW      OFFSET msg_cfg_pic_gate_error                ; 46 CFG_ERR_INT_REQUIRES_SLAVE_PIC
+    DW      OFFSET msg_cfg_pnp_bios_gate_error           ; 47 CFG_ERR_PNP_BIOS_REQUIRED
+    DW      OFFSET msg_cfg_pnp_rom_address_required      ; 48 CFG_ERR_PNP_ROM_ADDRESS_REQUIRED
+    DW      OFFSET msg_cfg_bootrom_probe_fail             ; 49 CFG_ERR_BOOTROM_PROBE
 LABEL cfg_error_messages_end WORD
 
 CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2

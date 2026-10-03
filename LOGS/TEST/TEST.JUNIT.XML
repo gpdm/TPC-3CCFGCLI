@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-10-03T22:42:08.996719+03:00" tests="177" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-10-03T22:56:39.015666+03:00" tests="178" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -1020,7 +1020,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="3C509_REV1: Verify 3C509 (ASIC revision 1) generation gates" tests="10" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="3C509_REV1: Verify 3C509 (ASIC revision 1) generation gates" tests="11" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t18xx"/>
 			<property name="description" value="Verify 3C509 (ASIC revision 1) generation gates"/>
@@ -1083,6 +1083,12 @@
 			<properties>
 				<property name="description" value="3C509 rejects 16K-only aligned 32K base"/>
 				<property name="artifact" value="ARTIFACT/T1810.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1811: 3C509 16K Boot ROM configure succeeds" classname="3C509_REV1">
+			<properties>
+				<property name="description" value="3C509 16K Boot ROM configure succeeds"/>
+				<property name="artifact" value="ARTIFACT/T1811.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>
