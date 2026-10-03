@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-10-03T23:57:11.264698+03:00" tests="178" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-10-04T00:36:00.497386+03:00" tests="179" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -324,7 +324,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="BOOTROM_CHANGE: Verify boot ROM change behaviour" tests="34" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="BOOTROM_CHANGE: Verify boot ROM change behaviour" tests="35" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t11xx"/>
 			<property name="description" value="Verify boot ROM change behaviour"/>
@@ -531,6 +531,12 @@
 			<properties>
 				<property name="description" value="without /VERBOSE no Boot ROM header dump is emitted"/>
 				<property name="artifact" value="ARTIFACT/T1138.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1140: 3C509B Boot ROM PnP resource synchronization" classname="BOOTROM_CHANGE">
+			<properties>
+				<property name="description" value="3C509B Boot ROM PnP resource synchronization"/>
+				<property name="artifact" value="ARTIFACT/T1140.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>

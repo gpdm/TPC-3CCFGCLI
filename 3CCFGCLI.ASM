@@ -117,6 +117,7 @@ CFG_TXN_INT_CHANGED      EQU 40h
 CFG_TXN_CHG_WORD13       EQU 80h
 CFG_TXN_CHG_WORD0D       EQU 0100h
 CFG_TXN_CHG_WORD14       EQU 0200h
+CFG_TXN_CHG_PNP_RESOURCE EQU 0400h
 ; Widened to also require the hardware transaction pipeline for /BADDRESS,
 ; /BSIZE, and /TR (bits 0100h/0200h/0400h), which share EEPROM word 08h
 ; with /IOBASE.
@@ -124,15 +125,15 @@ CFG_PARSE_HW_MASK        EQU 07FAh
 CFG_TXN_IO_DETECT_MASK   EQU 15h
 CFG_TXN_WORD09_INT_MASK  EQU 42h
 ; Persistent property changes only; derived checksum writes have no flags.
-CFG_TXN_EEPROM_MASK      EQU 0383h
+CFG_TXN_EEPROM_MASK      EQU 0783h
 CFG_TXN_LIVE06_MASK      EQU 14h
 CFG_TXN_PRIMARY_CHECKSUM_MASK EQU 0103h ; WORD08, WORD09, WORD0D
-CFG_TXN_SECONDARY_CHECKSUM_MASK EQU 0280h ; WORD13, WORD14
+CFG_TXN_SECONDARY_CHECKSUM_MASK EQU 0680h ; WORD13, WORD14, PnP Resource Data
 ; WORD08 (bit 0) is included directly so a /BADDRESS or /BSIZE change (which
 ; has no IOBASE_CHANGED-style composite signal of its own) still triggers
 ; the write/verify/success pipeline. This mirrors how WORD0D and WORD13 are
 ; included directly for MODEM/FULLDUPLEX/PNP/OPTIMIZE.
-CFG_TXN_COMMIT_MASK      EQU 03F1h
+CFG_TXN_COMMIT_MASK      EQU 07F1h
 CFG_TXN_INT_MIGRATE_MASK EQU 50h
 
 ; Normalized physical NIC capabilities.  These bits are a shared software
@@ -203,6 +204,7 @@ CFG_ERR_INT_REQUIRES_SLAVE_PIC EQU 46
 CFG_ERR_PNP_BIOS_REQUIRED EQU 47
 CFG_ERR_PNP_ROM_ADDRESS_REQUIRED EQU 48
 CFG_ERR_BOOTROM_PROBE EQU 49
+CFG_ERR_PNP_RESOURCE_DATA EQU 50
 
 DATASEG
 
@@ -285,6 +287,7 @@ msg_cfg_pnp_bios_gate_error DB "/PNP:ENABLED requires a PnP BIOS;", 0Dh, 0Ah
                             DB "none detected.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_rom_address_required DB "Disabling PnP ROM requires /BADDRESS and /BSIZE.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_probe_fail DB "Boot ROM probe failed; PnP unchanged.", 0Dh, 0Ah, '$'
+msg_cfg_pnp_resource_data_fail DB "Boot ROM ISA PnP resource data could not be synchronized.", 0Dh, 0Ah, '$'
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
 msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER.", 0Dh, 0Ah, '$'
@@ -629,6 +632,13 @@ cfg_txn_change_flags      DW 0
 cfg_txn_checksum          DB 0
 cfg_txn_activation_needed DB 0
 cfg_bootrom_rejected      DB 0
+cfg_txn_pnp_resource_old_class DB 0
+cfg_txn_pnp_resource_class DB 0
+cfg_txn_pnp_resource_end_index DW 0
+cfg_txn_old_pnp_resource_data DB PNP_RESOURCE_DATA_BYTES DUP (0)
+cfg_txn_new_pnp_resource_data DB PNP_RESOURCE_DATA_BYTES DUP (0)
+cfg_pnp_bootrom_desc_8k DB 81h, 09h, 00h, 43h, 80h, 0Ch, 0E0h, 0Dh, 00h, 20h, 20h, 00h
+cfg_pnp_bootrom_desc_16k DB 81h, 09h, 00h, 43h, 80h, 0Ch, 0C0h, 0Dh, 00h, 40h, 40h, 00h
 
 cfg_wait_start_lo     DW 0
 cfg_wait_start_hi     DW 0
@@ -859,6 +869,7 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_pnp_bios_gate_error           ; 47 CFG_ERR_PNP_BIOS_REQUIRED
     DW      OFFSET msg_cfg_pnp_rom_address_required      ; 48 CFG_ERR_PNP_ROM_ADDRESS_REQUIRED
     DW      OFFSET msg_cfg_bootrom_probe_fail             ; 49 CFG_ERR_BOOTROM_PROBE
+    DW      OFFSET msg_cfg_pnp_resource_data_fail         ; 50 CFG_ERR_PNP_RESOURCE_DATA
 LABEL cfg_error_messages_end WORD
 
 CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2
@@ -5021,6 +5032,47 @@ PROC Cfg_Checksum_0F_Low NEAR
     ret
 ENDP Cfg_Checksum_0F_Low
 
+; Destination EEPROM word 17h high byte. Domain: words 10h-12h and 20h-3Fh.
+PROC Cfg_Checksum_17_High NEAR
+    push    bx
+    push    dx
+    push    si
+
+    xor     bx, bx
+    mov     si, EEPROM_SECONDARY_VITAL_START
+@@Vital:
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, EEPROM_SECONDARY_VITAL_END
+    jb      @@Vital
+
+    mov     si, EEPROM_SECONDARY_VITAL_PNP_START
+@@Pnp:
+    mov     ax, si
+    call    Cfg_Eeprom_Read
+    jc      @@Fail
+    call    Cfg_Checksum_Xor_Word
+    inc     si
+    cmp     si, EEPROM_SECONDARY_VITAL_PNP_END
+    jb      @@Pnp
+
+    mov     al, bl
+    pop     si
+    pop     dx
+    pop     bx
+    clc
+    ret
+@@Fail:
+    pop     si
+    pop     dx
+    pop     bx
+    stc
+    ret
+ENDP Cfg_Checksum_17_High
+
 ; Destination EEPROM word 17h low byte. Domain: words 13h through 16h.
 PROC Cfg_Checksum_17_Low NEAR
     push    bx
@@ -5753,6 +5805,220 @@ PROC Cfg_Prepare_Boot_ROM NEAR
     ret
 ENDP Cfg_Prepare_Boot_ROM
 
+; Return AL = 0 when disabled, 1 for an 8K PnP aperture, 2 for a 16K
+; aperture (including 3C509B 32K ROMs), or FFh for an unsupported encoding.
+; Inputs are prospective/current EEPROM words 08h in AX and 14h in BX.
+PROC Cfg_BootRom_Resource_Class NEAR
+    push    bx
+    push    cx
+
+    mov     cx, ax
+    xor     al, al
+    test    cx, 0F00h
+    jnz     @@Enabled
+    test    bx, EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
+    jz      @@Done
+@@Enabled:
+    and     cx, 3000h
+    cmp     cx, 0000h
+    jne     @@Not8K
+    mov     al, 1
+    jmp     @@Done
+@@Not8K:
+    cmp     cx, 1000h
+    je      @@16K
+    cmp     cx, 2000h
+    jne     @@Unsupported
+@@16K:
+    mov     al, 2
+    jmp     @@Done
+@@Unsupported:
+    mov     al, 0FFh
+@@Done:
+    pop     cx
+    pop     bx
+    ret
+ENDP Cfg_BootRom_Resource_Class
+
+; Prepare the original 3C509B Boot ROM Resource Data mutation in the central
+; CONFIGURE transaction.  Revision 1 and TPO products never enter this path.
+PROC Cfg_Txn_Prepare_Boot_ROM_Resource NEAR
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    si
+    push    di
+
+    test    [cfg_parse_flags], CFG_PARSE_BADDRESS + CFG_PARSE_BSIZE
+    jz      @@Success
+    cmp     [cfg_bootrom_rejected], 1
+    je      @@Success
+
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 0FFh
+    je      @@Success
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jb      @@Success
+    cmp     [WORD si + NIC_PRODUCT_ID], PRODUCT_3C509_TPO
+    je      @@Success
+
+    mov     ax, [cfg_txn_old_word08]
+    mov     bx, [cfg_txn_old_word14]
+    call    Cfg_BootRom_Resource_Class
+    mov     [cfg_txn_pnp_resource_old_class], al
+    mov     ax, [cfg_txn_new_word08]
+    mov     bx, [cfg_txn_new_word14]
+    call    Cfg_BootRom_Resource_Class
+    cmp     al, [cfg_txn_pnp_resource_old_class]
+    je      @@Success
+    cmp     al, 0FFh
+    je      @@Success
+    mov     [cfg_txn_pnp_resource_class], al
+
+    mov     si, EEPROM_PNP_RESOURCE_START
+    xor     di, di
+@@ReadResource:
+    mov     ax, si
+    mov     dx, [cfg_txn_access_base]
+    call    Cfg_Eeprom_Read
+    jc      @@ReadFail
+    mov     [WORD cfg_txn_old_pnp_resource_data + di], ax
+    mov     [WORD cfg_txn_new_pnp_resource_data + di], ax
+    add     di, 2
+    inc     si
+    cmp     si, EEPROM_PNP_RESOURCE_END + 1
+    jb      @@ReadResource
+
+    mov     bx, PNP_RESOURCE_BOUNDARY_SCAN_START
+@@FindBoundary:
+    cmp     bx, PNP_RESOURCE_DATA_BYTES - 1
+    jae     @@Invalid
+    mov     al, [BYTE cfg_txn_new_pnp_resource_data + bx]
+    cmp     al, PNP_RESOURCE_END_TAG
+    je      @@BoundaryFound
+    cmp     al, PNP_RESOURCE_MEMORY_TAG
+    je      @@BoundaryFound
+    inc     bx
+    jmp     @@FindBoundary
+
+@@BoundaryFound:
+    cmp     [cfg_txn_pnp_resource_class], 0
+    jne     @@Enable
+    cmp     [BYTE cfg_txn_new_pnp_resource_data + bx], PNP_RESOURCE_MEMORY_TAG
+    jne     @@Success
+    mov     [BYTE cfg_txn_new_pnp_resource_data + bx], PNP_RESOURCE_END_TAG
+    mov     [cfg_txn_pnp_resource_end_index], bx
+    jmp     @@SetLDNFlags
+
+@@Enable:
+    cmp     bx, 66
+    ja      @@Invalid
+    cmp     [cfg_txn_pnp_resource_class], 1
+    jne     @@Use16KDescriptor
+    mov     si, OFFSET cfg_pnp_bootrom_desc_8k
+    jmp     @@CopyDescriptor
+@@Use16KDescriptor:
+    mov     si, OFFSET cfg_pnp_bootrom_desc_16k
+@@CopyDescriptor:
+    mov     di, bx
+    mov     cx, PNP_RESOURCE_MEMORY_DESC_BYTES
+@@CopyDescriptorByte:
+    mov     al, [BYTE si]
+    mov     [BYTE cfg_txn_new_pnp_resource_data + di], al
+    inc     si
+    inc     di
+    loop    @@CopyDescriptorByte
+    mov     [BYTE cfg_txn_new_pnp_resource_data + di], PNP_RESOURCE_END_TAG
+    mov     [cfg_txn_pnp_resource_end_index], di
+
+@@SetLDNFlags:
+    mov     si, PNP_RESOURCE_LDN_SCAN_START
+@@FindLDN:
+    cmp     si, PNP_RESOURCE_DATA_BYTES - 6
+    ja      @@Invalid
+    cmp     [BYTE cfg_txn_new_pnp_resource_data + si], PNP_RESOURCE_LDN_TAG
+    je      @@LDNFound
+    inc     si
+    jmp     @@FindLDN
+@@LDNFound:
+    mov     di, si
+    add     di, PNP_RESOURCE_LDN_FLAGS_OFFSET
+    cmp     [cfg_txn_pnp_resource_class], 0
+    jne     @@SetEnabledFlags
+    mov     [BYTE cfg_txn_new_pnp_resource_data + di], PNP_RESOURCE_LDN_DISABLED_FLAGS
+    jmp     @@RecalculateResourceChecksum
+@@SetEnabledFlags:
+    mov     [BYTE cfg_txn_new_pnp_resource_data + di], PNP_RESOURCE_LDN_ENABLED_FLAGS
+
+@@RecalculateResourceChecksum:
+    mov     di, [cfg_txn_pnp_resource_end_index]
+    mov     si, PNP_RESOURCE_CHECKSUM_START
+    xor     bx, bx
+@@SumResourceData:
+    mov     al, [BYTE cfg_txn_new_pnp_resource_data + si]
+    add     bl, al
+    cmp     si, di
+    je      @@StoreResourceChecksum
+    inc     si
+    jmp     @@SumResourceData
+@@StoreResourceChecksum:
+    neg     bl
+    inc     di
+    mov     [BYTE cfg_txn_new_pnp_resource_data + di], bl
+    inc     di
+@@ClearUnusedData:
+    cmp     di, PNP_RESOURCE_DATA_BYTES
+    jae     @@CompareResourceData
+    mov     [BYTE cfg_txn_new_pnp_resource_data + di], 0
+    inc     di
+    jmp     @@ClearUnusedData
+
+@@CompareResourceData:
+    xor     si, si
+@@CompareResourceWord:
+    mov     ax, [WORD cfg_txn_new_pnp_resource_data + si]
+    cmp     ax, [WORD cfg_txn_old_pnp_resource_data + si]
+    jne     @@ResourceChanged
+    add     si, 2
+    cmp     si, PNP_RESOURCE_DATA_BYTES
+    jb      @@CompareResourceWord
+    jmp     @@Success
+@@ResourceChanged:
+    or      [cfg_txn_change_flags], CFG_TXN_CHG_PNP_RESOURCE
+
+@@Success:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    clc
+    ret
+
+@@ReadFail:
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    stc
+    ret
+
+@@Invalid:
+    mov     [cfg_last_error], CFG_ERR_PNP_RESOURCE_DATA
+    pop     di
+    pop     si
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    stc
+    ret
+ENDP Cfg_Txn_Prepare_Boot_ROM_Resource
+
 ; Read-only informational preflight of the host memory range that an explicit
 ; /BADDRESS + /BSIZE request would use as the temporary Boot ROM aperture.
 ; Runs before Cfg_Txn_Probe_Boot_ROM maps the adapter ROM, so the bytes seen
@@ -6419,6 +6685,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     push    bx
     push    dx
     push    si
+    push    di
 
     test    [cfg_txn_change_flags], CFG_TXN_EEPROM_MASK
     jz      @@Success
@@ -6507,12 +6774,32 @@ PROC Cfg_Txn_Write_EEPROM NEAR
 
 @@Word14:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
-    jz      @@Checksums
+    jz      @@PnpResourceData
     mov     dx, [cfg_txn_access_base]
     mov     bx, [cfg_txn_new_word14]
     mov     al, EEPROM_REVISION_INFO
     call    Cfg_Eeprom_Write
     jc      @@Fail
+
+@@PnpResourceData:
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_PNP_RESOURCE
+    jz      @@Checksums
+    mov     si, EEPROM_PNP_RESOURCE_START
+    xor     di, di
+@@PnpResourceWord:
+    mov     ax, [WORD cfg_txn_new_pnp_resource_data + di]
+    cmp     ax, [WORD cfg_txn_old_pnp_resource_data + di]
+    je      @@PnpResourceNext
+    mov     dx, [cfg_txn_access_base]
+    mov     bx, ax
+    mov     ax, si
+    call    Cfg_Eeprom_Write
+    jc      @@Fail
+@@PnpResourceNext:
+    inc     si
+    add     di, 2
+    cmp     si, EEPROM_PNP_RESOURCE_END + 1
+    jb      @@PnpResourceWord
 
 @@Checksums:
     test    [cfg_txn_change_flags], CFG_TXN_PRIMARY_CHECKSUM_MASK
@@ -6552,17 +6839,16 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     test    [cfg_txn_change_flags], CFG_TXN_SECONDARY_CHECKSUM_MASK
     jz      @@ChecksumUpdated
     mov     dx, [cfg_txn_access_base]
-    mov     al, EEPROM_SECONDARY_CHECKSUM
-    call    Cfg_Eeprom_Read
+    call    Cfg_Checksum_17_High
     jc      @@ChecksumFail
-    mov     [cfg_txn_checksum_word], ax
+    mov     [cfg_txn_checksum], al
     mov     dx, [cfg_txn_access_base]
     call    Cfg_Checksum_17_Low
     jc      @@ChecksumFail
-    and     [cfg_txn_checksum_word], 0FF00h
     xor     bx, bx
     mov     bl, al
-    or      [cfg_txn_checksum_word], bx
+    mov     bh, [cfg_txn_checksum]
+    mov     [cfg_txn_checksum_word], bx
     mov     bx, [cfg_txn_checksum_word]
     mov     al, EEPROM_SECONDARY_CHECKSUM
     call    Cfg_Eeprom_Write
@@ -6578,6 +6864,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     call    Print_If_Verbose
 
 @@Success:
+    pop     di
     pop     si
     pop     dx
     pop     bx
@@ -6590,6 +6877,7 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     je      @@Fail
     mov     [cfg_last_error], CFG_ERR_CHECKSUM_UPDATE
 @@Fail:
+    pop     di
     pop     si
     pop     dx
     pop     bx
@@ -7175,6 +7463,55 @@ PROC Cfg_Txn_Verify_TR NEAR
     ret
 ENDP Cfg_Txn_Verify_TR
 
+; Verify the complete Resource Data image after it has been committed.
+PROC Cfg_Txn_Verify_PNP_Resource NEAR
+    test    [cfg_txn_change_flags], CFG_TXN_CHG_PNP_RESOURCE
+    jz      @@Unchanged
+
+    push    ax
+    push    bx
+    push    dx
+    push    si
+    push    di
+    mov     si, EEPROM_PNP_RESOURCE_START
+    xor     di, di
+@@Word:
+    mov     ax, si
+    mov     dx, [cfg_txn_access_base]
+    call    Cfg_Eeprom_Read
+    jc      @@ReadFail
+    cmp     ax, [WORD cfg_txn_new_pnp_resource_data + di]
+    jne     @@VerifyFail
+    inc     si
+    add     di, 2
+    cmp     si, EEPROM_PNP_RESOURCE_END + 1
+    jb      @@Word
+@@Success:
+    pop     di
+    pop     si
+    pop     dx
+    pop     bx
+    pop     ax
+    clc
+    ret
+@@ReadFail:
+    cmp     [cfg_last_error], CFG_ERR_EEPROM_BUSY
+    je      @@Fail
+@@VerifyFail:
+    mov     [cfg_last_error], CFG_ERR_VERIFY
+@@Fail:
+    pop     di
+    pop     si
+    pop     dx
+    pop     bx
+    pop     ax
+    stc
+    ret
+@@Unchanged:
+    clc
+    ret
+ENDP Cfg_Txn_Verify_PNP_Resource
+
 ; Orchestrates the overall verification sequence for a committed CONFIGURE
 ; transaction.  Performs the shared setup (resetting the word08/word0Dh
 ; verify readback caches and printing the verbose banner), then calls each
@@ -7213,6 +7550,8 @@ PROC Cfg_Txn_Verify NEAR
     call    Cfg_Txn_Verify_OPTIMIZE
     jc      @@Fail
     call    Cfg_Txn_Verify_BootRom
+    jc      @@Fail
+    call    Cfg_Txn_Verify_PNP_Resource
     jc      @@Fail
     call    Cfg_Txn_Verify_TR
     jc      @@Fail
@@ -8086,6 +8425,8 @@ PROC Cfg_Txn_Execute NEAR
     jc      @@Done
 @@DetectChangesNow:
     call    Cfg_Txn_Detect_Changes
+    call    Cfg_Txn_Prepare_Boot_ROM_Resource
+    jc      @@Done
     call    Cfg_Txn_Report_Prospective
 
     test    [cli_flags], CLI_FLAG_VERBOSE
@@ -8517,45 +8858,7 @@ ENDP List_Checksum_17_Low
 ; Read-only secondary high checksum: EEPROM words 10h-12h and 20h-3Fh.
 ; Input DX = physical base.  Output AL = checksum byte, CF set if EEPROM Busy does not clear.
 PROC List_Checksum_17_High NEAR
-    push    bx
-    push    cx
-    push    dx
-    push    si
-
-    xor     bx, bx
-    mov     si, EEPROM_SECONDARY_VITAL_START
-@@Vital:
-    mov     ax, si
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    call    Cfg_Checksum_Xor_Word
-    inc     si
-    cmp     si, EEPROM_SECONDARY_VITAL_END
-    jb      @@Vital
-
-    mov     si, EEPROM_SECONDARY_VITAL_PNP_START
-@@Pnp:
-    mov     ax, si
-    call    Nic_EEPROM_Read
-    jc      @@Fail
-    call    Cfg_Checksum_Xor_Word
-    inc     si
-    cmp     si, EEPROM_SECONDARY_VITAL_PNP_END
-    jb      @@Pnp
-
-    mov     al, bl
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    clc
-    ret
-@@Fail:
-    pop     si
-    pop     dx
-    pop     cx
-    pop     bx
-    stc
+    call    Cfg_Checksum_17_High
     ret
 ENDP List_Checksum_17_High
 

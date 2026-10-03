@@ -138,7 +138,12 @@ is zero and Boot ROM Size Valid (BRSV) is set for PnP resource assignment.
 Without a PnP BIOS, or with adapter PnP disabled, an enabled ROM keeps its
 explicit ISA address and BRSV is clear. `/BSIZE:DISABLED` clears both ROM
 fields and BRSV. The utility detects the BIOS but does not allocate PnP
-resources or call its services.
+resources or call its services. When a supported non-TPO 3C509B Boot ROM
+configuration changes its effective memory requirement, CONFIGURE also
+synchronizes the optional ISA PnP memory descriptor and Logical Device ID
+Boot Device flag in EEPROM Resource Data, then updates its stream checksum and
+the EEPROM secondary checksums. A configured 32 KB 3C509B ROM uses the same
+16 KB host-aperture resource descriptor as a 16 KB ROM.
 
 Switching from a PnP-managed ROM to `/PNP:DISABLED` requires an explicit
 `/BADDRESS` and `/BSIZE`; no address is chosen automatically. `LIST` displays
@@ -547,6 +552,12 @@ Optional `/`-prefixed attributes accepted by `INIT`/`ADD`/a bare model name:
 | `/ROM8K`         | Attaches an 8 KB mock Boot ROM.                                      |
 | `/ROM16K`        | Attaches a 16 KB mock Boot ROM.                                      |
 | `/ROM32K`        | Attaches a 32 KB mock Boot ROM.                                      |
+
+Revision-2+ seeds also contain a minimal, test-only synthetic PnP Resource
+Data fixture for exercising Boot ROM resource synchronization. Its Logical
+Device ID payload bytes are synthetic values, not real adapter identifiers;
+the fixture is not a complete or representative 3C509B EEPROM image. Revision
+1 seed Network Management Data is left unchanged.
 
 ### Test flow
 

@@ -172,6 +172,8 @@ Seed file created (INIT).
 [t1137] PASSED
 [t1138] without /VERBOSE no Boot ROM header dump is emitted
 [t1138] PASSED
+[t1140] 3C509B Boot ROM PnP resource synchronization
+[t1140] PASSED
 [t12xx] XCVR_CHANGE: Verify transceiver change behaviour
 [t1201] CONFIGURE /TR:TP on 3C509B-TP (should succeed)
 [t1201] PASSED
@@ -399,8 +401,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 167
-    Executed Tests           : 167
+    Defined Tests            : 168
+    Executed Tests           : 168
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS

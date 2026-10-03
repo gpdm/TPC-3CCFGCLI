@@ -103,6 +103,17 @@ seed_irq_explicit DB 0
 factory_mac  DB 6 DUP (0)
 oem_mac      DB 6 DUP (0)
 
+; Test-only minimal Resource Data for the narrow 3C509B Boot ROM mutator.
+; The LDN payload bytes 11h, 22h, 33h, and 44h are synthetic, not real
+; adapter identifiers.  The stream has only the 15h item at byte 1Eh, its
+; disabled flags byte, and a 79h End Tag at byte 32h; C6h is its checksum.
+; This is not a complete or representative 3C509B Resource Data image.
+seed_pnp_resource_data DB 30 DUP (0)
+                       DB PNP_RESOURCE_LDN_TAG, 11h, 22h, 33h, 44h, PNP_RESOURCE_LDN_DISABLED_FLAGS
+                       DB 14 DUP (0)
+                       DB PNP_RESOURCE_END_TAG, 0C6h
+                       DB 28 DUP (0)
+
 irq_table    DB 3, 5, 7, 9, 10, 11, 12, 15
 
 ; Shared sequence defined by ISA_IOBASE_TABLE in 3C509DEF.INC; fixed
@@ -1354,6 +1365,7 @@ PROC Build_Record_Current NEAR
     mov     si, EEPROM_REVISION_INFO
     mov     ax, EEPROM_REVISION_3C509B
     call    EEPROM_Write_SI
+    call    Build_PNP_Resource_Data
     jmp     @@ChecksumWord0F
 
 @@Seed509NMD:
@@ -1415,6 +1427,28 @@ PROC Build_Record_Current NEAR
     pop     ax
     ret
 ENDP Build_Record_Current
+
+; Seed the synthetic PnP Resource Data baseline only for 3C509B records.
+PROC Build_PNP_Resource_Data NEAR
+    push    ax
+    push    di
+    push    si
+
+    xor     di, di
+    mov     si, EEPROM_PNP_RESOURCE_START
+@@WriteWord:
+    mov     ax, [WORD seed_pnp_resource_data + di]
+    call    EEPROM_Write_SI
+    add     di, 2
+    inc     si
+    cmp     si, EEPROM_PNP_RESOURCE_END + 1
+    jb      @@WriteWord
+
+    pop     si
+    pop     di
+    pop     ax
+    ret
+ENDP Build_PNP_Resource_Data
 
 PROC Build_State NEAR
     call    Init_State_Blob
