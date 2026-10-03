@@ -121,15 +121,16 @@ Support for a Product ID does not imply that every configuration feature is avai
 | `/OPTIMIZE:value`         |            Yes |    Yes | Configures software optimization                                           |
 | `/FULLDUPLEX:value`       |             No |    Yes | Full Duplex is a 3C509B-generation feature      |
 | `/PNP:value`              |             No |    Yes | ISA Plug and Play configuration is supported only on the 3C509B generation |
-| `/BADDRESS:value`         |            Yes |    Yes | Enabled 3C509 CONFIGURE supported; SAVECONFIG export pending               |
-| `/BSIZE:value`            |            Yes |    Yes | Enabled 3C509 CONFIGURE supported; SAVECONFIG export pending               |
+| `/BADDRESS:value`         |            Yes |    Yes | Boot ROM configuration and restore supported, except on TPO models          |
+| `/BSIZE:value`            |            Yes |    Yes | Boot ROM configuration and restore supported, except on TPO models          |
 | `SAVECONFIG`              |            Yes |    Yes | Exports supported configuration settings                                   |
 
 ### Boot ROM configuration
 
-Boot ROM CONFIGURE supports 8K, 16K and 32K mappings on the 3C509 and
-supported 3C509B models, using generation-correct probing. Original 3C509
-Boot ROM SAVECONFIG export is not yet supported.
+Boot ROM support includes `LIST`, `CONFIGURE`, and `SAVECONFIG` export and
+restore for supported original 3C509 and 3C509B models. Supported sizes are
+8K, 16K and 32K, using generation-correct probing. TPO models
+(`3C509-TPO` and `3C509B-TPO`) do not support Boot ROM functionality.
 
 On a 3C509B with a PnP BIOS and adapter PnP enabled, an enabled Boot ROM
 retains its configured 8, 16, or 32 KB size, but its persistent base selector

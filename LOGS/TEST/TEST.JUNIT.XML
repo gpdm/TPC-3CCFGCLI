@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-10-03T21:56:25.996320+03:00" tests="177" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-10-03T22:42:08.996719+03:00" tests="177" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -389,9 +389,9 @@
 				<property name="artifact" value="ARTIFACT/T1110.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1111: Boot ROM capability gate: 3C509B-TPO rejects /BADDRESS+/BSIZE" classname="BOOTROM_CHANGE">
+		<testcase name="t1111: TPO adapters have no Boot ROM support" classname="BOOTROM_CHANGE">
 			<properties>
-				<property name="description" value="Boot ROM capability gate: 3C509B-TPO rejects /BADDRESS+/BSIZE"/>
+				<property name="description" value="TPO adapters have no Boot ROM support"/>
 				<property name="artifact" value="ARTIFACT/T1111.LOG"/>
 			</properties>
 		</testcase>
@@ -1067,9 +1067,9 @@
 				<property name="artifact" value="ARTIFACT/T1807.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1808: SAVECONFIG on 3C509-TP (ASIC rev. 1) emits only common properties" classname="3C509_REV1">
+		<testcase name="t1808: SAVECONFIG restores original 3C509 Boot ROM state" classname="3C509_REV1">
 			<properties>
-				<property name="description" value="SAVECONFIG on 3C509-TP (ASIC rev. 1) emits only common properties"/>
+				<property name="description" value="SAVECONFIG restores original 3C509 Boot ROM state"/>
 				<property name="artifact" value="ARTIFACT/T1808.LOG"/>
 			</properties>
 		</testcase>

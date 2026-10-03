@@ -2173,20 +2173,20 @@ PROC Save_Build_Command NEAR
     call    Save_Append_String
     jc      @@Fail
 
-    ; Boot ROM options are exported only where CONFIGURE can restore them:
-    ; a known 3C509B-generation adapter, excluding the 3C509B-TPO.  Every
-    ; other generation or product skips directly to transceiver export.
-    mov     al, [save_asic_rev]
-    cmp     al, 0FFh
-    je      @@Tr
-    cmp     al, 2
-    jb      @@Tr
+    ; Unknown generations and TPO products do not export Boot ROM options.
+    ; Original 3C509 selectors are interpreted from word 08h only; BRSV
+    ; semantics apply only to known 3C509B-generation adapters.
     mov     ax, [save_product_id]
     cmp     ax, PRODUCT_3C509_TPO
+    je      @@Tr
+    mov     al, [save_asic_rev]
+    cmp     al, 0FFh
     je      @@Tr
     mov     ax, [save_word08]
     and     ax, 0F00h              ; ROM Base selector (bits 11:8).
     jnz     @@HaveRom
+    cmp     [save_asic_rev], 2
+    jb      @@NoRom
     test    [save_word14], EEPROM_REVISION_INFO_BOOT_ROM_SIZE_VALID
     jz      @@NoRom
     mov     [save_error], SAVE_ERR_PNP_ROM
@@ -7789,6 +7789,12 @@ PROC Cfg_Txn_Execute NEAR
 
 @@BootRomCapabilityGate:
     mov     si, [cfg_selected_ptr]
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    cmp     ax, PRODUCT_3C509_TPO
+    jne     @@BootRomGenerationGate
+    mov     [cfg_last_error], CFG_ERR_BADDRESS_NOT_CAPABLE
+    jmp     @@Done
+@@BootRomGenerationGate:
     mov     al, [BYTE si + NIC_ASIC_REV]
     cmp     al, 2
     jb      @@Requested
@@ -7796,11 +7802,6 @@ PROC Cfg_Txn_Execute NEAR
     call    Get_Id_Eeprom_Snapshot
     mov     ax, [WORD di + ID_EEPROM_REVISION_INFO]
     mov     [cfg_txn_old_word14], ax
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    cmp     ax, PRODUCT_3C509_TPO
-    jne     @@Requested
-    mov     [cfg_last_error], CFG_ERR_BADDRESS_NOT_CAPABLE
-    jmp     @@Done
 
 @@Requested:
     test    [cfg_parse_flags], CFG_PARSE_TR
@@ -9119,6 +9120,10 @@ PROC Print_Boot_Rom_Value NEAR
     push    dx
     push    di
 
+    mov     ax, [WORD si + NIC_PRODUCT_ID]
+    cmp     ax, PRODUCT_3C509_TPO
+    je      @@NotSupported
+
     test    [ext_eeprom_valid], LIST_EEPROM_VALID_ADDR_CFG
     jz      @@Unavailable
     mov     ax, [ext_addr_cfg]
@@ -9132,9 +9137,6 @@ PROC Print_Boot_Rom_Value NEAR
     cmp     al, 2
     jb      @@CheckBase
     mov     ch, 1
-    mov     ax, [WORD si + NIC_PRODUCT_ID]
-    cmp     ax, PRODUCT_3C509_TPO
-    je      @@NotSupported
 
 @@CheckBase:
     mov     bx, [ext_addr_cfg]

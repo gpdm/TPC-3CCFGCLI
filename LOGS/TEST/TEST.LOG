@@ -124,7 +124,7 @@ Seed file created (INIT).
 [t1109] PASSED
 [t1110] /BADDRESS combined with /BSIZE:DISABLED is rejected
 [t1110] PASSED
-[t1111] Boot ROM capability gate: 3C509B-TPO rejects /BADDRESS+/BSIZE
+[t1111] TPO adapters have no Boot ROM support
 [t1111] PASSED
 [t1112] CONFIGURE /BSIZE:8 alone is rejected
 [t1112] PASSED
@@ -343,7 +343,7 @@ Seed file created (INIT).
 [t1806] PASSED
 [t1807] common CONFIGURE properties on 3C509-TP (ASIC revision 1)
 [t1807] PASSED
-[t1808] SAVECONFIG on 3C509-TP (ASIC rev. 1) emits only common properties
+[t1808] SAVECONFIG restores original 3C509 Boot ROM state
 [t1808] PASSED
 [t1809] 3C509 linear 32K Boot ROM configure succeeds
 [t1809] PASSED
