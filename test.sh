@@ -74,7 +74,7 @@ UV=$(command -v uv 2>/dev/null)
 # toggles: skipped steps are simply bypassed, disabled steps do not count
 # towards failure, and a failing enabled step still stops all later steps.
 # ---------------------------------------------------------------------------
-RUN_REGRESSIONS=${RUN_REGRESSIONS:-1}
+RUN_SMOKE=${RUN_SMOKE:-1}
 RUN_SAVECONFIG=${RUN_SAVECONFIG:-1}
 RUN_HWLIMIT=${RUN_HWLIMIT:-1}
 RUN_PIC=${RUN_PIC:-1}
@@ -91,10 +91,10 @@ RUN_PNPBIOS=${RUN_PNPBIOS:-1}
 [ ! -f ${TEST_LOG} ] && touch ${TEST_LOG}
 
 
-# General Regression Tests
+# General Smoke Regression Tests
 #
-test_regressions() {
-  echo Dispatching regression tests to DOSBox-X ...
+test_smoke() {
+  echo Dispatching smoke regression tests to DOSBox-X ...
   "${DOSBOX_BIN}" -conf "$( pwd )/autoexec-test" > /dev/null 2>&1
 
   grep -e "Smoke test: run completed" ${TEST_LOG} > /dev/null 2>&1 && return 0 || return 1
@@ -190,9 +190,9 @@ test_pic() {
   rm -f "$conf"
 
 
-  if grep -q '^\[t1901\] PASSED' "${TEST_LOG}" &&
-     grep -q '^\[t1902\] PASSED' "${TEST_LOG}" &&
-     grep -q '^\[t1903\] PASSED' "${TEST_LOG}"; then
+  if grep -q '^\[t9101\] PASSED' "${TEST_LOG}" &&
+     grep -q '^\[t9102\] PASSED' "${TEST_LOG}" &&
+     grep -q '^\[t9103\] PASSED' "${TEST_LOG}"; then
     echo "PC Interrupt Controller tests: run completed" >> "${TEST_LOG}"
     return 0
   fi
@@ -220,10 +220,10 @@ test_pnp_bios() {
   "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
   rm -f "$conf"
 
-  if grep -q '^\[t2001\] PASSED' "${TEST_LOG}" &&
-     grep -q '^\[t2002\] PASSED' "${TEST_LOG}" &&
-     grep -q '^\[t2003\] PASSED' "${TEST_LOG}" &&
-     grep -q '^\[t2004\] PASSED' "${TEST_LOG}"; then
+  if grep -q '^\[t9201\] PASSED' "${TEST_LOG}" &&
+     grep -q '^\[t9202\] PASSED' "${TEST_LOG}" &&
+     grep -q '^\[t9203\] PASSED' "${TEST_LOG}" &&
+     grep -q '^\[t9204\] PASSED' "${TEST_LOG}"; then
     echo "PnP BIOS tests: run completed" >> "${TEST_LOG}"
     return 0
   fi
@@ -278,7 +278,7 @@ run_step() {
 # run tests in sequence
 # chaining only on successful assertion of previous tests
 #
-run_step "${RUN_REGRESSIONS}" test_regressions &&
+run_step "${RUN_SMOKE}" test_smoke &&
   run_step "${RUN_SAVECONFIG}" test_saveconfig_line_lengths &&
   run_step "${RUN_HWLIMIT}" test_hwlimits &&
   run_step "${RUN_PIC}" test_pic &&
@@ -320,42 +320,67 @@ grep -q '^PnP BIOS tests: run completed' "${TEST_LOG}" && PNP_BIOS_FAIL=0
 
 # steps disabled via a RUN_* troubleshooting toggle were never run, so they
 # must not count as failures towards the overall result or exit code.
-[ "${RUN_REGRESSIONS}" != "1" ] && SMOKE_FAIL=0
+[ "${RUN_SMOKE}" != "1" ] && SMOKE_FAIL=0
 [ "${RUN_SAVECONFIG}" != "1" ] && SAVECONFIG_FAIL=0
 [ "${RUN_HWLIMIT}" != "1" ] && HWLIMIT_FAIL=0
 [ "${RUN_PIC}" != "1" ] && PIC_FAIL=0
 [ "${RUN_PNPBIOS}" != "1" ] && PNP_BIOS_FAIL=0
 
-# check defined vs. executed tests and see if we anyway
-# had a delta, which would indicate a failure.
-# this comparison is only meaningful if the regressions step actually ran.
-if [ "${RUN_REGRESSIONS}" = "1" ]; then
-  TESTS_DEFINED=$(grep -Ec '^t[0-9]{4}:' "$TEST_MK")
-  TESTS_PASSED=$(grep -Ec '\[t[0-9]{4}\]\sPASSED' "$TEST_LOG")
-  TESTS_FAILED=$(( TESTS_DEFINED != TESTS_PASSED ))
+# Check defined vs. executed tests per test group. A missing pass marker means
+# that a test failed or the group stopped before completing.
+if [ "${RUN_SMOKE}" = "1" ]; then
+  SMOKE_TESTS_DEFINED=$(grep -Ec '^t[0-8][0-9]{3}:' "$TEST_MK")
+  SMOKE_TESTS_PASSED=$(grep -Ec '\[t[0-8][0-9]{3}\][[:space:]]PASSED' "$TEST_LOG")
+  SMOKE_TESTS_FAILED=$(( SMOKE_TESTS_DEFINED != SMOKE_TESTS_PASSED ))
 else
-  TESTS_DEFINED=0
-  TESTS_PASSED=0
-  TESTS_FAILED=0
+  SMOKE_TESTS_DEFINED=0
+  SMOKE_TESTS_PASSED=0
+  SMOKE_TESTS_FAILED=0
+fi
+
+if [ "${RUN_PIC}" = "1" ]; then
+  PIC_TESTS_DEFINED=$(grep -Ec '^t91[0-9]{2}:' "$TEST_MK")
+  PIC_TESTS_PASSED=$(grep -Ec '\[t91[0-9]{2}\][[:space:]]PASSED' "$TEST_LOG")
+  PIC_TESTS_FAILED=$(( PIC_TESTS_DEFINED != PIC_TESTS_PASSED ))
+else
+  PIC_TESTS_DEFINED=0
+  PIC_TESTS_PASSED=0
+  PIC_TESTS_FAILED=0
+fi
+
+if [ "${RUN_PNPBIOS}" = "1" ]; then
+  PNP_BIOS_TESTS_DEFINED=$(grep -Ec '^t92[0-9]{2}:' "$TEST_MK")
+  PNP_BIOS_TESTS_PASSED=$(grep -Ec '\[t92[0-9]{2}\][[:space:]]PASSED' "$TEST_LOG")
+  PNP_BIOS_TESTS_FAILED=$(( PNP_BIOS_TESTS_DEFINED != PNP_BIOS_TESTS_PASSED ))
+else
+  PNP_BIOS_TESTS_DEFINED=0
+  PNP_BIOS_TESTS_PASSED=0
+  PNP_BIOS_TESTS_FAILED=0
 fi
 
 cat <<EOF | tee >> "${TEST_LOG}"
 
 Test summary
 ============
-Smoke Test                   : $( step_status "${RUN_REGRESSIONS}" "${SMOKE_FAIL}" "${TESTS_FAILED}" )
-    Defined Tests            : ${TESTS_DEFINED}
-    Executed Tests           : ${TESTS_PASSED}
-    Failed Tests             : $( [ "${RUN_REGRESSIONS}" != "1" ] && echo N/A || { (( TESTS_FAILED == 0 )) && echo NONE || echo YES; } )
+Smoke Test                   : $( step_status "${RUN_SMOKE}" "${SMOKE_FAIL}" "${SMOKE_TESTS_FAILED}" )
+    Defined Tests            : ${SMOKE_TESTS_DEFINED}
+    Executed Tests           : ${SMOKE_TESTS_PASSED}
+    Failed Tests             : $( [ "${RUN_SMOKE}" != "1" ] && echo N/A || { (( SMOKE_TESTS_FAILED == 0 )) && echo NONE || echo YES; } )
 SAVECONFIG Test              : $( step_status "${RUN_SAVECONFIG}" "${SAVECONFIG_FAIL}" )
 Hardware Limit Test          : $( step_status "${RUN_HWLIMIT}" "${HWLIMIT_FAIL}" )
-PC Interrupt Controller Test : $( step_status "${RUN_PIC}" "${PIC_FAIL}" )
-PnP BIOS Test                : $( step_status "${RUN_PNPBIOS}" "${PNP_BIOS_FAIL}" )
+PC Interrupt Controller Test : $( step_status "${RUN_PIC}" "${PIC_FAIL}" "${PIC_TESTS_FAILED}" )
+    Defined Tests            : ${PIC_TESTS_DEFINED}
+    Executed Tests           : ${PIC_TESTS_PASSED}
+    Failed Tests             : $( [ "${RUN_PIC}" != "1" ] && echo N/A || { (( PIC_TESTS_FAILED == 0 )) && echo NONE || echo YES; } )
+PnP BIOS Test                : $( step_status "${RUN_PNPBIOS}" "${PNP_BIOS_FAIL}" "${PNP_BIOS_TESTS_FAILED}" )
+    Defined Tests            : ${PNP_BIOS_TESTS_DEFINED}
+    Executed Tests           : ${PNP_BIOS_TESTS_PASSED}
+    Failed Tests             : $( [ "${RUN_PNPBIOS}" != "1" ] && echo N/A || { (( PNP_BIOS_TESTS_FAILED == 0 )) && echo NONE || echo YES; } )
 
-Overall result        : $( (( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + PNP_BIOS_FAIL + TESTS_FAILED > 0 )) && echo FAIL || echo PASS )
+Overall result        : $( (( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + PNP_BIOS_FAIL + SMOKE_TESTS_FAILED + PIC_TESTS_FAILED + PNP_BIOS_TESTS_FAILED > 0 )) && echo FAIL || echo PASS )
 
 EOF
 
 # emmit return code based on assertions of the individual tests.
 #
-exit $(( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + PNP_BIOS_FAIL + TESTS_FAILED > 0 ))
+exit $(( SMOKE_FAIL + SAVECONFIG_FAIL + PIC_FAIL + HWLIMIT_FAIL + PNP_BIOS_FAIL + SMOKE_TESTS_FAILED + PIC_TESTS_FAILED + PNP_BIOS_TESTS_FAILED > 0 ))
