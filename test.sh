@@ -143,12 +143,12 @@ test_hwlimits() {
   for memkb in 64 128 256; do
     local conf
     local log
-    conf=$(mktemp "/tmp/autoexec-testhwl-${memkb}.XXXXXX")
+    conf=$(mktemp "autoexec-testhwl-${memkb}.XXXXXX")
     log="${ARTIFACT_DIR}/HWL${memkb}.LOG"
 
     echo "Dispatching resource test with ${memkb} KB memory limit to DOSBox-X ..." >> "${TEST_LOG}"
     echo "[HWL${memkb}] 8086/8088 with ${memkb} KB memory limit" >> "${TEST_LOG}"
-    sed "s:__MEMKB__:${memkb}:g;s:MOUNT C\: .:MOUNT C\: $( pwd ):g" "${template}" > "${conf}"
+    sed "s:__MEMKB__:${memkb}:g" "${template}" > "${conf}"
     "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
     rm -f "$conf"
 
@@ -175,7 +175,7 @@ test_hwlimits() {
 #
 test_pic() {
   local conf
-  conf=$(mktemp "/tmp/autoexec-test-pic.XXXXXX")
+  conf=$(mktemp "autoexec-test-pic.XXXXXX")
   local template="autoexec-test"
 
   echo "Running PC Interrupt Controller tests ..." >> "${TEST_LOG}"
@@ -183,13 +183,21 @@ test_pic() {
   # clear old logs - if any ...
   find "${ARTIFACT_DIR}" -maxdepth 1 -type f -name 'PIC*.LOG' -exec rm -f {} \;
 
-  sed -e "s:CALL TEST:CALL TEST PIC_GATE:g;s:MOUNT C\: .:MOUNT C\: $( pwd ):g" -e $'/\\[dosbox\\]/a\\\nenable slave pic = false\\\nenable pc nmi mask = true\\\n' "${template}" > "${conf}"
+  sed -e "s:CALL TEST:CALL TEST PIC_GATE:g;" -e $'/\\[dosbox\\]/a\\\nenable slave pic = false\\\nenable pc nmi mask = true\\\n' "${template}" > "${conf}"
   echo "Dispatching tests to DOSBox-X ..." >> "${TEST_LOG}"
   "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
   # FIXME check return code for imminent fail
   rm -f "$conf"
 
-  echo "PC Interrupt Controller tests: run completed" >> "${TEST_LOG}"
+
+  if grep -q '^\[t1901\] PASSED' "${TEST_LOG}" &&
+     grep -q '^\[t1902\] PASSED' "${TEST_LOG}" &&
+     grep -q '^\[t1903\] PASSED' "${TEST_LOG}"; then
+    echo "PC Interrupt Controller tests: run completed" >> "${TEST_LOG}"
+    return 0
+  fi
+
+  return 1
 }
 
 # This test verifies behaviour with an ISA PnP BIOS actually present.
@@ -199,7 +207,7 @@ test_pic() {
 #
 test_pnp_bios() {
   local conf
-  conf=$(mktemp "/tmp/autoexec-test-pnp-bios.XXXXXX")
+  conf=$(mktemp "autoexec-test-pnp-bios.XXXXXX")
   local template="autoexec-test"
 
   echo "Running PnP BIOS tests ..." >> "${TEST_LOG}"
@@ -207,19 +215,41 @@ test_pnp_bios() {
   # Clear only artifacts owned by the PnP BIOS group.
   find "${ARTIFACT_DIR}" -maxdepth 1 -type f -name 'T20*.LOG' -exec rm -f {} \;
 
-  sed -e "s:CALL TEST:CALL TEST PNP_BIOS_GATE:g;s:MOUNT C\: .:MOUNT C\: $( pwd ):g" -e "s:isapnpbios = false:isapnpbios = true:g" "${template}" > "${conf}"
+  sed -e "s:CALL TEST:CALL TEST PNP_BIOS_GATE:g;" -e "s:isapnpbios = false:isapnpbios = true:g" "${template}" > "${conf}"
   echo "Dispatching tests to DOSBox-X ..." >> "${TEST_LOG}"
   "${DOSBOX_BIN}" -conf "${conf}" > /dev/null 2>&1
   rm -f "$conf"
 
   if grep -q '^\[t2001\] PASSED' "${TEST_LOG}" &&
      grep -q '^\[t2002\] PASSED' "${TEST_LOG}" &&
-     grep -q '^\[t2003\] PASSED' "${TEST_LOG}"; then
+     grep -q '^\[t2003\] PASSED' "${TEST_LOG}" &&
+     grep -q '^\[t2004\] PASSED' "${TEST_LOG}"; then
     echo "PnP BIOS tests: run completed" >> "${TEST_LOG}"
     return 0
   fi
 
   return 1
+}
+
+
+# formats a step's summary status: SKIPPED if disabled via its RUN_*
+# toggle, otherwise SUCCESS/FAILED based on the step's fail flag(s).
+step_status() {
+  local enabled="$1"
+  shift
+  local fail_sum=0
+  local f
+
+  if [ "${enabled}" != "1" ]; then
+    echo SKIPPED
+    return 0
+  fi
+
+  for f in "$@"; do
+    fail_sum=$(( fail_sum + f ))
+  done
+
+  (( fail_sum == 0 )) && echo SUCCESS || echo FAILED
 }
 
 
@@ -308,26 +338,6 @@ else
   TESTS_PASSED=0
   TESTS_FAILED=0
 fi
-
-# formats a step's summary status: SKIPPED if disabled via its RUN_*
-# toggle, otherwise SUCCESS/FAILED based on the step's fail flag(s).
-step_status() {
-  local enabled="$1"
-  shift
-  local fail_sum=0
-  local f
-
-  if [ "${enabled}" != "1" ]; then
-    echo SKIPPED
-    return 0
-  fi
-
-  for f in "$@"; do
-    fail_sum=$(( fail_sum + f ))
-  done
-
-  (( fail_sum == 0 )) && echo SUCCESS || echo FAILED
-}
 
 cat <<EOF | tee >> "${TEST_LOG}"
 

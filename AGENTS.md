@@ -324,6 +324,30 @@ The test infrastructure performs its own required cleanup.
 
 If stale state is suspected, investigate the cause rather than changing the normal validation invocation.
 
+### 5.5.1 Exception to Script invocation rules
+
+`test.sh` support specific environment vars, which are useful for debugging of the test harness.
+
+You are not allowed to use this by yourself unless you ask for specific permission, or are specifically instructed to do so by the operator.
+
+Currently implemented vars for enabling or disabling specific tests include:
+
+`RUN_REGRESSIONS`
+`RUN_SAVECONFIG`
+`RUN_HWLIMIT`
+`RUN_PIC`
+`RUN_PNPBIOS`
+
+Without vars, all regression tests are run by default.
+
+Disabling selected tests mnay be reqired to debug specific parts of the test harness only, e.g. for issues with the DOSBox-X environment.
+
+A debugging invocation may look like this:
+
+```text
+RUN_REGRESSIONS=0 RUN_SAVECONFIG=0 RUN_HWLIMIT=0 RUN_PIC=1 RUN_PNPBIOS=0 ./test.sh
+```
+
 ### 5.6 Log handling
 
 `build.sh` emits the contents of `BUILD.LOG` as part of its normal output.
