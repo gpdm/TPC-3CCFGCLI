@@ -204,7 +204,6 @@ CFG_ERR_INT_REQUIRES_SLAVE_PIC EQU 47
 CFG_ERR_PNP_BIOS_REQUIRED EQU 48
 CFG_ERR_PNP_ROM_ADDRESS_REQUIRED EQU 49
 CFG_ERR_BOOTROM_PROBE EQU 50
-CFG_ERR_BOOTROM_REV1_PROBE_UNSUPPORTED EQU 51
 
 DATASEG
 
@@ -287,7 +286,6 @@ msg_cfg_pnp_bios_gate_error DB "/PNP:ENABLED requires a PnP BIOS;", 0Dh, 0Ah
                             DB "none detected.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_rom_address_required DB "Disabling PnP ROM requires /BADDRESS and /BSIZE.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_probe_fail DB "Boot ROM probe failed; PnP unchanged.", 0Dh, 0Ah, '$'
-msg_cfg_bootrom_rev1_probe_unsupported DB "Boot ROM mapping cannot be safely validated on a 3C509 adapter.", 0Dh, 0Ah, '$'
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
 msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER.", 0Dh, 0Ah, '$'
@@ -864,7 +862,6 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_pnp_bios_gate_error           ; 48 CFG_ERR_PNP_BIOS_REQUIRED
     DW      OFFSET msg_cfg_pnp_rom_address_required      ; 49 CFG_ERR_PNP_ROM_ADDRESS_REQUIRED
     DW      OFFSET msg_cfg_bootrom_probe_fail             ; 50 CFG_ERR_BOOTROM_PROBE
-    DW      OFFSET msg_cfg_bootrom_rev1_probe_unsupported ; 51 CFG_ERR_BOOTROM_REV1_PROBE_UNSUPPORTED
 LABEL cfg_error_messages_end WORD
 
 CFG_ERR_COUNT   = (cfg_error_messages_end - cfg_error_messages) / 2
@@ -3303,11 +3300,11 @@ PROC Cfg_Handle_BSIZE NEAR
     ret
 ENDP Cfg_Handle_BSIZE
 
-; Verbose-only diagnostic.  Dumps the first 16 bytes of the already selected
-; Boot ROM page 0 as hexadecimal values on one labelled line.
+; Verbose-only diagnostic. Dumps the first 16 bytes from ROM offset zero as
+; hexadecimal values on one labelled line.
 ;
 ; Input:  DX = adapter I/O base, ES:BX = Boot ROM aperture base,
-;         ROM page 0 already selected.
+;         ROM offset zero visible (3C509B page 0 or 3C509 linear aperture).
 ; Output: None.  Purely diagnostic; the ROM is read through the existing
 ;         Nic_Rom_Read_Byte abstraction only.
 ; Preserves all registers and FLAGS, so the caller's ROM address, I/O base
@@ -3351,7 +3348,8 @@ ENDP Cfg_Dump_Boot_ROM_Header
 ; Input:  DX = adapter I/O base, ES:BX = Boot ROM aperture base,
 ;         CX = configured Boot ROM size in bytes.
 ; Output: CF clear = valid ROM, CF set = invalid or inaccessible ROM.
-; Preserves all registers. Page 0 is selected before return.
+; Preserves all registers. 3C509B page 0 is selected before return; 3C509
+; has no ROM Page mechanism and is read linearly.
 PROC Cfg_Probe_Boot_ROM NEAR
     push    ax
     push    bx
@@ -3360,8 +3358,14 @@ PROC Cfg_Probe_Boot_ROM NEAR
     push    si
     push    di
 
+    push    si
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    pop     si
+    jb      @@InitialPageSelected
     xor     al, al
     call    Nic_Rom_Set_Page
+@@InitialPageSelected:
 
     ; Optional verbose header dump.  The test gates the 16 diagnostic ROM
     ; reads themselves, not merely their output, so a non-verbose run
@@ -3414,6 +3418,11 @@ PROC Cfg_Probe_Boot_ROM NEAR
     jnz     @@Next
     cmp     cx, 1
     jbe     @@Next
+    push    si
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    pop     si
+    jb      @@Next
     mov     al, 1
     call    Nic_Rom_Set_Page
     sub     bx, 4000h
@@ -3429,8 +3438,12 @@ PROC Cfg_Probe_Boot_ROM NEAR
     stc
 @@Done:
     pushf
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jb      @@RestorePageDone
     xor     al, al
     call    Nic_Rom_Set_Page
+@@RestorePageDone:
     popf
     pop     di
     pop     si
@@ -5758,9 +5771,10 @@ ENDP Cfg_Prepare_Boot_ROM
 ; Runs before Cfg_Txn_Probe_Boot_ROM maps the adapter ROM, so the bytes seen
 ; still belong to whatever already occupies that range.
 ;
-; Strictly read only: no host byte is written, no RAM test is performed, no
-; BIOS reservation is attempted, and no device is touched.  The classification
-; is a conservative heuristic; an all-FFh range only appears unused.
+; Read-only: no host memory is written, no RAM test or BIOS reservation is
+; attempted, and the preflight itself performs no I/O port access. Memory
+; reads may still be answered by mapped hardware.
+; The classification is a conservative heuristic; all-FFh only appears unused.
 ;
 ; The result is reported only.  It never changes staging, probing, commit or
 ; rollback behavior and never fails the transaction.
@@ -5815,6 +5829,11 @@ PROC Cfg_Preflight_Boot_ROM_Memory NEAR
     je      @@HaveLength
     mov     cx, 8000h
     mov     di, 800h
+    mov     si, [cfg_selected_ptr]
+    cmp     [BYTE si + NIC_ASIC_REV], 2
+    jb      @@HaveLength
+    mov     cx, 4000h
+    mov     di, 400h
 @@HaveLength:
     add     di, bx
 
@@ -8044,13 +8063,6 @@ PROC Cfg_Txn_Execute NEAR
 @@DetectChanges:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@DetectChangesNow
-    mov     si, [cfg_selected_ptr]
-    cmp     [BYTE si + NIC_ASIC_REV], 2
-    jae     @@ProbeBootRom
-    mov     [cfg_last_error], CFG_ERR_BOOTROM_REV1_PROBE_UNSUPPORTED
-    stc
-    jmp     @@Done
-@@ProbeBootRom:
     ; Informational read-only host memory preflight of the requested
     ; aperture, before the adapter Boot ROM is mapped there.
     call    Cfg_Preflight_Boot_ROM_Memory

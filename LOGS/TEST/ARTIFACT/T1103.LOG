@@ -7,7 +7,7 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 BADDRESS parameter accepted. Requested base address: D0000H
 BSIZE parameter accepted. Requested size: 32K
-Memory range D0000-D7FFF appears occupied.
+Memory range D0000-D3FFF appears occupied.
 WARNING: Boot ROM mapping may conflict with existing memory.
 
 Configuration completed successfully.

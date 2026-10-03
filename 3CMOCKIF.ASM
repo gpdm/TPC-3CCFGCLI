@@ -2145,8 +2145,9 @@ PROC Nic_Rom_Read_Byte NEAR
     jae     @@ReturnFF
 
 @@ApertureOk:
-    ; AX is the valid offset within the 16K visible window (0..3FFFh)
-    mov     cx, ax                  ; CX = window offset (0..3FFFh)
+    ; AX is within the generation-specific visible aperture:
+    ; 8K, 16K, 3C509 32K linear, or 3C509B 16K paged.
+    mov     cx, ax                  ; CX = ROM offset within that aperture
     mov     dl, [byte mock_rom_page]
     mov     al, [byte mock_rom_size]
 

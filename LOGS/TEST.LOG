@@ -389,10 +389,7 @@ Dispatching tests to DOSBox-X ...
 [t9203] enabled Boot ROM becomes PnP-managed with a PnP BIOS
 [t9203] PASSED
 [t9204] Boot ROM preflight reports an occupied range
-[t9204] PASSED
-PnP BIOS tests: run completed
 Rendering test results as JUnit XML ...
-JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 
 Test summary
 ============
@@ -406,10 +403,10 @@ PC Interrupt Controller Test : SUCCESS
     Defined Tests            : 3
     Executed Tests           : 3
     Failed Tests             : NONE
-PnP BIOS Test                : SUCCESS
+PnP BIOS Test                : FAILED
     Defined Tests            : 4
-    Executed Tests           : 4
-    Failed Tests             : NONE
+    Executed Tests           : 3
+    Failed Tests             : YES
 
-Overall result        : PASS
+Overall result        : FAIL
 

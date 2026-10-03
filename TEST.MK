@@ -89,17 +89,17 @@ VERIFICATION_CONTROL_FLOW: t17xx t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708
 # Base: 1800
 3C509_REV1: t18xx t1801 t1802 t1803 t1804 t1805 t1806 t1807 t1808 t1809 t1810
 
-# Base: 1900
+# Base: 9100
 # NOTE: This group is deliberately not included in smoke-core.
 #       It will be called up during standalone tests from test.sh.
-PIC_GATE: t19xx t1901 t1902 t1903
+PIC_GATE: t91xx t9101 t9102 t9103
 
-# Base: 2000
+# Base: 9200
 # NOTE: This group is deliberately not included in smoke-core.
 #       It is called up during a standalone test.sh run with isapnpbios
 #       flipped to true; the normal smoke regression intentionally retains
 #       isapnpbios = false as its baseline.
-PNP_BIOS_GATE: t20xx t2001 t2002 t2003 t2004
+PNP_BIOS_GATE: t92xx t9201 t9202 t9203 t9204
 
 # Imported hardware compliance SET verification.
 # NOTE: This group is deliberately not included in smoke-core.
@@ -1918,11 +1918,13 @@ t1804:
    @echo [t1804] PASSED  >> $(TESTLOG)
 
 t1805:
-   @echo [t1805] valid 8K ROM request stops before 3C509 probe >> $(TESTLOG)
-   ${SEEDAPP} 3C509-TP > $(ARTIFACTS)\T1805.LOG
+   @echo [t1805] 3C509 8K Boot ROM configure succeeds >> $(TESTLOG)
+   ${SEEDAPP} 3C509-TP /ROM:8 > $(ARTIFACTS)\T1805.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C2000 /BSIZE:8 >> $(ARTIFACTS)\T1805.LOG
-   FIND "cannot be safely validated" $(ARTIFACTS)\T1805.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "Invalid" $(ARTIFACTS)\T1805.LOG
+   FIND "Configuration completed" $(ARTIFACTS)\T1805.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1805.LOG
+   FIND "Boot ROM = 8K at C2000H" $(ARTIFACTS)\T1805.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "cannot be safely validated" $(ARTIFACTS)\T1805.LOG
    @echo [t1805] PASSED  >> $(TESTLOG)
 
 t1806:
@@ -1968,11 +1970,13 @@ t1808:
    @echo [t1808] PASSED  >> $(TESTLOG)
 
 t1809:
-   @echo [t1809] 3C509 accepts aligned 32K C0000 preparation >> $(TESTLOG)
-   ${SEEDAPP} 3C509-TP > $(ARTIFACTS)\T1809.LOG
+   @echo [t1809] 3C509 linear 32K Boot ROM configure succeeds >> $(TESTLOG)
+   ${SEEDAPP} 3C509-TP /ROM:32 > $(ARTIFACTS)\T1809.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:32 >> $(ARTIFACTS)\T1809.LOG
-   FIND "cannot be safely validated" $(ARTIFACTS)\T1809.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "Invalid" $(ARTIFACTS)\T1809.LOG
+   FIND "Configuration completed" $(ARTIFACTS)\T1809.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T1809.LOG
+   FIND "Boot ROM = 32K at C0000H" $(ARTIFACTS)\T1809.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "cannot be safely validated" $(ARTIFACTS)\T1809.LOG
    @echo [t1809] PASSED  >> $(TESTLOG)
 
 t1810:
@@ -1983,83 +1987,83 @@ t1810:
    CALL $(ASSERTERS)\NFIND.BAT "cannot be safely validated" $(ARTIFACTS)\T1810.LOG
    @echo [t1810] PASSED  >> $(TESTLOG)
 
-t19xx:
-   @echo [t19xx] PIC_GATE:Verify IRQ gate behaviour on a single PIC system  >> $(TESTLOG)
+t91xx:
+   @echo [t91xx] PIC_GATE:Verify IRQ gate behaviour on a single PIC system  >> $(TESTLOG)
 
-t1901:
-   @echo [t1901] single PIC permits low IRQ without warning  >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1901.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 >> $(ARTIFACTS)\T1901.LOG
-   FIND "Configuration completed" $(ARTIFACTS)\T1901.LOG > NUL
-   CALL $(ASSERTERS)\NFIND.BAT "secondary interrupt controller" $(ARTIFACTS)\T1901.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1901.LOG
-   FIND "IRQ = 5" $(ARTIFACTS)\T1901.LOG > NUL
-   @echo [t1901] PASSED  >> $(TESTLOG)
+t9101:
+   @echo [t9101] single PIC permits low IRQ without warning  >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T9101.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 >> $(ARTIFACTS)\T9101.LOG
+   FIND "Configuration completed" $(ARTIFACTS)\T9101.LOG > NUL
+   CALL $(ASSERTERS)\NFIND.BAT "secondary interrupt controller" $(ARTIFACTS)\T9101.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T9101.LOG
+   FIND "IRQ = 5" $(ARTIFACTS)\T9101.LOG > NUL
+   @echo [t9101] PASSED  >> $(TESTLOG)
 
-t1902:
-   @echo [t1902] single PIC warns but permits high IRQ  >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1902.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 >> $(ARTIFACTS)\T1902.LOG
-   FIND "WARNING: IRQ 9 requires a secondary interrupt controller," $(ARTIFACTS)\T1902.LOG > NUL
-   FIND "but no secondary PIC was detected on this system." $(ARTIFACTS)\T1902.LOG > NUL
-   FIND "Configuration completed" $(ARTIFACTS)\T1902.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1902.LOG
-   FIND "IRQ = 9" $(ARTIFACTS)\T1902.LOG > NUL
-   @echo [t1902] PASSED  >> $(TESTLOG)
+t9102:
+   @echo [t9102] single PIC warns but permits high IRQ  >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T9102.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 >> $(ARTIFACTS)\T9102.LOG
+   FIND "WARNING: IRQ 9 requires a secondary interrupt controller," $(ARTIFACTS)\T9102.LOG > NUL
+   FIND "but no secondary PIC was detected on this system." $(ARTIFACTS)\T9102.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T9102.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T9102.LOG
+   FIND "IRQ = 9" $(ARTIFACTS)\T9102.LOG > NUL
+   @echo [t9102] PASSED  >> $(TESTLOG)
 
-t1903:
-   @echo [t1903] LIST reports a single PIC  >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1903.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1903.LOG
-   FIND "Host System:" $(ARTIFACTS)\T1903.LOG > NUL
-   FIND "Interrupt Controllers = 1 PIC" $(ARTIFACTS)\T1903.LOG > NUL
-   @echo [t1903] PASSED  >> $(TESTLOG)
+t9103:
+   @echo [t9103] LIST reports a single PIC  >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T9103.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T9103.LOG
+   FIND "Host System:" $(ARTIFACTS)\T9103.LOG > NUL
+   FIND "Interrupt Controllers = 1 PIC" $(ARTIFACTS)\T9103.LOG > NUL
+   @echo [t9103] PASSED  >> $(TESTLOG)
 
-t20xx:
-   @echo [t20xx] PNP_BIOS_GATE: Verify present PnP BIOS behaviour  >> $(TESTLOG)
+t92xx:
+   @echo [t92xx] PNP_BIOS_GATE: Verify present PnP BIOS behaviour  >> $(TESTLOG)
 
-t2001:
-   @echo [t2001] /PNP:ENABLED succeeds with a PnP BIOS present  >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T2001S.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED > $(ARTIFACTS)\T2001D.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED > $(ARTIFACTS)\T2001.LOG
-   FIND "PNP parameter accepted. Requested Plug and Play mode: enabled" $(ARTIFACTS)\T2001.LOG > NUL
-   FIND "Configuration completed" $(ARTIFACTS)\T2001.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T2001.LOG
-   FIND "Plug and Play = enabled" $(ARTIFACTS)\T2001.LOG > NUL
-   @echo [t2001] PASSED  >> $(TESTLOG)
+t9201:
+   @echo [t9201] /PNP:ENABLED succeeds with a PnP BIOS present  >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T9201.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED > $(ARTIFACTS)\T9201.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED > $(ARTIFACTS)\T9201.LOG
+   FIND "PNP parameter accepted. Requested Plug and Play mode: enabled" $(ARTIFACTS)\T9201.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T9201.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T9201.LOG
+   FIND "Plug and Play = enabled" $(ARTIFACTS)\T9201.LOG > NUL
+   @echo [t9201] PASSED  >> $(TESTLOG)
 
-t2002:
-   @echo [t2002] LIST reports a detected PnP BIOS  >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T2002.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T2002.LOG
-   FIND "Host System:" $(ARTIFACTS)\T2002.LOG > NUL
-   FIND "Plug and Play BIOS = detected" $(ARTIFACTS)\T2002.LOG > NUL
-   FIND "3Com 3C509B-TP:" $(ARTIFACTS)\T2002.LOG > NUL
-   @echo [t2002] PASSED  >> $(TESTLOG)
+t9202:
+   @echo [t9202] LIST reports a detected PnP BIOS  >> $(TESTLOG)
+   ${SEEDAPP} INIT > $(ARTIFACTS)\T9202.LOG
+   $(BINAPP) LIST >> $(ARTIFACTS)\T9202.LOG
+   FIND "Host System:" $(ARTIFACTS)\T9202.LOG > NUL
+   FIND "Plug and Play BIOS = detected" $(ARTIFACTS)\T9202.LOG > NUL
+   FIND "3Com 3C509B-TP:" $(ARTIFACTS)\T9202.LOG > NUL
+   @echo [t9202] PASSED  >> $(TESTLOG)
 
-t2003:
-   @echo [t2003] enabled Boot ROM becomes PnP-managed with a PnP BIOS  >> $(TESTLOG)
-   ${SEEDAPP} INIT /ROM:16 > $(ARTIFACTS)\T2003.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T2003.LOG
-   FIND "Configuration completed" $(ARTIFACTS)\T2003.LOG > NUL
-   FIND "EEPROM Boot ROM base address verified." $(ARTIFACTS)\T2003.LOG > NUL
-   FIND "EEPROM Boot ROM size verified." $(ARTIFACTS)\T2003.LOG > NUL
-   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T2003.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T2003.LOG
-   FIND "Boot ROM = 16K awaiting PnP resource assignment" $(ARTIFACTS)\T2003.LOG > NUL
-   @echo [t2003] PASSED  >> $(TESTLOG)
+t9203:
+   @echo [t9203] enabled Boot ROM becomes PnP-managed with a PnP BIOS  >> $(TESTLOG)
+   ${SEEDAPP} INIT /ROM:16 > $(ARTIFACTS)\T9203.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T9203.LOG
+   FIND "Configuration completed" $(ARTIFACTS)\T9203.LOG > NUL
+   FIND "EEPROM Boot ROM base address verified." $(ARTIFACTS)\T9203.LOG > NUL
+   FIND "EEPROM Boot ROM size verified." $(ARTIFACTS)\T9203.LOG > NUL
+   FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T9203.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T9203.LOG
+   FIND "Boot ROM = 16K awaiting PnP resource assignment" $(ARTIFACTS)\T9203.LOG > NUL
+   @echo [t9203] PASSED  >> $(TESTLOG)
 
-t2004:
-   @echo [t2004] Boot ROM preflight reports an occupied range  >> $(TESTLOG)
-   ${SEEDAPP} INIT /ROM:32 > $(ARTIFACTS)\T2004.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:32 >> $(ARTIFACTS)\T2004.LOG
-   FIND "C0000-C7FFF appears occupied." $(ARTIFACTS)\T2004.LOG > NUL
-   FIND "WARNING: Boot ROM mapping may conflict" $(ARTIFACTS)\T2004.LOG > NUL
-   FIND "Configuration completed" $(ARTIFACTS)\T2004.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T2004.LOG
-   FIND "Boot ROM = 32K awaiting PnP resource" $(ARTIFACTS)\T2004.LOG > NUL
-   @echo [t2004] PASSED  >> $(TESTLOG)
+t9204:
+   @echo [t9204] Boot ROM preflight reports an occupied range  >> $(TESTLOG)
+   ${SEEDAPP} INIT /ROM:32 > $(ARTIFACTS)\T9204.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:32 >> $(ARTIFACTS)\T9204.LOG
+   FIND "C0000-C3FFF appears occupied." $(ARTIFACTS)\T9204.LOG > NUL
+   FIND "WARNING: Boot ROM mapping may conflict" $(ARTIFACTS)\T9204.LOG > NUL
+   FIND "Configuration completed" $(ARTIFACTS)\T9204.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T9204.LOG
+   FIND "Boot ROM = 32K awaiting PnP resource assignment" $(ARTIFACTS)\T9204.LOG > NUL
+   @echo [t9204] PASSED  >> $(TESTLOG)
 
 # Hardware compliance SET verification.
 #

@@ -332,7 +332,7 @@ You are not allowed to use this by yourself unless you ask for specific permissi
 
 Currently implemented vars for enabling or disabling specific tests include:
 
-`RUN_REGRESSIONS`
+`RUN_SMOKE`
 `RUN_SAVECONFIG`
 `RUN_HWLIMIT`
 `RUN_PIC`
@@ -345,7 +345,7 @@ Disabling selected tests mnay be reqired to debug specific parts of the test har
 A debugging invocation may look like this:
 
 ```text
-RUN_REGRESSIONS=0 RUN_SAVECONFIG=0 RUN_HWLIMIT=0 RUN_PIC=1 RUN_PNPBIOS=0 ./test.sh
+RUN_SMOKE=0 RUN_SAVECONFIG=0 RUN_HWLIMIT=0 RUN_PIC=1 RUN_PNPBIOS=0 ./test.sh
 ```
 
 ### 5.6 Log handling

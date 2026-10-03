@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-10-03T01:42:32.869309+03:00" tests="177" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-10-03T21:56:25.996320+03:00" tests="177" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -1049,9 +1049,9 @@
 				<property name="artifact" value="ARTIFACT/T1804.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1805: valid 8K ROM request stops before 3C509 probe" classname="3C509_REV1">
+		<testcase name="t1805: 3C509 8K Boot ROM configure succeeds" classname="3C509_REV1">
 			<properties>
-				<property name="description" value="valid 8K ROM request stops before 3C509 probe"/>
+				<property name="description" value="3C509 8K Boot ROM configure succeeds"/>
 				<property name="artifact" value="ARTIFACT/T1805.LOG"/>
 			</properties>
 		</testcase>
@@ -1073,9 +1073,9 @@
 				<property name="artifact" value="ARTIFACT/T1808.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1809: 3C509 accepts aligned 32K C0000 preparation" classname="3C509_REV1">
+		<testcase name="t1809: 3C509 linear 32K Boot ROM configure succeeds" classname="3C509_REV1">
 			<properties>
-				<property name="description" value="3C509 accepts aligned 32K C0000 preparation"/>
+				<property name="description" value="3C509 linear 32K Boot ROM configure succeeds"/>
 				<property name="artifact" value="ARTIFACT/T1809.LOG"/>
 			</properties>
 		</testcase>
@@ -1088,55 +1088,55 @@
 	</testsuite>
 	<testsuite name="PIC_GATE: Verify IRQ gate behaviour on a single PIC system" tests="3" errors="0" failures="0" skipped="0" time="0">
 		<properties>
-			<property name="header_id" value="t19xx"/>
+			<property name="header_id" value="t91xx"/>
 			<property name="description" value="Verify IRQ gate behaviour on a single PIC system"/>
 		</properties>
-		<testcase name="t1901: single PIC permits low IRQ without warning" classname="PIC_GATE">
+		<testcase name="t9101: single PIC permits low IRQ without warning" classname="PIC_GATE">
 			<properties>
 				<property name="description" value="single PIC permits low IRQ without warning"/>
-				<property name="artifact" value="ARTIFACT/T1901.LOG"/>
+				<property name="artifact" value="ARTIFACT/T9101.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1902: single PIC warns but permits high IRQ" classname="PIC_GATE">
+		<testcase name="t9102: single PIC warns but permits high IRQ" classname="PIC_GATE">
 			<properties>
 				<property name="description" value="single PIC warns but permits high IRQ"/>
-				<property name="artifact" value="ARTIFACT/T1902.LOG"/>
+				<property name="artifact" value="ARTIFACT/T9102.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1903: LIST reports a single PIC" classname="PIC_GATE">
+		<testcase name="t9103: LIST reports a single PIC" classname="PIC_GATE">
 			<properties>
 				<property name="description" value="LIST reports a single PIC"/>
-				<property name="artifact" value="ARTIFACT/T1903.LOG"/>
+				<property name="artifact" value="ARTIFACT/T9103.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>
 	<testsuite name="PNP_BIOS_GATE: Verify present PnP BIOS behaviour" tests="4" errors="0" failures="0" skipped="0" time="0">
 		<properties>
-			<property name="header_id" value="t20xx"/>
+			<property name="header_id" value="t92xx"/>
 			<property name="description" value="Verify present PnP BIOS behaviour"/>
 		</properties>
-		<testcase name="t2001: /PNP:ENABLED succeeds with a PnP BIOS present" classname="PNP_BIOS_GATE">
+		<testcase name="t9201: /PNP:ENABLED succeeds with a PnP BIOS present" classname="PNP_BIOS_GATE">
 			<properties>
 				<property name="description" value="/PNP:ENABLED succeeds with a PnP BIOS present"/>
-				<property name="artifact" value="ARTIFACT/T2001.LOG"/>
+				<property name="artifact" value="ARTIFACT/T9201.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t2002: LIST reports a detected PnP BIOS" classname="PNP_BIOS_GATE">
+		<testcase name="t9202: LIST reports a detected PnP BIOS" classname="PNP_BIOS_GATE">
 			<properties>
 				<property name="description" value="LIST reports a detected PnP BIOS"/>
-				<property name="artifact" value="ARTIFACT/T2002.LOG"/>
+				<property name="artifact" value="ARTIFACT/T9202.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t2003: enabled Boot ROM becomes PnP-managed with a PnP BIOS" classname="PNP_BIOS_GATE">
+		<testcase name="t9203: enabled Boot ROM becomes PnP-managed with a PnP BIOS" classname="PNP_BIOS_GATE">
 			<properties>
 				<property name="description" value="enabled Boot ROM becomes PnP-managed with a PnP BIOS"/>
-				<property name="artifact" value="ARTIFACT/T2003.LOG"/>
+				<property name="artifact" value="ARTIFACT/T9203.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t2004: Boot ROM preflight reports an occupied range" classname="PNP_BIOS_GATE">
+		<testcase name="t9204: Boot ROM preflight reports an occupied range" classname="PNP_BIOS_GATE">
 			<properties>
 				<property name="description" value="Boot ROM preflight reports an occupied range"/>
-				<property name="artifact" value="ARTIFACT/T2004.LOG"/>
+				<property name="artifact" value="ARTIFACT/T9204.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>

@@ -7,7 +7,7 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 BADDRESS parameter accepted. Requested base address: C4000H
 BSIZE parameter accepted. Requested size: 32K
-Memory range C4000-CBFFF appears occupied.
+Memory range C4000-C7FFF appears occupied.
 WARNING: Boot ROM mapping may conflict with existing memory.
 
 Configuration completed successfully.
