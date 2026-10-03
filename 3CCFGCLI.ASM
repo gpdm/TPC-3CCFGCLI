@@ -2215,8 +2215,6 @@ PROC Save_Build_Command NEAR
     ; 3C509B generation.  FFh means unknown and is not treated as 3C509B.
     xor     ch, ch
     mov     al, [save_asic_rev]
-    cmp     al, 0FFh
-    je      @@HaveGenerationFlag
     cmp     al, 2
     jb      @@HaveGenerationFlag
     mov     ch, 1
@@ -5785,29 +5783,57 @@ PROC Cfg_Preflight_Boot_ROM_Memory NEAR
     push    di
     push    es
 
-    ; An exact, unchanged active Boot ROM mapping of the selected adapter
-    ; would otherwise be reported as foreign occupancy.  Skip the preflight
-    ; in that case, because the bytes in the range are this adapter's own ROM.
-    ; The temporary selector substitution matches Cfg_Txn_Probe_Boot_ROM.
+    ; An unchanged active Boot ROM mapping of the selected adapter would
+    ; otherwise be reported as foreign occupancy. Compare its effective
+    ; selector with the request, because aligned sizes have selector aliases.
+    mov     ax, [cfg_txn_old_live06]
+    mov     cl, 12
+    shr     ax, cl
+    and     ax, 0003h
+    cmp     al, [cfg_bsize_value]
+    jne     @@RunPreflight
+
+    mov     di, 8
+    cmp     [cfg_bsize_value], 0
+    je      @@HaveRomSize
+    mov     di, 16
+    cmp     [cfg_bsize_value], 1
+    je      @@HaveRomSize
+    mov     di, 32
+@@HaveRomSize:
+    xor     ch, ch
+    mov     si, [cfg_selected_ptr]
+    mov     al, [BYTE si + NIC_ASIC_REV]
+    cmp     al, 0FFh
+    je      @@HaveGenerationFlag
+    cmp     al, 2
+    jb      @@HaveGenerationFlag
+    mov     ch, 1
+@@HaveGenerationFlag:
+
     xor     ax, ax
     mov     al, [cfg_baddress_value]
     or      al, al
-    jnz     @@HaveSelector
+    jnz     @@HaveRequestedSelector
     inc     al
-@@HaveSelector:
-    mov     ah, al
-    xor     al, al
-    mov     bx, ax
-    xor     ax, ax
-    mov     al, [cfg_bsize_value]
-    mov     cl, 12
-    shl     ax, cl
-    or      ax, bx
-    mov     bx, [cfg_txn_old_live06]
-    and     bx, 3F00h
-    cmp     ax, bx
-    je      @@Done
+@@HaveRequestedSelector:
+    xor     bx, bx
+    mov     bl, al
+    call    Normalize_Boot_Rom_Selector
+    mov     dx, bx
 
+    mov     bx, [cfg_txn_old_live06]
+    and     bx, 0F00h
+    mov     bl, bh
+    xor     bh, bh
+    or      bx, bx
+    jz      @@RunPreflight
+    call    Normalize_Boot_Rom_Selector
+    cmp     bx, dx
+    jne     @@RunPreflight
+    jmp     @@Done
+
+@@RunPreflight:
     ; Aperture segment and length, derived exactly like the temporary mapping
     ; that Cfg_Txn_Probe_Boot_ROM builds from the same parsed request.
     xor     ax, ax
