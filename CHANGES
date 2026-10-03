@@ -9,6 +9,7 @@ Changelog 0.8.2
   - Made the verbose Boot ROM header label generation-neutral.
   - Simplified Boot ROM generation handling and normalized active-mapping preflight checks.
   - Implement Boot ROM probe boundary explicit across 16K blocks.
+  - Accepted valid Option ROM image lengths that fit within the configured Boot ROM mapping.
 
 Changelog 0.8.1
   - Added an optional Boot ROM diagnostic: with /VERBOSE, the Boot ROM probe

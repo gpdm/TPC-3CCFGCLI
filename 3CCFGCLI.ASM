@@ -3379,22 +3379,13 @@ PROC Cfg_Probe_Boot_ROM NEAR
     jne     @@Invalid
     inc     bx
     call    Nic_Rom_Read_Byte
-    cmp     al, 10h
-    je      @@HeaderSizeValid
-    cmp     al, 20h
-    je      @@HeaderSizeValid
+    or      al, al
+    jz      @@Invalid
     cmp     al, 40h
-    jne     @@Invalid
+    ja      @@Invalid
 @@HeaderSizeValid:
-    xor     ah, ah
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
-    shl     ax, 1
+    mov     ah, al
+    xor     al, al
     shl     ax, 1
     cmp     ax, cx
     ja      @@Invalid
