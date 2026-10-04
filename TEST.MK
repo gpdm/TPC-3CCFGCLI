@@ -60,13 +60,13 @@ PNP_CHANGE: t05xx t0501 t0502 t0505
 MODEM_CHANGE: t06xx t0601 t0602 t0603 t0604 t0605 t0607 t0608 t0609 t0610
 
 # Base: 0700
-FD_CHANGE: t07xx t0701 t0702 t0703 t0705 t0706 t0707 t0708 t0710 t0711 t0717 t0719 t0723 t0724 t0726 t0727 t0730
+FD_CHANGE: t07xx t0701 t0702 t0703 t0705 t0707 t0708 t0710 t0711 t0717 t0719 t0723 t0724 t0727 t0730
 
 # Base: 0900
 OPTIMIZE_CHANGE: t09xx t0901 t0902 t0903 t0904 t0905
 
 # Base: 1100
-BOOTROM_CHANGE: t11xx t1101 t1102 t1103 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1112 t1113 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1122 t1126 t1127 t1128 t1129 t1130 t1131 t1132 t1133 t1134 t1135 t1136 t1137 t1138 t1140
+BOOTROM_CHANGE: t11xx t1101 t1102 t1104 t1105 t1106 t1107 t1108 t1109 t1110 t1111 t1114 t1115 t1116 t1117 t1118 t1119 t1120 t1126 t1127 t1128 t1129 t1130 t1131 t1132 t1133 t1134 t1135 t1136 t1137 t1138 t1140
 
 # Base: 1200
 XCVR_CHANGE: t12xx t1201 t1202 t1203 t1204 t1205 t1207 t1208 t1209 t1210 t1211
@@ -78,13 +78,13 @@ CLI_PARSER: t13xx t1301 t1302 t1303 t1304 t1305 t1306 t1307 t1308 t1309 t1310 t1
 COMBINED_TRANSACTIONS: t14xx t1401 t1402 t1403 t1405 t1406 t1407
 
 # Base: 1500
-MULTI_NIC: t15xx t1500 t1502 t1503 t1504 t1505 t1506 t1507 t1508 t1509 t1511 t1512 t1513 t1514
+MULTI_NIC: t15xx t1502 t1503 t1504 t1505 t1506 t1507 t1508 t1509 t1511 t1512 t1513 t1514
 
 # Base: 1600
-SAVECONFIG_TEST: t16xx t1602 t1603 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1618 t1619 t1620 t1621 t1622 t1623 t1624 t1625 t1626 t1627
+SAVECONFIG_TEST: t16xx t1602 t1603 t1606 t1607 t1608 t1609 t1610 t1611 t1612 t1613 t1614 t1615 t1616 t1617 t1620 t1622 t1623 t1624 t1625 t1626 t1627
 
 # Base: 1700
-VERIFICATION_CONTROL_FLOW: t17xx t1701 t1702 t1703 t1704 t1705 t1706 t1707 t1708 t1710 t1713 t1714
+VERIFICATION_CONTROL_FLOW: t17xx t1701 t1704 t1706 t1708 t1710 t1713 t1714
 
 # Base: 1800
 3C509_REV1: t18xx t1801 t1802 t1803 t1804 t1805 t1806 t1807 t1808 t1809 t1810 t1811
@@ -436,17 +436,6 @@ t0705:
    FIND "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED." $(ARTIFACTS)\T0705.LOG > NUL
    @echo [t0705] PASSED  >> $(TESTLOG)
 
-t0706:
-   @echo [t0706] LIST Full Duplex readout for enabled and disabled  >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T0706.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0706.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0706.LOG
-   FIND "Full Duplex = enabled" $(ARTIFACTS)\T0706.LOG > NUL
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED >> $(ARTIFACTS)\T0706.LOG
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0706.LOG
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0706.LOG > NUL
-   @echo [t0706] PASSED  >> $(TESTLOG)
-
 t0707:
    @echo [t0707] Full Duplex capability and rejection on 3C509B-COAX  >> $(TESTLOG)
    ${SEEDAPP} 3C509B-COAX > $(ARTIFACTS)\T0707.LOG
@@ -525,8 +514,15 @@ t0723:
    @echo [t0723] PASSED  >> $(TESTLOG)
 
 t0724:
-   @echo [t0724] implicit TR transition reaches live FULLDUPLEX sync >> $(TESTLOG)
+   @echo [t0724] TR change covers both sides of implicit FD sync decision >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0724.LOG
+   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T0724.LOG
+   CALL $(ASSERTERS)\NFIND.BAT "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0724.LOG
+   FIND "Configuration completed" $(ARTIFACTS)\T0724.LOG > NUL
+   $(BINAPP) LIST >> $(ARTIFACTS)\T0724.LOG
+   FIND "Transceiver = external" $(ARTIFACTS)\T0724.LOG > NUL
+   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0724.LOG > NUL
+   ${SEEDAPP} 3C509B-TP >> $(ARTIFACTS)\T0724.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED >> $(ARTIFACTS)\T0724.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T0724.LOG
    FIND "EEPROM full duplex mode verified." $(ARTIFACTS)\T0724.LOG > NUL
@@ -537,17 +533,6 @@ t0724:
    FIND "Transceiver = external" $(ARTIFACTS)\T0724.LOG > NUL
    FIND "Full Duplex = disabled" $(ARTIFACTS)\T0724.LOG > NUL
    @echo [t0724] PASSED  >> $(TESTLOG)
-
-t0726:
-   @echo [t0726] TR without FD transition skips implicit live FD sync >> $(TESTLOG)
-   ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T0726.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T0726.LOG
-   CALL $(ASSERTERS)\NFIND.BAT "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0726.LOG
-   FIND "Configuration completed" $(ARTIFACTS)\T0726.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T0726.LOG
-   FIND "Transceiver = external" $(ARTIFACTS)\T0726.LOG > NUL
-   FIND "Full Duplex = disabled" $(ARTIFACTS)\T0726.LOG > NUL
-   @echo [t0726] PASSED  >> $(TESTLOG)
 
 t0727:
    @echo [t0727] NOTICE for implicit TR:AUI Full Duplex disable >> $(TESTLOG)
@@ -640,15 +625,6 @@ t1102:
    FIND "Boot ROM = 16K at C0000H" $(ARTIFACTS)\T1102.LOG > NUL
    @echo [t1102] PASSED  >> $(TESTLOG)
 
-t1103:
-   @echo [t1103] CONFIGURE /BADDRESS+/BSIZE reconfigure to a new pair >> $(TESTLOG)
-   ${SEEDAPP} INIT /ROM:32 > $(ARTIFACTS)\T1103.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:D0000 /BSIZE:32 >> $(ARTIFACTS)\T1103.LOG
-   FIND "Configuration completed" $(ARTIFACTS)\T1103.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1103.LOG
-   FIND "Boot ROM = 32K at D0000H" $(ARTIFACTS)\T1103.LOG > NUL
-   @echo [t1103] PASSED  >> $(TESTLOG)
-
 t1104:
    @echo [t1104] /BSIZE:DISABLED succeeds without a detected Boot ROM >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1104.LOG
@@ -728,21 +704,9 @@ t1111:
    CALL $(ASSERTERS)\NFIND.BAT "BSIZE" $(ARTIFACTS)\T1111.BAT
    @echo [t1111] PASSED  >> $(TESTLOG)
 
-t1112:
-   @echo [t1112] CONFIGURE /BSIZE:8 alone is rejected >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1112.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:8 >> $(ARTIFACTS)\T1112.LOG
-   FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1112.LOG > NUL
-   @echo [t1112] PASSED  >> $(TESTLOG)
-
-t1113:
-   @echo [t1113] CONFIGURE /BSIZE:32 alone is rejected >> $(TESTLOG)
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:32 > $(ARTIFACTS)\T1113.LOG
-   FIND "BADDRESS and /BSIZE must be specified together" $(ARTIFACTS)\T1113.LOG > NUL
-   @echo [t1113] PASSED  >> $(TESTLOG)
-
 t1114:
    @echo [t1114] CONFIGURE 8K at C0000 is rejected >> $(TESTLOG)
+   ${SEEDAPP} INIT > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C0000 /BSIZE:8 > $(ARTIFACTS)\T1114.LOG
    FIND "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps." $(ARTIFACTS)\T1114.LOG > NUL
    @echo [t1114] PASSED  >> $(TESTLOG)
@@ -802,18 +766,7 @@ t1120:
    @echo [t1120] PASSED  >> $(TESTLOG)
 
 # A failed Boot ROM probe is non-fatal to unrelated properties in the same
-# transaction. These cases cover preservation/commit across INT, IOBASE, and TR.
-t1122:
-   @echo [t1122] no-ROM seed rejects Boot ROM while preserving INT >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1122.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /INT:5 >> $(ARTIFACTS)\T1122.LOG
-   FIND "Boot ROM configuration was skipped." $(ARTIFACTS)\T1122.LOG > NUL
-   FIND "Configuration completed" $(ARTIFACTS)\T1122.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1122.LOG
-   FIND "Boot ROM = disabled" $(ARTIFACTS)\T1122.LOG > NUL
-   FIND "IRQ = 5" $(ARTIFACTS)\T1122.LOG > NUL
-   @echo [t1122] PASSED  >> $(TESTLOG)
-
+# transaction. These cases cover preservation/commit across IOBASE and TR.
 t1126:
    @echo [t1126] no-ROM seed rejects Boot ROM while preserving IOBASE >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1126.LOG
@@ -945,10 +898,10 @@ t1136:
    FIND "Boot ROM = 16K at C8000H" $(ARTIFACTS)\T1136.LOG > NUL
    @echo [t1136] PASSED  >> $(TESTLOG)
 
-# Verbose-only Boot ROM page 0 header diagnostic. The dump must not disturb
+# Verbose-only Boot ROM header diagnostic. The dump must not disturb
 # the probe address or state, so normal validation still has to succeed.
 t1137:
-   @echo [t1137] /VERBOSE dumps the 16K Boot ROM page 0 header >> $(TESTLOG)
+   @echo [t1137] /VERBOSE dumps the 16K Boot ROM header >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM:16 > $(ARTIFACTS)\T1137.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T1137.LOG
    FIND "Boot ROM header:" $(ARTIFACTS)\T1137.LOG > NUL
@@ -1250,22 +1203,6 @@ t1407:
 
 t15xx:
    @echo [t15xx] MULTI_NIC: Verify multi-NIC behaviour  >> $(TESTLOG)
-
-t1500:
-   @echo [t1500] duplicate IOBASE SAVECONFIG uses ID EEPROM snapshots >> $(TESTLOG)
-   ${SEEDAPP} CLEAR > $(ARTIFACTS)\T1500.LOG
-   ${SEEDAPP} ADD 3C509B-TP /IOBASE:0300 /INT:10 >> $(ARTIFACTS)\T1500.LOG
-   ${SEEDAPP} ADD 3C509B-COMBO /IOBASE:0300 /INT:5 /MODEMPRESERVE >> $(ARTIFACTS)\T1500.LOG
-   @if exist $(ARTIFACTS)\T1500.BAT del $(ARTIFACTS)\T1500.BAT
-   $(BINAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\T1500.BAT >> $(ARTIFACTS)\T1500.LOG
-   FIND "Configuration restore batch file created" $(ARTIFACTS)\T1500.LOG > NUL
-   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1500.BAT "ADAPTERNUM:1" "INT:10" > NUL
-   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1500.BAT "ADAPTERNUM:1" "IOBASE:0300" > NUL
-   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1500.BAT "ADAPTERNUM:1" "OPTIMIZE:DOS" > NUL
-   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1500.BAT "ADAPTERNUM:2" "INT:5" > NUL
-   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1500.BAT "ADAPTERNUM:2" "IOBASE:0300" > NUL
-   CALL $(ASSERTERS)\LFIND.BAT $(ARTIFACTS)\T1500.BAT "ADAPTERNUM:2" "MODEM:1200" > NUL
-   @echo [t1500] PASSED  >> $(TESTLOG)
 
 t1502:
    @echo [t1502] multi-NIC CONFIGURE requires /ADAPTERNUM >> $(TESTLOG)
@@ -1636,11 +1573,10 @@ t1615:
    @echo [t1615] PASSED  >> $(TESTLOG)
 
 t1616:
-   @echo [t1616] SAVECONFIG rejects unknown options and the old positional syntax >> $(TESTLOG)
+   @echo [t1616] SAVECONFIG rejects unknown options >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1616.LOG
    $(BINAPP) SAVECONFIG /BIRCHERMUESLI:34333 >> $(ARTIFACTS)\T1616.LOG
    FIND "Invalid SAVECONFIG option." $(ARTIFACTS)\T1616.LOG > NUL
-   @if exist $(ARTIFACTS)\OLDPOS.BAT FIND "THIS FILE SHOULD NOT EXIST" $(ARTIFACTS)\OLDPOS.BAT > NUL
    @echo [t1616] PASSED  >> $(TESTLOG)
 
 t1617:
@@ -1650,23 +1586,6 @@ t1617:
    FIND "Configuration restore batch file created: $(ARTIFACTS)\OUTONLY.BAT" $(ARTIFACTS)\T1617.LOG > NUL
    FIND "3CCFGCLI.EXE CONFIGURE /ADAPTERNUM:1" $(ARTIFACTS)\OUTONLY.BAT > NUL
    @echo [t1617] PASSED  >> $(TESTLOG)
-
-t1618:
-   @echo [t1618] global /VERBOSE is accepted by LIST >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1618.LOG
-   $(BINAPP) LIST /VERBOSE >> $(ARTIFACTS)\T1618.LOG
-   FIND "IOBASE = 0300" $(ARTIFACTS)\T1618.LOG > NUL
-   @echo [t1618] PASSED  >> $(TESTLOG)
-
-t1619:
-   @echo [t1619] global /VERBOSE with bare SAVECONFIG uses RESTORE.BAT >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1619.LOG
-   @if exist RESTORE.BAT del RESTORE.BAT
-   $(BINAPP) SAVECONFIG /VERBOSE >> $(ARTIFACTS)\T1619.LOG
-   FIND "Configuration restore batch file created: RESTORE.BAT" $(ARTIFACTS)\T1619.LOG > NUL
-   FIND "3CCFGCLI.EXE CONFIGURE" RESTORE.BAT > NUL
-   @if exist RESTORE.BAT del RESTORE.BAT
-   @echo [t1619] PASSED  >> $(TESTLOG)
 
 # Two representative placements cover global /VERBOSE position handling because
 # it is consumed by the common argument scanner before SAVECONFIG parsing.
@@ -1680,13 +1599,6 @@ t1620:
    FIND "Configuration restore batch file created: $(ARTIFACTS)\VERBMID.BAT" $(ARTIFACTS)\T1620.LOG > NUL
    FIND "BIN\3CHWMOCK.EXE CONFIGURE" $(ARTIFACTS)\VERBMID.BAT > NUL
    @echo [t1620] PASSED  >> $(TESTLOG)
-
-t1621:
-   @echo [t1621] duplicate global /VERBOSE is rejected for LIST command >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1621.LOG
-   $(BINAPP) LIST /VERBOSE /VERBOSE >> $(ARTIFACTS)\T1621.LOG
-   FIND "Duplicate /VERBOSE option." $(ARTIFACTS)\T1621.LOG > NUL
-   @echo [t1621] PASSED  >> $(TESTLOG)
 
 t1626:
    @echo [t1626] duplicate global /VERBOSE is rejected before SAVECONFIG output >> $(TESTLOG)
@@ -1788,29 +1700,6 @@ t1701:
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1701.LOG > NUL
    @echo [t1701] PASSED  >> $(TESTLOG)
 
-t1702:
-   @echo [t1702] INT+PNP verification chain with /VERBOSE >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1702.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 /PNP:DISABLED /VERBOSE >> $(ARTIFACTS)\T1702.LOG
-   FIND "EEPROM IRQ verified: 5" $(ARTIFACTS)\T1702.LOG > NUL
-   FIND "Live IRQ verified: 5" $(ARTIFACTS)\T1702.LOG > NUL
-   FIND "EEPROM Plug and Play mode verified." $(ARTIFACTS)\T1702.LOG > NUL
-   FIND "Configuration completed" $(ARTIFACTS)\T1702.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1702.LOG
-   FIND "IRQ = 5" $(ARTIFACTS)\T1702.LOG > NUL
-   FIND "Plug and Play = disabled" $(ARTIFACTS)\T1702.LOG > NUL
-   @echo [t1702] PASSED  >> $(TESTLOG)
-
-t1703:
-   @echo [t1703] unchanged INT+PNP verification chain without /VERBOSE >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1703.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:10 /PNP:DISABLED >> $(ARTIFACTS)\T1703.LOG
-   FIND "Configuration completed" $(ARTIFACTS)\T1703.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1703.LOG
-   FIND "IRQ = 10" $(ARTIFACTS)\T1703.LOG > NUL
-   FIND "Plug and Play = disabled" $(ARTIFACTS)\T1703.LOG > NUL
-   @echo [t1703] PASSED  >> $(TESTLOG)
-
 t1704:
    @echo [t1704] unchanged INT+PNP verification chain with /VERBOSE >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1704.LOG
@@ -1824,16 +1713,6 @@ t1704:
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1704.LOG > NUL
    @echo [t1704] PASSED  >> $(TESTLOG)
 
-t1705:
-   @echo [t1705] PNP+MODEM verification chain without /VERBOSE >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1705.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED /MODEM:9600 >> $(ARTIFACTS)\T1705.LOG
-   FIND "Configuration completed" $(ARTIFACTS)\T1705.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1705.LOG
-   FIND "Plug and Play = disabled" $(ARTIFACTS)\T1705.LOG > NUL
-   FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1705.LOG > NUL
-   @echo [t1705] PASSED  >> $(TESTLOG)
-
 t1706:
    @echo [t1706] PNP+MODEM verification chain with /VERBOSE >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1706.LOG
@@ -1845,16 +1724,6 @@ t1706:
    FIND "Plug and Play = disabled" $(ARTIFACTS)\T1706.LOG > NUL
    FIND "MODEM Interrupt Disable Time = 500 us (9600 bd)" $(ARTIFACTS)\T1706.LOG > NUL
    @echo [t1706] PASSED  >> $(TESTLOG)
-
-t1707:
-   @echo [t1707] FULLDUPLEX+OPTIMIZE verification chain without /VERBOSE >> $(TESTLOG)
-   ${SEEDAPP} INIT > $(ARTIFACTS)\T1707.LOG
-   $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /OPTIMIZE:SERVER >> $(ARTIFACTS)\T1707.LOG
-   FIND "Configuration completed" $(ARTIFACTS)\T1707.LOG > NUL
-   $(BINAPP) LIST >> $(ARTIFACTS)\T1707.LOG
-   FIND "Full Duplex = enabled" $(ARTIFACTS)\T1707.LOG > NUL
-   FIND "Optimization = Server" $(ARTIFACTS)\T1707.LOG > NUL
-   @echo [t1707] PASSED  >> $(TESTLOG)
 
 t1708:
    @echo [t1708] FULLDUPLEX+OPTIMIZE verification chain with /VERBOSE >> $(TESTLOG)

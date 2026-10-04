@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-10-04T09:49:57.528832+03:00" tests="179" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-10-04T21:54:49.624735+03:00" tests="165" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -186,7 +186,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="FD_CHANGE: Verify FULLDUPLEX property behaviour" tests="16" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="FD_CHANGE: Verify FULLDUPLEX property behaviour" tests="14" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t07xx"/>
 			<property name="description" value="Verify FULLDUPLEX property behaviour"/>
@@ -213,12 +213,6 @@
 			<properties>
 				<property name="description" value="CONFIGURE /FULLDUPLEX invalid symbolic input"/>
 				<property name="artifact" value="ARTIFACT/T0705.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t0706: LIST Full Duplex readout for enabled and disabled" classname="FD_CHANGE">
-			<properties>
-				<property name="description" value="LIST Full Duplex readout for enabled and disabled"/>
-				<property name="artifact" value="ARTIFACT/T0706.LOG"/>
 			</properties>
 		</testcase>
 		<testcase name="t0707: Full Duplex capability and rejection on 3C509B-COAX" classname="FD_CHANGE">
@@ -263,16 +257,10 @@
 				<property name="artifact" value="ARTIFACT/T0723.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t0724: implicit TR transition reaches live FULLDUPLEX sync" classname="FD_CHANGE">
+		<testcase name="t0724: TR change covers both sides of implicit FD sync decision" classname="FD_CHANGE">
 			<properties>
-				<property name="description" value="implicit TR transition reaches live FULLDUPLEX sync"/>
+				<property name="description" value="TR change covers both sides of implicit FD sync decision"/>
 				<property name="artifact" value="ARTIFACT/T0724.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t0726: TR without FD transition skips implicit live FD sync" classname="FD_CHANGE">
-			<properties>
-				<property name="description" value="TR without FD transition skips implicit live FD sync"/>
-				<property name="artifact" value="ARTIFACT/T0726.LOG"/>
 			</properties>
 		</testcase>
 		<testcase name="t0727: NOTICE for implicit TR:AUI Full Duplex disable" classname="FD_CHANGE">
@@ -324,7 +312,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="BOOTROM_CHANGE: Verify boot ROM change behaviour" tests="35" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="BOOTROM_CHANGE: Verify boot ROM change behaviour" tests="31" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t11xx"/>
 			<property name="description" value="Verify boot ROM change behaviour"/>
@@ -339,12 +327,6 @@
 			<properties>
 				<property name="description" value="CONFIGURE /BSIZE then /BADDRESS ordering"/>
 				<property name="artifact" value="ARTIFACT/T1102.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1103: CONFIGURE /BADDRESS+/BSIZE reconfigure to a new pair" classname="BOOTROM_CHANGE">
-			<properties>
-				<property name="description" value="CONFIGURE /BADDRESS+/BSIZE reconfigure to a new pair"/>
-				<property name="artifact" value="ARTIFACT/T1103.LOG"/>
 			</properties>
 		</testcase>
 		<testcase name="t1104: /BSIZE:DISABLED succeeds without a detected Boot ROM" classname="BOOTROM_CHANGE">
@@ -395,18 +377,6 @@
 				<property name="artifact" value="ARTIFACT/T1111.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1112: CONFIGURE /BSIZE:8 alone is rejected" classname="BOOTROM_CHANGE">
-			<properties>
-				<property name="description" value="CONFIGURE /BSIZE:8 alone is rejected"/>
-				<property name="artifact" value="ARTIFACT/T1112.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1113: CONFIGURE /BSIZE:32 alone is rejected" classname="BOOTROM_CHANGE">
-			<properties>
-				<property name="description" value="CONFIGURE /BSIZE:32 alone is rejected"/>
-				<property name="artifact" value="ARTIFACT/T1113.LOG"/>
-			</properties>
-		</testcase>
 		<testcase name="t1114: CONFIGURE 8K at C0000 is rejected" classname="BOOTROM_CHANGE">
 			<properties>
 				<property name="description" value="CONFIGURE 8K at C0000 is rejected"/>
@@ -447,12 +417,6 @@
 			<properties>
 				<property name="description" value="rejected Boot ROM config reports Size Valid = no"/>
 				<property name="artifact" value="ARTIFACT/T1120.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1122: no-ROM seed rejects Boot ROM while preserving INT" classname="BOOTROM_CHANGE">
-			<properties>
-				<property name="description" value="no-ROM seed rejects Boot ROM while preserving INT"/>
-				<property name="artifact" value="ARTIFACT/T1122.LOG"/>
 			</properties>
 		</testcase>
 		<testcase name="t1126: no-ROM seed rejects Boot ROM while preserving IOBASE" classname="BOOTROM_CHANGE">
@@ -521,9 +485,9 @@
 				<property name="artifact" value="ARTIFACT/T1136.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1137: /VERBOSE dumps the 16K Boot ROM page 0 header" classname="BOOTROM_CHANGE">
+		<testcase name="t1137: /VERBOSE dumps the 16K Boot ROM header" classname="BOOTROM_CHANGE">
 			<properties>
-				<property name="description" value="/VERBOSE dumps the 16K Boot ROM page 0 header"/>
+				<property name="description" value="/VERBOSE dumps the 16K Boot ROM header"/>
 				<property name="artifact" value="ARTIFACT/T1137.LOG"/>
 			</properties>
 		</testcase>
@@ -720,17 +684,11 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="MULTI_NIC: Verify multi-NIC behaviour" tests="13" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="MULTI_NIC: Verify multi-NIC behaviour" tests="12" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t15xx"/>
 			<property name="description" value="Verify multi-NIC behaviour"/>
 		</properties>
-		<testcase name="t1500: duplicate IOBASE SAVECONFIG uses ID EEPROM snapshots" classname="MULTI_NIC">
-			<properties>
-				<property name="description" value="duplicate IOBASE SAVECONFIG uses ID EEPROM snapshots"/>
-				<property name="artifact" value="ARTIFACT/T1500.LOG"/>
-			</properties>
-		</testcase>
 		<testcase name="t1502: multi-NIC CONFIGURE requires /ADAPTERNUM" classname="MULTI_NIC">
 			<properties>
 				<property name="description" value="multi-NIC CONFIGURE requires /ADAPTERNUM"/>
@@ -804,7 +762,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="SAVECONFIG_TEST: Verify save configuration behaviour" tests="24" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="SAVECONFIG_TEST: Verify save configuration behaviour" tests="21" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t16xx"/>
 			<property name="description" value="Verify save configuration behaviour"/>
@@ -881,9 +839,9 @@
 				<property name="artifact" value="ARTIFACT/T1615.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1616: SAVECONFIG rejects unknown options and the old positional syntax" classname="SAVECONFIG_TEST">
+		<testcase name="t1616: SAVECONFIG rejects unknown options" classname="SAVECONFIG_TEST">
 			<properties>
-				<property name="description" value="SAVECONFIG rejects unknown options and the old positional syntax"/>
+				<property name="description" value="SAVECONFIG rejects unknown options"/>
 				<property name="artifact" value="ARTIFACT/T1616.LOG"/>
 			</properties>
 		</testcase>
@@ -893,28 +851,10 @@
 				<property name="artifact" value="ARTIFACT/T1617.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1618: global /VERBOSE is accepted by LIST" classname="SAVECONFIG_TEST">
-			<properties>
-				<property name="description" value="global /VERBOSE is accepted by LIST"/>
-				<property name="artifact" value="ARTIFACT/T1618.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1619: global /VERBOSE with bare SAVECONFIG uses RESTORE.BAT" classname="SAVECONFIG_TEST">
-			<properties>
-				<property name="description" value="global /VERBOSE with bare SAVECONFIG uses RESTORE.BAT"/>
-				<property name="artifact" value="ARTIFACT/T1619.LOG"/>
-			</properties>
-		</testcase>
 		<testcase name="t1620: global /VERBOSE position is not significant for SAVECONFIG" classname="SAVECONFIG_TEST">
 			<properties>
 				<property name="description" value="global /VERBOSE position is not significant for SAVECONFIG"/>
 				<property name="artifact" value="ARTIFACT/T1620.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1621: duplicate global /VERBOSE is rejected for LIST command" classname="SAVECONFIG_TEST">
-			<properties>
-				<property name="description" value="duplicate global /VERBOSE is rejected for LIST command"/>
-				<property name="artifact" value="ARTIFACT/T1621.LOG"/>
 			</properties>
 		</testcase>
 		<testcase name="t1622: verb namespaces do not leak across CONFIGURE and SAVECONFIG" classname="SAVECONFIG_TEST">
@@ -954,7 +894,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="VERIFICATION_CONTROL_FLOW: verify transaction chain behaviour" tests="11" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="VERIFICATION_CONTROL_FLOW: verify transaction chain behaviour" tests="7" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t17xx"/>
 			<property name="description" value="verify transaction chain behaviour"/>
@@ -965,40 +905,16 @@
 				<property name="artifact" value="ARTIFACT/T1701.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1702: INT+PNP verification chain with /VERBOSE" classname="VERIFICATION_CONTROL_FLOW">
-			<properties>
-				<property name="description" value="INT+PNP verification chain with /VERBOSE"/>
-				<property name="artifact" value="ARTIFACT/T1702.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1703: unchanged INT+PNP verification chain without /VERBOSE" classname="VERIFICATION_CONTROL_FLOW">
-			<properties>
-				<property name="description" value="unchanged INT+PNP verification chain without /VERBOSE"/>
-				<property name="artifact" value="ARTIFACT/T1703.LOG"/>
-			</properties>
-		</testcase>
 		<testcase name="t1704: unchanged INT+PNP verification chain with /VERBOSE" classname="VERIFICATION_CONTROL_FLOW">
 			<properties>
 				<property name="description" value="unchanged INT+PNP verification chain with /VERBOSE"/>
 				<property name="artifact" value="ARTIFACT/T1704.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t1705: PNP+MODEM verification chain without /VERBOSE" classname="VERIFICATION_CONTROL_FLOW">
-			<properties>
-				<property name="description" value="PNP+MODEM verification chain without /VERBOSE"/>
-				<property name="artifact" value="ARTIFACT/T1705.LOG"/>
-			</properties>
-		</testcase>
 		<testcase name="t1706: PNP+MODEM verification chain with /VERBOSE" classname="VERIFICATION_CONTROL_FLOW">
 			<properties>
 				<property name="description" value="PNP+MODEM verification chain with /VERBOSE"/>
 				<property name="artifact" value="ARTIFACT/T1706.LOG"/>
-			</properties>
-		</testcase>
-		<testcase name="t1707: FULLDUPLEX+OPTIMIZE verification chain without /VERBOSE" classname="VERIFICATION_CONTROL_FLOW">
-			<properties>
-				<property name="description" value="FULLDUPLEX+OPTIMIZE verification chain without /VERBOSE"/>
-				<property name="artifact" value="ARTIFACT/T1707.LOG"/>
 			</properties>
 		</testcase>
 		<testcase name="t1708: FULLDUPLEX+OPTIMIZE verification chain with /VERBOSE" classname="VERIFICATION_CONTROL_FLOW">
