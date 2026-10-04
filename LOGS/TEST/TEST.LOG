@@ -57,7 +57,7 @@ Seed file created (INIT).
 [t0608] PASSED
 [t0609] /MODEM:1600 upper-bound field encoding
 [t0609] PASSED
-[t0610] MODEM Interrupt Disable Time and SAVECONFIG serialization
+[t0610] MODEM named baud mapping and serialization
 [t0610] PASSED
 [t07xx] FD_CHANGE: Verify FULLDUPLEX property behaviour
 [t0701] CONFIGURE /FULLDUPLEX transition to enabled

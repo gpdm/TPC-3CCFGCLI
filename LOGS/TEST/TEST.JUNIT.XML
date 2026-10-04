@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-10-04T21:54:49.624735+03:00" tests="165" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-10-04T22:18:27.955521+03:00" tests="165" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -179,9 +179,9 @@
 				<property name="artifact" value="ARTIFACT/T0609.LOG"/>
 			</properties>
 		</testcase>
-		<testcase name="t0610: MODEM Interrupt Disable Time and SAVECONFIG serialization" classname="MODEM_CHANGE">
+		<testcase name="t0610: MODEM named baud mapping and serialization" classname="MODEM_CHANGE">
 			<properties>
-				<property name="description" value="MODEM Interrupt Disable Time and SAVECONFIG serialization"/>
+				<property name="description" value="MODEM named baud mapping and serialization"/>
 				<property name="artifact" value="ARTIFACT/T0610.LOG"/>
 			</properties>
 		</testcase>
