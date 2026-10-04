@@ -5906,8 +5906,9 @@ PROC Cfg_Txn_Prepare_Boot_ROM_Resource NEAR
     cmp     [cfg_txn_pnp_resource_class], 0
     jne     @@Enable
     cmp     [BYTE cfg_txn_new_pnp_resource_data + bx], PNP_RESOURCE_MEMORY_TAG
-    jne     @@Success
+    jne     @@DisabledEndTag
     mov     [BYTE cfg_txn_new_pnp_resource_data + bx], PNP_RESOURCE_END_TAG
+@@DisabledEndTag:
     mov     [cfg_txn_pnp_resource_end_index], bx
     jmp     @@SetLDNFlags
 
