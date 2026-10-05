@@ -15,6 +15,7 @@ SET DETECTED_NIC=UNKNOWN
 SET TARGET=
 SET MKFILE=
 SET ROMTEST=
+SET ROMSIZE=
 
 REM Sanitize initial log file, ensure it's truncated
 ECHO. > %INITLOG%
@@ -32,6 +33,21 @@ GOTO END
 :HWSCAN
 REM Perform initial hardware scan
 3CCFGCLI.EXE LIST > %INITLOG%
+
+:ROMSIZE
+IF NOT "%1"=="READROM" GOTO CLISPATCH
+IF NOT "%1"=="WRITEROM" GOTO CLISPATCH
+IF "%2"=="8" SET ROMSIZE=8
+IF "%2"=="16" SET ROMSIZE=16
+IF "%2"=="32" SET ROMSIZE=32
+IF "%2/"=="/" GOTO ROMSIZEERROR
+IF "%ROMSIZE%/"=="/" GOTO ROMSIZEERROR
+GOTO CLIDISPATCH
+
+:ROMSIZEERROR
+ECHO Invalid ROM size specified. Allowed values are 8, 16, or 32.
+ECHO Invalid ROM size specified. Allowed values are 8, 16, or 32. >> %INITLOG%
+GOTO END
 
 
 REM CLI dispatch
@@ -57,7 +73,7 @@ SET MKFILE=HWCREAD.MK
 SET TARGET=hwcr
 SET HWC_SUITE=HWCREAD
 SET HWC_TAG=hwcr
-SET ROMTEST=-DROM_TEST
+SET ROMTEST=-DROM_TEST -DROM%ROMSIZE%
 GOTO HWDETECT
 
 :O_READMULTI
@@ -80,7 +96,7 @@ SET MKFILE=HWCWRITE.MK
 SET TARGET=hwcw
 SET HWC_SUITE=HWCWRITE
 SET HWC_TAG=hwcw
-SET ROMTEST=-DROM_TEST
+SET ROMTEST=-DROM_TEST -DROM%ROMSIZE%
 GOTO HWDETECT
 
 :O_WRITEMULTI
@@ -105,12 +121,14 @@ ECHO   %0 WRITEROM
 ECHO   %0 WRITEMULTI
 ECHO.
 ECHO Commands:
-ECHO   READ       3CCFGCLI observes while original 3C5X9CFG runs config commands.
-ECHO   READROM    same as READ, but include Boot ROM tests
-ECHO   READMULTI  same as READ, but for multiple NICs.
-ECHO   WRITE      3CCFGCLI performs all configure commands and read-backs.
-ECHO   WRITEROM   Same as WRITE, but include Boot ROM tests
-ECHO   WRITEMULTI same as WRITE, but for multiple NICs.
+ECHO   READ                 original 3C5X9CFG runs config commands, 3CCFGCLI observes.
+ECHO   READROM 8|16|32      same as READ, but include Boot ROM tests.
+ECHO                        Set ROM SIZE according to installed ROM module.
+ECHO   READMULTI            same as READ, but for multiple NICs.
+ECHO   WRITE                3CCFGCLI performs all configure commands and read-backs.
+ECHO   WRITEROM 8|16|32     Same as WRITE, but include Boot ROM tests.
+ECHO                        Set ROM SIZE according to installed ROM module.
+ECHO   WRITEMULTI           same as WRITE, but for multiple NICs.
 ECHO.
 GOTO OK
 

@@ -12,6 +12,7 @@ Changelog 0.8.2
   - Accepted valid Option ROM image lengths that fit within the configured Boot ROM mapping.
   - Synchronized 3C509B Boot ROM ISA PnP resource data and secondary checksums.
   - Normalized disabled 3C509B Boot ROM PnP data when its memory descriptor was already absent.
+  - Added parameterized physical Boot ROM hardware compliance tests.
 
 Changelog 0.8.1
   - Added an optional Boot ROM diagnostic: with /VERBOSE, the Boot ROM probe

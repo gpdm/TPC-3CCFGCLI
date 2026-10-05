@@ -11,8 +11,8 @@
 # Usage:
 #   HWCTEST.BAT READ
 #
-# Optional physical Boot ROM test:
-#   HWCTEST.BAT READROM
+# Optional physical Boot ROM test; supply the size of the installed ROM:
+#   HWCTEST.BAT READROM 8|16|32
 #
 # Optional physical Boot ROM test:
 #   HWCTEST.BAT READMULTI
@@ -40,8 +40,8 @@ WRITERNAME = 3C5X9CFG
 READERNAME = 3CCFGCLI
 
 # Suite composition remains local because READ and WRITE coverage differs.
-HWCR_READ: hwc00xx hwc001 hwc002 hwc003 hwc004 hwc005 hwc006 hwc007 hwc008 hwc009 hwc051 hwcs001
-hwcr: clean prep hwc00xx save-config set-default-$(CARDTYPE) hwc001-$(CARDTYPE) hwc002 hwc003 $(HWC004_TARGET) hwc005 $(HWC006_TARGET) hwc007 $(HWC008_TARGET) hwc009-$(CARDTYPE) $(HWC051_TARGET) complete
+HWCR_READ: hwc00xx hwc001 hwc002 hwc003 hwc004 hwc005 hwc006 hwc007 hwc008 hwc009 hwc051 hwc052 hwcs001
+hwcr: clean prep hwc00xx save-config set-default-$(CARDTYPE) hwc001-$(CARDTYPE) hwc002 hwc003 $(HWC004_TARGET) hwc005 $(HWC006_TARGET) hwc007 $(HWC008_TARGET) hwc009-$(CARDTYPE) $(HWC051_TARGET) $(HWC052_TARGET) complete
 
 HWCR_MULTI: hwcm00xx hwcm001 hwcm002 hwcm003 hwcm004 hwcs001
 hwcrm: clean prep hwcm00xx save-config hwcm001 hwcm002 hwcm003 hwcm004 complete

@@ -21,9 +21,24 @@ TEST_IOBASE = 0280
 TEST_PNP = DISABLED
 TEST_MODEM = 1200
 TEST_OPTIMIZE = SERVER
-TEST_BADDRESS = C8000
-TEST_BSIZE = 16
+# The selected physical ROM size is operator-supplied and never inferred from
+# the adapter's current configuration. The HWC mapping address is fixed.
+TEST_BADDRESS = D0000
 TEST_FULLDUPLEX = ENABLED
+HWC052_TARGET =
+
+# ROM_TEST requires exactly one operator-selected physical ROM size.
+!if $d(ROM_TEST)
+!if $d(ROM8K)
+TEST_BSIZE = 8
+!elif $d(ROM16K)
+TEST_BSIZE = 16
+!elif $d(ROM32K)
+TEST_BSIZE = 32
+!else
+!error ROM_TEST requires exactly one of ROM8K, ROM16K, or ROM32K
+!endif
+!endif
 
 # Multi NIC defaults. These checks intentionally use only IOBASE and IRQ so
 # they are valid for every supported 3C509 / 3C509B model. Exactly two cards
@@ -56,9 +71,11 @@ HWC006_TARGET = hwc006
 HWC008_TARGET = hwc008-btp
 
 !if $d(ROM_TEST)
-HWC051_TARGET = hwc-rom-not-implemented
+HWC051_TARGET = hwc051
+HWC052_TARGET = hwc052
 !else
 HWC051_TARGET = hwc-rom-disabled
+HWC052_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_BCOAX)
@@ -70,9 +87,11 @@ HWC004_TARGET = hwc004
 HWC006_TARGET = hwc006-unsupported
 HWC008_TARGET = hwc008-bcoax
 !if $d(ROM_TEST)
-HWC051_TARGET = hwc-rom-not-implemented
+HWC051_TARGET = hwc051
+HWC052_TARGET = hwc052
 !else
 HWC051_TARGET = hwc-rom-disabled
+HWC052_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_BCOMBO)
@@ -83,9 +102,11 @@ HWC004_TARGET = hwc004
 HWC006_TARGET = hwc006
 HWC008_TARGET = hwc008-bcombo
 !if $d(ROM_TEST)
-HWC051_TARGET = hwc-rom-not-implemented
+HWC051_TARGET = hwc051
+HWC052_TARGET = hwc052
 !else
 HWC051_TARGET = hwc-rom-disabled
+HWC052_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_BTPO)
@@ -98,8 +119,10 @@ HWC008_TARGET = hwc008-btpo
 !if $d(ROM_TEST)
 # Boot ROM is anyway unsupported for 3C509B-TPO model.
 HWC051_TARGET = hwc-rom-unsupported
+HWC052_TARGET = hwc-rom-unsupported
 !else
 HWC051_TARGET = hwc-rom-disabled
+HWC052_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_BTPC)
@@ -110,9 +133,11 @@ HWC004_TARGET = hwc004
 HWC006_TARGET = hwc006
 HWC008_TARGET = hwc008-btpc
 !if $d(ROM_TEST)
-HWC051_TARGET = hwc-rom-not-implemented
+HWC051_TARGET = hwc051
+HWC052_TARGET = hwc052
 !else
 HWC051_TARGET = hwc-rom-disabled
+HWC052_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_TP)
@@ -123,9 +148,11 @@ HWC004_TARGET = hwc004-unsupported
 HWC006_TARGET = hwc006-unsupported
 HWC008_TARGET = hwc008-tp
 !if $d(ROM_TEST)
-HWC051_TARGET = hwc-rom-not-implemented
+HWC051_TARGET = hwc051
+HWC052_TARGET = hwc052
 !else
 HWC051_TARGET = hwc-rom-disabled
+HWC052_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_COAX)
@@ -137,9 +164,11 @@ HWC004_TARGET = hwc004-unsupported
 HWC006_TARGET = hwc006-unsupported
 HWC008_TARGET = hwc008-coax
 !if $d(ROM_TEST)
-HWC051_TARGET = hwc-rom-not-implemented
+HWC051_TARGET = hwc051
+HWC052_TARGET = hwc052
 !else
 HWC051_TARGET = hwc-rom-disabled
+HWC052_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_COMBO)
@@ -150,9 +179,11 @@ HWC004_TARGET = hwc004-unsupported
 HWC006_TARGET = hwc006-unsupported
 HWC008_TARGET = hwc008-combo
 !if $d(ROM_TEST)
-HWC051_TARGET = hwc-rom-not-implemented
+HWC051_TARGET = hwc051
+HWC052_TARGET = hwc052
 !else
 HWC051_TARGET = hwc-rom-disabled
+HWC052_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_TPO)
@@ -167,6 +198,7 @@ HWC008_TARGET = hwc008-tpo
 HWC051_TARGET = hwc-rom-unsupported
 !else
 HWC051_TARGET = hwc-rom-disabled
+HWC052_TARGET = hwc-rom-disabled
 !endif
 
 !elif $d(CARD_TPC)
@@ -177,9 +209,11 @@ HWC004_TARGET = hwc004-unsupported
 HWC006_TARGET = hwc006-unsupported
 HWC008_TARGET = hwc008-tpc
 !if $d(ROM_TEST)
-HWC051_TARGET = hwc-rom-not-implemented
+HWC051_TARGET = hwc051
+HWC052_TARGET = hwc052
 !else
 HWC051_TARGET = hwc-rom-disabled
+HWC052_TARGET = hwc-rom-disabled
 !endif
 
 !else
@@ -764,7 +798,7 @@ hwcm005:
 
 
 # #################################
-# Optional physical Boot ROM test.
+# Optional physical Boot ROM tests.
 # #################################
 
 hwc-rom-unsupported:
@@ -796,6 +830,17 @@ hwc051:
 	FIND "BSIZE:$(TEST_BSIZE)" $(ARTIFACTS)\$(HWC_TAG)051.BAT > NUL
 	@echo [$(HWC_TAG)051] PASSED >> $(LOGFILE)
 	@echo [$(HWC_TAG)051] PASSED
+
+hwc052:
+	@echo [$(HWC_TAG)052] 3CCFGCLI disables Boot ROM and verifies LIST/SAVECONFIG readback >> $(LOGFILE)
+	@echo [$(HWC_TAG)052] 3CCFGCLI disables Boot ROM and verifies LIST/SAVECONFIG readback
+	$(WRITERAPP) CONFIGURE /ADAPTERNUM:1 /BSIZE:DISABLED > $(ARTIFACTS)\$(HWC_TAG)052.LOG
+	$(READERAPP) LIST >> $(ARTIFACTS)\$(HWC_TAG)052.LOG
+	FIND "Boot ROM = disabled" $(ARTIFACTS)\$(HWC_TAG)052.LOG > NUL
+	$(READERAPP) SAVECONFIG /OUTPUTFILE:$(ARTIFACTS)\$(HWC_TAG)052.BAT >> $(ARTIFACTS)\$(HWC_TAG)052.LOG
+	FIND "BSIZE:DISABLED" $(ARTIFACTS)\$(HWC_TAG)052.BAT > NUL
+	@echo [$(HWC_TAG)052] PASSED >> $(LOGFILE)
+	@echo [$(HWC_TAG)052] PASSED
 
 
 # dummy target for Hardware compliance SET verification.
