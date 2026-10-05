@@ -5,7 +5,7 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-TR parameter accepted. Requested transceiver: TP
+TR parameter accepted. Requested value: TP
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.2

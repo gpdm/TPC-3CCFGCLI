@@ -5,7 +5,7 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-MODEM parameter accepted. Requested setting: 9600
+MODEM parameter accepted. Requested value: 9600
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.2
@@ -38,7 +38,7 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-MODEM parameter accepted. Requested setting: none
+MODEM parameter accepted. Requested value: none
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.2

@@ -6,7 +6,7 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-MODEM parameter accepted. Requested setting: 38400
+MODEM parameter accepted. Requested value: 38400
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -67,7 +67,7 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-MODEM parameter accepted. Requested setting: 19200
+MODEM parameter accepted. Requested value: 19200
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -128,7 +128,7 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-MODEM parameter accepted. Requested setting: 9600
+MODEM parameter accepted. Requested value: 9600
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -158,7 +158,7 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-MODEM parameter accepted. Requested setting: 2400
+MODEM parameter accepted. Requested value: 2400
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -219,7 +219,7 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-MODEM parameter accepted. Requested setting: 1200
+MODEM parameter accepted. Requested value: 1200
 
 Reading current configuration...
 Current active IOBASE: 0300

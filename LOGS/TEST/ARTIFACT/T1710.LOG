@@ -6,10 +6,10 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-INT parameter accepted. Requested IRQ: 5
-PNP parameter accepted. Requested Plug and Play mode: disabled
-MODEM parameter accepted. Requested setting: 9600
-FULLDUPLEX parameter accepted. Requested mode: enabled
+INT parameter accepted. Requested value: 5
+PNP parameter accepted. Requested value: disabled
+MODEM parameter accepted. Requested value: 9600
+FULLDUPLEX parameter accepted. Requested value: enabled
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -54,8 +54,8 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-BADDRESS parameter accepted. Requested base address: C8000H
-BSIZE parameter accepted. Requested size: 8K
+BADDRESS parameter accepted. Requested value: C8000H
+BSIZE parameter accepted. Requested value: 8K
 
 Reading current configuration...
 Current active IOBASE: 0300

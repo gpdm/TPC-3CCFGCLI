@@ -9,7 +9,7 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-INT parameter accepted. Requested IRQ: 7
+INT parameter accepted. Requested value: 7
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.2
@@ -17,7 +17,7 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-INT parameter accepted. Requested IRQ: 9
+INT parameter accepted. Requested value: 9
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.2

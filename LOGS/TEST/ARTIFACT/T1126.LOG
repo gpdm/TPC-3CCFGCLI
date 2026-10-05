@@ -5,9 +5,9 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-IOBASE parameter accepted. Requested IOBASE: 0280
-BADDRESS parameter accepted. Requested base address: C8000H
-BSIZE parameter accepted. Requested size: 16K
+IOBASE parameter accepted. Requested value: 0280
+BADDRESS parameter accepted. Requested value: C8000H
+BSIZE parameter accepted. Requested value: 16K
 Memory range C8000-CBFFF appears occupied.
 WARNING: Boot ROM mapping may conflict with existing memory.
 No valid Boot ROM detected at the requested address.

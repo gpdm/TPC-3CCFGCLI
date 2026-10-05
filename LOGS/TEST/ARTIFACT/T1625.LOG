@@ -5,8 +5,8 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-BADDRESS parameter accepted. Requested base address: C2000H
-BSIZE parameter accepted. Requested size: 8K
+BADDRESS parameter accepted. Requested value: C2000H
+BSIZE parameter accepted. Requested value: 8K
 Memory range C2000-C3FFF appears occupied.
 WARNING: Boot ROM mapping may conflict with existing memory.
 
@@ -47,6 +47,6 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-BADDRESS parameter accepted. Requested base address: C0000H
-BSIZE parameter accepted. Requested size: 8K
+BADDRESS parameter accepted. Requested value: C0000H
+BSIZE parameter accepted. Requested value: 8K
 Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps.

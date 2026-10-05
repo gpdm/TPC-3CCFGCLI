@@ -7,7 +7,7 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 WARNING: IRQ 9 requires a secondary interrupt controller,
 but no secondary PIC was detected on this system.
-INT parameter accepted. Requested IRQ: 9
+INT parameter accepted. Requested value: 9
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.2

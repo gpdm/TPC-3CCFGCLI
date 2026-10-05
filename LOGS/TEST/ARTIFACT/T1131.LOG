@@ -6,9 +6,9 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-IOBASE parameter accepted. Requested IOBASE: 0280
-BADDRESS parameter accepted. Requested base address: C8000H
-BSIZE parameter accepted. Requested size: 16K
+IOBASE parameter accepted. Requested value: 0280
+BADDRESS parameter accepted. Requested value: C8000H
+BSIZE parameter accepted. Requested value: 16K
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -31,7 +31,7 @@ Deactivating selected adapter at old IOBASE...
 Reactivating adapter at working IOBASE...
 
 Writing changed EEPROM configuration...
-I/O configuration word written.
+IOBASE configuration word written.
 Boot ROM configuration word written.
 
 Updating EEPROM checksum...

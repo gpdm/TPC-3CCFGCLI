@@ -6,7 +6,7 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-TR parameter accepted. Requested transceiver: TP
+TR parameter accepted. Requested value: TP
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -18,7 +18,7 @@ Prospective active IOBASE: 0300
 New live Address Configuration: 0010
 New live Resource Configuration: A000
 
-Transceiver type is already configured to the requested value.
+Transceiver is already configured to the requested value.
 No hardware changes required.
 
 Configuration completed successfully.

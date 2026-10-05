@@ -291,9 +291,20 @@ msg_cfg_pnp_resource_data_fail DB "Boot ROM ISA PnP resource data could not be s
 msg_cfg_bad_pnp DB "Invalid /PNP parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bad_modem DB "Invalid /MODEM parameter. Use NONE, 1200, 2400, 9600, 19200, 38400, or 25-1600 in 25 increments.", 0Dh, 0Ah, '$'
 msg_cfg_bad_optimize DB "Invalid /OPTIMIZE parameter. Use DOS, WINDOWS, OS/2, or SERVER.", 0Dh, 0Ah, '$'
-msg_cfg_int_ok DB "INT parameter accepted. Requested IRQ: ", '$'
-msg_cfg_pnp_ok DB "PNP parameter accepted. Requested Plug and Play mode: ", '$'
-msg_cfg_modem_ok DB "MODEM parameter accepted. Requested setting: ", '$'
+msg_cfg_parameter_accepted_suffix DB " parameter accepted. Requested value: ", '$'
+msg_cfg_property_irq DB "IRQ", '$'
+msg_cfg_property_iobase DB "IOBASE", '$'
+msg_cfg_property_pnp DB "Plug and Play", '$'
+msg_cfg_property_modem DB "Modem speed", '$'
+msg_cfg_property_optimize DB "Optimize", '$'
+msg_cfg_property_fullduplex DB "Full duplex", '$'
+msg_cfg_property_baddress DB "Boot ROM base address", '$'
+msg_cfg_property_bsize DB "Boot ROM size", '$'
+msg_cfg_property_tr DB "Transceiver", '$'
+msg_cfg_property_bootrom DB "Boot ROM", '$'
+msg_cfg_unchanged_suffix DB " is already configured to the requested value.", 0Dh, 0Ah, '$'
+msg_cfg_verify_fail_suffix DB " configuration verification failed.", 0Dh, 0Ah, '$'
+msg_cfg_word_written_suffix DB " configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_adapter_prefix DB "Adapter ", '$'
 msg_cfg_adapter_suffix DB " selected.", 0Dh, 0Ah, '$'
 msg_cfg_current_irq DB "Current IRQ: ", '$'
@@ -302,22 +313,17 @@ msg_cfg_current_word0d DB "Current EEPROM word 0Dh: ", '$'
 msg_cfg_new_word09 DB "New EEPROM word 09h: ", '$'
 msg_cfg_new_word0d DB "New EEPROM word 0Dh: ", '$'
 msg_cfg_prepare_active DB 0Dh, 0Ah, "Preparing adapter using original ISA activation sequence...", 0Dh, 0Ah, '$'
-msg_cfg_irq_unchanged DB 0Dh, 0Ah, "IRQ is already configured to the requested value.", 0Dh, 0Ah, '$'
-msg_cfg_irq_word_written DB "IRQ configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_update_checksum DB 0Dh, 0Ah, "Updating EEPROM checksum...", 0Dh, 0Ah, '$'
 msg_cfg_checksum_updated DB "EEPROM checksum updated.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_verified DB "EEPROM IRQ verified: ", '$'
 msg_cfg_live_verified DB "Live IRQ verified: ", '$'
 msg_cfg_checksum_fail DB "EEPROM checksum update failed.", 0Dh, 0Ah, '$'
 msg_cfg_live_fail DB "Live hardware configuration update failed.", 0Dh, 0Ah, '$'
-msg_cfg_verify_fail DB "IRQ configuration verification failed.", 0Dh, 0Ah, '$'
 ; /IOBASE diagnostics.
 msg_cfg_bad_iobase DB "Invalid /IOBASE parameter. Use hexadecimal 0200 through 03E0 in 10h increments.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_deactivate_fail DB "Selected adapter deactivation failed before IOBASE migration.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_live_fail DB "Live I/O configuration access or update failed.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_verify_fail DB "IOBASE configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_iobase_activate_fail DB "Adapter did not become reachable at the requested IOBASE.", 0Dh, 0Ah, '$'
-msg_cfg_iobase_ok DB "IOBASE parameter accepted. Requested IOBASE: ", '$'
 msg_cfg_current_iobase DB "Current persistent IOBASE: ", '$'
 msg_cfg_current_live_iobase DB "Current live IOBASE: ", '$'
 msg_cfg_current_word08 DB "Current EEPROM word 08h: ", '$'
@@ -326,34 +332,19 @@ msg_cfg_current_live08 DB "Current live Resource Configuration: ", '$'
 msg_cfg_new_word08 DB "New EEPROM word 08h: ", '$'
 msg_cfg_new_live06 DB "New live Address Configuration: ", '$'
 msg_cfg_new_live08 DB "New live Resource Configuration: ", '$'
-msg_cfg_iobase_unchanged DB 0Dh, 0Ah, "IOBASE is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_deactivate_iobase DB 0Dh, 0Ah, "Deactivating selected adapter at old IOBASE...", 0Dh, 0Ah, '$'
 msg_cfg_reactivate_iobase DB "Reactivating adapter at working IOBASE...", 0Dh, 0Ah, '$'
-msg_cfg_iobase_word_written DB "I/O configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_eeprom_iobase_verified DB "EEPROM final IOBASE verified: ", '$'
 msg_cfg_live_iobase_verified DB "Working IOBASE verified: ", '$'
 msg_cfg_final_iobase_activated DB "Final IOBASE activated: ", '$'
-msg_cfg_pnp_unchanged DB 0Dh, 0Ah, "Plug and Play mode is already configured to the requested value.", 0Dh, 0Ah, '$'
-msg_cfg_pnp_word_written DB "Plug and Play configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_verified DB "EEPROM Plug and Play mode verified.", 0Dh, 0Ah, '$'
-msg_cfg_pnp_verify_fail DB "Plug and Play configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_modem_unchanged DB 0Dh, 0Ah, "Modem speed setting is already configured to the requested value.", 0Dh, 0Ah, '$'
-msg_cfg_modem_word_written DB "Modem speed configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_modem_verified DB "EEPROM modem speed setting verified.", 0Dh, 0Ah, '$'
-msg_cfg_modem_verify_fail DB "Modem speed configuration verification failed.", 0Dh, 0Ah, '$'
-msg_cfg_optimize_unchanged DB 0Dh, 0Ah, "Optimize mode is already configured to the requested value.", 0Dh, 0Ah, '$'
-msg_cfg_optimize_word_written DB "Optimize configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_optimize_verified DB "EEPROM optimize mode verified.", 0Dh, 0Ah, '$'
-msg_cfg_optimize_verify_fail DB "Optimize mode configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_not_capable DB "This adapter does not support Plug and Play configuration.", 0Dh, 0Ah, '$'
 msg_cfg_pnp_unsupported_card DB "PNP is not supported for this card type.", 0Dh, 0Ah, '$'
 msg_cfg_bad_fullduplex DB "Invalid /FULLDUPLEX parameter. Use ENABLED or DISABLED.", 0Dh, 0Ah, '$'
-msg_cfg_fullduplex_ok DB "FULLDUPLEX parameter accepted. Requested mode: ", '$'
-msg_cfg_fd_unchanged DB 0Dh, 0Ah, "Full duplex mode is already configured to the requested value.", 0Dh, 0Ah, '$'
-msg_cfg_fd_word_written DB "Full duplex configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_fd_verified DB "EEPROM full duplex mode verified.", 0Dh, 0Ah, '$'
 msg_cfg_fd_live_verified DB "Live Network Diagnostic full duplex mode verified.", 0Dh, 0Ah, '$'
-msg_cfg_fd_verify_fail DB "Full duplex configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_fd_not_capable DB "This adapter does not support full duplex configuration.", 0Dh, 0Ah, '$'
 msg_cfg_fd_unsupported_card DB "Full duplex is not supported for this card type.", 0Dh, 0Ah, '$'
 msg_cfg_fd_capability_read_fail DB "Hardware capability data is unavailable for full duplex configuration.", 0Dh, 0Ah, '$'
@@ -366,13 +357,7 @@ msg_cfg_fd_live_verify_fail DB "Live full duplex hardware verification failed.",
 msg_cfg_bad_baddress DB "Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps.", 0Dh, 0Ah, '$'
 msg_cfg_bad_bsize DB "Invalid /BSIZE parameter. Use 8, 16, 32, or DISABLED.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_incomplete DB "/BADDRESS and /BSIZE must be specified together (or use /BSIZE:DISABLED alone to disable).", 0Dh, 0Ah, '$'
-msg_cfg_baddress_ok DB "BADDRESS parameter accepted. Requested base address: ", '$'
-msg_cfg_bsize_ok DB "BSIZE parameter accepted. Requested size: ", '$'
-msg_cfg_baddress_unchanged DB 0Dh, 0Ah, "Boot ROM base address is already configured to the requested value.", 0Dh, 0Ah, '$'
-msg_cfg_bsize_unchanged DB 0Dh, 0Ah, "Boot ROM size is already configured to the requested value.", 0Dh, 0Ah, '$'
-msg_cfg_bootrom_word_written DB "Boot ROM configuration word written.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_verified DB "EEPROM Boot ROM base address verified.", 0Dh, 0Ah, '$'
-msg_cfg_baddress_verify_fail DB "Boot ROM base address configuration verification failed.", 0Dh, 0Ah, '$'
 msg_cfg_baddress_not_capable DB "This adapter does not support Boot ROM configuration.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_not_detected DB "No valid Boot ROM detected at the requested address.", 0Dh, 0Ah
                              DB "Boot ROM configuration was skipped.", 0Dh, 0Ah, '$'
@@ -389,7 +374,6 @@ msg_cfg_memchk_occupied DB " appears occupied.", 0Dh, 0Ah
                         DB "WARNING: Boot ROM mapping may conflict with existing memory.", 0Dh, 0Ah, '$'
 msg_cfg_bsize_verified DB "EEPROM Boot ROM size verified.", 0Dh, 0Ah, '$'
 msg_cfg_bootrom_live_verified DB "Live Boot ROM configuration verified.", 0Dh, 0Ah, '$'
-msg_cfg_bsize_verify_fail DB "Boot ROM size configuration verification failed.", 0Dh, 0Ah, '$'
 
 ; /TR (/XCVR) diagnostics.  Transceiver selection shares EEPROM word 08h
 ; bits 15:14 (and bit 7 for AUTO) with /IOBASE, /BADDRESS, and /BSIZE.
@@ -397,10 +381,7 @@ msg_cfg_bad_tr DB "Invalid /TR parameter. Use TP, AUI, COAX, or AUTO.", 0Dh, 0Ah
 msg_cfg_tr_not_capable DB "This adapter does not support the requested transceiver type.", 0Dh, 0Ah, '$'
 msg_cfg_tr_auto_unsupported_card DB "AUTO transceiver selection requires a 3C509B-generation adapter.", 0Dh, 0Ah, '$'
 msg_cfg_tr_capability_read_fail DB "Hardware connector capability data is unavailable for transceiver configuration.", 0Dh, 0Ah, '$'
-msg_cfg_tr_ok DB "TR parameter accepted. Requested transceiver: ", '$'
-msg_cfg_tr_unchanged DB 0Dh, 0Ah, "Transceiver type is already configured to the requested value.", 0Dh, 0Ah, '$'
 msg_cfg_tr_verified DB "EEPROM transceiver selection verified.", 0Dh, 0Ah, '$'
-msg_cfg_tr_verify_fail DB "Transceiver configuration verification failed.", 0Dh, 0Ah, '$'
 
 ; Symbolic transceiver names used for /TR echo output.
 msg_tr_tp   DB "TP", '$'
@@ -832,30 +813,30 @@ LABEL cfg_error_messages WORD
     DW      OFFSET msg_cfg_bad_int                       ; 10 CFG_ERR_BAD_INT
     DW      OFFSET msg_cfg_checksum_fail                 ; 11 CFG_ERR_CHECKSUM_UPDATE
     DW      OFFSET msg_cfg_live_fail                     ; 12 CFG_ERR_LIVE_UPDATE
-    DW      OFFSET msg_cfg_verify_fail                   ; 13 CFG_ERR_VERIFY
+    DW      0                                             ; 13 CFG_ERR_VERIFY
     DW      OFFSET msg_cfg_bad_iobase                    ; 14 CFG_ERR_BAD_IOBASE
     DW      OFFSET msg_cfg_iobase_deactivate_fail        ; 15 CFG_ERR_IOBASE_DEACTIVATE
     DW      OFFSET msg_cfg_iobase_live_fail              ; 16 CFG_ERR_IOBASE_LIVE
-    DW      OFFSET msg_cfg_iobase_verify_fail            ; 17 CFG_ERR_IOBASE_VERIFY
+    DW      0                                             ; 17 CFG_ERR_IOBASE_VERIFY
     DW      OFFSET msg_cfg_iobase_activate_fail          ; 18 CFG_ERR_IOBASE_ACTIVATE
     DW      OFFSET msg_cfg_bad_pnp                       ; 19 CFG_ERR_BAD_PNP
-    DW      OFFSET msg_cfg_pnp_verify_fail               ; 20 CFG_ERR_PNP_VERIFY
+    DW      0                                             ; 20 CFG_ERR_PNP_VERIFY
     DW      OFFSET msg_cfg_bad_modem                     ; 21 CFG_ERR_BAD_MODEM
-    DW      OFFSET msg_cfg_modem_verify_fail             ; 22 CFG_ERR_MODEM_VERIFY
+    DW      0                                             ; 22 CFG_ERR_MODEM_VERIFY
     DW      OFFSET msg_cfg_pnp_not_capable               ; 23 CFG_ERR_PNP_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_fullduplex                ; 24 CFG_ERR_BAD_FULLDUPLEX
-    DW      OFFSET msg_cfg_fd_verify_fail                ; 25 CFG_ERR_FD_VERIFY
+    DW      0                                             ; 25 CFG_ERR_FD_VERIFY
     DW      OFFSET msg_cfg_fd_not_capable                ; 26 CFG_ERR_FD_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_optimize                  ; 27 CFG_ERR_BAD_OPTIMIZE
-    DW      OFFSET msg_cfg_optimize_verify_fail          ; 28 CFG_ERR_OPTIMIZE_VERIFY
+    DW      0                                             ; 28 CFG_ERR_OPTIMIZE_VERIFY
     DW      OFFSET msg_cfg_bad_baddress                  ; 29 CFG_ERR_BAD_BADDRESS
-    DW      OFFSET msg_cfg_baddress_verify_fail          ; 30 CFG_ERR_BADDRESS_VERIFY
+    DW      0                                             ; 30 CFG_ERR_BADDRESS_VERIFY
     DW      OFFSET msg_cfg_baddress_not_capable          ; 31 CFG_ERR_BADDRESS_NOT_CAPABLE
     DW      OFFSET msg_cfg_bad_bsize                     ; 32 CFG_ERR_BAD_BSIZE
-    DW      OFFSET msg_cfg_bsize_verify_fail             ; 33 CFG_ERR_BSIZE_VERIFY
+    DW      0                                             ; 33 CFG_ERR_BSIZE_VERIFY
     DW      OFFSET msg_cfg_bootrom_incomplete            ; 34 CFG_ERR_BOOTROM_INCOMPLETE
     DW      OFFSET msg_cfg_bad_tr                        ; 35 CFG_ERR_BAD_TR
-    DW      OFFSET msg_cfg_tr_verify_fail                ; 36 CFG_ERR_TR_VERIFY
+    DW      0                                             ; 36 CFG_ERR_TR_VERIFY
     DW      OFFSET msg_cfg_tr_not_capable                ; 37 CFG_ERR_TR_NOT_CAPABLE
     DW      OFFSET msg_cfg_tr_capability_read_fail       ; 38 CFG_ERR_TR_CAPABILITY_READ
     DW      OFFSET msg_cfg_fd_capability_read_fail       ; 39 CFG_ERR_FD_CAPABILITY_READ
@@ -3734,10 +3715,63 @@ PROC Cfg_Report_Error NEAR
     push    ax
     push    bx
     push    dx
+    push    si
 
     xor     ah, ah
     cmp     ax, CFG_ERR_COUNT
     jae     @@Done
+    cmp     ax, CFG_ERR_VERIFY
+    je      @@VerifyIRQ
+    cmp     ax, CFG_ERR_IOBASE_VERIFY
+    je      @@VerifyIOBASE
+    cmp     ax, CFG_ERR_PNP_VERIFY
+    je      @@VerifyPNP
+    cmp     ax, CFG_ERR_MODEM_VERIFY
+    je      @@VerifyMODEM
+    cmp     ax, CFG_ERR_FD_VERIFY
+    je      @@VerifyFULLDUPLEX
+    cmp     ax, CFG_ERR_OPTIMIZE_VERIFY
+    je      @@VerifyOPTIMIZE
+    cmp     ax, CFG_ERR_BADDRESS_VERIFY
+    je      @@VerifyBADDRESS
+    cmp     ax, CFG_ERR_BSIZE_VERIFY
+    je      @@VerifyBSIZE
+    cmp     ax, CFG_ERR_TR_VERIFY
+    je      @@VerifyTR
+    jmp     @@Lookup
+
+@@VerifyIRQ:
+    mov     dx, OFFSET msg_cfg_property_irq
+    jmp     @@Verify
+@@VerifyIOBASE:
+    mov     dx, OFFSET msg_cfg_property_iobase
+    jmp     @@Verify
+@@VerifyPNP:
+    mov     dx, OFFSET msg_cfg_property_pnp
+    jmp     @@Verify
+@@VerifyMODEM:
+    mov     dx, OFFSET msg_cfg_property_modem
+    jmp     @@Verify
+@@VerifyFULLDUPLEX:
+    mov     dx, OFFSET msg_cfg_property_fullduplex
+    jmp     @@Verify
+@@VerifyOPTIMIZE:
+    mov     dx, OFFSET msg_cfg_property_optimize
+    jmp     @@Verify
+@@VerifyBADDRESS:
+    mov     dx, OFFSET msg_cfg_property_baddress
+    jmp     @@Verify
+@@VerifyBSIZE:
+    mov     dx, OFFSET msg_cfg_property_bsize
+    jmp     @@Verify
+@@VerifyTR:
+    mov     dx, OFFSET msg_cfg_property_tr
+@@Verify:
+    mov     si, OFFSET msg_cfg_verify_fail_suffix
+    call    Cfg_Print_Property_Suffix
+    jmp     @@Done
+
+@@Lookup:
     mov     bx, ax
     shl     bx, 1
     mov     dx, [cfg_error_messages+bx]
@@ -3746,6 +3780,7 @@ PROC Cfg_Report_Error NEAR
     call    Print_String
 
 @@Done:
+    pop     si
     pop     dx
     pop     bx
     pop     ax
@@ -6707,16 +6742,18 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     jz      @@Word09
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@Word08NoIOBaseNote
-    mov     dx, OFFSET msg_cfg_iobase_word_written
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_iobase
+    mov     si, OFFSET msg_cfg_word_written_suffix
+    call    Cfg_Print_Property_Suffix
 @@Word08NoIOBaseNote:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jnz     @@Word08BootRomNote
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jz      @@Word09
 @@Word08BootRomNote:
-    mov     dx, OFFSET msg_cfg_bootrom_word_written
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_bootrom
+    mov     si, OFFSET msg_cfg_word_written_suffix
+    call    Cfg_Print_Property_Suffix
 
 @@Word09:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD09
@@ -6726,8 +6763,8 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_RESOURCE_CFG
     call    Cfg_Eeprom_Write
     jc      @@Fail
-    mov     dx, OFFSET msg_cfg_irq_word_written
-    call    Print_If_Verbose
+    mov     dx, OFFSET msg_cfg_property_irq
+    call    Cfg_Print_Config_Word_Written
 
 @@Word0D:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
@@ -6752,15 +6789,15 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     xor     ax, [cfg_txn_new_word0d]
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
     jnz     @@Word0DWrittenFD
-    mov     dx, OFFSET msg_cfg_modem_word_written
+    mov     dx, OFFSET msg_cfg_property_modem
     jmp     @@Word0DPrint
 @@Word0DWrittenOptimize:
-    mov     dx, OFFSET msg_cfg_optimize_word_written
+    mov     dx, OFFSET msg_cfg_property_optimize
     jmp     @@Word0DPrint
 @@Word0DWrittenFD:
-    mov     dx, OFFSET msg_cfg_fd_word_written
+    mov     dx, OFFSET msg_cfg_property_fullduplex
 @@Word0DPrint:
-    call    Print_String
+    call    Cfg_Print_Config_Word_Written
 
 @@Word13:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
@@ -6770,8 +6807,8 @@ PROC Cfg_Txn_Write_EEPROM NEAR
     mov     al, EEPROM_CONFIG_CONTROL
     call    Cfg_Eeprom_Write
     jc      @@Fail
-    mov     dx, OFFSET msg_cfg_pnp_word_written
-    call    Print_If_Verbose
+    mov     dx, OFFSET msg_cfg_property_pnp
+    call    Cfg_Print_Config_Word_Written
 
 @@Word14:
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD14
@@ -8211,8 +8248,8 @@ PROC Cfg_Txn_Execute NEAR
     ; Preserve normal requested parameter output.
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@RequestedINT
-    mov     dx, OFFSET msg_cfg_iobase_ok
-    call    Print_String
+    mov     si, OFFSET cfg_name_iobase
+    call    Cfg_Print_Parameter_Accepted
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
     mov     dx, OFFSET msg_crlf
@@ -8220,8 +8257,8 @@ PROC Cfg_Txn_Execute NEAR
 @@RequestedINT:
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@RequestedPNP
-    mov     dx, OFFSET msg_cfg_int_ok
-    call    Print_String
+    mov     si, OFFSET cfg_name_int
+    call    Cfg_Print_Parameter_Accepted
     mov     al, [cfg_int_value]
     call    Print_DecByte
     mov     dx, OFFSET msg_crlf
@@ -8230,8 +8267,8 @@ PROC Cfg_Txn_Execute NEAR
 @@RequestedPNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@RequestedMODEM
-    mov     dx, OFFSET msg_cfg_pnp_ok
-    call    Print_String
+    mov     si, OFFSET cfg_name_pnp
+    call    Cfg_Print_Parameter_Accepted
     cmp     [cfg_pnp_value], 0
     je      @@PnpDisabled
     mov     dx, OFFSET msg_enabled
@@ -8246,8 +8283,8 @@ PROC Cfg_Txn_Execute NEAR
 @@RequestedMODEM:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jz      @@RequestedFULLDUPLEX
-    mov     dx, OFFSET msg_cfg_modem_ok
-    call    Print_String
+    mov     si, OFFSET cfg_name_modem
+    call    Cfg_Print_Parameter_Accepted
     mov     ax, [cfg_modem_value]
     call    Decode_Modem_Baud_Alias
     jnc     @@PrintModem
@@ -8267,8 +8304,8 @@ PROC Cfg_Txn_Execute NEAR
 @@RequestedFULLDUPLEX:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@RequestedBAddress
-    mov     dx, OFFSET msg_cfg_fullduplex_ok
-    call    Print_String
+    mov     si, OFFSET cfg_name_fullduplex
+    call    Cfg_Print_Parameter_Accepted
     cmp     [cfg_fullduplex_value], 0
     je      @@FDDisabled
     mov     dx, OFFSET msg_enabled
@@ -8283,8 +8320,8 @@ PROC Cfg_Txn_Execute NEAR
 @@RequestedBAddress:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
     jz      @@RequestedBSize
-    mov     dx, OFFSET msg_cfg_baddress_ok
-    call    Print_String
+    mov     si, OFFSET cfg_name_baddress
+    call    Cfg_Print_Parameter_Accepted
     xor     ax, ax
     mov     al, [cfg_baddress_value]
     mov     cx, 2000h
@@ -8299,8 +8336,8 @@ PROC Cfg_Txn_Execute NEAR
 @@RequestedBSize:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
     jz      @@RequestedTR
-    mov     dx, OFFSET msg_cfg_bsize_ok
-    call    Print_String
+    mov     si, OFFSET cfg_name_bsize
+    call    Cfg_Print_Parameter_Accepted
     cmp     [cfg_bsize_disabled], 1
     je      @@PrintBSizeDisabled
     mov     al, [cfg_bsize_value]
@@ -8331,8 +8368,8 @@ PROC Cfg_Txn_Execute NEAR
 @@RequestedTR:
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@Read
-    mov     dx, OFFSET msg_cfg_tr_ok
-    call    Print_String
+    mov     si, OFFSET cfg_name_tr
+    call    Cfg_Print_Parameter_Accepted
     cmp     [cfg_tr_value], NIC_XCVR_AUTO
     jne     @@TRNotAuto
     mov     dx, OFFSET msg_tr_auto
@@ -8436,43 +8473,43 @@ PROC Cfg_Txn_Execute NEAR
     jz      @@CheckINTUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_IOBASE_CHANGED
     jnz     @@CheckINTUnchanged
-    mov     dx, OFFSET msg_cfg_iobase_unchanged
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_iobase
+    call    Cfg_Print_Unchanged
 @@CheckINTUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@CheckPNPUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_INT_CHANGED
     jnz     @@CheckPNPUnchanged
-    mov     dx, OFFSET msg_cfg_irq_unchanged
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_irq
+    call    Cfg_Print_Unchanged
 @@CheckPNPUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_PNP
     jz      @@CheckMODEMUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD13
     jnz     @@CheckMODEMUnchanged
-    mov     dx, OFFSET msg_cfg_pnp_unchanged
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_pnp
+    call    Cfg_Print_Unchanged
 @@CheckMODEMUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jz      @@CheckOPTIMIZEUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jnz     @@CheckOPTIMIZEUnchanged
-    mov     dx, OFFSET msg_cfg_modem_unchanged
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_modem
+    call    Cfg_Print_Unchanged
 @@CheckOPTIMIZEUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@CheckFDUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jnz     @@CheckFDUnchanged
-    mov     dx, OFFSET msg_cfg_optimize_unchanged
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_optimize
+    call    Cfg_Print_Unchanged
 @@CheckFDUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
     jz      @@CheckBAddressUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
     jnz     @@CheckBAddressUnchanged
-    mov     dx, OFFSET msg_cfg_fd_unchanged
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_fullduplex
+    call    Cfg_Print_Unchanged
 
 @@CheckBAddressUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
@@ -8481,8 +8518,8 @@ PROC Cfg_Txn_Execute NEAR
     je      @@CheckBSizeUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jnz     @@CheckBSizeUnchanged
-    mov     dx, OFFSET msg_cfg_baddress_unchanged
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_baddress
+    call    Cfg_Print_Unchanged
 
 @@CheckBSizeUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
@@ -8491,16 +8528,16 @@ PROC Cfg_Txn_Execute NEAR
     je      @@CheckTRUnchanged
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jnz     @@CheckTRUnchanged
-    mov     dx, OFFSET msg_cfg_bsize_unchanged
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_bsize
+    call    Cfg_Print_Unchanged
 
 @@CheckTRUnchanged:
     test    [cfg_parse_flags], CFG_PARSE_TR
     jz      @@CheckAnyChange
     test    [cfg_txn_change_flags], CFG_TXN_CHG_WORD08
     jnz     @@CheckAnyChange
-    mov     dx, OFFSET msg_cfg_tr_unchanged
-    call    Print_String
+    mov     dx, OFFSET msg_cfg_property_tr
+    call    Cfg_Print_Unchanged
 
 @@CheckAnyChange:
     ; No requested hardware change.  An unchanged INT request retains the
@@ -9746,6 +9783,53 @@ PROC Print_If_Verbose NEAR
 @@Skip:
     ret
 ENDP Print_If_Verbose
+
+PROC Cfg_Print_Parameter_Accepted NEAR
+    push    ax
+    push    dx
+    push    si
+@@Name:
+    lodsb
+    or      al, al
+    jz      @@Suffix
+    mov     dl, al
+    mov     ah, 02h
+    int     21h
+    jmp     @@Name
+@@Suffix:
+    mov     dx, OFFSET msg_cfg_parameter_accepted_suffix
+    call    Print_String
+    pop     si
+    pop     dx
+    pop     ax
+    ret
+ENDP Cfg_Print_Parameter_Accepted
+
+PROC Cfg_Print_Property_Suffix NEAR
+    push    si
+    call    Print_String
+    pop     dx
+    call    Print_String
+    ret
+ENDP Cfg_Print_Property_Suffix
+
+PROC Cfg_Print_Unchanged NEAR
+    push    dx
+    mov     dx, OFFSET msg_crlf
+    call    Print_String
+    pop     dx
+    mov     si, OFFSET msg_cfg_unchanged_suffix
+    jmp     Cfg_Print_Property_Suffix
+ENDP Cfg_Print_Unchanged
+
+PROC Cfg_Print_Config_Word_Written NEAR
+    test    [cli_flags], CLI_FLAG_VERBOSE
+    jz      @@Done
+    mov     si, OFFSET msg_cfg_word_written_suffix
+    jmp     Cfg_Print_Property_Suffix
+@@Done:
+    ret
+ENDP Cfg_Print_Config_Word_Written
 
 PROC Print_HexByte NEAR
     push    ax

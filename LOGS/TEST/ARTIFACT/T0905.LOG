@@ -17,7 +17,7 @@ New live Address Configuration: 0010
 New live Resource Configuration: A000
 New EEPROM word 0Dh: Server
 
-Optimize mode is already configured to the requested value.
+Optimize is already configured to the requested value.
 No hardware changes required.
 
 Configuration completed successfully.

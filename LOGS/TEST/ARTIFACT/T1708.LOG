@@ -6,7 +6,7 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-FULLDUPLEX parameter accepted. Requested mode: enabled
+FULLDUPLEX parameter accepted. Requested value: enabled
 
 Reading current configuration...
 Current active IOBASE: 0300

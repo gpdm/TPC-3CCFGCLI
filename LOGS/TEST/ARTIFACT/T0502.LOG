@@ -6,7 +6,7 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 Adapter 1 selected.
 WARNING: No PnP BIOS detected;
 ISA PnP may require system support.
-PNP parameter accepted. Requested Plug and Play mode: enabled
+PNP parameter accepted. Requested value: enabled
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -36,7 +36,7 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 Adapter 1 selected.
 WARNING: No PnP BIOS detected;
 ISA PnP may require system support.
-PNP parameter accepted. Requested Plug and Play mode: enabled
+PNP parameter accepted. Requested value: enabled
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -48,7 +48,7 @@ Prospective active IOBASE: 0300
 New live Address Configuration: 0010
 New live Resource Configuration: A000
 
-Plug and Play mode is already configured to the requested value.
+Plug and Play is already configured to the requested value.
 No hardware changes required.
 
 Configuration completed successfully.

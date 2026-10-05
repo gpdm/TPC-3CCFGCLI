@@ -5,10 +5,10 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-IOBASE parameter accepted. Requested IOBASE: 0210
-INT parameter accepted. Requested IRQ: 5
-MODEM parameter accepted. Requested setting: 9600
-TR parameter accepted. Requested transceiver: TP
+IOBASE parameter accepted. Requested value: 0210
+INT parameter accepted. Requested value: 5
+MODEM parameter accepted. Requested value: 9600
+TR parameter accepted. Requested value: TP
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.2

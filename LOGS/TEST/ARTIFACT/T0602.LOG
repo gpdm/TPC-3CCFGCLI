@@ -4,7 +4,7 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-MODEM parameter accepted. Requested setting: 1200
+MODEM parameter accepted. Requested value: 1200
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -18,7 +18,7 @@ New live Address Configuration: 0010
 New live Resource Configuration: A000
 New EEPROM word 0Dh: 3310
 
-Modem speed setting is already configured to the requested value.
+Modem speed is already configured to the requested value.
 No hardware changes required.
 
 Configuration completed successfully.

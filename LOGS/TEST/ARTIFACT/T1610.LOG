@@ -7,10 +7,10 @@ reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 WARNING: No PnP BIOS detected;
 ISA PnP may require system support.
-IOBASE parameter accepted. Requested IOBASE: 0300
-INT parameter accepted. Requested IRQ: 10
-PNP parameter accepted. Requested Plug and Play mode: enabled
-FULLDUPLEX parameter accepted. Requested mode: enabled
+IOBASE parameter accepted. Requested value: 0300
+INT parameter accepted. Requested value: 10
+PNP parameter accepted. Requested value: enabled
+FULLDUPLEX parameter accepted. Requested value: enabled
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.2
@@ -18,9 +18,9 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-MODEM parameter accepted. Requested setting: none
-BSIZE parameter accepted. Requested size: disabled
-TR parameter accepted. Requested transceiver: TP
+MODEM parameter accepted. Requested value: none
+BSIZE parameter accepted. Requested value: disabled
+TR parameter accepted. Requested value: TP
 
 Configuration completed successfully.
 3Com EtherLink III CLI Configuration Program v0.8.2

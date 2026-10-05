@@ -5,8 +5,8 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-BADDRESS parameter accepted. Requested base address: DC000H
-BSIZE parameter accepted. Requested size: 32K
+BADDRESS parameter accepted. Requested value: DC000H
+BSIZE parameter accepted. Requested value: 32K
 Memory range DC000-DFFFF appears occupied.
 WARNING: Boot ROM mapping may conflict with existing memory.
 

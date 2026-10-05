@@ -6,8 +6,8 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-BADDRESS parameter accepted. Requested base address: C8000H
-BSIZE parameter accepted. Requested size: 16K
+BADDRESS parameter accepted. Requested value: C8000H
+BSIZE parameter accepted. Requested value: 16K
 
 Reading current configuration...
 Current active IOBASE: 0300

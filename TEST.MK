@@ -157,7 +157,7 @@ t0202:
 t0203:
    @echo [t0203] CONFIGURE /INT transition to 5  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:5 > $(ARTIFACTS)\T0203.LOG
-   FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T0203.LOG > NUL
+   FIND "INT parameter accepted. Requested value: 5" $(ARTIFACTS)\T0203.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T0203.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0203.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T0203.LOG > NUL
@@ -166,7 +166,7 @@ t0203:
 t0204:
    @echo [t0204] CONFIGURE /INT transition back to 9  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /INT:9 > $(ARTIFACTS)\T0204.LOG
-   FIND "INT parameter accepted. Requested IRQ: 9" $(ARTIFACTS)\T0204.LOG > NUL
+   FIND "INT parameter accepted. Requested value: 9" $(ARTIFACTS)\T0204.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T0204.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0204.LOG
    FIND "IRQ = 9" $(ARTIFACTS)\T0204.LOG > NUL
@@ -176,7 +176,7 @@ t0205:
    @echo [t0205] CONFIGURE single adapter fallback when /ADAPTERNUM is omitted  >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0205.LOG
    $(BINAPP) CONFIGURE /INT:5 >> $(ARTIFACTS)\T0205.LOG
-   FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T0205.LOG > NUL
+   FIND "INT parameter accepted. Requested value: 5" $(ARTIFACTS)\T0205.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T0205.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0205.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T0205.LOG > NUL
@@ -214,7 +214,7 @@ t0404:
    @echo [t0404] CONFIGURE /IOBASE transition to 0280 (long notation)  >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0404.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0280 >> $(ARTIFACTS)\T0404.LOG
-   FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T0404.LOG > NUL
+   FIND "IOBASE parameter accepted. Requested value: 0280" $(ARTIFACTS)\T0404.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T0404.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0404.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T0404.LOG > NUL
@@ -224,7 +224,7 @@ t0406:
    @echo [t0406] CONFIGURE /IOBASE transition to 280 (short notation)  >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0406.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:280 >> $(ARTIFACTS)\T0406.LOG
-   FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T0406.LOG > NUL
+   FIND "IOBASE parameter accepted. Requested value: 0280" $(ARTIFACTS)\T0406.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T0406.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0406.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T0406.LOG > NUL
@@ -234,7 +234,7 @@ t0408:
    @echo [t0408] CONFIGURE /IOBASE minimum valid address 0200  >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0408.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0200 >> $(ARTIFACTS)\T0408.LOG
-   FIND "IOBASE parameter accepted. Requested IOBASE: 0200" $(ARTIFACTS)\T0408.LOG > NUL
+   FIND "IOBASE parameter accepted. Requested value: 0200" $(ARTIFACTS)\T0408.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0408.LOG
    FIND "IOBASE = 0200" $(ARTIFACTS)\T0408.LOG > NUL
    @echo [t0408] PASSED  >> $(TESTLOG)
@@ -243,7 +243,7 @@ t0409:
    @echo [t0409] CONFIGURE /IOBASE maximum valid address 03E0  >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0409.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:03E0 >> $(ARTIFACTS)\T0409.LOG
-   FIND "IOBASE parameter accepted. Requested IOBASE: 03E0" $(ARTIFACTS)\T0409.LOG > NUL
+   FIND "IOBASE parameter accepted. Requested value: 03E0" $(ARTIFACTS)\T0409.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0409.LOG
    FIND "IOBASE = 03E0" $(ARTIFACTS)\T0409.LOG > NUL
    @echo [t0409] PASSED  >> $(TESTLOG)
@@ -255,7 +255,7 @@ t0501:
    @echo [t0501] CONFIGURE /PNP transition to disabled  >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0501.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED /VERBOSE >> $(ARTIFACTS)\T0501.LOG
-   FIND "PNP parameter accepted. Requested Plug and Play mode: disabled" $(ARTIFACTS)\T0501.LOG > NUL
+   FIND "PNP parameter accepted. Requested value: disabled" $(ARTIFACTS)\T0501.LOG > NUL
    FIND "Plug and Play configuration word written." $(ARTIFACTS)\T0501.LOG > NUL
    FIND "Updating EEPROM checksum" $(ARTIFACTS)\T0501.LOG > NUL
    FIND "EEPROM checksum updated." $(ARTIFACTS)\T0501.LOG > NUL
@@ -268,10 +268,10 @@ t0501:
 t0502:
    @echo [t0502] CONFIGURE /PNP transition back to enabled  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED /VERBOSE > $(ARTIFACTS)\T0502.LOG
-   FIND "PNP parameter accepted. Requested Plug and Play mode: enabled" $(ARTIFACTS)\T0502.LOG > NUL
+   FIND "PNP parameter accepted. Requested value: enabled" $(ARTIFACTS)\T0502.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T0502.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED /VERBOSE >> $(ARTIFACTS)\T0502.LOG
-   FIND "Plug and Play mode is already configured to the requested value." $(ARTIFACTS)\T0502.LOG > NUL
+   FIND "Plug and Play is already configured to the requested value." $(ARTIFACTS)\T0502.LOG > NUL
    FIND "No hardware changes required." $(ARTIFACTS)\T0502.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T0502.LOG
    FIND "Plug and Play Capability = yes" $(ARTIFACTS)\T0502.LOG > NUL
@@ -290,21 +290,21 @@ t06xx:
 t0601:
    @echo [t0601] CONFIGURE /MODEM transition to 1200  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 > $(ARTIFACTS)\T0601.LOG
-   FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T0601.LOG > NUL
+   FIND "MODEM parameter accepted. Requested value: 1200" $(ARTIFACTS)\T0601.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T0601.LOG > NUL
    @echo [t0601] PASSED  >> $(TESTLOG)
 
 t0602:
    @echo [t0602] CONFIGURE /MODEM unchanged transition at 1200  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /VERBOSE > $(ARTIFACTS)\T0602.LOG
-   FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T0602.LOG > NUL
-   FIND "Modem speed setting is already configured to the requested value." $(ARTIFACTS)\T0602.LOG > NUL
+   FIND "MODEM parameter accepted. Requested value: 1200" $(ARTIFACTS)\T0602.LOG > NUL
+   FIND "Modem speed is already configured to the requested value." $(ARTIFACTS)\T0602.LOG > NUL
    @echo [t0602] PASSED  >> $(TESTLOG)
 
 t0603:
    @echo [t0603] CONFIGURE /MODEM transition to NONE  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:NONE /VERBOSE > $(ARTIFACTS)\T0603.LOG
-   FIND "MODEM parameter accepted. Requested setting: none" $(ARTIFACTS)\T0603.LOG > NUL
+   FIND "MODEM parameter accepted. Requested value: none" $(ARTIFACTS)\T0603.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T0603.LOG > NUL
    FIND "New EEPROM word 0Dh: 3F10" $(ARTIFACTS)\T0603.LOG > NUL
    @echo [t0603] PASSED  >> $(TESTLOG)
@@ -320,7 +320,7 @@ t0605:
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:26 > $(ARTIFACTS)\T0605.LOG
    FIND "Invalid /MODEM parameter." $(ARTIFACTS)\T0605.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:NONE /VERBOSE >> $(ARTIFACTS)\T0605.LOG
-   FIND "Modem speed setting is already configured to the requested value." $(ARTIFACTS)\T0605.LOG > NUL
+   FIND "Modem speed is already configured to the requested value." $(ARTIFACTS)\T0605.LOG > NUL
    @echo [t0605] PASSED  >> $(TESTLOG)
 
 t0607:
@@ -397,7 +397,7 @@ t0701:
    @echo [t0701] CONFIGURE /FULLDUPLEX transition to enabled  >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T0701.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T0701.LOG
-   FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T0701.LOG > NUL
+   FIND "FULLDUPLEX parameter accepted. Requested value: enabled" $(ARTIFACTS)\T0701.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T0701.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0701.LOG > NUL
    @echo [t0701] PASSED  >> $(TESTLOG)
@@ -405,8 +405,8 @@ t0701:
 t0702:
    @echo [t0702] CONFIGURE /FULLDUPLEX unchanged transition at enabled  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:ENABLED /VERBOSE > $(ARTIFACTS)\T0702.LOG
-   FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T0702.LOG > NUL
-   FIND "Full duplex mode is already configured to the requested value." $(ARTIFACTS)\T0702.LOG > NUL
+   FIND "FULLDUPLEX parameter accepted. Requested value: enabled" $(ARTIFACTS)\T0702.LOG > NUL
+   FIND "Full duplex is already configured to the requested value." $(ARTIFACTS)\T0702.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0702.LOG > NUL
    FIND "No hardware changes required." $(ARTIFACTS)\T0702.LOG > NUL
    @echo [t0702] PASSED  >> $(TESTLOG)
@@ -414,7 +414,7 @@ t0702:
 t0703:
    @echo [t0703] CONFIGURE /FULLDUPLEX transition to disabled  >> $(TESTLOG)
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /FULLDUPLEX:DISABLED /VERBOSE > $(ARTIFACTS)\T0703.LOG
-   FIND "FULLDUPLEX parameter accepted. Requested mode: disabled" $(ARTIFACTS)\T0703.LOG > NUL
+   FIND "FULLDUPLEX parameter accepted. Requested value: disabled" $(ARTIFACTS)\T0703.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T0703.LOG > NUL
    FIND "Live Network Diagnostic full duplex mode verified." $(ARTIFACTS)\T0703.LOG > NUL
    @echo [t0703] PASSED  >> $(TESTLOG)
@@ -589,7 +589,7 @@ t0905:
    ${SEEDAPP} INIT > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER /VERBOSE > $(ARTIFACTS)\T0905.LOG
-   FIND "Optimize mode is already configured to the requested value." $(ARTIFACTS)\T0905.LOG > NUL
+   FIND "Optimize is already configured to the requested value." $(ARTIFACTS)\T0905.LOG > NUL
    FIND "No hardware changes required." $(ARTIFACTS)\T0905.LOG > NUL
    @echo [t0905] PASSED  >> $(TESTLOG)
 
@@ -810,7 +810,7 @@ t1131:
    @echo [t1131] live Boot ROM verification uses final IOBASE after migration >> $(TESTLOG)
    ${SEEDAPP} INIT /ROM:16 > $(ARTIFACTS)\T1131.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /IOBASE:0280 /VERBOSE >> $(ARTIFACTS)\T1131.LOG
-   FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T1131.LOG > NUL
+   FIND "IOBASE parameter accepted. Requested value: 0280" $(ARTIFACTS)\T1131.LOG > NUL
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1131.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T1131.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1131.LOG
@@ -822,7 +822,7 @@ t1132:
    @echo [t1132] accepted Boot ROM with /TR leaves transceiver state undisturbed >> $(TESTLOG)
    ${SEEDAPP} 3C509B-COMBO /ROM:16 > $(ARTIFACTS)\T1132.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /BADDRESS:C8000 /BSIZE:16 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T1132.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1132.LOG > NUL
+   FIND "TR parameter accepted. Requested value: AUI" $(ARTIFACTS)\T1132.LOG > NUL
    FIND "EEPROM transceiver selection verified." $(ARTIFACTS)\T1132.LOG > NUL
    FIND "Live Boot ROM configuration verified." $(ARTIFACTS)\T1132.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T1132.LOG > NUL
@@ -938,7 +938,7 @@ t1201:
    @echo [t1201] CONFIGURE /TR:TP on 3C509B-TP (should succeed) >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T1201.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP >> $(ARTIFACTS)\T1201.LOG
-   FIND "TR parameter accepted. Requested transceiver: TP" $(ARTIFACTS)\T1201.LOG > NUL
+   FIND "TR parameter accepted. Requested value: TP" $(ARTIFACTS)\T1201.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1201.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1201.LOG > NUL
    @echo [t1201] PASSED  >> $(TESTLOG)
@@ -947,7 +947,7 @@ t1202:
    @echo [t1202] CONFIGURE /TR:AUI on 3C509B-TP (should succeed) >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T1202.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUI >> $(ARTIFACTS)\T1202.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1202.LOG > NUL
+   FIND "TR parameter accepted. Requested value: AUI" $(ARTIFACTS)\T1202.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1202.LOG
    FIND "Transceiver = external" $(ARTIFACTS)\T1202.LOG > NUL
    @echo [t1202] PASSED  >> $(TESTLOG)
@@ -963,7 +963,7 @@ t1204:
    @echo [t1204] CONFIGURE /TR:AUTO on 3C509B-TP (should succeed) >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TP > $(ARTIFACTS)\T1204.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1204.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1204.LOG > NUL
+   FIND "TR parameter accepted. Requested value: AUTO" $(ARTIFACTS)\T1204.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1204.LOG
    FIND "Transceiver = auto select" $(ARTIFACTS)\T1204.LOG > NUL
    @echo [t1204] PASSED  >> $(TESTLOG)
@@ -985,7 +985,7 @@ t1207:
    $(BINAPP) LIST >> $(ARTIFACTS)\T1207.LOG
    FIND "Connectors = TP, AUI, COAX" $(ARTIFACTS)\T1207.LOG > NUL
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX >> $(ARTIFACTS)\T1207.LOG
-   FIND "TR parameter accepted. Requested transceiver: COAX" $(ARTIFACTS)\T1207.LOG > NUL
+   FIND "TR parameter accepted. Requested value: COAX" $(ARTIFACTS)\T1207.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1207.LOG
    FIND "Transceiver = on-board coax" $(ARTIFACTS)\T1207.LOG > NUL
    @echo [t1207] PASSED  >> $(TESTLOG)
@@ -994,7 +994,7 @@ t1208:
    @echo [t1208] CONFIGURE /TR:COAX on 3C509B-TPC (should succeed) >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TPC > $(ARTIFACTS)\T1208.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:COAX >> $(ARTIFACTS)\T1208.LOG
-   FIND "TR parameter accepted. Requested transceiver: COAX" $(ARTIFACTS)\T1208.LOG > NUL
+   FIND "TR parameter accepted. Requested value: COAX" $(ARTIFACTS)\T1208.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1208.LOG
    FIND "Transceiver = on-board coax" $(ARTIFACTS)\T1208.LOG > NUL
    @echo [t1208] PASSED  >> $(TESTLOG)
@@ -1003,7 +1003,7 @@ t1209:
    @echo [t1209] CONFIGURE /TR:AUTO on TP+BNC capabilities succeeds >> $(TESTLOG)
    ${SEEDAPP} 3C509B-TPC > $(ARTIFACTS)\T1209.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO >> $(ARTIFACTS)\T1209.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1209.LOG > NUL
+   FIND "TR parameter accepted. Requested value: AUTO" $(ARTIFACTS)\T1209.LOG > NUL
    @echo [t1209] PASSED  >> $(TESTLOG)
 
 t1210:
@@ -1017,7 +1017,7 @@ t1211:
    @echo [t1211] /XCVR alias: behaves identically to /TR:TP >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1211.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /XCVR:TP >> $(ARTIFACTS)\T1211.LOG
-   FIND "TR parameter accepted. Requested transceiver: TP" $(ARTIFACTS)\T1211.LOG > NUL
+   FIND "TR parameter accepted. Requested value: TP" $(ARTIFACTS)\T1211.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1211.LOG
    FIND "Transceiver = on-board TP" $(ARTIFACTS)\T1211.LOG > NUL
    @echo [t1211] PASSED  >> $(TESTLOG)
@@ -1041,7 +1041,7 @@ t1302:
    @echo [t1302] CONFIGURE parser accepts '-' switch introducers >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1302.LOG
    $(BINAPP) CONFIGURE -ADAPTERNUM:1 -INT:5 >> $(ARTIFACTS)\T1302.LOG
-   FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T1302.LOG > NUL
+   FIND "INT parameter accepted. Requested value: 5" $(ARTIFACTS)\T1302.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T1302.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1302.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1302.LOG > NUL
@@ -1051,7 +1051,7 @@ t1303:
    @echo [t1303] CONFIGURE parser accepts '=' value separators >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1303.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM=1 /INT=5 >> $(ARTIFACTS)\T1303.LOG
-   FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T1303.LOG > NUL
+   FIND "INT parameter accepted. Requested value: 5" $(ARTIFACTS)\T1303.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T1303.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1303.LOG
    FIND "IRQ = 5" $(ARTIFACTS)\T1303.LOG > NUL
@@ -1124,8 +1124,8 @@ t1401:
    @echo [t1401] combined CONFIGURE /IOBASE+/INT transaction >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1401.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0280 /INT:5 /VERBOSE >> $(ARTIFACTS)\T1401.LOG
-   FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T1401.LOG > NUL
-   FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T1401.LOG > NUL
+   FIND "IOBASE parameter accepted. Requested value: 0280" $(ARTIFACTS)\T1401.LOG > NUL
+   FIND "INT parameter accepted. Requested value: 5" $(ARTIFACTS)\T1401.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T1401.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1401.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T1401.LOG > NUL
@@ -1138,8 +1138,8 @@ t1402:
    @echo [t1402] combined CONFIGURE /MODEM+/FULLDUPLEX transaction >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1402.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /MODEM:1200 /FULLDUPLEX:ENABLED /VERBOSE >> $(ARTIFACTS)\T1402.LOG
-   FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T1402.LOG > NUL
-   FIND "FULLDUPLEX parameter accepted. Requested mode: enabled" $(ARTIFACTS)\T1402.LOG > NUL
+   FIND "MODEM parameter accepted. Requested value: 1200" $(ARTIFACTS)\T1402.LOG > NUL
+   FIND "FULLDUPLEX parameter accepted. Requested value: enabled" $(ARTIFACTS)\T1402.LOG > NUL
    FIND "New EEPROM word 0Dh: " $(ARTIFACTS)\T1402.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T1402.LOG > NUL
    @echo [t1402] PASSED  >> $(TESTLOG)
@@ -1148,8 +1148,8 @@ t1403:
    @echo [t1403] combined CONFIGURE /IOBASE+/TR on 3C509B-Combo >> $(TESTLOG)
    ${SEEDAPP} 3C509B-COMBO > $(ARTIFACTS)\T1403.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /IOBASE:0280 /TR:AUI /VERBOSE >> $(ARTIFACTS)\T1403.LOG
-   FIND "IOBASE parameter accepted. Requested IOBASE: 0280" $(ARTIFACTS)\T1403.LOG > NUL
-   FIND "TR parameter accepted. Requested transceiver: AUI" $(ARTIFACTS)\T1403.LOG > NUL
+   FIND "IOBASE parameter accepted. Requested value: 0280" $(ARTIFACTS)\T1403.LOG > NUL
+   FIND "TR parameter accepted. Requested value: AUI" $(ARTIFACTS)\T1403.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T1403.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1403.LOG
    FIND "IOBASE = 0280" $(ARTIFACTS)\T1403.LOG > NUL
@@ -1160,7 +1160,7 @@ t1405:
    @echo [t1405] combined CONFIGURE /OPTIMIZE+/MODEM transaction >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1405.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /OPTIMIZE:SERVER /MODEM:1200 /VERBOSE >> $(ARTIFACTS)\T1405.LOG
-   FIND "MODEM parameter accepted. Requested setting: 1200" $(ARTIFACTS)\T1405.LOG > NUL
+   FIND "MODEM parameter accepted. Requested value: 1200" $(ARTIFACTS)\T1405.LOG > NUL
    FIND "New EEPROM word 0Dh: Server" $(ARTIFACTS)\T1405.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T1405.LOG > NUL
    @echo [t1405] PASSED  >> $(TESTLOG)
@@ -1169,7 +1169,7 @@ t1406:
    @echo [t1406] combined CONFIGURE /TR:AUTO+/BADDRESS+/BSIZE on 3C509B-Combo >> $(TESTLOG)
    ${SEEDAPP} 3C509B-COMBO /ROM:16 > $(ARTIFACTS)\T1406.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:AUTO /BADDRESS:C8000 /BSIZE:16 /VERBOSE >> $(ARTIFACTS)\T1406.LOG
-   FIND "TR parameter accepted. Requested transceiver: AUTO" $(ARTIFACTS)\T1406.LOG > NUL
+   FIND "TR parameter accepted. Requested value: AUTO" $(ARTIFACTS)\T1406.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T1406.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T1406.LOG
    FIND "Transceiver = auto select" $(ARTIFACTS)\T1406.LOG > NUL
@@ -1180,8 +1180,8 @@ t1407:
    @echo [t1407] combined CONFIGURE /PNP+/INT checksum domains >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1407.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED /INT:5 /VERBOSE >> $(ARTIFACTS)\T1407.LOG
-   FIND "PNP parameter accepted. Requested Plug and Play mode: disabled" $(ARTIFACTS)\T1407.LOG > NUL
-   FIND "INT parameter accepted. Requested IRQ: 5" $(ARTIFACTS)\T1407.LOG > NUL
+   FIND "PNP parameter accepted. Requested value: disabled" $(ARTIFACTS)\T1407.LOG > NUL
+   FIND "INT parameter accepted. Requested value: 5" $(ARTIFACTS)\T1407.LOG > NUL
    FIND "Plug and Play configuration word written." $(ARTIFACTS)\T1407.LOG > NUL
    FIND "IRQ configuration word written." $(ARTIFACTS)\T1407.LOG > NUL
    FIND "EEPROM checksum updated." $(ARTIFACTS)\T1407.LOG > NUL
@@ -1767,7 +1767,7 @@ t1714:
    @echo [t1714] unchanged /TR with /VERBOSE on 3C509B-TP >> $(TESTLOG)
    ${SEEDAPP} INIT > $(ARTIFACTS)\T1714.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /TR:TP /VERBOSE >> $(ARTIFACTS)\T1714.LOG
-   FIND "Transceiver type is already configured to the requested value." $(ARTIFACTS)\T1714.LOG > NUL
+   FIND "Transceiver is already configured to the requested value." $(ARTIFACTS)\T1714.LOG > NUL
    FIND "No hardware changes required." $(ARTIFACTS)\T1714.LOG > NUL
    @echo [t1714] PASSED  >> $(TESTLOG)
 
@@ -1941,7 +1941,7 @@ t9201:
    ${SEEDAPP} INIT > $(ARTIFACTS)\T9201.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:DISABLED >> $(ARTIFACTS)\T9201.LOG
    $(BINAPP) CONFIGURE /ADAPTERNUM:1 /PNP:ENABLED >> $(ARTIFACTS)\T9201.LOG
-   FIND "PNP parameter accepted. Requested Plug and Play mode: enabled" $(ARTIFACTS)\T9201.LOG > NUL
+   FIND "PNP parameter accepted. Requested value: enabled" $(ARTIFACTS)\T9201.LOG > NUL
    FIND "Configuration completed" $(ARTIFACTS)\T9201.LOG > NUL
    $(BINAPP) LIST >> $(ARTIFACTS)\T9201.LOG
    FIND "Plug and Play = enabled" $(ARTIFACTS)\T9201.LOG > NUL

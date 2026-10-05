@@ -5,8 +5,8 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-FULLDUPLEX parameter accepted. Requested mode: enabled
-TR parameter accepted. Requested transceiver: AUI
+FULLDUPLEX parameter accepted. Requested value: enabled
+TR parameter accepted. Requested value: AUI
 Full duplex can only be enabled with the TP transceiver.
 3Com EtherLink III CLI Configuration Program v0.8.2
 by The Phintage Collector (Gianpaolo Del Matto)

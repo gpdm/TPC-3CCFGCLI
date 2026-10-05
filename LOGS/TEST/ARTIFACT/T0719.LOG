@@ -6,8 +6,8 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-MODEM parameter accepted. Requested setting: 1200
-TR parameter accepted. Requested transceiver: AUI
+MODEM parameter accepted. Requested value: 1200
+TR parameter accepted. Requested value: AUI
 
 Reading current configuration...
 Current active IOBASE: 0300

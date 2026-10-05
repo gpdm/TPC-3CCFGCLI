@@ -6,8 +6,8 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-INT parameter accepted. Requested IRQ: 10
-PNP parameter accepted. Requested Plug and Play mode: disabled
+INT parameter accepted. Requested value: 10
+PNP parameter accepted. Requested value: disabled
 
 Reading current configuration...
 Current active IOBASE: 0300

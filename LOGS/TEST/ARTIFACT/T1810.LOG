@@ -5,6 +5,6 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-BADDRESS parameter accepted. Requested base address: C4000H
-BSIZE parameter accepted. Requested size: 32K
+BADDRESS parameter accepted. Requested value: C4000H
+BSIZE parameter accepted. Requested value: 32K
 Invalid /BADDRESS parameter. Use a hex address C0000-DE000 in 2000h steps.

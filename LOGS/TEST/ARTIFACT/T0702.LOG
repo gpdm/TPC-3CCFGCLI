@@ -4,7 +4,7 @@ https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Adapter 1 selected.
-FULLDUPLEX parameter accepted. Requested mode: enabled
+FULLDUPLEX parameter accepted. Requested value: enabled
 
 Reading current configuration...
 Current active IOBASE: 0300
@@ -16,7 +16,7 @@ Prospective active IOBASE: 0300
 New live Address Configuration: 0010
 New live Resource Configuration: A000
 
-Full duplex mode is already configured to the requested value.
+Full duplex is already configured to the requested value.
 Live Network Diagnostic full duplex mode verified.
 No hardware changes required.
 
