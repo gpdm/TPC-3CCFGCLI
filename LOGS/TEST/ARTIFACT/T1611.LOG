@@ -1,6 +1,6 @@
-3CSEED - 3C509B mock state seeder v0.8.2
+3CSEED - 3C509B mock state seeder v0.8.3
 Seed file created (INIT).
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -13,7 +13,7 @@ PNP parameter accepted. Requested value: enabled
 FULLDUPLEX parameter accepted. Requested value: enabled
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -23,15 +23,15 @@ BSIZE parameter accepted. Requested value: disabled
 TR parameter accepted. Requested value: TP
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Configuration restore batch file created: LOGS\TEST\ARTIFACT\LITREST.BAT
-3CSEED - 3C509B mock state seeder v0.8.2
+3CSEED - 3C509B mock state seeder v0.8.3
 Seed file created (INIT).
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2

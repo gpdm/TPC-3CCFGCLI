@@ -1,6 +1,6 @@
-3CSEED - 3C509B mock state seeder v0.8.2
+3CSEED - 3C509B mock state seeder v0.8.3
 Seed file created (INIT).
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -30,13 +30,13 @@ Verifying requested configuration...
 EEPROM modem speed setting verified.
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Configuration restore batch file created: LOGS\TEST\ARTIFACT\T0610.BAT
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -61,7 +61,7 @@ Number                       Description
        Optimization = DOS
        MODEM Interrupt Disable Time = 125 us (38400 bd)
        Full Duplex = disabled
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -91,13 +91,13 @@ Verifying requested configuration...
 EEPROM modem speed setting verified.
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Configuration restore batch file created: LOGS\TEST\ARTIFACT\T0610.BAT
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -122,7 +122,7 @@ Number                       Description
        Optimization = DOS
        MODEM Interrupt Disable Time = 250 us (19200 bd)
        Full Duplex = disabled
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -152,7 +152,7 @@ Verifying requested configuration...
 EEPROM modem speed setting verified.
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -182,13 +182,13 @@ Verifying requested configuration...
 EEPROM modem speed setting verified.
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Configuration restore batch file created: LOGS\TEST\ARTIFACT\T0610.BAT
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -213,7 +213,7 @@ Number                       Description
        Optimization = DOS
        MODEM Interrupt Disable Time = 1000 us (2400 bd)
        Full Duplex = disabled
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -243,15 +243,15 @@ Verifying requested configuration...
 EEPROM modem speed setting verified.
 
 Configuration completed successfully.
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
 Configuration restore batch file created: LOGS\TEST\ARTIFACT\T0610.BAT
-3CSEED - 3C509B mock state seeder v0.8.2
+3CSEED - 3C509B mock state seeder v0.8.3
 Seed file created (INIT).
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
@@ -276,7 +276,7 @@ Number                       Description
        Optimization = DOS
        MODEM Interrupt Disable Time = 1200 us (not representable by CLI)
        Full Duplex = disabled
-3Com EtherLink III CLI Configuration Program v0.8.2
+3Com EtherLink III CLI Configuration Program v0.8.3
 by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2

@@ -714,6 +714,7 @@ save_outputfile_kw DB 'OUTPUTFILE:', 0
 cli_kw_help     DB 'HELP', 0
 cli_kw_list     DB 'LIST', 0
 cli_kw_saveconfig DB 'SAVECONFIG', 0
+save_configure_suffix DB ' '
 cli_kw_configure DB 'CONFIGURE', 0
 cli_kw_verbose  DB 'VERBOSE', 0
 save_execfile_kw DB 'EXECFILE:', 0
@@ -746,25 +747,14 @@ save_product_id DW  0
 ; only when capability evidence is available.  These are not generation state.
 save_pnp_valid  DB  0
 save_fd_valid   DB  0
-save_configure_suffix DB ' CONFIGURE', 0
-save_adapternum DB  ' /ADAPTERNUM:', 0
-save_int        DB  ' /INT:', 0
 SAVE_LEN_INT EQU 6
-save_iobase     DB  ' /IOBASE:', 0
 SAVE_LEN_IOBASE EQU 9
-save_pnp        DB  ' /PNP:', 0
 SAVE_LEN_PNP EQU 6
-save_fd         DB  ' /FULLDUPLEX:', 0
 SAVE_LEN_FD EQU 13
-save_modem      DB  ' /MODEM:', 0
 SAVE_LEN_MODEM EQU 8
-save_optimize   DB  ' /OPTIMIZE:', 0
 SAVE_LEN_OPTIMIZE EQU 11
-save_baddress   DB  ' /BADDRESS:', 0
 SAVE_LEN_BADDRESS EQU 11
-save_bsize      DB  ' /BSIZE:', 0
 SAVE_LEN_BSIZE EQU 8
-save_tr         DB  ' /TR:', 0
 SAVE_LEN_TR EQU 5
 save_none       DB  'NONE', 0
 SAVE_LEN_NONE EQU 4
@@ -1608,6 +1598,28 @@ PROC Save_Append_String NEAR
     ret
 ENDP Save_Append_String
 
+PROC Save_Append_Option_Name NEAR
+    push    ax
+
+    mov     al, ' '
+    call    Save_Append_Char
+    jc      @@Done
+
+    mov     al, '/'
+    call    Save_Append_Char
+    jc      @@Done
+
+    call    Save_Append_String
+    jc      @@Done
+
+    mov     al, ':'
+    call    Save_Append_Char
+
+@@Done:
+    pop     ax
+    ret
+ENDP Save_Append_Option_Name
+
 PROC Save_String_Length NEAR
     push    ax
     push    si
@@ -1864,8 +1876,8 @@ PROC Save_Begin_Command NEAR
     mov     si, OFFSET save_configure_suffix
     call    Save_Append_String
     jc      @@Fail
-    mov     si, OFFSET save_adapternum
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_adapternum
+    call    Save_Append_Option_Name
     jc      @@Fail
     mov     ax, [save_adapter_num]
     call    Save_Append_Dec_Word
@@ -2011,8 +2023,8 @@ PROC Save_Build_Command NEAR
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
-    mov     si, OFFSET save_int
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_int
+    call    Save_Append_Option_Name
     jc      @@Fail
     mov     ax, [save_word09]
     mov     cl, W0_RESOURCE_CFG_IRQ_SHIFT
@@ -2024,8 +2036,8 @@ PROC Save_Build_Command NEAR
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
-    mov     si, OFFSET save_iobase
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_iobase
+    call    Save_Append_Option_Name
     jc      @@Fail
     mov     ax, [save_word08]
     call    Nic_IOBASE_Selector_To_Base
@@ -2048,8 +2060,8 @@ PROC Save_Build_Command NEAR
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
-    mov     si, OFFSET save_pnp
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_pnp
+    call    Save_Append_Option_Name
     jc      @@Fail
     mov     ax, [save_word13]
     and     ax, 000Ch
@@ -2079,8 +2091,8 @@ PROC Save_Build_Command NEAR
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
-    mov     si, OFFSET save_fd
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_fullduplex
+    call    Save_Append_Option_Name
     jc      @@Fail
     mov     ax, [save_word0d]
     test    ax, EEPROM_SOFTWARE_INFO_FULLDUPLEX
@@ -2112,8 +2124,8 @@ PROC Save_Build_Command NEAR
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
-    mov     si, OFFSET save_modem
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_modem
+    call    Save_Append_Option_Name
     jc      @@Fail
     call    Save_Append_Dec_Word
     jc      @@Fail
@@ -2123,8 +2135,8 @@ PROC Save_Build_Command NEAR
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
-    mov     si, OFFSET save_modem
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_modem
+    call    Save_Append_Option_Name
     jc      @@Fail
     mov     si, OFFSET save_none
     call    Save_Append_String
@@ -2154,8 +2166,8 @@ PROC Save_Build_Command NEAR
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
-    mov     si, OFFSET save_optimize
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_optimize
+    call    Save_Append_Option_Name
     jc      @@Fail
     mov     si, di
     call    Save_Append_String
@@ -2218,8 +2230,8 @@ PROC Save_Build_Command NEAR
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
-    mov     si, OFFSET save_baddress
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_baddress
+    call    Save_Append_Option_Name
     jc      @@Fail
 
     ; Build the full 20-bit address exactly as Print_Boot_Rom_Value does,
@@ -2236,8 +2248,8 @@ PROC Save_Build_Command NEAR
     pop     ax
     call    Save_Append_Hex_Word
     jc      @@Fail
-    mov     si, OFFSET save_bsize
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_bsize
+    call    Save_Append_Option_Name
     jc      @@Fail
     mov     ax, di
     call    Save_Append_Dec_Word
@@ -2256,8 +2268,8 @@ PROC Save_Build_Command NEAR
     call    Save_Ensure_Option_Length
     jc      @@Fail
     call    Save_Commit_Option_Length
-    mov     si, OFFSET save_bsize
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_bsize
+    call    Save_Append_Option_Name
     jc      @@Fail
     mov     si, OFFSET save_disabled
     call    Save_Append_String
@@ -2291,8 +2303,8 @@ PROC Save_Build_Command NEAR
     jc      @@Fail
     call    Save_Commit_Option_Length
     push    si
-    mov     si, OFFSET save_tr
-    call    Save_Append_String
+    mov     si, OFFSET cfg_name_tr
+    call    Save_Append_Option_Name
     pop     si
     jc      @@Fail
     call    Save_Append_String
