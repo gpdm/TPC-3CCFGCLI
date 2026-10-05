@@ -1401,8 +1401,7 @@ PROC Cmd_SaveConfig NEAR
     call    Print_String
     mov     si, OFFSET save_filename
     call    Save_Print_Filename
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
     jmp     @@Done
 @@PrepareFail:
     cmp     al, SAVE_ERR_WRITE
@@ -3320,8 +3319,7 @@ PROC Cfg_Dump_Boot_ROM_Header NEAR
     inc     bx
     loop    @@Byte
 
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     pop     si
     pop     dx
@@ -3913,12 +3911,10 @@ PROC Cmd_List NEAR
     loop    @@PrintMac
     pop     si
 
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     ; Original generic NIC description line.
-    mov     dx, OFFSET msg_indent
-    call    Print_String
+    call    Print_Indent
     mov     dx, OFFSET msg_a02c
     call    Print_String
     mov     dx, OFFSET msg_asic_prefix
@@ -3935,8 +3931,7 @@ PROC Cmd_List NEAR
 @@AsicDone:
     mov     dx, OFFSET msg_asic_suffix
     call    Print_String
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     ; Read and print the additional metrics only after enumeration is complete.
     ; This cannot alter the ID port contention or the 16 byte NIC record layout.
@@ -7069,8 +7064,7 @@ PROC Cfg_Txn_Verify_IOBASE NEAR
     call    Print_String
     mov     ax, [cfg_txn_access_base]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@IOPersistent:
     mov     dx, [cfg_txn_access_base]
@@ -7092,8 +7086,7 @@ PROC Cfg_Txn_Verify_IOBASE NEAR
     call    Print_String
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@IOLive:
     mov     dx, [cfg_txn_access_base]
@@ -7115,8 +7108,7 @@ PROC Cfg_Txn_Verify_IOBASE NEAR
     call    Print_String
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@Success:
     clc
@@ -7174,8 +7166,7 @@ PROC Cfg_Txn_Verify_INT NEAR
     call    Print_String
     mov     al, bl
     call    Print_DecByte
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@Live:
     mov     dx, [cfg_txn_access_base]
@@ -7196,8 +7187,7 @@ PROC Cfg_Txn_Verify_INT NEAR
     call    Print_String
     mov     al, bl
     call    Print_DecByte
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@Success:
     clc
@@ -7639,8 +7629,7 @@ PROC Cfg_Txn_Finalize_IOBASE NEAR
     call    Print_String
     mov     ax, [cfg_txn_new_base]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 @@Success:
     pop     si
     pop     dx
@@ -7753,8 +7742,7 @@ PROC Cfg_Txn_Report_Current NEAR
     call    Print_String
     mov     ax, [cfg_txn_old_base]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@Live06
@@ -7763,31 +7751,27 @@ PROC Cfg_Txn_Report_Current NEAR
     mov     al, [cfg_txn_old_io_selector]
     call    Nic_IOBASE_Selector_To_Base
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     mov     dx, OFFSET msg_cfg_current_word08
     call    Print_String
     mov     ax, [cfg_txn_old_word08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     mov     dx, OFFSET msg_cfg_current_live_iobase
     call    Print_String
     mov     al, [cfg_txn_live_io_selector]
     call    Nic_IOBASE_Selector_To_Base
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@Live06:
     mov     dx, OFFSET msg_cfg_current_live06
     call    Print_String
     mov     ax, [cfg_txn_old_live06]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@Live08
@@ -7795,38 +7779,33 @@ PROC Cfg_Txn_Report_Current NEAR
     call    Print_String
     mov     al, [cfg_txn_old_irq]
     call    Print_DecByte
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     mov     dx, OFFSET msg_cfg_txn_current_live_irq
     call    Print_String
     mov     al, [cfg_txn_live_irq]
     call    Print_DecByte
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     mov     dx, OFFSET msg_cfg_current_word09
     call    Print_String
     mov     ax, [cfg_txn_old_word09]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@Live08:
     mov     dx, OFFSET msg_cfg_current_live08
     call    Print_String
     mov     ax, [cfg_txn_old_live08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jz      @@Optimize
     mov     dx, OFFSET msg_cfg_current_word0d
     call    Print_String
     mov     ax, [cfg_txn_old_word0d]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 @@Optimize:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@Done
@@ -7837,8 +7816,7 @@ PROC Cfg_Txn_Report_Current NEAR
     shr     ax, cl
     and     al, 03h
     call    Decode_Optimize_Value
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 @@Done:
     pop     dx
     pop     cx
@@ -7861,8 +7839,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     call    Print_String
     mov     ax, [cfg_txn_new_base]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     test    [cfg_parse_flags], CFG_PARSE_IOBASE
     jz      @@Live06
@@ -7870,16 +7847,14 @@ PROC Cfg_Txn_Report_Prospective NEAR
     call    Print_String
     mov     ax, [cfg_txn_new_word08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@Live06:
     mov     dx, OFFSET msg_cfg_new_live06
     call    Print_String
     mov     ax, [cfg_txn_new_live06]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@Live08
@@ -7887,24 +7862,21 @@ PROC Cfg_Txn_Report_Prospective NEAR
     call    Print_String
     mov     ax, [cfg_txn_new_word09]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@Live08:
     mov     dx, OFFSET msg_cfg_new_live08
     call    Print_String
     mov     ax, [cfg_txn_new_live08]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
     test    [cfg_parse_flags], CFG_PARSE_MODEM
     jz      @@Optimize
     mov     dx, OFFSET msg_cfg_new_word0d
     call    Print_String
     mov     ax, [cfg_txn_new_word0d]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 @@Optimize:
     test    [cfg_parse_flags], CFG_PARSE_OPTIMIZE
     jz      @@Done
@@ -7915,8 +7887,7 @@ PROC Cfg_Txn_Report_Prospective NEAR
     shr     ax, cl
     and     al, 03h
     call    Decode_Optimize_Value
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 @@Done:
     pop     dx
     pop     cx
@@ -8252,8 +8223,7 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Print_Parameter_Accepted
     mov     ax, [cfg_iobase_value]
     call    Print_HexWord
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 @@RequestedINT:
     test    [cfg_parse_flags], CFG_PARSE_INT
     jz      @@RequestedPNP
@@ -8261,8 +8231,7 @@ PROC Cfg_Txn_Execute NEAR
     call    Cfg_Print_Parameter_Accepted
     mov     al, [cfg_int_value]
     call    Print_DecByte
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@RequestedPNP:
     test    [cfg_parse_flags], CFG_PARSE_PNP
@@ -8277,8 +8246,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_disabled
 @@PnpPrint:
     call    Print_String
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@RequestedMODEM:
     test    [cfg_parse_flags], CFG_PARSE_MODEM
@@ -8298,8 +8266,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_none
     call    Print_String
 @@AfterRequestedModem:
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@RequestedFULLDUPLEX:
     test    [cfg_parse_flags], CFG_PARSE_FULLDUPLEX
@@ -8314,8 +8281,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_disabled
 @@FDPrint:
     call    Print_String
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@RequestedBAddress:
     test    [cfg_parse_flags], CFG_PARSE_BADDRESS
@@ -8330,8 +8296,7 @@ PROC Cfg_Txn_Execute NEAR
     call    Print_HexAddress20
     mov     dx, OFFSET msg_hex_suffix
     call    Print_String
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@RequestedBSize:
     test    [cfg_parse_flags], CFG_PARSE_BSIZE
@@ -8362,8 +8327,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_disabled
     call    Print_String
 @@AfterBSizeValue:
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@RequestedTR:
     test    [cfg_parse_flags], CFG_PARSE_TR
@@ -8388,8 +8352,7 @@ PROC Cfg_Txn_Execute NEAR
     mov     dx, OFFSET msg_tr_coax
 @@PrintTR:
     call    Print_String
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
 
 @@Read:
     mov     dx, OFFSET msg_cfg_txn_read
@@ -9588,37 +9551,29 @@ PROC Print_Extended_Nic_Info NEAR
     push    ax
     push    dx
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_connectors_label
    call    Print_String
    call    Print_Connector_Capabilities
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_fd_capability_label
    call    Print_String
    call    Print_Full_Duplex_Capability
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_pnp_label
    call    Print_String
    call    Print_Pnp_Capability_Value
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_separator
    call    Print_String
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_iobase
    call    Print_String
    mov     ax, [WORD si + NIC_IO_BASE]
@@ -9635,32 +9590,25 @@ PROC Print_Extended_Nic_Info NEAR
    xor     ax, ax
    mov     al, [BYTE si + NIC_IRQ_VAL]
    call    Print_DecByte
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_xcvr_label
    call    Print_String
    call    Print_Transceiver_Value
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_pnp_state_label
    call    Print_String
    call    Print_Pnp_State_Value
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_boot_label
    call    Print_String
    call    Print_Boot_Rom_Value
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
    ; These EEPROM diagnostics are intentionally verbose-only and 3C509B-only.
    test    [cli_flags], CLI_FLAG_VERBOSE
@@ -9671,8 +9619,7 @@ PROC Print_Extended_Nic_Info NEAR
    cmp     al, 2
    jb      @@SkipBootRomDiagnostics
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_boot_rom_size_valid_label
    call    Print_String
    mov     ax, [ext_boot_rom_size_valid]
@@ -9689,11 +9636,9 @@ PROC Print_Extended_Nic_Info NEAR
    mov     dx, OFFSET msg_no
 @@PrintBootRomSizeValid:
    call    Print_String
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_secondary_checksum_label
    call    Print_String
    mov     ax, [ext_secondary_checksum_valid]
@@ -9710,34 +9655,27 @@ PROC Print_Extended_Nic_Info NEAR
    mov     dx, OFFSET msg_invalid
 @@PrintSecondaryChecksum:
    call    Print_String
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
 @@SkipBootRomDiagnostics:
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_optimize_label
    call    Print_String
    call    Print_Optimize_Value
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_modem_label
    call    Print_String
    call    Print_Modem_Value
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
-   mov     dx, OFFSET msg_indent
-   call    Print_String
+   call    Print_Indent
    mov     dx, OFFSET msg_fullduplex_label
    call    Print_String
    call    Print_Full_Duplex_Value
-   mov     dx, OFFSET msg_crlf
-   call    Print_String
+   call    Print_CRLF
 
    pop     dx
    pop     ax
@@ -9768,6 +9706,16 @@ PROC Print_String NEAR
     pop     ax
     ret
 ENDP Print_String
+
+PROC Print_CRLF NEAR
+    mov     dx, OFFSET msg_crlf
+    jmp     Print_String
+ENDP Print_CRLF
+
+PROC Print_Indent NEAR
+    mov     dx, OFFSET msg_indent
+    jmp     Print_String
+ENDP Print_Indent
 
 ; Input DX = '$'-terminated string.  Prints it via Print_String only when
 ; CLI_FLAG_VERBOSE is set in cli_flags; otherwise does nothing.  Consolidates
@@ -9815,8 +9763,7 @@ ENDP Cfg_Print_Property_Suffix
 
 PROC Cfg_Print_Unchanged NEAR
     push    dx
-    mov     dx, OFFSET msg_crlf
-    call    Print_String
+    call    Print_CRLF
     pop     dx
     mov     si, OFFSET msg_cfg_unchanged_suffix
     jmp     Cfg_Print_Property_Suffix

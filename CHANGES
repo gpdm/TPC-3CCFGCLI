@@ -1,5 +1,6 @@
 Changelog 0.8.3
   - Deduplicated CONFIGURE diagnostic strings to reduce executable size.
+  - Added shared CRLF and indentation output helpers to reduce executable size.
 
 Changelog 0.8.2
   - Added generation-aware 3C509 Boot ROM base validation while keeping its
