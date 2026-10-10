@@ -52,11 +52,16 @@ The complete discovery flow is coordinated by `Scan_All_3Com_Cards`.
                         tagged adapters
                                 |
                                 v
-                    Scan_Active_Base_Ports
+                   Validate_Active_Id_Records
                                 |
                                 v
                   refresh or verify existing
                    ID-discovered records
+                                |
+                                v
+                    Enrich_All_3Com_Cards
+                  isolated temporary access
+                   for capability collection
                                 |
                                 v
                             nic_table
@@ -70,8 +75,10 @@ I/O address.
 Tagged activation then attempts to make those adapters accessible at their
 configured bases.
 
-The final active-base scan verifies the resulting live adapters without
-creating additional records.
+Active-record validation probes only uniquely owned, nonzero configured bases
+from the ID-discovered table. It does not enumerate every valid ISA base or
+create additional records. Capability enrichment then uses isolated temporary
+access to collect live facts for each tagged record.
 
 ## The NIC record
 
@@ -117,7 +124,7 @@ It first resets the previous discovery state:
 * `id_next_tag` starts at tag 1
 * the complete `nic_table` is cleared
 
-It then performs the three discovery phases in this order:
+It then performs discovery, activation, validation, and enrichment in this order:
 
 ```text
 Discover_Id_Port_Cards
@@ -126,7 +133,10 @@ Discover_Id_Port_Cards
 Nic_Activate_Tagged_Cards
         |
         v
-Scan_Active_Base_Ports
+Validate_Active_Id_Records
+        |
+        v
+Enrich_All_3Com_Cards
 ```
 
 This procedure is the normal entry point when the application needs a current
@@ -318,8 +328,8 @@ entries through repeated ID-port visibility.
 
 This duplicate mechanism is identity-based.
 
-It should not be confused with the later active-base duplicate handling,
-which operates on I/O base addresses.
+It should not be confused with the later active-record ownership check,
+which detects shared I/O bases without merging or deleting records.
 
 ## Creating a provisional ID record
 
@@ -401,11 +411,9 @@ normal records.
 After ID-port discovery completes, the provisional records may still describe
 adapters that are not active on the ISA bus.
 
-`Nic_Activate_Tagged_Cards` performs the backend-specific activation step for
-the adapters just discovered through the ID port.
-
-This procedure belongs to the backend because the real and mock
-implementations reach activation differently.
+`Nic_Activate_Tagged_Cards` performs the activation step for the adapters just
+discovered through the ID port. Its algorithm is shared in `3CSHIF.ASM`;
+the selected backend supplies the ID-port primitives.
 
 The application-level purpose, however, is the same:
 
@@ -418,34 +426,29 @@ make their configured ISA decode active where possible
 
 ## Real hardware activation
 
-On REALHW, each record with a nonzero configured I/O base is processed.
+The shared routine processes each record with a nonzero configured I/O base.
 
-The backend:
+It:
 
 1. re-enters short or full ID mode according to `NIC_ID_MODE`
 2. selects the record's `NIC_TAG`
 3. derives the 3Com activation selector from the configured I/O base
 4. sends the ID-port activation command
-5. probes the resulting active base using `Nic_Check_3Com_Signature`
 
-Only after the signature check succeeds does the record receive:
-
-```text
-NIC_FLAG_ACTIVE
-```
-
-The live product ID and ASIC revision are also refreshed from the active
-adapter.
+On REALHW, the backend emits these commands to the physical ID port.
+The activation routine neither probes the resulting base nor sets
+`NIC_FLAG_ACTIVE`. Issuing activation does not itself prove runtime
+reachability; that is checked separately by `Validate_Active_Id_Records`.
 
 ## Mock activation
 
-MOCKHW exposes the same application-level operation through
-`Nic_Activate_Tagged_Cards`, but does not need to reproduce the literal ISA
-bus sequence instruction by instruction.
-
-It locates the modeled adapter by tag, applies the configured active base, sets
-the modeled activation state, commits the resulting mock record, and persists
-the state.
+MOCKHW runs the same shared `Nic_Activate_Tagged_Cards` command sequence.
+Its ID-port backend models tag selection and activation:
+`Mock_Id_Select_Tag` leaves matching-tag adapters in ID command state, and
+`Mock_Id_Activate_Eligible` applies activation to adapters in that state.
+It updates the live base and modeled decode state and persists the state.
+This modeled activation state is distinct from `NIC_FLAG_ACTIVE` in the
+application's `nic_table`.
 
 This is an example of the distinction described in
 [`BACKEND.md`](BACKEND.md):
@@ -476,89 +479,87 @@ currently accessible through its ISA base.
 
 Later code must preserve that distinction.
 
-# Phase 3: Active-base scanning
+# Phase 3: Validation of active ID records
 
-## Why scan again after activation?
+## Which bases are probed?
 
-Even after ID-port discovery and activation, the program performs a complete
-scan of valid active ISA bases.
+`Validate_Active_Id_Records` walks the `card_count` existing records in
+`nic_table`, not `io_scan_table`.
 
-This is not redundant.
+For each record it:
 
-The final scan verifies and refreshes ID-discovered adapters that are now
-active. It never creates a record for a responding base that has no matching
-ID-discovered record.
+1. skips a zero (unassigned) `NIC_IO_BASE`
+2. calls `Find_Record_By_Base` for the configured base
+3. proceeds only when the returned pointer is the current record
+4. calls `Nic_Check_3Com_Signature` at that base
 
-## Valid base addresses
+`Find_Record_By_Base` returns zero for no matching record, `FFFFh` for
+multiple matches, or the sole matching record's pointer. Shared bases are
+therefore skipped before any signature probe; their logical records remain
+separate and do not receive active status from an ambiguous response.
 
-`io_scan_table` contains all 31 valid selectable ISA bases.
+Normal ID discovery rejects EISA selector `1Fh` before record construction,
+so supported records normally have nonzero ISA bases. The zero-base check
+also protects validation if an unassigned record is present.
 
-They cover:
+## Signature results and active status
 
-```text
-0200h through 03E0h
-```
+`Nic_Check_3Com_Signature`, shared in `3CSHIF.ASM`, checks command/status
+access, the Window 0 manufacturer ID and supported product family, and reads
+the ASIC revision from Window 4. It restores the original register window.
 
-in `10h` increments.
+A failed probe advances to the next record without setting
+`NIC_FLAG_ACTIVE`. A successful probe refreshes the sole owner's
+`NIC_PRODUCT_ID` and `NIC_ASIC_REV` and sets `NIC_FLAG_ACTIVE`.
 
-The table is ordered with the `0300h` range first and the `0200h` range
-afterward, but all 31 valid selector values are represented.
+This configured-base check does not compare the OEM node address; the stronger
+identity comparison belongs to temporary working-base validation below.
 
-`03F0h` is not included.
+There is no record-construction path here and no increment of `card_count`.
+A base absent from the ID-discovered table is not probed by this phase, so
+even a responding adapter there cannot create a new record.
 
-EEPROM selector `1Fh` does not represent another normal ISA base.
+## The separate role of `io_scan_table`
 
-## Signature probing
+`io_scan_table` still contains all 31 valid selectable ISA bases, emitted by
+`ISA_IOBASE_TABLE` in `3C509DEF.INC` and followed by a zero terminator.
+They cover `0200h` through `03E0h` in `10h` increments, with the `0300h`
+range first and the `0200h` range afterward. `03F0h` is excluded because
+selector `1Fh` requests EISA slot-specific addressing.
 
-For every base in `io_scan_table`,
-`Scan_Active_Base_Ports` calls:
+The table is consumed by `Nic_Find_Temporary_Base`, not by active-record
+validation. That routine selects a working address for an already known,
+ID-tagged adapter:
 
-```text
-Nic_Check_3Com_Signature
-```
+1. skips the selected adapter's configured base
+2. skips any base configured by a record in `nic_table`, regardless of its
+   active flag
+3. samples each of the candidate range's 16 ports 16 times through
+   `Nic_Probe_IO_Byte`, rejecting the candidate if the final sample for a port
+   is not `FFh`
+4. activates the selected tag at the candidate base
+5. calls `Nic_Validate_Temporary_Base` to compare the signature, product ID,
+   known ASIC revision, and OEM EEPROM node address against the logical record
 
-A failed signature probe simply advances to the next base.
+If identity validation fails, it issues activation at the configured base
+before trying another candidate. Success returns the temporary base; exhausting
+the table returns carry set. This is working-address selection, not adapter
+enumeration, and does not create records or set `NIC_FLAG_ACTIVE`.
 
-A successful probe returns the product ID and ASIC revision needed for the
-record.
+# Phase 4: Capability enrichment
 
-The successful probe result is retained and reused by the remainder of the
-current scan iteration.
+`Enrich_All_3Com_Cards` uses `Nic_Begin_Temporary_Access` for each record,
+collects capabilities through `Nic_Read_Capabilities`, and calls
+`Nic_End_Temporary_Access` to restore the configured base. Capability results
+are published only after restoration succeeds.
 
-The active scan should not add unnecessary duplicate signature probes after a
-base has already been validated.
-
-## Matching an existing record
-
-After a successful signature probe, the scanner calls:
-
-```text
-Find_Record_By_Base
-```
-
-This comparison is based on `NIC_IO_BASE`.
-
-If exactly one record exists for that base, the scanner refreshes that record.
-
-* `NIC_PRODUCT_ID`
-* `NIC_ASIC_REV`
-
-and sets:
-
-```text
-NIC_FLAG_ACTIVE
-```
-
-This is the normal path for an adapter that was discovered through the ID port
-and then successfully activated.
-
-If no record uses the responding I/O base, the scanner ignores that response.
-If more than one record uses the base, the scanner likewise does not attribute
-the response to an arbitrary record.
+Temporary validation can learn an unknown ASIC revision even for a record whose
+configured base was not uniquely accessible. It does not turn temporary
+reachability into configured-base active status.
 
 # How records converge
 
-The three stages are designed to converge on one final table.
+The stages preserve ID-discovered identity while adding verified live facts.
 
 The most common ID-discovered case looks like this:
 
@@ -575,17 +576,23 @@ The most common ID-discovered case looks like this:
                          |
                   tagged activation
                          |
+                         |
+                ACTIVE still clear
+                         |
+             Validate_Active_Id_Records
+                         |
              +-----------+-----------+
              |                       |
-          failure                   success
+       zero/shared base       unique responding base
+       or failed probe               |
+             |                       v
+             v                FROM_ID | ACTIVE
+     remains FROM_ID          refresh product/revision
              |                       |
-             v                       v
-     remains FROM_ID          FROM_ID | ACTIVE
-                                     |
-                              active-base scan
-                                     |
-                                     v
-                          refresh live identity
+             +-----------+-----------+
+                         |
+               temporary capability
+                    enrichment
 ```
 
 # Identity, configuration and activity are different things
@@ -613,8 +620,10 @@ responding there.
 `NIC_FLAG_ACTIVE` means that the adapter has been established as accessible
 through an active ISA base.
 
-Later code that requires normal register access must use the active state, not
-merely assume that a record containing an I/O base is live.
+Later code must not assume that a record containing an I/O base is live.
+Configured-base access and validated temporary working access are distinct:
+temporary access can reach a tagged record whose configured base is ambiguous
+and whose `NIC_FLAG_ACTIVE` remains clear.
 
 This distinction matters to `CONFIGURE`, capability reads, extended
 information, verification, and other hardware-facing operations.
@@ -651,15 +660,15 @@ Examples include:
 * contender EEPROM interpretation
 * duplicate identity handling
 * provisional record construction
-* active-base table scanning
-* record merging
+* configured-base ownership checks and active-record validation
+* temporary working-base selection and capability enrichment
 
 The backend supplies the actual hardware operations required by those
 algorithms.
 
-Some operations, notably `Nic_Activate_Tagged_Cards`, sit at a somewhat higher
-level because the physical and mock activation mechanisms differ enough to
-justify a common backend entry point.
+Shared hardware algorithms in `3CSHIF.ASM`, including
+`Nic_Activate_Tagged_Cards` and `Nic_Check_3Com_Signature`, use those backend
+primitives rather than separate real and mock discovery policies.
 
 Do not move higher-level discovery policy into MOCKHW merely because doing so
 would simplify a test.
@@ -677,9 +686,11 @@ The following rules should remain true when modifying adapter discovery:
   enumeration.
 * Discovery begins from a cleared `nic_table` and reset discovery state.
 * ID-port discovery happens before tagged-card activation.
-* Tagged-card activation happens before the final active-base scan.
+* Tagged-card activation happens before active-record validation.
 * ID-port discovery is the only source of supported `nic_table` records.
-* The active-base scan only verifies or refreshes existing records.
+* Active-record validation probes only uniquely owned, nonzero configured bases
+  and only verifies or refreshes existing records.
+* Temporary-base selection uses `io_scan_table` for working access, not discovery.
 * Only the supported `9050h` 3C509 product family becomes a normal supported
   record.
 * EEPROM manufacturer identification uses documented `6D50h`.
@@ -693,7 +704,7 @@ The following rules should remain true when modifying adapter discovery:
 * `NIC_FLAG_FROM_ID` records how the adapter was discovered and is independent
   of active state.
 * ID-port duplicate suppression uses OEM node identity.
-* active-base duplicate suppression uses I/O base.
+* configured-base ambiguity checks use I/O base and preserve separate records.
 * ID-discovered records retain their tag and ID sequence mode.
 * ASIC revision remains `FFh` in a provisional ID record until active hardware
   has provided a real value.

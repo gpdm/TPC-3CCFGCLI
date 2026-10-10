@@ -71,7 +71,7 @@ See [BACKEND.md](BACKEND.md).
 
 | ID            | Invariant                                                                                                                                                 |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `INV-DISC-01` | ISA ID port discovery and active I/O base scanning are both valid discovery sources.                                                                      |
+| `INV-DISC-01` | ISA ID port discovery creates supported records; configured-base validation only probes uniquely owned, nonzero bases of existing records.                 |
 | `INV-DISC-02` | Active and inactive adapters must remain distinguishable. Discovery must not imply that every known adapter currently decodes an I/O base.                |
 | `INV-DISC-03` | ID port tagging, tag selection, and ISA activation are separate hardware operations and must not be treated as interchangeable.                           |
 | `INV-DISC-04` | An ID tag identifies an adapter within the ID port mechanism. It is not equivalent to active ISA decode state.                                            |

@@ -8,7 +8,7 @@ semantics, and testing architecture, see the documents below.
 | Document | Description |
 |---|---|
 | [Backend](BACKEND.md) | REALHW and MOCKHW backend contract and `Nic_*` interface |
-| [Discovery](DISCOVERY.md) | ID port discovery, tagging, activation, active base scanning and adapter records |
+| [Discovery](DISCOVERY.md) | ID port discovery, tagging, activation, active-record validation, temporary IOBASE selection and adapter records |
 | [State Model](STATE_MODEL.md) | Persistent EEPROM state versus live ASIC/register state |
 | [Transactions](TRANSACTIONS.md) | CONFIGURE parsing, staging, prospective state, commit and verification |
 | [EEPROM](EEPROM.md) | Shared EEPROM words, bit ownership, preservation rules and checksums |

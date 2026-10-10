@@ -56,8 +56,9 @@ Both backends implement the same `Nic_*` procedure names, including
 `Nic_IdPort_Send_Short_Sequence`, `Nic_IdPort_Eeprom_Delay`,
 `Nic_Init_Id_Port`, `Nic_IdPort_Read_Bit`, `Nic_IO_Read_Word`,
 `Nic_IO_Write_Word`, `Nic_Wait_Command_Ready`, `Nic_EEPROM_Read`,
-`Nic_Rom_Read_Byte`, `Nic_Rom_Set_Page`, `Nic_Check_3Com_Signature`, and
-`Nic_Activate_Tagged_Cards`.
+`Nic_Rom_Read_Byte`, and `Nic_Rom_Set_Page`. The shared `3CSHIF.ASM` layer
+implements `Nic_Check_3Com_Signature` and `Nic_Activate_Tagged_Cards` using
+these primitives for either backend.
 
 Equivalent contract does not mean identical implementation. For example,
 `Nic_IdPort_Eeprom_Delay` performs a real timing loop in `3CHWIF.ASM` and is a
@@ -190,12 +191,14 @@ The mock preserves the same distinction described in
 one verified as active at its ISA base. A record's `MCK3R_TAG` and
 `MCK3R_ID_STATE` describe ID-port bus visibility; `MCKRF_ACTIVE` in
 `MCK3R_FLAGS` describes whether the record currently decodes its active base.
-`Nic_Activate_Tagged_Cards` (the shared backend entry point described in
-[BACKEND.md](BACKEND.md)) locates the modeled adapter by tag, applies the
-configured active base, sets the modeled activation state, commits the
-resulting record, and persists it — but deliberately does not itself prove
-runtime reachability; that is established separately by the active-base scan
-and signature check, exactly as it is for REALHW.
+`Nic_Activate_Tagged_Cards` (the shared algorithm described in
+[BACKEND.md](BACKEND.md)) issues tag-selection and activation commands through
+the mock ID-port primitives. These update and persist modeled decode state,
+but the shared routine does not set the application's `NIC_FLAG_ACTIVE`.
+`Validate_Active_Id_Records` establishes that flag through a signature check
+only for uniquely owned, nonzero configured bases, exactly as for REALHW.
+Temporary IOBASE selection is a separate operation for accessing an already
+identified tagged adapter, not another source of discovery records.
 
 ## 8. Live Registers And Windows
 

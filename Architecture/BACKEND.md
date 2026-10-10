@@ -105,8 +105,8 @@ This is important when reading the source.
 The backend boundary is an architectural seam, but it is not a strict binary
 ABI between independently assembled modules.
 
-Some backend procedures can therefore access common application state such as
-`nic_table` and `card_count`.
+Shared hardware algorithms can therefore access common application state such
+as `nic_table` and `card_count`.
 
 `Nic_Activate_Tagged_Cards` is one example.
 
@@ -159,8 +159,8 @@ It owns direct interaction with the EtherLink III hardware, including:
 * EEPROM access used by general read paths
 * 3Com ID-port access
 * ID-port timing
-* tagged-card activation
-* active-card signature checking
+* ID-port primitives used by shared tagged-card activation
+* physical I/O used by shared active-card signature checking
 * Option ROM memory access
 * Option ROM page selection
 
@@ -399,27 +399,29 @@ EEPROM contents.
 
 ## Card-level backend operations
 
-Two current backend procedures operate at a somewhat higher level than simple
-register primitives.
+Two shared procedures in `3CSHIF.ASM` operate at a somewhat higher level than
+simple backend register primitives.
 
 | Procedure                   | Purpose                                                                                                  |
 | --------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `Nic_Check_3Com_Signature`  | Validate an active adapter and recover its product ID and ASIC revision.                                 |
 | `Nic_Activate_Tagged_Cards` | Perform the common activation algorithm for records discovered and tagged through the ID-port flow. |
 
-These procedures are part of the backend seam because their implementation is
-closely tied to active hardware state.
-
-They also demonstrate why the backend is not a pure low-level I/O abstraction.
+These shared algorithms use the selected backend's hardware primitives.
 
 `Nic_Activate_Tagged_Cards`, for example, operates on the shared `nic_table`
 and `card_count` state.
 
-The real implementation performs the actual ID-port activation sequence and
-then verifies the resulting active card.
+The same activation algorithm runs for REALHW and MOCKHW. The real ID-port
+primitives emit physical commands; the mock primitives update modeled
+tag-selection and activation state.
 
-The mock implementation updates the corresponding modeled adapter activation
-state.
+`Nic_Activate_Tagged_Cards` does not verify runtime access or set
+`NIC_FLAG_ACTIVE`. The discovery coordinator subsequently calls
+`Validate_Active_Id_Records`, which probes only uniquely owned, nonzero
+configured bases from the ID-discovered table and sets the flag after a
+successful signature check. Temporary IOBASE selection is separate from this
+validation and does not enumerate adapters.
 
 Callers should therefore depend on the documented application-level purpose of
 this procedure, not on private internal steps of either backend.
