@@ -10,8 +10,7 @@
 |  3CCFGLI has seen limited hardware testing on real                                |
 |  3C509-TP, 3C509B-TP and 3C509B-TPCoax NICs.                                      |
 |  Generally, all config verbs are expected to behave correctly at this time.       |
-|  TO BE CONSIDERED AS *UNSAFE* ARE /BADDR AND /BSIZE OPERATIONS.                   |
-|  USE ENTIRELY AT YOUR OWN RISK.                                                   |
+|  BUGS MAY STILL BE PRESENT - USE ENTIRELY AT YOUR OWN RISK.                       |
 |                                                                                   |
 +-----------------------------------------------------------------------------------+
 ```
