@@ -1,3 +1,6 @@
+Changelog 0.8.4
+  - Fixed the initial primary EEPROM checksum in 3CSEED by including Software Information word 0Dh.
+
 Changelog 0.8.3
   - Deduplicated CONFIGURE diagnostic strings to reduce executable size.
   - Added shared CRLF and indentation output helpers to reduce executable size.

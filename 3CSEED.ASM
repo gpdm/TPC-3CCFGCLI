@@ -1482,6 +1482,7 @@ PROC Build_Checksum NEAR
     jmp     @@PrimaryLow
 @@PrimaryLowSoftware:
     mov     si, EEPROM_SOFTWARE_INFO
+    jmp     @@PrimaryLow
 @@PrimaryLowDone:
     mov     si, EEPROM_CHECKSUM
     call    EEPROM_Read_SI
