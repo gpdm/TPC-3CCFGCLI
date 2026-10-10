@@ -399,6 +399,23 @@ The presence of the option in historical HELP text is not sufficient reason to a
 
 Unless project scope is explicitly changed and the required hardware semantics are independently established, `/SYNCREADY` remains intentionally unsupported.
 
+## Mock State File Write Failures
+
+### Decision
+
+`3CMOCKIF.ASM` does not propagate failures while saving `3C509B.MCK` to `3CCFGCLI`. A failed or incomplete save may therefore leave the mock state file invalid without producing a configuration error.
+
+### Rationale
+
+The mock runs primarily under DOSBox-X. During regression testing, `TEST.MK` regularly recreates its starting state with `3CSEED`. A failed mock save is therefore a limited test infrastructure issue.
+
+Propagating recoverable file errors through the existing `Nic_*` interfaces would require changes across backend contracts and configuration error handling. That complexity would also affect the normal hardware build, where mock file persistence does not exist. It is not justified by the current regression workflow.
+
+### Resulting Behavior
+
+A later mock invocation may reject an incomplete state file. The affected test state can be recreated with `3CSEED`. This limitation is accepted and is not treated as a configuration transaction failure.
+
+
 ### General Rule
 
 Future reviews must distinguish between:
