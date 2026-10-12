@@ -1,6 +1,8 @@
 Changelog 0.8.4
   - Fixed the initial primary EEPROM checksum in 3CSEED by including Software Information word 0Dh.
   - Preserved CX across mock status reads so command-busy polling honors its 16-read cycle.
+  - Report literal /EXECFILE open or close failures as EXECFILE access errors,
+    distinct from SAVECONFIG output write failures.
 
 Changelog 0.8.3
   - Deduplicated CONFIGURE diagnostic strings to reduce executable size.

@@ -5,4 +5,10 @@ by The Phintage Collector (Gianpaolo Del Matto)
 https://github.com/gpdm/TPC-3CCFGCLI
 reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
 
-SAVECONFIG /EXECFILE file not found.
+Unable to access SAVECONFIG /EXECFILE file.
+3Com EtherLink III CLI Configuration Program v0.8.4
+by The Phintage Collector (Gianpaolo Del Matto)
+https://github.com/gpdm/TPC-3CCFGCLI
+reimplementation of the original 3Com EtherLink III Configuration Utility v3.2
+
+Unable to write SAVECONFIG output file.

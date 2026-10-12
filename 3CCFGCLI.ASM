@@ -256,7 +256,7 @@ msg_save_bad_name DB "Invalid SAVECONFIG output filename.", 0Dh, 0Ah, '$'
 msg_save_bad_option DB "Invalid SAVECONFIG option.", 0Dh, 0Ah, '$'
 msg_save_dup_option DB "Duplicate SAVECONFIG option.", 0Dh, 0Ah, '$'
 msg_save_bad_execfile DB "Invalid SAVECONFIG /EXECFILE value.", 0Dh, 0Ah, '$'
-msg_save_execfile_not_found DB "SAVECONFIG /EXECFILE file not found.", 0Dh, 0Ah, '$'
+msg_save_execfile_access_fail DB "Unable to access SAVECONFIG /EXECFILE file.", 0Dh, 0Ah, '$'
 msg_save_line_too_long DB "SAVECONFIG restore command line would exceed DOS batch line limit.", 0Dh, 0Ah, '$'
 msg_save_no_active DB "SAVECONFIG found no adapters with an active IOBASE.", 0Dh, 0Ah, '$'
 msg_save_write_fail DB "Unable to write SAVECONFIG output file.", 0Dh, 0Ah, '$'
@@ -696,6 +696,7 @@ SAVE_ERR_LINE_TOO_LONG EQU 2
 SAVE_ERR_BAD_EXECFILE EQU 3
 SAVE_ERR_UNSUPPORTED_ROM_SIZE EQU 4
 SAVE_ERR_PNP_ROM EQU 5
+SAVE_ERR_EXECFILE_ACCESS EQU 6
 
 ; All 31 valid selectable 3C509 ISA I O bases.
 ; EEPROM Address Configuration bits 4 to 0 encode indexes 0 through 30.
@@ -1394,8 +1395,8 @@ PROC Cmd_SaveConfig NEAR
     call    Print_CRLF
     jmp     @@Done
 @@PrepareFail:
-    cmp     al, SAVE_ERR_WRITE
-    je      @@ExecNotFound
+    cmp     al, SAVE_ERR_EXECFILE_ACCESS
+    je      @@ExecfileAccessFail
     cmp     al, SAVE_ERR_LINE_TOO_LONG
     je      @@LineTooLong
     jmp     @@BadExecFile
@@ -1428,8 +1429,8 @@ PROC Cmd_SaveConfig NEAR
 @@BadExecFile:
     mov     dx, OFFSET msg_save_bad_execfile
     jmp     @@Print
-@@ExecNotFound:
-    mov     dx, OFFSET msg_save_execfile_not_found
+@@ExecfileAccessFail:
+    mov     dx, OFFSET msg_save_execfile_access_fail
     jmp     @@Print
 @@LineTooLong:
     call    Save_Cleanup_Partial_File
@@ -1689,11 +1690,11 @@ PROC Save_Prepare_Execfile NEAR
     mov     dx, OFFSET save_execname
     mov     ax, 3D00h
     int     21h
-    jc      @@NotFound
+    jc      @@ExecfileAccessFail
     mov     bx, ax
     mov     ah, 3Eh
     int     21h
-    jc      @@NotFound
+    jc      @@ExecfileAccessFail
 
 @@Lengths:
     mov     si, OFFSET save_execname
@@ -1715,8 +1716,8 @@ PROC Save_Prepare_Execfile NEAR
     mov     al, SAVE_ERR_BAD_EXECFILE
     stc
     jmp     @@Done
-@@NotFound:
-    mov     al, SAVE_ERR_WRITE
+@@ExecfileAccessFail:
+    mov     al, SAVE_ERR_EXECFILE_ACCESS
     stc
     jmp     @@Done
 @@TooLong:
