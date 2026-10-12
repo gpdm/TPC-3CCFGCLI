@@ -74,6 +74,44 @@ This behavior is accepted by design.
 
 Future improvements may make error reporting more explicit, but automatic rollback is not currently considered a required feature.
 
+## Secondary EEPROM Checksum Replacement
+
+### Decision
+
+When `CFG_TXN_SECONDARY_CHECKSUM_MASK` indicates a required update, CONFIGURE
+recalculates both checksum bytes stored in EEPROM word `17h` and writes the
+complete word.
+
+This policy is specific to secondary checksum updates. Primary checksum word
+`0Fh` continues to preserve its high byte when updating its low byte.
+
+### Rationale
+
+EEPROM word `17h` contains independent high and low checksums over different
+data domains. Its CONFIGURE update is triggered by changes to word `13h`, word
+`14h`, or PnP Resource Data, including Boot ROM-related resource changes.
+
+The write interface updates the complete EEPROM word containing both checksum
+bytes. Recalculating both produces the complete replacement directly from the
+covered data, avoids reading and merging the old checksum word, and avoids
+separate conditional update logic for each byte. Writing a complete word does
+not technically require recalculating both bytes; full recalculation is the
+chosen implementation policy.
+
+The accepted tradeoff is additional EEPROM reads. Recalculation can also
+replace a previously incorrect checksum for an unchanged domain with the
+checksum derived from its current contents.
+
+### Resulting Behavior
+
+CONFIGURE calculates the high byte first and the low byte second. If either
+calculation fails, it exits before writing word `17h`. After both succeed, it
+combines the results, writes the complete word once, and verifies the complete
+word by readback.
+
+LIST validates the stored checksum without writing it; its validation may stop
+after finding the low byte invalid.
+
 ## MODEM 1200 Microsecond Representation
 
 ### Decision
@@ -414,6 +452,47 @@ Propagating recoverable file errors through the existing `Nic_*` interfaces woul
 ### Resulting Behavior
 
 A later mock invocation may reject an incomplete state file. The affected test state can be recreated with `3CSEED`. This limitation is accepted and is not treated as a configuration transaction failure.
+
+
+## Complete Recalculation Of Secondary EEPROM Checksums
+
+### Decision
+
+Whenever CONFIGURE requires an update of EEPROM word `17h`, both checksum bytes are fully recalculated from their respective EEPROM data domains.
+
+The implementation does not selectively preserve an existing checksum byte when only the other domain has changed.
+
+This is an intentional design decision.
+
+### Rationale
+
+Both checksum bytes share EEPROM word `17h`, which is written as a complete word.
+
+Recalculating both bytes provides the complete replacement value directly from the current EEPROM data.
+
+This keeps the implementation straightforward and avoids additional conditional logic to determine which individual checksum byte needs updating.
+
+It also avoids reading the previous checksum word and merging a preserved byte with a newly calculated byte.
+
+The additional EEPROM reads are accepted in exchange for a simpler update sequence without dependencies on previous checksum values.
+
+Writing a complete word does not technically require recalculating both bytes. Full recalculation is the chosen implementation policy.
+
+### Resulting Behavior
+
+The existing transaction change flags determine whether the secondary checksum update is required.
+
+When required, CONFIGURE calculates the high checksum byte, calculates the low checksum byte, combines both results, writes word `17h`, and verifies the complete word by reading it back.
+
+Both calculations must complete successfully before the write is attempted.
+
+If either calculation fails, the checksum update exits without writing word `17h`. Earlier configuration writes are not rolled back.
+
+If no secondary checksum update is required, both calculations are skipped.
+
+Full recalculation can also correct a previously invalid checksum byte whose data domain was unchanged by the transaction.
+
+This policy applies specifically to CONFIGURE updates of word `17h`. It does not change primary checksum handling in word `0Fh` or the validation behavior of LIST.
 
 
 ### General Rule

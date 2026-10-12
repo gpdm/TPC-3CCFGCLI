@@ -134,9 +134,9 @@ See [TRANSACTIONS.md](TRANSACTIONS.md).
 | `INV-EEPROM-05` | Data returned from a failed EEPROM read must not be consumed.                                             |
 | `INV-EEPROM-06` | A timeout or read failure must not be converted into configuration data.                                  |
 | `INV-EEPROM-07` | The primary checksum low byte in EEPROM word `0Fh` covers configuration words `08h`, `09h`, and `0Dh`.    |
-| `INV-EEPROM-08` | The secondary checksum low byte in EEPROM word `17h` covers words `13h` through `16h`.                    |
-| `INV-EEPROM-09` | Updating a checksum low byte must preserve the unrelated high byte of its EEPROM word.                    |
-| `INV-EEPROM-10` | A checksum domain must be updated when, and only when, a changed persistent field belongs to that domain. |
+| `INV-EEPROM-08` | Word `17h` low checksum covers `13h`-`16h`; high covers `10h`-`12h` and `20h`-`3Fh.                        |
+| `INV-EEPROM-09` | Primary word `0Fh` low-byte updates preserve high; CONFIGURE word `17h` updates recalculate both bytes.     |
+| `INV-EEPROM-10` | CONFIGURE checksum updates are triggered by the persistent changes specified for each checksum destination. |
 | `INV-EEPROM-11` | Persistent writes must be read back and verified when the transaction architecture requires verification. |
 
 See [EEPROM.md](EEPROM.md).

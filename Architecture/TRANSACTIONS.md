@@ -1343,7 +1343,8 @@ Unchanged words are skipped.
 
 # Checksum updates are derived work
 
-Checksums are updated after the property words they cover have been written.
+Checksums are updated after changed persistent property and resource data has
+been written.
 
 The current transaction has two checksum domains:
 
@@ -1353,13 +1354,21 @@ primary checksum
     -> update word 0Fh low byte
 
 secondary checksum
-    data changes in 13h / 14h
-    -> update word 17h low byte
+    word 13h, word 14h, or PnP Resource Data changes
+    -> calculate word 17h high, then low
+    -> write and verify the complete word 17h
 ```
 
-The high byte of the destination checksum word is preserved.
+For the secondary checksum update, both bytes are freshly calculated from
+their respective EEPROM domains; CONFIGURE does not read word `17h` to preserve
+either prior byte. Boot ROM configuration can trigger this update through
+changes to word `14h` or the associated PnP Resource Data. The primary
+word `0Fh` update remains separate and preserves its high byte while replacing
+only its low byte.
 
-Both checksum writes are immediately read back and compared.
+Both checksum writes are immediately read back and compared. For word `17h`,
+both calculations must succeed before its single complete-word write is
+attempted.
 
 Detailed checksum ownership belongs in
 [`EEPROM.md`](EEPROM.md).

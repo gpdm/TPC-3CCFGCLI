@@ -823,7 +823,10 @@ word14
 
 Both are inside the secondary low checksum domain.
 
-Therefore either changed word requires recalculation of word `17h` low.
+Changed word `13h`, changed word `14h`, or changed PnP Resource Data triggers
+CONFIGURE's secondary checksum update. Boot ROM configuration can change both
+word `14h` and the PnP Resource Data image; either changed representation
+triggers this update.
 
 # Secondary high checksum
 
@@ -841,15 +844,32 @@ words 20h through 3Fh
 
 Both bytes of each word participate.
 
-## Why CONFIGURE preserves the high byte
+## CONFIGURE recalculates both bytes
 
-Current CONFIGURE operations do not modify any word in this domain.
+When a secondary checksum update is triggered, CONFIGURE recalculates both
+bytes of word `17h`, including when a word `13h` or `14h` change leaves the
+high-checksum domain unchanged. Boot ROM-related PnP Resource Data changes can
+also modify words in that high-checksum domain.
 
-Therefore current CONFIGURE checksum maintenance must preserve the high byte of
-word `17h`.
+The high byte is calculated first from words `10h..12h` and `20h..3Fh`; the low
+byte is then calculated from words `13h..16h`. Both results are combined into
+the complete replacement word `17h`.
 
-It must not recalculate or normalize it merely because the low checksum
-changes.
+This is the chosen CONFIGURE update policy, not a requirement imposed by
+writing a complete EEPROM word. Recalculating both bytes produces the
+replacement value directly from the covered data, avoids reading and merging
+the old checksum word, and avoids separate conditional update logic for each
+byte. The tradeoff is additional EEPROM reads. It can also replace a
+previously incorrect checksum for an unchanged domain with the checksum
+calculated from its current contents.
+
+If either checksum calculation fails, CONFIGURE exits before attempting to
+write word `17h`. A word `17h` write attempt therefore follows successful
+completion of both calculations.
+
+This policy applies to CONFIGURE updates. LIST only validates stored
+checksums; it does not write them, and its validation can stop after detecting
+an invalid low checksum without calculating the high checksum.
 
 ## Why `3CSEED` calculates it
 
@@ -902,43 +922,37 @@ SECONDARY CHECKSUM, word 17h
    words 20h..3Fh
               |                                     |
               |                                     |
- current CONFIGURE does              current CONFIGURE modifies
- not modify this domain              13h and potentially 14h
+ current CONFIGURE recalculates       current CONFIGURE recalculates
+ this byte when update is triggered   this byte when update is triggered
               |                                     |
-              v                                     v
-          preserve                             recalculate
+              +-----------------+-------------------+
+                                |
+                     write complete word 17h
 ```
 
 # Checksum update matrix
 
-The checksum work is derived from the EEPROM words that actually changed.
+Checksum update triggers are derived from persistent changes, not merely from
+which property appeared on the command line. For word `0Fh`, the trigger is a
+change in its low-byte checksum domain. For word `17h`, the trigger set is
+changed word `13h`, changed word `14h`, or changed PnP Resource Data.
 
-It is not derived merely from which property appeared on the command line.
+| Property              | Persistent word(s)             | Primary low `0Fh` | Secondary word `17h` |
+| --------------------- | ------------------------------ | ----------------: | -------------------: |
+| `/IOBASE`             | `08h`                          |               Yes |                   No |
+| `/INT`                | `09h`                          |               Yes |                   No |
+| `/MODEM`              | `0Dh`                          |               Yes |                   No |
+| `/FULLDUPLEX`         | `0Dh`                          |               Yes |                   No |
+| `/OPTIMIZE`           | `0Dh`                          |               Yes |                   No |
+| `/TR`, `/XCVR`        | `08h`                          |               Yes |                   No |
+| `/PNP`                | `13h`, possibly `14h`          |                No | If word `13h` or `14h` changes |
+| `/BADDRESS`, `/BSIZE` | `08h`, possibly `14h` and PnP Resource Data | If `08h` changes | If `14h` or PnP Resource Data changes |
 
-| Property              | Persistent word(s)    | Primary low `0Fh` | Secondary low `17h` |
-| --------------------- | --------------------- | ----------------: | ------------------: |
-| `/IOBASE`             | `08h`                 |               Yes |                  No |
-| `/INT`                | `09h`                 |               Yes |                  No |
-| `/MODEM`              | `0Dh`                 |               Yes |                  No |
-| `/FULLDUPLEX`         | `0Dh`                 |               Yes |                  No |
-| `/OPTIMIZE`           | `0Dh`                 |               Yes |                  No |
-| `/TR`, `/XCVR`        | `08h`                 |               Yes |                  No |
-| `/PNP`                | `13h`                 |                No |                 Yes |
-| `/BADDRESS`, `/BSIZE` | `08h`, possibly `14h` |  If `08h` changed |    If `14h` changed |
+When a secondary update is required, CONFIGURE recalculates and writes both
+bytes of word `17h`, not only the byte whose data domain changed.
 
-The important wording is:
-
-```text
-if the covered EEPROM word changed
-```
-
-not:
-
-```text
-if the property was requested
-```
-
-An already-correct property does not require a checksum rewrite.
+An already-correct property does not require a checksum rewrite unless it
+causes another persistent word or the PnP Resource Data image to change.
 
 # Combined checksum updates
 
@@ -961,7 +975,7 @@ Therefore the transaction must update:
 
 ```text
 word0F low
-word17 low
+word17 high and low
 ```
 
 in the same commit.
@@ -1006,7 +1020,11 @@ write changed persistent data words
               |
           yes | no
               v
-      update word17 low
+  recalculate word17 high
+             |
+  recalculate word17 low
+             |
+ write complete word17
 ```
 
 This ordering is deliberate.
@@ -1096,9 +1114,8 @@ compare complete word
 For the secondary checksum:
 
 ```text
-read current word17
-calculate new low byte
-preserve current high byte
+calculate new high byte from 10h..12h and 20h..3Fh
+calculate new low byte from 13h..16h
 write word17
 read word17
 compare complete word
@@ -1108,19 +1125,6 @@ A checksum mismatch is a transaction failure.
 
 Checksum verification is therefore part of the EEPROM commit phase rather
 than a later property-specific verification pass.
-
-# Why word `17h` is read immediately before update
-
-Unlike word `0Fh`, the current transaction does not maintain a normal
-old/new snapshot of word `17h`.
-
-When the secondary checksum needs updating, `Cfg_Txn_Write_EEPROM` reads the
-current word `17h` immediately before calculating and writing the new low byte.
-
-It then preserves the high byte from that current value.
-
-This is sufficient because CONFIGURE owns only the low-byte checksum update
-for its current writable secondary domain.
 
 # `3CSEED` checksum responsibility
 
@@ -1322,11 +1326,14 @@ configuration:
 * Secondary low checksum covers words `13h` through `16h`.
 * Secondary high checksum covers words `10h` through `12h` and `20h` through
   `3Fh`.
-* Current CONFIGURE preserves secondary checksum high.
-* Checksum work is triggered by changed covered words, not merely by requested
-  property names.
+* A CONFIGURE secondary checksum update is triggered by changed word `13h`,
+  changed word `14h`, or changed PnP Resource Data.
+* When triggered, CONFIGURE calculates both secondary checksum bytes from
+  EEPROM data and writes the complete word `17h` after both calculations
+  succeed.
 * PNP-only transactions do not require primary checksum word `0Fh`.
-* Checksum destination high bytes must survive low-byte updates.
+* Primary word `0Fh` low-byte updates preserve its high byte; this rule does not
+  apply to secondary word `17h`.
 * Checksum writes are read back and verified immediately.
 * PnP capability, PnP activation policy, and PnP Resource Data remain separate
   concepts.
@@ -1345,7 +1352,7 @@ Change only what the requested property actually owns.
 
 Preserve everything else.
 
-Then repair exactly the checksum domain that the change disturbed.
+Then update each triggered checksum word according to its documented policy.
 ```
 
 The transaction machinery that stages and commits these EEPROM images is
