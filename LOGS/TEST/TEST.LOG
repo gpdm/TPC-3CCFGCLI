@@ -206,6 +206,20 @@ Seed file created (INIT).
 [t1310] PASSED
 [t1311] empty command line prints help screen
 [t1311] PASSED
+[t1312] unknown option without value is invalid
+[t1312] PASSED
+[t1313] unknown option with empty value is invalid
+[t1313] PASSED
+[t1314] unknown dash option with empty value is invalid
+[t1314] PASSED
+[t1315] lone switch introducer is invalid
+[t1315] PASSED
+[t1316] known property without value is missing value
+[t1316] PASSED
+[t1317] known property with empty value is missing value
+[t1317] PASSED
+[t1318] ADAPTERNUM without value is missing value
+[t1318] PASSED
 [t14xx] COMBINED_TRANSACTIONS: Verify combined transactions
 [t1401] combined CONFIGURE /IOBASE+/INT transaction
 [t1401] PASSED
@@ -373,8 +387,8 @@ JUnit report written: LOGS/TEST/TEST.JUNIT.XML
 Test summary
 ============
 Smoke Test                   : SUCCESS
-    Defined Tests            : 154
-    Executed Tests           : 154
+    Defined Tests            : 161
+    Executed Tests           : 161
     Failed Tests             : NONE
 SAVECONFIG Test              : SUCCESS
 Hardware Limit Test          : SUCCESS

@@ -238,6 +238,12 @@ and rejects:
 This ensures that a bad property later on the command line is not hidden by an
 earlier valid one.
 
+The option name is validated before its value. An unknown name, including
+a lone `/` or `-`, is reported as an invalid option even when no value
+follows it, such as `/INVALID`, `/INVALID:`, or `-FOO=`. Only a recognized
+name, including `ADAPTERNUM` and accepted property prefixes, is reported as
+missing its value.
+
 ## `ADAPTERNUM` is not a hardware property
 
 `ADAPTERNUM` is parsed immediately because it only selects a logical record.

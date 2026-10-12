@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites name="3CCFGCLI Test Results 2026-10-12T09:43:22.715293+02:00" tests="165" failures="0" errors="0" skipped="0" time="0.0">
+<testsuites name="3CCFGCLI Test Results 2026-10-12T10:04:45.172761+02:00" tests="172" failures="0" errors="0" skipped="0" time="0.0">
 	<testsuite name="LISTING: Verify general card listing behaviour" tests="2" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t01xx"/>
@@ -570,7 +570,7 @@
 			</properties>
 		</testcase>
 	</testsuite>
-	<testsuite name="CLI_PARSER: Verify CLI parser behaviour" tests="11" errors="0" failures="0" skipped="0" time="0">
+	<testsuite name="CLI_PARSER: Verify CLI parser behaviour" tests="18" errors="0" failures="0" skipped="0" time="0">
 		<properties>
 			<property name="header_id" value="t13xx"/>
 			<property name="description" value="Verify CLI parser behaviour"/>
@@ -639,6 +639,48 @@
 			<properties>
 				<property name="description" value="empty command line prints help screen"/>
 				<property name="artifact" value="ARTIFACT/T1311.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1312: unknown option without value is invalid" classname="CLI_PARSER">
+			<properties>
+				<property name="description" value="unknown option without value is invalid"/>
+				<property name="artifact" value="ARTIFACT/T1312.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1313: unknown option with empty value is invalid" classname="CLI_PARSER">
+			<properties>
+				<property name="description" value="unknown option with empty value is invalid"/>
+				<property name="artifact" value="ARTIFACT/T1313.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1314: unknown dash option with empty value is invalid" classname="CLI_PARSER">
+			<properties>
+				<property name="description" value="unknown dash option with empty value is invalid"/>
+				<property name="artifact" value="ARTIFACT/T1314.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1315: lone switch introducer is invalid" classname="CLI_PARSER">
+			<properties>
+				<property name="description" value="lone switch introducer is invalid"/>
+				<property name="artifact" value="ARTIFACT/T1315.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1316: known property without value is missing value" classname="CLI_PARSER">
+			<properties>
+				<property name="description" value="known property without value is missing value"/>
+				<property name="artifact" value="ARTIFACT/T1316.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1317: known property with empty value is missing value" classname="CLI_PARSER">
+			<properties>
+				<property name="description" value="known property with empty value is missing value"/>
+				<property name="artifact" value="ARTIFACT/T1317.LOG"/>
+			</properties>
+		</testcase>
+		<testcase name="t1318: ADAPTERNUM without value is missing value" classname="CLI_PARSER">
+			<properties>
+				<property name="description" value="ADAPTERNUM without value is missing value"/>
+				<property name="artifact" value="ARTIFACT/T1318.LOG"/>
 			</properties>
 		</testcase>
 	</testsuite>

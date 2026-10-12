@@ -2434,11 +2434,11 @@ PROC Cfg_Parse_Options NEAR
     cmp     al, '='
     je      @@HaveSeparator
     or      al, al
-    jz      @@MissingValue
+    jz      @@NoValue
     cmp     al, ' '
-    je      @@MissingValue
+    je      @@NoValue
     cmp     al, 09h
-    je      @@MissingValue
+    je      @@NoValue
     inc     si
     inc     cx
     jmp     @@FindSeparator
@@ -2462,10 +2462,13 @@ PROC Cfg_Parse_Options NEAR
     inc     di
     jmp     @@FindValueEnd
 
-@@ValueReady:
-    or      di, di
-    jz      @@MissingValue
+@@NoValue:
+    ; Token ended without a separator.  Validate the name first so an
+    ; unknown option is reported as invalid rather than as missing a value.
+    mov     dx, si
+    xor     di, di
 
+@@ValueReady:
     ; ADAPTERNUM is a selector, not a hardware property.
     push    si
     push    cx
@@ -2488,6 +2491,8 @@ PROC Cfg_Parse_Options NEAR
     pop     dx
     pop     si
     jc      @@BadOption
+    or      di, di
+    jz      @@MissingValue
     mov     [cfg_queue_property_id], al
 
     ; Strict duplicate tracking applies to supported hardware properties.
@@ -2509,6 +2514,8 @@ PROC Cfg_Parse_Options NEAR
     jmp     @@NextToken
 
 @@AdapterNumber:
+    or      di, di
+    jz      @@MissingValue
     mov     ax, CFG_SEEN_ADAPTER
     call    Cfg_Mark_Seen
     jc      @@DuplicateProperty

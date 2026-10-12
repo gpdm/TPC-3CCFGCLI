@@ -4,6 +4,8 @@ Changelog 0.8.4
   - Report literal /EXECFILE open or close failures as EXECFILE access errors,
     distinct from SAVECONFIG output write failures.
   - Ended CONFIGURE transaction access only once on successful completion.
+  - Report an unknown CONFIGURE option without a value as an invalid option
+    instead of a missing value; recognized names still report missing values.
 
 Changelog 0.8.3
   - Deduplicated CONFIGURE diagnostic strings to reduce executable size.
