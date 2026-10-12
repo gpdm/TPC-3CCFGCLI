@@ -28,6 +28,9 @@ ENDP Nic_IdPort_Send_Short_Sequence
 ; Internal REALHW ID port sequence core shared by the Full and Short
 ; entry points above. Caller must push ax/cx and load the desired
 ; iteration count into cx before entering here.
+; No I/O delay is inserted between ID port writes, matching the original
+; 3C5X9CFG sequence routines.  Each OUT is a full ISA bus cycle whose timing
+; and recovery are enforced by the chipset, not by CPU speed.
 PROC Nic_IdPort_Send_Sequence_Core NEAR
     xor     al, al
     call    Nic_IdPort_Write_Command
