@@ -950,6 +950,7 @@ ENDP Mock_Reg_Read_Word
 ; physical port has already been resolved to a loaded record.  Input BX =
 ; even offset within the 16-byte adapter region.
 PROC Mock_Resolve_And_Read_Word NEAR
+    push    cx
     cmp     bx, EL3_STATUS
     jne     @@RegisterPath
     xor     ax, ax
@@ -967,6 +968,7 @@ PROC Mock_Resolve_And_Read_Word NEAR
 @@RegisterPath:
     call    Mock_Reg_Read_Word
 @@ResolveDone:
+    pop     cx
     ret
 ENDP Mock_Resolve_And_Read_Word
 
