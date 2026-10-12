@@ -6440,6 +6440,7 @@ ENDP Cfg_Validate_FD_Transceiver
 ; required and must restore live state.
 PROC Cfg_Txn_Detect_Changes NEAR
     push    ax
+    push    si
 
     mov     [cfg_txn_change_flags], 0
 
@@ -6529,6 +6530,7 @@ PROC Cfg_Txn_Detect_Changes NEAR
     or      [cfg_txn_change_flags], CFG_TXN_CHG_WORD0D
 
 @@Done:
+    pop     si
     pop     ax
     ret
 ENDP Cfg_Txn_Detect_Changes
