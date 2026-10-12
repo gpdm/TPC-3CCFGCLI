@@ -8590,19 +8590,15 @@ PROC Cfg_Txn_Execute NEAR
     mov     ax, [cfg_txn_new_word0f]
     mov     [WORD di + ID_EEPROM_CHECKSUM], ax
 @@ReportSuccess:
-    ; Cfg_Txn_End_Access clears cfg_txn_working_access on its first
-    ; successful call, so the common @@Done path below calling it a second
-    ; time on the success fall-through is a harmless no-op (it takes the
-    ; @@Success early-return branch immediately). Kept as-is: collapsing
-    ; the two call sites would require restructuring the success/failure
-    ; branches without a corresponding safety benefit.
+    ; The success path ends temporary access here exactly once and leaves
+    ; through @@SuccessExit; only failure paths use the @@Done cleanup.
     call    Cfg_Txn_End_Access
     jc      @@Exit
     cmp     [cfg_bootrom_rejected], 1
     jne     @@PrintSuccess
     mov     ax, [cfg_txn_change_flags]
     and     ax, CFG_TXN_COMMIT_MASK
-    jz      @@Done
+    jz      @@SuccessExit
 @@PrintSuccess:
     push    dx
     mov     dx, OFFSET msg_cfg_txn_completed
@@ -8610,6 +8606,9 @@ PROC Cfg_Txn_Execute NEAR
     pop     dx
     mov     [cfg_last_error], CFG_ERR_NONE
     call    Cfg_Txn_Report_Implicit_FD_Notice
+@@SuccessExit:
+    clc
+    jmp     @@Exit
 
 @@Done:
     call    Cfg_Txn_End_Access

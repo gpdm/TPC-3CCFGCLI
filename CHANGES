@@ -3,6 +3,7 @@ Changelog 0.8.4
   - Preserved CX across mock status reads so command-busy polling honors its 16-read cycle.
   - Report literal /EXECFILE open or close failures as EXECFILE access errors,
     distinct from SAVECONFIG output write failures.
+  - Ended CONFIGURE transaction access only once on successful completion.
 
 Changelog 0.8.3
   - Deduplicated CONFIGURE diagnostic strings to reduce executable size.
