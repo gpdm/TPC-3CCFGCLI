@@ -7706,6 +7706,10 @@ PROC Cfg_Txn_Sync_Live_FullDuplex NEAR
     jz      @@Verified
     or      ax, W4_NET_DIAG_FD_ENABLE
 @@Write:
+    ; The read value is written back without masking to W4_NET_DIAG_WRITABLE.
+    ; Read-only bits (including the ASIC revision) are ignored by hardware,
+    ; and only bit 15 differs from the read value.  The original 3C5X9CFG
+    ; also writes this register unmasked.
     mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
     call    Nic_Reg_Write_Word
     mov     bx, EL3_W4_NETWORK_DIAGNOSTIC
